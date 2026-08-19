@@ -19,6 +19,41 @@ services:
     networks:
       - dpp
 
+  worker:
+    build:
+      context: ./app
+    image: dpp-analytics-worker:local
+    container_name: dpp-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${TZ}
+      SPAPI_ENABLED: ${SPAPI_ENABLED:-false}
+      SPAPI_ENDPOINT: ${SPAPI_ENDPOINT:-https://sellingpartnerapi-na.amazon.com}
+      SPAPI_MARKETPLACE_ID: ${SPAPI_MARKETPLACE_ID:-A1AM78C64UM0Y8}
+      SPAPI_LWA_CLIENT_ID: ${SPAPI_LWA_CLIENT_ID:-}
+      SPAPI_LWA_CLIENT_SECRET: ${SPAPI_LWA_CLIENT_SECRET:-}
+      SPAPI_LWA_REFRESH_TOKEN: ${SPAPI_LWA_REFRESH_TOKEN:-}
+      ORDERS_BACKFILL_START: ${ORDERS_BACKFILL_START:-2025-10-01T00:00:00Z}
+      ORDERS_INTERVAL_SECONDS: ${ORDERS_INTERVAL_SECONDS:-600}
+      INVENTORY_INTERVAL_SECONDS: ${INVENTORY_INTERVAL_SECONDS:-1800}
+      FINANCES_INTERVAL_SECONDS: ${FINANCES_INTERVAL_SECONDS:-14400}
+    healthcheck:
+      test: ["CMD", "python", "-m", "dpp_analytics.health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    networks:
+      - dpp
+
   grafana:
     image: grafana/grafana:13.1.0
     container_name: dpp-grafana

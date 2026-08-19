@@ -59,6 +59,9 @@ jobs:
           GRAFANA_ADMIN_USER=admin
           GRAFANA_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
           TZ=America/Mexico_City
+          SPAPI_ENABLED=false
+          SPAPI_MARKETPLACE_ID=A1AM78C64UM0Y8
+          ORDERS_BACKFILL_START=2025-10-01T00:00:00Z
           EOF
             sudo chmod 0600 /etc/dpp-analytics/env
           fi
@@ -72,12 +75,17 @@ jobs:
           set -euo pipefail
           sudo docker compose --env-file /etc/dpp-analytics/env config --quiet
 
-      - name: Pull images
+      - name: Pull base images
         run: |
           set -euo pipefail
-          sudo docker compose --env-file /etc/dpp-analytics/env pull
+          sudo docker compose --env-file /etc/dpp-analytics/env pull postgres grafana
 
-      - name: Deploy
+      - name: Build worker
+        run: |
+          set -euo pipefail
+          sudo docker compose --env-file /etc/dpp-analytics/env build worker
+
+      - name: Deploy stack
         run: |
           set -euo pipefail
           sudo docker compose --env-file /etc/dpp-analytics/env up -d --remove-orphans
@@ -92,6 +100,26 @@ jobs:
             sleep 2
           done
           sudo docker logs --tail 100 dpp-postgres
+          exit 1
+
+      - name: Apply database migrations
+        run: |
+          set -euo pipefail
+          bash scripts/migrate.sh /etc/dpp-analytics/env
+          sudo docker compose --env-file /etc/dpp-analytics/env restart worker
+
+      - name: Verify worker
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            status="$(sudo docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' dpp-worker 2>/dev/null || true)"
+            if [[ "$status" == "healthy" ]]; then
+              sudo docker logs --tail 20 dpp-worker
+              exit 0
+            fi
+            sleep 2
+          done
+          sudo docker logs --tail 100 dpp-worker
           exit 1
 
       - name: Verify Grafana
@@ -115,6 +143,10 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           set +e
+          POSTGRES_DB="$(grep -E '^POSTGRES_DB=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
+          POSTGRES_USER="$(grep -E '^POSTGRES_USER=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
+          SPAPI_ENABLED="$(grep -E '^SPAPI_ENABLED=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
+          SPAPI_MARKETPLACE_ID="$(grep -E '^SPAPI_MARKETPLACE_ID=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
           {
             echo '# DPP Analytics deployment heartbeat'
             echo
@@ -124,6 +156,8 @@ jobs:
             echo "**UTC:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
             echo "**Host:** \`$(hostname)\`"
             echo "**LAN addresses:** \`$(hostname -I 2>/dev/null | xargs)\`"
+            echo "**SP-API enabled:** \`${SPAPI_ENABLED:-unknown}\`"
+            echo "**Marketplace:** \`${SPAPI_MARKETPLACE_ID:-unknown}\`"
             echo
             echo '## Host'
             echo '```text'
@@ -142,11 +176,22 @@ jobs:
             echo
             echo '## Containers'
             echo '```text'
-            if sudo test -r /etc/dpp-analytics/env; then
-              sudo docker compose --env-file /etc/dpp-analytics/env ps 2>&1 || true
-            else
-              echo '/etc/dpp-analytics/env not present'
+            sudo docker compose --env-file /etc/dpp-analytics/env ps 2>&1 || true
+            echo '```'
+            echo
+            echo '## Database migrations'
+            echo '```text'
+            if [[ -n "$POSTGRES_DB" && -n "$POSTGRES_USER" ]]; then
+              sudo docker compose --env-file /etc/dpp-analytics/env exec -T postgres \
+                psql -X -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+                -c "SELECT filename || ' | ' || applied_at FROM ops.schema_migrations ORDER BY filename;" 2>&1 || true
             fi
+            echo '```'
+            echo
+            echo '## Worker'
+            echo '```text'
+            sudo docker inspect --format='health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} status={{.State.Status}}' dpp-worker 2>&1 || true
+            sudo docker logs --tail 20 dpp-worker 2>&1 || true
             echo '```'
             echo
             echo '## PostgreSQL'
