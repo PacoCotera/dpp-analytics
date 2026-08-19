@@ -37,9 +37,7 @@ services:
       TZ: ${TZ}
       SPAPI_ENABLED: ${SPAPI_ENABLED:-false}
       SPAPI_ENVIRONMENT: ${SPAPI_ENVIRONMENT:-sandbox}
-      # Production authorization has been validated. Keep the host-side variable
-      # for future emergency rollback, but live ingestion is intentionally active.
-      SPAPI_PRODUCTION_INGESTION_ENABLED: "true"
+      SPAPI_PRODUCTION_INGESTION_ENABLED: ${SPAPI_PRODUCTION_INGESTION_ENABLED:-false}
       SPAPI_ENDPOINT: ${SPAPI_ENDPOINT:-}
       SPAPI_MARKETPLACE_ID: ${SPAPI_MARKETPLACE_ID:-A1AM78C64UM0Y8}
       SPAPI_LWA_CLIENT_ID: ${SPAPI_LWA_CLIENT_ID:-}
