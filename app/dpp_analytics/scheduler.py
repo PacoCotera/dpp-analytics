@@ -5,6 +5,7 @@ import signal
 import time
 from collections.abc import Callable
 
+from .finances import ingest_finances
 from .inventory import ingest_inventory
 from .orders import ingest_orders
 from .production_probe import probe as production_probe
@@ -83,6 +84,7 @@ def main() -> None:
     log.info("SP-API production ingestion ENABLED")
     next_orders = 0.0
     next_inventory = 0.0
+    next_finances = 0.0
 
     while not STOP:
         now = time.monotonic()
@@ -94,6 +96,10 @@ def main() -> None:
         if now >= next_inventory:
             _run("inventory", ingest_inventory)
             next_inventory = time.monotonic() + settings.inventory_interval_seconds
+
+        if now >= next_finances:
+            _run("finances", ingest_finances)
+            next_finances = time.monotonic() + settings.finances_interval_seconds
 
         time.sleep(settings.scheduler_tick_seconds)
 
