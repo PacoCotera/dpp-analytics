@@ -22,8 +22,10 @@ const scenarios = [
   { name: 'data-health', url: '/data-health', views: ['mobile', 'desktop'] },
 ];
 
-await fs.rm(outDir, { recursive: true, force: true });
 await fs.mkdir(outDir, { recursive: true });
+for (const entry of await fs.readdir(outDir)) {
+  await fs.rm(path.join(outDir, entry), { recursive: true, force: true });
+}
 
 const browser = await chromium.launch({ headless: true });
 const results = [];
