@@ -4,13 +4,18 @@ set -euo pipefail
 ENV_FILE="${1:-/etc/dpp-analytics/env}"
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-sql/migrations}"
 
-if [[ ! -r "$ENV_FILE" ]]; then
-  echo "Environment file not readable: $ENV_FILE" >&2
+if ! sudo test -r "$ENV_FILE"; then
+  echo "Environment file not readable via sudo: $ENV_FILE" >&2
   exit 1
 fi
 
-POSTGRES_DB="$(grep -E '^POSTGRES_DB=' "$ENV_FILE" | tail -1 | cut -d= -f2-)"
-POSTGRES_USER="$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | tail -1 | cut -d= -f2-)"
+env_value() {
+  local key="$1"
+  sudo grep -E "^${key}=" "$ENV_FILE" | tail -1 | cut -d= -f2-
+}
+
+POSTGRES_DB="$(env_value POSTGRES_DB)"
+POSTGRES_USER="$(env_value POSTGRES_USER)"
 
 if [[ -z "$POSTGRES_DB" || -z "$POSTGRES_USER" ]]; then
   echo "POSTGRES_DB/POSTGRES_USER missing from $ENV_FILE" >&2
