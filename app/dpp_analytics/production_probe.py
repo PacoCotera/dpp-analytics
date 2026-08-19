@@ -163,6 +163,78 @@ def _cursor(cur, source: str, job_name: str, cursor_name: str = "default") -> di
     }
 
 
+def _finance_shape(cur) -> dict[str, object]:
+    """Describe only field names/category labels, never identifiers or payload values."""
+    cur.execute(
+        """
+        SELECT COALESCE(array_agg(DISTINCT k.key ORDER BY k.key), ARRAY[]::text[]) AS keys
+        FROM raw.api_payload p
+        CROSS JOIN LATERAL jsonb_object_keys(p.payload) AS k(key)
+        WHERE p.source='amazon_spapi' AND p.resource_type='financial_transaction'
+        """
+    )
+    top_keys = list((cur.fetchone() or {}).get("keys") or [])
+
+    cur.execute(
+        """
+        SELECT COALESCE(array_agg(DISTINCT k.key ORDER BY k.key), ARRAY[]::text[]) AS keys
+        FROM raw.api_payload p
+        CROSS JOIN LATERAL jsonb_array_elements(
+            CASE WHEN jsonb_typeof(p.payload->'breakdowns')='array'
+                 THEN p.payload->'breakdowns' ELSE '[]'::jsonb END
+        ) AS b(obj)
+        CROSS JOIN LATERAL jsonb_object_keys(b.obj) AS k(key)
+        WHERE p.source='amazon_spapi' AND p.resource_type='financial_transaction'
+        """
+    )
+    breakdown_keys = list((cur.fetchone() or {}).get("keys") or [])
+
+    cur.execute(
+        """
+        SELECT COALESCE(array_agg(DISTINCT k.key ORDER BY k.key), ARRAY[]::text[]) AS keys
+        FROM raw.api_payload p
+        CROSS JOIN LATERAL jsonb_array_elements(
+            CASE WHEN jsonb_typeof(p.payload->'items')='array'
+                 THEN p.payload->'items' ELSE '[]'::jsonb END
+        ) AS i(obj)
+        CROSS JOIN LATERAL jsonb_object_keys(i.obj) AS k(key)
+        WHERE p.source='amazon_spapi' AND p.resource_type='financial_transaction'
+        """
+    )
+    item_keys = list((cur.fetchone() or {}).get("keys") or [])
+
+    cur.execute(
+        """
+        SELECT label, count(*) AS n
+        FROM (
+            SELECT COALESCE(
+                b.obj->>'breakdownType', b.obj->>'type', b.obj->>'name', b.obj->>'description'
+            ) AS label
+            FROM raw.api_payload p
+            CROSS JOIN LATERAL jsonb_array_elements(
+                CASE WHEN jsonb_typeof(p.payload->'breakdowns')='array'
+                     THEN p.payload->'breakdowns' ELSE '[]'::jsonb END
+            ) AS b(obj)
+            WHERE p.source='amazon_spapi' AND p.resource_type='financial_transaction'
+        ) x
+        WHERE label IS NOT NULL
+        GROUP BY label
+        ORDER BY count(*) DESC, label
+        LIMIT 40
+        """
+    )
+    breakdown_labels = [
+        {"label": row["label"], "count": int(row["n"] or 0)} for row in cur.fetchall()
+    ]
+
+    return {
+        "top_level_keys": top_keys,
+        "breakdown_keys": breakdown_keys,
+        "item_keys": item_keys,
+        "breakdown_labels": breakdown_labels,
+    }
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -231,6 +303,7 @@ def _warehouse_probe() -> dict[str, object]:
             }
             for row in cur.fetchall()
         ]
+        finance_shape = _finance_shape(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -274,6 +347,7 @@ def _warehouse_probe() -> dict[str, object]:
         "latest_finance_run": latest_finance_run,
         "latest_data_kiosk_run": latest_kiosk_run,
         "finance_types": finance_types,
+        "finance_shape": finance_shape,
     }
 
 
