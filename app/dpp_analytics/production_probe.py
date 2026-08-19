@@ -40,22 +40,10 @@ def probe() -> dict[str, object]:
         before = now - dt.timedelta(minutes=5)
         after = before - dt.timedelta(days=7)
 
-        orders = _attempt(
-            "orders",
-            lambda: _orders_probe(client, after, before),
-        )
-        inventory = _attempt(
-            "inventory",
-            lambda: _inventory_probe(client),
-        )
-        finances = _attempt(
-            "finances",
-            lambda: _finances_probe(client, after, before),
-        )
-        data_kiosk = _attempt(
-            "data_kiosk",
-            lambda: _data_kiosk_probe(client),
-        )
+        orders = _attempt("orders", lambda: _orders_probe(client, after, before))
+        inventory = _attempt("inventory", lambda: _inventory_probe(client))
+        finances = _attempt("finances", lambda: _finances_probe(client, after, before))
+        data_kiosk = _attempt("data_kiosk", lambda: _data_kiosk_probe(client))
         warehouse = _attempt("warehouse", _warehouse_probe)
 
         checks = {
@@ -78,8 +66,6 @@ def probe() -> dict[str, object]:
 
 
 def _orders_probe(client: SpApiClient, after: dt.datetime, before: dt.datetime) -> dict[str, object]:
-    # Request only the data sets our warehouse requires; intentionally no BUYER or
-    # RECIPIENT PII. A 200 validates Orders access plus PROCEEDS/FULFILLMENT rights.
     payload = client.get(
         "/orders/2026-01-01/orders",
         params={
@@ -124,8 +110,6 @@ def _finances_probe(client: SpApiClient, after: dt.datetime, before: dt.datetime
             "marketplaceId": settings.marketplace_id,
         },
     )
-    # Production responses can expose the transaction payload either directly or
-    # under a payload object. Accept both shapes so the probe matches the collector.
     body = payload.get("payload") if isinstance(payload.get("payload"), dict) else payload
     transactions = body.get("transactions") or []
     next_token = body.get("nextToken") or payload.get("nextToken")
@@ -146,23 +130,53 @@ def _data_kiosk_probe(client: SpApiClient) -> dict[str, object]:
     }
 
 
+def _latest_run(cur, source: str, job_name: str) -> dict[str, object]:
+    cur.execute(
+        """
+        SELECT status, records_read, records_written, started_at, finished_at, error_message
+        FROM ops.ingestion_runs
+        WHERE source=%s AND job_name=%s
+        ORDER BY started_at DESC
+        LIMIT 1
+        """,
+        (source, job_name),
+    )
+    row = cur.fetchone() or {}
+    return {key: _json_value(value) for key, value in row.items()}
+
+
+def _cursor(cur, source: str, job_name: str, cursor_name: str = "default") -> dict[str, object] | None:
+    cur.execute(
+        """
+        SELECT cursor_value, updated_at
+        FROM ops.ingestion_cursor
+        WHERE source=%s AND job_name=%s AND cursor_name=%s
+        """,
+        (source, job_name, cursor_name),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    return {
+        "value": row["cursor_value"],
+        "updated_at": _json_value(row["updated_at"]),
+    }
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT
-                count(*) AS order_count,
-                min(created_time) AS first_order,
-                max(created_time) AS last_order
+            SELECT count(*) AS order_count, min(created_time) AS first_order, max(created_time) AS last_order
             FROM core.amazon_order
             """
         )
         orders = cur.fetchone()
-
         cur.execute("SELECT count(*) AS item_count FROM core.amazon_order_item")
         items = cur.fetchone()
         cur.execute("SELECT count(*) AS sku_count FROM core.sku")
         skus = cur.fetchone()
+
         cur.execute(
             """
             SELECT count(*) AS snapshot_count, max(snapshot_at) AS latest_snapshot
@@ -170,39 +184,96 @@ def _warehouse_probe() -> dict[str, object]:
             """
         )
         inventory = cur.fetchone()
+
         cur.execute(
             """
-            SELECT cursor_value, updated_at
-            FROM ops.ingestion_cursor
-            WHERE source='amazon_spapi' AND job_name='orders_v2026' AND cursor_name='default'
+            SELECT count(*) AS transaction_count, min(posted_date) AS first_posted, max(posted_date) AS last_posted
+            FROM core.financial_transaction
             """
         )
-        cursor = cur.fetchone()
+        finances = cur.fetchone()
+
         cur.execute(
             """
-            SELECT status, records_read, records_written, started_at, finished_at, error_message
-            FROM ops.ingestion_runs
-            WHERE source='amazon_spapi' AND job_name='orders_v2026'
-            ORDER BY started_at DESC
-            LIMIT 1
+            SELECT count(*) AS day_count, min(business_date) AS first_date, max(business_date) AS last_date
+            FROM core.sales_traffic_daily
+            WHERE marketplace_id=%s
+            """,
+            (settings.marketplace_id,),
+        )
+        sales_traffic = cur.fetchone()
+
+        cur.execute(
+            """
+            SELECT count(*) AS row_count, count(DISTINCT asin) AS asin_count,
+                   min(business_date) AS first_date, max(business_date) AS last_date
+            FROM core.asin_sales_traffic_daily
+            WHERE marketplace_id=%s
+            """,
+            (settings.marketplace_id,),
+        )
+        asin_traffic = cur.fetchone()
+
+        cur.execute(
+            """
+            SELECT transaction_type, count(*) AS n, COALESCE(sum(total_amount),0) AS amount
+            FROM core.financial_transaction
+            GROUP BY transaction_type
+            ORDER BY count(*) DESC
+            LIMIT 12
             """
         )
-        latest_orders_run = cur.fetchone()
+        finance_types = [
+            {
+                "type": row["transaction_type"],
+                "count": int(row["n"] or 0),
+                "amount": str(row["amount"]),
+            }
+            for row in cur.fetchall()
+        ]
+
+        orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
+        finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
+        kiosk_cursor = _cursor(
+            cur,
+            "amazon_data_kiosk",
+            "sales_traffic_2024_04_24",
+            "last_complete_date",
+        )
+
+        latest_orders_run = _latest_run(cur, "amazon_spapi", "orders_v2026")
+        latest_finance_run = _latest_run(cur, "amazon_spapi", "finances_v2024")
+        latest_kiosk_run = _latest_run(
+            cur,
+            "amazon_data_kiosk",
+            "sales_traffic_2024_04_24",
+        )
 
     return {
         "orders": int(orders["order_count"] or 0),
         "order_items": int(items["item_count"] or 0),
         "skus": int(skus["sku_count"] or 0),
         "inventory_snapshots": int(inventory["snapshot_count"] or 0),
+        "financial_transactions": int(finances["transaction_count"] or 0),
+        "sales_traffic_days": int(sales_traffic["day_count"] or 0),
+        "asin_sales_traffic_rows": int(asin_traffic["row_count"] or 0),
+        "asin_sales_traffic_asins": int(asin_traffic["asin_count"] or 0),
         "first_order": _json_value(orders["first_order"]),
         "last_order": _json_value(orders["last_order"]),
         "latest_inventory_snapshot": _json_value(inventory["latest_snapshot"]),
-        "orders_cursor": cursor["cursor_value"] if cursor else None,
-        "orders_cursor_updated_at": _json_value(cursor["updated_at"]) if cursor else None,
-        "latest_orders_run": {
-            key: _json_value(value)
-            for key, value in (latest_orders_run or {}).items()
-        },
+        "first_finance_posted": _json_value(finances["first_posted"]),
+        "last_finance_posted": _json_value(finances["last_posted"]),
+        "sales_traffic_first_date": _json_value(sales_traffic["first_date"]),
+        "sales_traffic_last_date": _json_value(sales_traffic["last_date"]),
+        "asin_traffic_first_date": _json_value(asin_traffic["first_date"]),
+        "asin_traffic_last_date": _json_value(asin_traffic["last_date"]),
+        "orders_cursor": orders_cursor,
+        "finance_cursor": finance_cursor,
+        "data_kiosk_cursor": kiosk_cursor,
+        "latest_orders_run": latest_orders_run,
+        "latest_finance_run": latest_finance_run,
+        "latest_data_kiosk_run": latest_kiosk_run,
+        "finance_types": finance_types,
     }
 
 
