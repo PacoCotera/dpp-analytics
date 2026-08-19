@@ -10,6 +10,7 @@ from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
 
+from inventory_api import inventory_payload as build_inventory_payload
 from sales_api import sales_payload as build_sales_payload
 
 ROOT = Path(__file__).parent
@@ -25,6 +26,7 @@ INDEX = (
     .encode()
 )
 SALES_INDEX = (STATIC / "sales.html").read_bytes()
+INVENTORY_INDEX = (STATIC / "inventory.html").read_bytes()
 MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
 AMAZON_MX_DP = "https://www.amazon.com.mx/dp/"
 
@@ -255,7 +257,7 @@ def health_payload():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "DPPBoard/2"
+    server_version = "DPPBoard/3"
 
     def log_message(self, fmt, *args):
         print(f"{self.address_string()} {fmt % args}")
@@ -267,6 +269,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def json_endpoint(self, builder):
+        try:
+            payload = clean(builder())
+            body = json.dumps(payload, separators=(",", ":")).encode()
+            self.send_bytes(200, "application/json", body)
+        except Exception as exc:
+            body = json.dumps({"error": str(exc)[:500]}).encode()
+            self.send_bytes(500, "application/json", body)
 
     def do_GET(self):
         if self.path == "/health":
@@ -280,24 +291,19 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_bytes(503, "application/json", body)
             return
         if self.path.startswith("/api/home"):
-            try:
-                body = json.dumps(home_payload(), separators=(",", ":")).encode()
-                self.send_bytes(200, "application/json", body)
-            except Exception as exc:
-                body = json.dumps({"error": str(exc)[:500]}).encode()
-                self.send_bytes(500, "application/json", body)
+            self.json_endpoint(home_payload)
             return
         if self.path.startswith("/api/sales"):
-            try:
-                payload = clean(build_sales_payload(connect, decorate_products, MARKETPLACE))
-                body = json.dumps(payload, separators=(",", ":")).encode()
-                self.send_bytes(200, "application/json", body)
-            except Exception as exc:
-                body = json.dumps({"error": str(exc)[:500]}).encode()
-                self.send_bytes(500, "application/json", body)
+            self.json_endpoint(lambda: build_sales_payload(connect, decorate_products, MARKETPLACE))
+            return
+        if self.path.startswith("/api/inventory"):
+            self.json_endpoint(lambda: build_inventory_payload(connect, decorate_products, MARKETPLACE))
             return
         if self.path == "/sales" or self.path.startswith("/sales?"):
             self.send_bytes(200, "text/html; charset=utf-8", SALES_INDEX, cache="no-cache")
+            return
+        if self.path == "/inventory" or self.path.startswith("/inventory?"):
+            self.send_bytes(200, "text/html; charset=utf-8", INVENTORY_INDEX, cache="no-cache")
             return
         if self.path == "/" or self.path.startswith("/?"):
             self.send_bytes(200, "text/html; charset=utf-8", INDEX, cache="no-cache")
