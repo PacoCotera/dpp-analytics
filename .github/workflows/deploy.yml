@@ -12,45 +12,82 @@ concurrency:
 jobs:
   deploy:
     runs-on: [self-hosted, linux, x64, dpp-analytics]
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify host
+      - name: Bootstrap host
         run: |
           set -euo pipefail
+
+          if ! command -v docker >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ca-certificates curl
+            sudo install -m 0755 -d /etc/apt/keyrings
+            sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+            sudo chmod a+r /etc/apt/keyrings/docker.asc
+            . /etc/os-release
+            ARCH="$(dpkg --print-architecture)"
+            printf '%s\n' \
+              'Types: deb' \
+              'URIs: https://download.docker.com/linux/ubuntu' \
+              "Suites: ${UBUNTU_CODENAME:-$VERSION_CODENAME}" \
+              'Components: stable' \
+              "Architectures: ${ARCH}" \
+              'Signed-By: /etc/apt/keyrings/docker.asc' \
+              | sudo tee /etc/apt/sources.list.d/docker.sources >/dev/null
+            sudo apt-get update
+            sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            sudo systemctl enable --now docker
+          fi
+
+          sudo install -d -m 0750 /etc/dpp-analytics
+
+          if ! sudo test -f /etc/dpp-analytics/env; then
+            PG_PASSWORD="$(openssl rand -hex 24)"
+            GRAFANA_PASSWORD="$(openssl rand -base64 24 | tr -d '\n')"
+            sudo tee /etc/dpp-analytics/env >/dev/null <<EOF
+          POSTGRES_DB=dpp
+          POSTGRES_USER=dpp
+          POSTGRES_PASSWORD=${PG_PASSWORD}
+          GRAFANA_ADMIN_USER=admin
+          GRAFANA_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+          TZ=America/Mexico_City
+          EOF
+            sudo chmod 0600 /etc/dpp-analytics/env
+          fi
+
           hostname
-          docker version
-          docker compose version
-          test -r /etc/dpp-analytics/env
+          sudo docker version
+          sudo docker compose version
 
       - name: Validate compose
         run: |
           set -euo pipefail
-          docker compose --env-file /etc/dpp-analytics/env config --quiet
+          sudo docker compose --env-file /etc/dpp-analytics/env config --quiet
 
       - name: Pull images
         run: |
           set -euo pipefail
-          docker compose --env-file /etc/dpp-analytics/env pull
+          sudo docker compose --env-file /etc/dpp-analytics/env pull
 
       - name: Deploy
         run: |
           set -euo pipefail
-          docker compose --env-file /etc/dpp-analytics/env up -d --remove-orphans
+          sudo docker compose --env-file /etc/dpp-analytics/env up -d --remove-orphans
 
       - name: Wait for PostgreSQL
         run: |
           set -euo pipefail
           for i in $(seq 1 30); do
-            if docker inspect --format='{{json .State.Health.Status}}' dpp-postgres 2>/dev/null | grep -q healthy; then
+            if sudo docker inspect --format='{{json .State.Health.Status}}' dpp-postgres 2>/dev/null | grep -q healthy; then
               exit 0
             fi
             sleep 2
           done
-          docker logs --tail 100 dpp-postgres
+          sudo docker logs --tail 100 dpp-postgres
           exit 1
 
       - name: Verify Grafana
@@ -63,9 +100,9 @@ jobs:
             fi
             sleep 2
           done
-          docker logs --tail 100 dpp-grafana
+          sudo docker logs --tail 100 dpp-grafana
           exit 1
 
       - name: Deployment state
         if: always()
-        run: docker compose --env-file /etc/dpp-analytics/env ps
+        run: sudo docker compose --env-file /etc/dpp-analytics/env ps
