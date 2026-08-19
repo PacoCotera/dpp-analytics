@@ -3,17 +3,7 @@
   var params=new URLSearchParams(location.search);
   if(params.get('wall')==='1') document.body.classList.add('wall');
 
-  function shortProduct(text){
-    text=String(text||'').trim();
-    var quoted=text.match(/"([^"]+)"/);
-    if(quoted && quoted[1]){
-      var q=quoted[1].trim();
-      if(/libretas de bolsillo/i.test(text)) return q+' · 3-pack pocket';
-      return q;
-    }
-    if(/kit magn[eé]tico/i.test(text)) return 'Kit magnético · Súper + Pendientes';
-    return text.replace(/\s+-\s+Hojas.*$/i,'').replace(/Colecci[oó]n de 3 Libretas de Bolsillo\s*/i,'').trim();
-  }
+  var productMeta={};
 
   function relocateAttention(){
     var attention=document.querySelector('.attention');
@@ -41,8 +31,6 @@
     var paceWrap=paceEl && paceEl.closest('.pace');
     if(ordersEl && paceEl && paceWrap){
       var orders=parseInt(String(ordersEl.textContent||'0').replace(/[^0-9-]/g,''),10)||0;
-      // Intraday percentage swings are noisy at very low order counts. Keep the
-      // number visible, but don't paint it as a strong red/green signal yet.
       paceWrap.classList.toggle('low-signal',orders<3);
       if(orders<3){
         paceEl.classList.remove('good','bad');
@@ -53,14 +41,79 @@
     }
   }
 
-  function refineDynamic(){
-    document.querySelectorAll('.product,.action-product').forEach(function(el){
-      if(!el.dataset.rawProduct) el.dataset.rawProduct=el.textContent;
-      var next=shortProduct(el.dataset.rawProduct);
-      if(el.textContent!==next) el.textContent=next;
-      if(el.title!==el.dataset.rawProduct) el.title=el.dataset.rawProduct;
-    });
+  function linkProduct(el,meta){
+    if(!el || !meta) return;
+    if(meta.catalog_title) el.title=meta.catalog_title;
+    if(!meta.amazon_url) return;
+    var parent=el.parentElement;
+    if(parent && parent.classList.contains('product-link')){
+      parent.href=meta.amazon_url;
+      return;
+    }
+    var a=document.createElement('a');
+    a.className='product-link';
+    a.href=meta.amazon_url;
+    a.target='_blank';
+    a.rel='noopener noreferrer';
+    el.parentNode.insertBefore(a,el);
+    a.appendChild(el);
+  }
 
+  function decorateMover(row){
+    var skuEl=row.querySelector('.sku');
+    if(!skuEl) return;
+    var meta=productMeta[skuEl.textContent.trim()];
+    if(!meta) return;
+    var product=row.querySelector('.product');
+    linkProduct(product,meta);
+
+    var cell=row.firstElementChild;
+    if(!cell) return;
+    cell.classList.add('product-cell');
+    if(!cell.querySelector('.product-copy')){
+      var copy=document.createElement('div');
+      copy.className='product-copy';
+      Array.from(cell.childNodes).forEach(function(node){copy.appendChild(node)});
+      cell.appendChild(copy);
+    }
+    if(meta.image_url && !cell.querySelector('.product-thumb')){
+      var img=document.createElement('img');
+      img.className='product-thumb';
+      img.src=meta.image_url;
+      img.alt='';
+      img.loading='lazy';
+      img.referrerPolicy='no-referrer';
+      cell.insertBefore(img,cell.firstChild);
+    }
+  }
+
+  function decorateAttention(row){
+    var skuEl=row.querySelector('.sku');
+    if(!skuEl) return;
+    var meta=productMeta[skuEl.textContent.trim()];
+    if(!meta) return;
+    linkProduct(row.querySelector('.action-product'),meta);
+  }
+
+  function applyProductMeta(){
+    document.querySelectorAll('.mover').forEach(decorateMover);
+    document.querySelectorAll('.action-item').forEach(decorateAttention);
+  }
+
+  function refreshProductMeta(){
+    fetch('/api/home',{cache:'no-store'})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+      .then(function(d){
+        productMeta={};
+        (d.movers||[]).concat(d.inventory||[]).forEach(function(item){
+          if(item && item.sku) productMeta[item.sku]=item;
+        });
+        applyProductMeta();
+      })
+      .catch(function(){});
+  }
+
+  function refineDynamic(){
     var attention=document.querySelector('.attention');
     var list=document.getElementById('attention');
     if(attention && list){
@@ -69,10 +122,14 @@
       attention.classList.toggle('clear',count===0);
     }
     refineSignals();
+    applyProductMeta();
   }
 
   relocateAttention();
   refineDynamic();
+  refreshProductMeta();
+  setInterval(refreshProductMeta,60000);
+
   var app=document.querySelector('.app');
   if(app){
     var pending=false;
