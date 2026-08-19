@@ -5,9 +5,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 concurrency:
   group: dpp-analytics-production
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -24,7 +28,7 @@ jobs:
 
           if ! command -v docker >/dev/null 2>&1; then
             sudo apt-get update
-            sudo apt-get install -y ca-certificates curl
+            sudo apt-get install -y ca-certificates curl openssl
             sudo install -m 0755 -d /etc/apt/keyrings
             sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
             sudo chmod a+r /etc/apt/keyrings/docker.asc
@@ -103,6 +107,76 @@ jobs:
           sudo docker logs --tail 100 dpp-grafana
           exit 1
 
-      - name: Deployment state
+      - name: Collect deployment heartbeat
         if: always()
-        run: sudo docker compose --env-file /etc/dpp-analytics/env ps
+        env:
+          JOB_STATUS: ${{ job.status }}
+          DEPLOY_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set +e
+          {
+            echo '# DPP Analytics deployment heartbeat'
+            echo
+            echo "**Workflow status:** ${JOB_STATUS}"
+            echo "**Commit:** \`${DEPLOY_SHA}\`"
+            echo "**Run ID:** \`${RUN_ID}\`"
+            echo "**UTC:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo "**Host:** \`$(hostname)\`"
+            echo "**LAN addresses:** \`$(hostname -I 2>/dev/null | xargs)\`"
+            echo
+            echo '## Host'
+            echo '```text'
+            uname -a
+            echo
+            free -h
+            echo
+            df -h /
+            echo '```'
+            echo
+            echo '## Docker'
+            echo '```text'
+            sudo docker version --format 'Engine={{.Server.Version}}' 2>&1 || true
+            sudo docker compose version 2>&1 || true
+            echo '```'
+            echo
+            echo '## Containers'
+            echo '```text'
+            if sudo test -r /etc/dpp-analytics/env; then
+              sudo docker compose --env-file /etc/dpp-analytics/env ps 2>&1 || true
+            else
+              echo '/etc/dpp-analytics/env not present'
+            fi
+            echo '```'
+            echo
+            echo '## PostgreSQL'
+            echo '```text'
+            sudo docker inspect --format='health={{.State.Health.Status}} status={{.State.Status}}' dpp-postgres 2>&1 || true
+            echo '```'
+            echo
+            echo '## Grafana'
+            echo '```text'
+            curl -fsS http://127.0.0.1:3000/api/health 2>&1 || true
+            echo
+            echo '```'
+            echo
+            echo '_This issue is updated automatically by the self-hosted deployment runner. No credentials are included._'
+          } >/tmp/dpp-heartbeat.md
+          cat /tmp/dpp-heartbeat.md
+
+      - name: Publish deployment heartbeat
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const body = fs.existsSync('/tmp/dpp-heartbeat.md')
+              ? fs.readFileSync('/tmp/dpp-heartbeat.md', 'utf8')
+              : '# DPP Analytics deployment heartbeat\n\nWorkflow reached the reporting step but no host report was produced.';
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 1,
+              body
+            });
