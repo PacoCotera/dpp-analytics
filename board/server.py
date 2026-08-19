@@ -147,6 +147,70 @@ def home_payload():
     })
 
 
+def health_payload():
+    """Validate the board's actual data dependencies, not just database reachability."""
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute("SELECT 1")
+        cur.fetchone()
+
+        today = one(
+            cur,
+            "SELECT count(*)::int AS n FROM mart.today_operating WHERE marketplace_id=%s",
+            (MARKETPLACE,),
+        )
+        rolling = one(
+            cur,
+            "SELECT count(*)::int AS n FROM mart.business_rolling WHERE marketplace_id=%s",
+            (MARKETPLACE,),
+        )
+        sales = one(
+            cur,
+            "SELECT count(*)::int AS n, max(business_date) AS last_date FROM mart.business_daily WHERE marketplace_id=%s",
+            (MARKETPLACE,),
+        )
+        inventory = one(
+            cur,
+            "SELECT count(*)::int AS n FROM mart.inventory_attention WHERE marketplace_id=%s",
+            (MARKETPLACE,),
+        )
+        finance = one(
+            cur,
+            "SELECT count(*)::int AS n, max(posted_date) AS last_posted FROM core.financial_transaction WHERE marketplace_id=%s",
+            (MARKETPLACE,),
+        )
+        freshness = all_rows(
+            cur,
+            """
+            SELECT job_name, latest_status, extract(epoch from age)::bigint age_seconds
+            FROM ops.data_health
+            WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1')
+            """,
+        )
+
+    dependency_counts = {
+        "today": int(today.get("n") or 0),
+        "rolling": int(rolling.get("n") or 0),
+        "sales_days": int(sales.get("n") or 0),
+        "inventory_rows": int(inventory.get("n") or 0),
+        "finance_transactions": int(finance.get("n") or 0),
+    }
+    missing = [name for name, count in dependency_counts.items() if count <= 0]
+    feed_errors = [
+        row.get("job_name")
+        for row in freshness
+        if row.get("latest_status") not in ("success", "running")
+    ]
+    status = "ok" if not missing and not feed_errors else "degraded"
+    return clean({
+        "status": status,
+        "marketplace": MARKETPLACE,
+        "dependencies": dependency_counts,
+        "sales_last_date": sales.get("last_date"),
+        "finance_last_posted": finance.get("last_posted"),
+        "feed_errors": feed_errors,
+    })
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "DPPBoard/1"
 
@@ -164,10 +228,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
             try:
-                with connect() as conn, conn.cursor() as cur:
-                    cur.execute("SELECT 1")
-                    cur.fetchone()
-                self.send_bytes(200, "application/json", b'{"status":"ok"}')
+                payload = health_payload()
+                status = 200 if payload.get("status") == "ok" else 503
+                body = json.dumps(payload, separators=(",", ":")).encode()
+                self.send_bytes(status, "application/json", body)
             except Exception as exc:
                 body = json.dumps({"status": "error", "error": str(exc)[:160]}).encode()
                 self.send_bytes(503, "application/json", body)
