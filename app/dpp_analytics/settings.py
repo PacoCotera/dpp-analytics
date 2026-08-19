@@ -4,6 +4,10 @@ import os
 from dataclasses import dataclass
 
 
+def _bool(name: str, default: str = "false") -> bool:
+    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class Settings:
     db_host: str = os.getenv("DB_HOST", "postgres")
@@ -18,12 +22,18 @@ class Settings:
     lwa_client_id: str = os.getenv("SPAPI_LWA_CLIENT_ID", "")
     lwa_client_secret: str = os.getenv("SPAPI_LWA_CLIENT_SECRET", "")
     lwa_refresh_token: str = os.getenv("SPAPI_LWA_REFRESH_TOKEN", "")
-    spapi_enabled: bool = os.getenv("SPAPI_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+    spapi_enabled: bool = _bool("SPAPI_ENABLED")
+
+    # Production is deliberately two-stage. We first prove the production credentials
+    # and authorized roles with read-only calls. Historical/live ingestion is enabled
+    # only after the smoke test succeeds and this explicit kill-switch is set true.
+    production_ingestion_enabled: bool = _bool("SPAPI_PRODUCTION_INGESTION_ENABLED")
 
     orders_interval_seconds: int = int(os.getenv("ORDERS_INTERVAL_SECONDS", "600"))
     inventory_interval_seconds: int = int(os.getenv("INVENTORY_INTERVAL_SECONDS", "1800"))
     finances_interval_seconds: int = int(os.getenv("FINANCES_INTERVAL_SECONDS", "14400"))
     sandbox_probe_interval_seconds: int = int(os.getenv("SANDBOX_PROBE_INTERVAL_SECONDS", "21600"))
+    production_probe_interval_seconds: int = int(os.getenv("PRODUCTION_PROBE_INTERVAL_SECONDS", "21600"))
     scheduler_tick_seconds: int = int(os.getenv("SCHEDULER_TICK_SECONDS", "15"))
 
     user_agent: str = os.getenv(
@@ -34,6 +44,10 @@ class Settings:
     @property
     def is_sandbox(self) -> bool:
         return self.spapi_environment in {"sandbox", "test"}
+
+    @property
+    def is_production(self) -> bool:
+        return self.spapi_environment in {"production", "prod"}
 
     @property
     def spapi_endpoint(self) -> str:
