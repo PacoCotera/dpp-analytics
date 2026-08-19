@@ -32,8 +32,11 @@
   function refineDynamic(){
     document.querySelectorAll('.product,.action-product').forEach(function(el){
       if(!el.dataset.rawProduct) el.dataset.rawProduct=el.textContent;
-      el.textContent=shortProduct(el.dataset.rawProduct);
-      el.title=el.dataset.rawProduct;
+      var next=shortProduct(el.dataset.rawProduct);
+      // Setting textContent unconditionally retriggers MutationObserver and can
+      // starve the browser's paint/event loop. Only touch the DOM when needed.
+      if(el.textContent!==next) el.textContent=next;
+      if(el.title!==el.dataset.rawProduct) el.title=el.dataset.rawProduct;
     });
     var attention=document.querySelector('.attention');
     var list=document.getElementById('attention');
@@ -48,6 +51,14 @@
   refineDynamic();
   var app=document.querySelector('.app');
   if(app){
-    new MutationObserver(function(){refineDynamic()}).observe(app,{childList:true,subtree:true});
+    var pending=false;
+    new MutationObserver(function(){
+      if(pending) return;
+      pending=true;
+      requestAnimationFrame(function(){
+        pending=false;
+        refineDynamic();
+      });
+    }).observe(app,{childList:true,subtree:true});
   }
 })();
