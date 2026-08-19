@@ -10,6 +10,8 @@ from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
 
+from sales_api import sales_payload as build_sales_payload
+
 ROOT = Path(__file__).parent
 STATIC = ROOT / "static"
 LABELS_PATH = ROOT / "product_labels.json"
@@ -22,6 +24,7 @@ INDEX = (
     .replace("</body>", f"<script id=\"dpp-refine-js\">{_refine_js}</script></body>")
     .encode()
 )
+SALES_INDEX = (STATIC / "sales.html").read_bytes()
 MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
 AMAZON_MX_DP = "https://www.amazon.com.mx/dp/"
 
@@ -125,11 +128,14 @@ def home_payload():
             cur,
             """
             SELECT a.seller_sku sku, s.asin,
-                   COALESCE(ci.title,s.title,'') product, ci.image_url,
+                   COALESCE(sl.item_name,ci.title,s.title,'') product,
+                   COALESCE(sl.image_url,ci.image_url) image_url,
                    a.available, a.inbound, a.units_t28,
                    a.days_cover_with_inbound days_cover, a.action
             FROM mart.inventory_attention a
             LEFT JOIN core.sku s ON s.sku=a.seller_sku
+            LEFT JOIN core.seller_listing sl
+              ON sl.marketplace_id=a.marketplace_id AND sl.seller_sku=a.seller_sku
             LEFT JOIN core.catalog_item ci
               ON ci.marketplace_id=a.marketplace_id AND ci.asin=s.asin
             WHERE a.marketplace_id=%s AND a.action IN ('STOCKOUT','PRODUCE','PLAN')
@@ -143,10 +149,13 @@ def home_payload():
             cur,
             """
             SELECT m.seller_sku sku, s.asin,
-                   COALESCE(ci.title,s.title,'') product, ci.image_url,
+                   COALESCE(sl.item_name,ci.title,s.title,'') product,
+                   COALESCE(sl.image_url,ci.image_url) image_url,
                    m.sales_t28, m.units_t28, m.delta28_pct, m.state
             FROM mart.catalog_movers_t28 m
             LEFT JOIN core.sku s ON s.sku=m.seller_sku
+            LEFT JOIN core.seller_listing sl
+              ON sl.marketplace_id=m.marketplace_id AND sl.seller_sku=m.seller_sku
             LEFT JOIN core.catalog_item ci
               ON ci.marketplace_id=m.marketplace_id AND ci.asin=s.asin
             WHERE m.marketplace_id=%s AND m.sales_t28>0
@@ -171,13 +180,17 @@ def home_payload():
             SELECT job_name, latest_status,
                    extract(epoch from age)::bigint age_seconds
             FROM ops.data_health
-            WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1','catalog_items_2022_04_01')
+            WHERE job_name IN (
+              'orders_v2026','sales_traffic_2024_04_24','finances_v2024',
+              'fba_inventory_v1','merchant_listings_all_data','catalog_items_2022_04_01'
+            )
             ORDER BY CASE job_name
               WHEN 'orders_v2026' THEN 1
               WHEN 'sales_traffic_2024_04_24' THEN 2
               WHEN 'finances_v2024' THEN 3
               WHEN 'fba_inventory_v1' THEN 4
-              ELSE 5 END
+              WHEN 'merchant_listings_all_data' THEN 5
+              ELSE 6 END
             """,
         )
         local_clock = one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
@@ -207,6 +220,7 @@ def health_payload():
         inventory = one(cur, "SELECT count(*)::int AS n FROM mart.inventory_attention WHERE marketplace_id=%s", (MARKETPLACE,))
         finance = one(cur, "SELECT count(*)::int AS n, max(posted_date) AS last_posted FROM core.financial_transaction WHERE marketplace_id=%s", (MARKETPLACE,))
         catalog = one(cur, "SELECT count(*)::int AS n, max(updated_at) AS last_updated FROM core.catalog_item WHERE marketplace_id=%s", (MARKETPLACE,))
+        listings = one(cur, "SELECT count(*)::int AS n, max(fetched_at) AS last_updated FROM core.seller_listing WHERE marketplace_id=%s", (MARKETPLACE,))
         freshness = all_rows(
             cur,
             """
@@ -230,6 +244,8 @@ def health_payload():
         "status": status,
         "marketplace": MARKETPLACE,
         "dependencies": dependency_counts,
+        "seller_listings": int(listings.get("n") or 0),
+        "seller_listings_last_updated": listings.get("last_updated"),
         "catalog_items": int(catalog.get("n") or 0),
         "catalog_last_updated": catalog.get("last_updated"),
         "sales_last_date": sales.get("last_date"),
@@ -239,7 +255,7 @@ def health_payload():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "DPPBoard/1"
+    server_version = "DPPBoard/2"
 
     def log_message(self, fmt, *args):
         print(f"{self.address_string()} {fmt % args}")
@@ -270,6 +286,18 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 body = json.dumps({"error": str(exc)[:500]}).encode()
                 self.send_bytes(500, "application/json", body)
+            return
+        if self.path.startswith("/api/sales"):
+            try:
+                payload = clean(build_sales_payload(connect, decorate_products, MARKETPLACE))
+                body = json.dumps(payload, separators=(",", ":")).encode()
+                self.send_bytes(200, "application/json", body)
+            except Exception as exc:
+                body = json.dumps({"error": str(exc)[:500]}).encode()
+                self.send_bytes(500, "application/json", body)
+            return
+        if self.path == "/sales" or self.path.startswith("/sales?"):
+            self.send_bytes(200, "text/html; charset=utf-8", SALES_INDEX, cache="no-cache")
             return
         if self.path == "/" or self.path.startswith("/?"):
             self.send_bytes(200, "text/html; charset=utf-8", INDEX, cache="no-cache")
