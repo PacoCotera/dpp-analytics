@@ -11,7 +11,16 @@ import psycopg
 from psycopg.rows import dict_row
 
 ROOT = Path(__file__).parent
-INDEX = (ROOT / "static" / "index.html").read_bytes()
+STATIC = ROOT / "static"
+_base_html = (STATIC / "index.html").read_text()
+_refine_css = (STATIC / "refine.css").read_text()
+_refine_js = (STATIC / "refine.js").read_text()
+INDEX = (
+    _base_html
+    .replace("</head>", f"<style id=\"dpp-refine\">{_refine_css}</style></head>")
+    .replace("</body>", f"<script id=\"dpp-refine-js\">{_refine_js}</script></body>")
+    .encode()
+)
 MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
 
 
