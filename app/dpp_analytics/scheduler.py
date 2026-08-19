@@ -75,6 +75,16 @@ def main() -> None:
         settings.production_ingestion_enabled,
     )
 
+    # If the previous container was terminated mid-request, its context manager
+    # never got a chance to close the ops row. At this point no job from this
+    # process exists yet, so every lingering 'running' row is safely historical.
+    try:
+        interrupted = db.mark_interrupted_runs()
+        if interrupted:
+            log.info("closed_interrupted_ingestion_runs=%s", interrupted)
+    except Exception:
+        log.exception("failed to close interrupted ingestion runs")
+
     if not settings.spapi_enabled:
         log.info("SP-API ingestion is disabled")
         while not STOP:
