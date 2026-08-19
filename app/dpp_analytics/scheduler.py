@@ -10,6 +10,7 @@ from .catalog import ingest_catalog
 from .data_kiosk import ingest_sales_traffic
 from .finances import ingest_finances
 from .inventory import ingest_inventory
+from .listings_report import ingest_listings_report
 from .orders import ingest_orders
 from .product_roles_probe import probe as product_roles_probe
 from .production_probe import probe as production_probe
@@ -126,17 +127,27 @@ def main() -> None:
 
     log.info("SP-API production ingestion ENABLED")
 
+    # Bulk seller catalog comes from GET_MERCHANT_LISTINGS_ALL_DATA. It is the
+    # authoritative enumeration of our listings and also includes item-name,
+    # image-url, price, quantity, fulfillment channel and status. Catalog Items
+    # is retained only as optional Amazon-catalog enrichment.
+    next_listings_report = _next_due(
+        "amazon_reports",
+        "merchant_listings_all_data",
+        settings.listings_report_interval_seconds,
+    )
+
     catalog_role_ready = False
     if settings.catalog_enabled:
         catalog_role_ready, product_roles = _probe_product_roles()
         if not catalog_role_ready:
             pricing_ok = (product_roles.get("pricing") or {}).get("status") == "ok"
             log.warning(
-                "Catalog Items sync paused: Product Listing is not authorized yet; pricing_authorized=%s",
+                "Catalog Items enrichment paused: Product Listing is not authorized yet; pricing_authorized=%s",
                 pricing_ok,
             )
     else:
-        log.info("Catalog Items sync disabled")
+        log.info("Catalog Items enrichment disabled")
 
     next_orders = 0.0
     next_inventory = _next_due("amazon_spapi", "fba_inventory_v1", settings.inventory_interval_seconds)
@@ -172,16 +183,20 @@ def main() -> None:
             _run("finances", ingest_finances)
             next_finances = time.monotonic() + settings.finances_interval_seconds
 
+        if now >= next_listings_report:
+            _run("seller_listings_report", ingest_listings_report)
+            next_listings_report = time.monotonic() + settings.listings_report_interval_seconds
+
         if now >= next_product_roles_probe:
             was_ready = catalog_role_ready
             catalog_role_ready, product_roles = _probe_product_roles()
             if catalog_role_ready and not was_ready:
-                log.info("Product Listing authorization is now active; enabling Catalog Items sync")
+                log.info("Product Listing authorization is now active; enabling Catalog Items enrichment")
                 next_catalog = time.monotonic()
             elif not catalog_role_ready:
                 pricing_ok = (product_roles.get("pricing") or {}).get("status") == "ok"
                 log.warning(
-                    "Product Listing still unavailable; Catalog Items sync remains paused; pricing_authorized=%s",
+                    "Product Listing still unavailable; Catalog Items enrichment remains paused; pricing_authorized=%s",
                     pricing_ok,
                 )
                 next_catalog = float("inf")
