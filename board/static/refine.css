@@ -1,0 +1,138 @@
+/* DPP Operating Board refinement layer */
+:root{
+  --bg:#100f0d;
+  --panel:#1a1815;
+  --panel2:#211d18;
+  --line:#343029;
+  --ink:#f5f0e7;
+  --muted:#9f978b;
+  --accent:#f3a43b;
+  --accent2:#ffd277;
+  --good:#8bcf72;
+  --bad:#f06a61;
+  --warn:#e8b94e;
+  --radius:18px;
+}
+body.board-refined{background:
+  radial-gradient(circle at 90% -8%,rgba(243,164,59,.09),transparent 31%),
+  radial-gradient(circle at -8% 95%,rgba(140,168,255,.045),transparent 29%),
+  var(--bg)}
+body.board-refined .app{max-width:1900px;padding:22px 26px 18px}
+body.board-refined .topbar{margin-bottom:16px;align-items:center}
+body.board-refined .brand h1{font-size:19px;letter-spacing:.14em}
+body.board-refined .brand .sub{font-size:10px;letter-spacing:.16em}
+body.board-refined .mark{width:40px;height:40px;border-radius:12px;background:#181612;box-shadow:none}
+body.board-refined .clock{font-size:25px}
+body.board-refined .nav{margin-bottom:16px;gap:4px}
+body.board-refined .nav a{padding:7px 10px;font-size:10px;color:#9e968b}
+body.board-refined .nav a.active{background:#241f19;border-color:#3d3326}
+body.board-refined .card{background:linear-gradient(180deg,rgba(29,27,23,.97),rgba(23,21,18,.97));border-color:#302c26;box-shadow:0 14px 38px rgba(0,0,0,.18)}
+body.board-refined .hero{grid-template-columns:1.42fr .96fr .90fr .94fr;gap:12px;margin-bottom:12px}
+body.board-refined .metric{min-height:146px;padding:17px 19px}
+body.board-refined .eyebrow{font-size:9px;letter-spacing:.17em}
+body.board-refined .big{font-size:46px}
+body.board-refined .today .big{font-size:56px}
+body.board-refined .metric-note{font-size:10px}
+body.board-refined .meta{font-size:10px}
+body.board-refined .meta strong{font-size:15px}
+body.board-refined .pace strong{font-size:19px}
+body.board-refined .minirow{gap:14px}
+body.board-refined .minirow span{font-size:10px}
+body.board-refined .minirow b{font-size:16px}
+
+/* Attention belongs before analytics: decision first, explanation second. */
+body.board-refined .attention{padding:14px 16px;margin-bottom:12px}
+body.board-refined .attention .section-title{margin-bottom:9px}
+body.board-refined .attention-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+body.board-refined .attention.single .attention-list{grid-template-columns:1fr}
+body.board-refined .attention.single .action-item{display:grid;grid-template-columns:minmax(230px,1.5fr) minmax(320px,3fr) auto;gap:18px;align-items:center;padding:10px 13px}
+body.board-refined .attention.single .action-product{margin:0;font-size:12px}
+body.board-refined .attention.single .action-top{justify-content:flex-start;gap:12px}
+body.board-refined .attention.single .action-stats{margin:0;justify-content:flex-end;white-space:nowrap}
+body.board-refined .action-item{background:#151310;border-color:#302b24}
+body.board-refined .action-product{color:#e3ddd4}
+
+body.board-refined .main{grid-template-columns:1.92fr 1fr;gap:12px;margin-bottom:12px}
+body.board-refined .chart-card{padding:16px 17px 10px;min-height:390px}
+body.board-refined #chart{height:318px}
+body.board-refined .section-title{margin-bottom:11px}
+body.board-refined .section-title h2{font-size:11px;letter-spacing:.15em}
+body.board-refined .section-title span{font-size:10px}
+body.board-refined .bar{opacity:.30}
+body.board-refined .trend{stroke-width:3.5}
+body.board-refined .trendGlow{opacity:.045}
+body.board-refined .gridline{stroke:#312d27}
+body.board-refined .axis{fill:#857e74}
+
+body.board-refined .movers{padding:16px}
+body.board-refined .mover{grid-template-columns:minmax(0,1fr) 86px 92px;gap:10px;padding:10px 2px}
+body.board-refined .sku{font-size:9px;color:#7f786e}
+body.board-refined .product{font-size:12px;color:#eee8df}
+body.board-refined .sales{font-size:13px}
+body.board-refined .delta{font-size:12px}
+body.board-refined .state{font-size:8px;padding:3px 5px;margin-left:5px}
+
+/* The deterministic summary is a pulse strip, not a fake AI assistant. */
+body.board-refined .bottom.context-only{display:block}
+body.board-refined .bottom.context-only .context{padding:12px 16px;display:grid;grid-template-columns:minmax(0,2.4fr) minmax(280px,1fr);gap:18px;align-items:center}
+body.board-refined .bottom.context-only .section-title{margin-bottom:6px}
+body.board-refined .bottom.context-only .context-main{font-size:20px;line-height:1.2}
+body.board-refined .bottom.context-only .context-small{margin-top:5px;font-size:10px}
+body.board-refined .bottom.context-only .fresh{margin:0;justify-content:flex-end;align-content:center}
+body.board-refined .pill{font-size:8px;padding:5px 7px}
+body.board-refined .footer{margin-top:10px;font-size:8px}
+
+/* Wall mode: /?wall=1 is optimized for an unattended landscape display. */
+body.wall .app{max-width:none;padding:12px 14px 10px}
+body.wall .topbar{margin-bottom:9px}
+body.wall .nav{display:none}
+body.wall .brand .sub{display:none}
+body.wall .mark{width:34px;height:34px;font-size:17px}
+body.wall .brand h1{font-size:16px}
+body.wall .clock{font-size:22px}
+body.wall .asof{font-size:8px}
+body.wall .hero{gap:8px;margin-bottom:8px}
+body.wall .metric{min-height:115px;padding:12px 14px}
+body.wall .big{font-size:38px}
+body.wall .today .big{font-size:45px}
+body.wall .eyebrow{font-size:8px}
+body.wall .main{gap:8px;margin-bottom:8px}
+body.wall .chart-card{min-height:300px;padding:12px}
+body.wall #chart{height:245px}
+body.wall .movers{padding:12px}
+body.wall .mover{padding:7px 2px}
+body.wall .attention{padding:9px 12px;margin-bottom:8px}
+body.wall .bottom.context-only .context{padding:9px 12px}
+body.wall .bottom.context-only .context-main{font-size:16px}
+body.wall .footer{display:none}
+
+/* Keep landscape tablet useful instead of collapsing into a long mobile page. */
+@media (min-width:760px) and (max-width:1100px){
+  body.board-refined .app{padding:14px}
+  body.board-refined .righthead{display:block}
+  body.board-refined .hero{grid-template-columns:1.35fr .95fr .85fr .9fr;gap:8px}
+  body.board-refined .metric{min-height:128px;padding:12px}
+  body.board-refined .big{font-size:36px}
+  body.board-refined .today .big{font-size:43px}
+  body.board-refined .meta{gap:9px}
+  body.board-refined .pace strong{font-size:15px}
+  body.board-refined .main{grid-template-columns:1.65fr 1fr;gap:8px}
+  body.board-refined .chart-card{min-height:320px;padding:12px}
+  body.board-refined #chart{height:258px}
+  body.board-refined .movers{padding:12px}
+  body.board-refined .mover{grid-template-columns:minmax(0,1fr) 70px 80px;padding:7px 1px}
+  body.board-refined .product{font-size:10px}
+  body.board-refined .attention-list{grid-template-columns:1fr 1fr}
+  body.board-refined .attention.single .action-item{grid-template-columns:1fr 1.5fr auto}
+  body.board-refined .bottom.context-only .context{grid-template-columns:1.6fr 1fr}
+  body.board-refined .bottom.context-only .context-main{font-size:16px}
+}
+
+@media (max-width:759px){
+  body.board-refined .righthead{display:none}
+  body.board-refined .attention.single .action-item{display:block}
+  body.board-refined .attention.single .action-product{margin-top:8px}
+  body.board-refined .attention.single .action-stats{margin-top:8px;justify-content:flex-start}
+  body.board-refined .bottom.context-only .context{display:block}
+  body.board-refined .bottom.context-only .fresh{margin-top:12px;justify-content:flex-start}
+}
