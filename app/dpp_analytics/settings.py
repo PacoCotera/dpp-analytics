@@ -13,7 +13,8 @@ class Settings:
     db_password: str = os.getenv("POSTGRES_PASSWORD", "")
 
     marketplace_id: str = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
-    spapi_endpoint: str = os.getenv("SPAPI_ENDPOINT", "https://sellingpartnerapi-na.amazon.com")
+    spapi_environment: str = os.getenv("SPAPI_ENVIRONMENT", "sandbox").strip().lower()
+    spapi_endpoint_override: str = os.getenv("SPAPI_ENDPOINT", "").strip()
     lwa_client_id: str = os.getenv("SPAPI_LWA_CLIENT_ID", "")
     lwa_client_secret: str = os.getenv("SPAPI_LWA_CLIENT_SECRET", "")
     lwa_refresh_token: str = os.getenv("SPAPI_LWA_REFRESH_TOKEN", "")
@@ -22,12 +23,25 @@ class Settings:
     orders_interval_seconds: int = int(os.getenv("ORDERS_INTERVAL_SECONDS", "600"))
     inventory_interval_seconds: int = int(os.getenv("INVENTORY_INTERVAL_SECONDS", "1800"))
     finances_interval_seconds: int = int(os.getenv("FINANCES_INTERVAL_SECONDS", "14400"))
+    sandbox_probe_interval_seconds: int = int(os.getenv("SANDBOX_PROBE_INTERVAL_SECONDS", "21600"))
     scheduler_tick_seconds: int = int(os.getenv("SCHEDULER_TICK_SECONDS", "15"))
 
     user_agent: str = os.getenv(
         "SPAPI_USER_AGENT",
         "DirtyPawzPressAnalytics/0.1 (Language=Python/3.13)",
     )
+
+    @property
+    def is_sandbox(self) -> bool:
+        return self.spapi_environment in {"sandbox", "test"}
+
+    @property
+    def spapi_endpoint(self) -> str:
+        if self.spapi_endpoint_override:
+            return self.spapi_endpoint_override
+        if self.is_sandbox:
+            return "https://sandbox.sellingpartnerapi-na.amazon.com"
+        return "https://sellingpartnerapi-na.amazon.com"
 
     @property
     def spapi_credentials_present(self) -> bool:
