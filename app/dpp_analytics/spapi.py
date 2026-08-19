@@ -48,11 +48,13 @@ class SpApiClient:
         self._access_token_expires_at = time.time() + int(payload.get("expires_in", 3600))
         return self._access_token
 
-    def get(
+    def _request(
         self,
+        method: str,
         path: str,
-        params: dict[str, Any] | Iterable[tuple[str, Any]] | None = None,
         *,
+        params: dict[str, Any] | Iterable[tuple[str, Any]] | None = None,
+        json_body: dict[str, Any] | None = None,
         endpoint: str | None = None,
     ) -> dict[str, Any]:
         base = endpoint or settings.spapi_endpoint
@@ -67,7 +69,16 @@ class SpApiClient:
                 "user-agent": settings.user_agent,
                 "accept": "application/json",
             }
-            response = self.http.get(url, params=params, headers=headers)
+            if json_body is not None:
+                headers["content-type"] = "application/json"
+
+            response = self.http.request(
+                method,
+                url,
+                params=params,
+                json=json_body,
+                headers=headers,
+            )
 
             if response.status_code == 401 and attempt == 0:
                 self._access_token = None
@@ -89,8 +100,31 @@ class SpApiClient:
                 continue
 
             if response.status_code >= 400:
-                raise SpApiError(f"SP-API GET {path} failed: HTTP {response.status_code}: {response.text[:1000]}")
+                raise SpApiError(
+                    f"SP-API {method} {path} failed: HTTP {response.status_code}: {response.text[:1000]}"
+                )
 
+            if not response.content:
+                return {}
             return response.json()
 
-        raise SpApiError(f"SP-API GET {path} exhausted retries: {last_error}")
+        raise SpApiError(f"SP-API {method} {path} exhausted retries: {last_error}")
+
+    def get(
+        self,
+        path: str,
+        params: dict[str, Any] | Iterable[tuple[str, Any]] | None = None,
+        *,
+        endpoint: str | None = None,
+    ) -> dict[str, Any]:
+        return self._request("GET", path, params=params, endpoint=endpoint)
+
+    def post(
+        self,
+        path: str,
+        *,
+        params: dict[str, Any] | Iterable[tuple[str, Any]] | None = None,
+        json_body: dict[str, Any] | None = None,
+        endpoint: str | None = None,
+    ) -> dict[str, Any]:
+        return self._request("POST", path, params=params, json_body=json_body, endpoint=endpoint)
