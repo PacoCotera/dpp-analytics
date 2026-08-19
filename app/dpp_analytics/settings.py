@@ -33,6 +33,7 @@ class Settings:
     inventory_interval_seconds: int = int(os.getenv("INVENTORY_INTERVAL_SECONDS", "1800"))
     finances_interval_seconds: int = int(os.getenv("FINANCES_INTERVAL_SECONDS", "14400"))
     data_kiosk_interval_seconds: int = int(os.getenv("DATA_KIOSK_INTERVAL_SECONDS", "43200"))
+    catalog_enabled: bool = _bool("CATALOG_ENABLED")
     catalog_interval_seconds: int = int(os.getenv("CATALOG_INTERVAL_SECONDS", "86400"))
     data_kiosk_poll_seconds: int = int(os.getenv("DATA_KIOSK_POLL_SECONDS", "10"))
     data_kiosk_poll_timeout_seconds: int = int(os.getenv("DATA_KIOSK_POLL_TIMEOUT_SECONDS", "300"))
