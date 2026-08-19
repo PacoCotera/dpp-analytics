@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#12110f">
+<title>Dirty Pawz Press · Operating Board</title>
+<style>
+:root{
+  --bg:#12110f;--panel:#1b1916;--panel2:#211e1a;--ink:#f5f0e7;--muted:#aaa397;
+  --line:#34302a;--accent:#f2a43a;--accent2:#ffcb70;--good:#8ec86f;--bad:#f26a63;--warn:#f0c24b;
+  --blue:#8ca8ff;--radius:20px;--shadow:0 18px 50px rgba(0,0,0,.22)
+}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif}
+body{min-height:100vh;background:
+ radial-gradient(circle at 88% -10%,rgba(242,164,58,.12),transparent 34%),
+ radial-gradient(circle at -5% 92%,rgba(140,168,255,.07),transparent 30%),var(--bg)}
+a{color:inherit;text-decoration:none}.app{max-width:1800px;margin:0 auto;padding:28px 30px 22px}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:24px}.brand{display:flex;align-items:center;gap:14px}.mark{width:42px;height:42px;border:1px solid #4b4339;border-radius:14px;display:grid;place-items:center;color:var(--accent);font-size:20px;font-weight:800;background:linear-gradient(145deg,#211e19,#171512)}
+.brand h1{margin:0;font-size:20px;letter-spacing:.12em;font-weight:750}.brand .sub{margin-top:5px;color:var(--muted);font-size:11px;letter-spacing:.14em;text-transform:uppercase}.righthead{text-align:right}.clock{font-size:26px;font-variant-numeric:tabular-nums;font-weight:650}.asof{margin-top:4px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.12em}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}.nav a{padding:8px 11px;border:1px solid transparent;border-radius:99px;color:#b8b0a4;font-size:11px;letter-spacing:.08em;text-transform:uppercase}.nav a.active{background:#2b261f;color:var(--accent2);border-color:#473b2c}.nav a:hover{border-color:#4b443a;color:var(--ink)}
+.hero{display:grid;grid-template-columns:1.45fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px}.card{position:relative;background:linear-gradient(180deg,rgba(31,29,25,.96),rgba(25,23,20,.96));border:1px solid #302d28;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.card:before{content:"";position:absolute;inset:0 0 auto;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}
+.metric{min-height:164px;padding:18px 20px;display:flex;flex-direction:column;justify-content:space-between}.eyebrow{color:var(--muted);font-size:10px;letter-spacing:.15em;text-transform:uppercase;font-weight:700}.big{font-size:48px;line-height:1;font-weight:730;letter-spacing:-.045em;font-variant-numeric:tabular-nums}.big .currency{font-size:.48em;vertical-align:top;color:var(--muted);margin-right:4px}.today .big{color:var(--accent2);font-size:58px}.meta{display:flex;gap:18px;align-items:flex-end;color:var(--muted);font-size:12px}.meta strong{color:var(--ink);font-size:16px}.pace{margin-left:auto;text-align:right}.pace strong{font-size:20px}.good{color:var(--good)!important}.bad{color:var(--bad)!important}.warn{color:var(--warn)!important}.accent{color:var(--accent2)!important}
+.metric-note{color:var(--muted);font-size:11px}.action-count{display:flex;align-items:flex-end;gap:10px}.action-count .big{color:var(--accent2)}.minirow{display:flex;gap:18px}.minirow span{color:var(--muted);font-size:11px}.minirow b{font-size:18px;color:var(--ink);margin-left:4px}
+.main{display:grid;grid-template-columns:1.75fr 1fr;gap:14px;margin-bottom:14px}.chart-card{padding:18px 18px 12px;min-height:410px}.section-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}.section-title h2{font-size:12px;letter-spacing:.13em;text-transform:uppercase;margin:0;color:#d7d0c6}.section-title span{font-size:11px;color:var(--muted)}
+#chart{width:100%;height:338px;display:block}.gridline{stroke:#37322c;stroke-width:1}.axis{fill:#8f887e;font-size:10px}.bar{fill:#8d5f27;opacity:.42}.trend{fill:none;stroke:#f3eee5;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.trendGlow{fill:none;stroke:#f2a43a;stroke-width:9;opacity:.07;stroke-linecap:round}.zero{stroke:#4a4339;stroke-width:1}
+.movers{padding:18px}.mover-list{display:flex;flex-direction:column;gap:4px}.mover{display:grid;grid-template-columns:minmax(0,1fr) 92px 76px;gap:12px;align-items:center;padding:11px 4px;border-top:1px solid #2d2924}.mover:first-child{border-top:0}.sku{font-size:10px;color:#91897e;letter-spacing:.08em}.product{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}.sales{text-align:right;font-variant-numeric:tabular-nums;font-weight:650}.delta{text-align:right;font-size:12px;font-weight:650}.state{display:inline-block;margin-left:7px;padding:3px 6px;border:1px solid #3d3932;border-radius:99px;font-size:8px;letter-spacing:.08em;color:#a9a298;vertical-align:2px}.state.ACCELERATING,.state.GROWING{border-color:#39543a;color:#a4d591}.state.DECLINING,.state.COOLING{border-color:#5b3531;color:#f18a82}.state.NEW{border-color:#5e4d2e;color:#f6ca74}
+.bottom{display:grid;grid-template-columns:1.75fr 1fr;gap:14px}.attention{padding:18px}.attention-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.attention-empty{padding:36px 4px;color:var(--good);font-size:26px;font-weight:620}.action-item{padding:13px 14px;background:#171512;border:1px solid #312d27;border-radius:14px}.action-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.badge{font-size:9px;font-weight:800;letter-spacing:.12em;padding:5px 7px;border-radius:99px;background:#41351e;color:#ffd779}.badge.STOCKOUT{background:#492724;color:#ffaaa3}.badge.PRODUCE{background:#45331e;color:#ffc375}.action-product{font-size:12px;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d7d0c6}.action-stats{display:flex;gap:15px;margin-top:8px;font-size:10px;color:#8f887e}.action-stats b{color:var(--ink);font-size:13px;margin-right:3px}
+.context{padding:18px;display:flex;flex-direction:column;justify-content:space-between}.context-main{font-size:27px;line-height:1.18;font-weight:620;letter-spacing:-.025em}.context-main em{font-style:normal;color:var(--accent2)}.context-small{margin-top:12px;color:var(--muted);font-size:12px;line-height:1.5}.fresh{display:flex;gap:7px;flex-wrap:wrap;margin-top:18px}.pill{font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:6px 8px;border-radius:99px;border:1px solid #37322c;color:#a29a8e}.pill:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--good);margin-right:6px;vertical-align:1px}.pill.stale:before{background:var(--warn)}.pill.error:before{background:var(--bad)}
+.footer{display:flex;justify-content:space-between;gap:20px;color:#716b62;font-size:9px;letter-spacing:.08em;text-transform:uppercase;margin-top:14px;padding:0 5px}
+.errorbox{display:none;position:fixed;right:20px;bottom:20px;background:#4b2623;color:#ffd1cc;padding:12px 16px;border-radius:12px;font-size:12px;box-shadow:var(--shadow)}
+@media(max-width:1100px){.app{padding:18px}.hero{grid-template-columns:1fr 1fr}.main,.bottom{grid-template-columns:1fr}.righthead{display:none}.attention-list{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.app{padding:13px}.hero{grid-template-columns:1fr}.metric{min-height:135px}.big,.today .big{font-size:44px}.attention-list{grid-template-columns:1fr}.nav{overflow:auto;flex-wrap:nowrap}.mover{grid-template-columns:minmax(0,1fr) 76px 62px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="mark">DP</div><div><h1>DIRTY PAWZ PRESS</h1><div class="sub">Amazon Mexico · Operating Board</div></div></div>
+    <div class="righthead"><div class="clock" id="clock">--:--</div><div class="asof" id="asof">Updating</div></div>
+  </header>
+  <nav class="nav">
+    <a class="active" href="/">Home</a><a data-grafana="/d/dpp-sales">Sales</a><a data-grafana="/d/dpp-catalog">Catalog</a><a>Ads</a><a data-grafana="/d/dpp-inventory">Inventory</a><a>Finance</a><a data-grafana="/d/dpp-trajectory">Trajectory</a><a data-grafana="/d/dpp-data-health">Data Health</a>
+  </nav>
+
+  <section class="hero">
+    <div class="card metric today"><div class="eyebrow">Today · live</div><div class="big"><span class="currency">$</span><span id="todaySales">—</span></div><div class="meta"><span><strong id="todayOrders">—</strong><br>orders</span><span><strong id="todayUnits">—</strong><br>units</span><span class="pace"><strong id="todayPace">—</strong><br>vs same weekday · same time</span></div></div>
+    <div class="card metric"><div class="eyebrow">Rolling · 28 days</div><div class="big"><span class="currency">$</span><span id="t28Sales">—</span></div><div class="metric-note"><span id="t28Orders">—</span> orders · <span id="t28Units">—</span> units · through <span id="reconciledDate">—</span></div></div>
+    <div class="card metric"><div class="eyebrow">Trajectory · 28 vs prior 28</div><div class="big" id="growth">—</div><div class="metric-note" id="growthNote">Direction of travel</div></div>
+    <div class="card metric"><div class="eyebrow">Inventory · attention</div><div class="action-count"><div class="big" id="needsAction">—</div><div class="metric-note">SKUs need action</div></div><div class="minirow"><span>Stockouts <b id="stockouts">—</b></span><span>Produce <b id="produce">—</b></span><span>Plan <b id="plan">—</b></span></div></div>
+  </section>
+
+  <section class="main">
+    <div class="card chart-card"><div class="section-title"><h2>Sales rhythm</h2><span>Daily sales · 7-day signal</span></div><svg id="chart" viewBox="0 0 1000 330" preserveAspectRatio="none"></svg></div>
+    <div class="card movers"><div class="section-title"><h2>Catalog movers</h2><span>28D vs prior 28D</span></div><div class="mover-list" id="movers"></div></div>
+  </section>
+
+  <section class="bottom">
+    <div class="card attention"><div class="section-title"><h2>What needs attention</h2><span>Only exceptions · healthy SKUs hidden</span></div><div class="attention-list" id="attention"></div></div>
+    <div class="card context"><div><div class="section-title"><h2>Operating read</h2><span>At a glance</span></div><div class="context-main" id="readout">Loading the business…</div><div class="context-small" id="readout2"></div></div><div class="fresh" id="freshness"></div></div>
+  </section>
+
+  <footer class="footer"><span>MXN · provisional today / reconciled rolling</span><span>Dirty Pawz Press analytics</span></footer>
+</div>
+<div class="errorbox" id="errorbox"></div>
+<script>
+(function(){
+  var fmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
+  function money(v){return fmt.format(Math.round(Number(v||0)))}
+  function pct(v){if(v===null||v===undefined)return '—';var n=Number(v);return (n>0?'+':'')+n.toFixed(1)+'%'}
+  function cls(v){var n=Number(v);return n>0?'good':n<0?'bad':''}
+  function age(sec){sec=Number(sec||0);if(sec<60)return '<1m';if(sec<3600)return Math.round(sec/60)+'m';if(sec<86400)return Math.round(sec/3600)+'h';return Math.round(sec/86400)+'d'}
+  function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function setGrafanaLinks(){var base=location.protocol+'//'+location.hostname+':3000';document.querySelectorAll('[data-grafana]').forEach(function(a){a.href=base+a.getAttribute('data-grafana')})}
+  function renderChart(rows){
+    var svg=document.getElementById('chart'),W=1000,H=330,L=54,R=10,T=12,B=28,w=W-L-R,h=H-T-B;
+    if(!rows||!rows.length){svg.innerHTML='<text x="50%" y="50%" class="axis">No sales data</text>';return}
+    var vals=rows.map(function(r){return Number(r.sales||0)}),max=Math.max.apply(null,vals.concat([100]));max=Math.ceil(max/500)*500;
+    var avg=vals.map(function(_,i){var a=vals.slice(Math.max(0,i-6),i+1);return a.reduce(function(x,y){return x+y},0)/a.length});
+    var x=function(i){return L+(i+.5)*w/rows.length}, y=function(v){return T+h-(v/max)*h};
+    var out=[];for(var g=0;g<=4;g++){var gy=T+h*g/4,gv=max*(1-g/4);out.push('<line class="gridline" x1="'+L+'" y1="'+gy+'" x2="'+(W-R)+'" y2="'+gy+'"/><text class="axis" x="'+(L-8)+'" y="'+(gy+4)+'" text-anchor="end">$'+money(gv)+'</text>')}
+    var bw=Math.max(2,(w/rows.length)*.58);vals.forEach(function(v,i){out.push('<rect class="bar" x="'+(x(i)-bw/2)+'" y="'+y(v)+'" width="'+bw+'" height="'+Math.max(0,T+h-y(v))+'" rx="1"/>')});
+    var pts=avg.map(function(v,i){return x(i)+','+y(v)}).join(' ');out.push('<polyline class="trendGlow" points="'+pts+'"/><polyline class="trend" points="'+pts+'"/>');
+    [0,Math.floor((rows.length-1)/3),Math.floor(2*(rows.length-1)/3),rows.length-1].forEach(function(i){var d=String(rows[i].business_date).slice(5);out.push('<text class="axis" x="'+x(i)+'" y="'+(H-5)+'" text-anchor="middle">'+d+'</text>')});svg.innerHTML=out.join('')
+  }
+  function render(d){
+    document.getElementById('clock').textContent=d.local_time||'--:--';document.getElementById('asof').textContent='Live · refreshes every minute';
+    var t=d.today||{},r=d.rolling||{},s=d.inventory_summary||{};
+    document.getElementById('todaySales').textContent=money(t.sales_today);document.getElementById('todayOrders').textContent=fmt.format(t.orders_today||0);document.getElementById('todayUnits').textContent=fmt.format(t.units_today||0);
+    var p=document.getElementById('todayPace');p.textContent=pct(t.pace_vs_same_weekday_pct);p.className=cls(t.pace_vs_same_weekday_pct);
+    document.getElementById('t28Sales').textContent=money(r.sales_t28);document.getElementById('t28Orders').textContent=fmt.format(r.orders_t28||0);document.getElementById('t28Units').textContent=fmt.format(r.units_t28||0);document.getElementById('reconciledDate').textContent=String(r.business_date||'—').slice(5);
+    var g=document.getElementById('growth');g.textContent=pct(r.delta28_pct);g.className='big '+cls(r.delta28_pct);document.getElementById('growthNote').textContent=Number(r.delta28_pct||0)>=5?'Business is expanding':Number(r.delta28_pct||0)<=-5?'Business is contracting':'Business is roughly stable';
+    document.getElementById('needsAction').textContent=s.needs_action||0;document.getElementById('stockouts').textContent=s.stockouts||0;document.getElementById('produce').textContent=s.produce||0;document.getElementById('plan').textContent=s.plan||0;
+    renderChart(d.series||[]);
+    var movers=(d.movers||[]).map(function(m){var c=cls(m.delta28_pct);return '<div class="mover"><div><div class="sku">'+esc(m.sku)+'</div><div class="product">'+esc(m.product)+'</div></div><div class="sales">$'+money(m.sales_t28)+'</div><div class="delta '+c+'">'+pct(m.delta28_pct)+'<span class="state '+esc(m.state)+'">'+esc(m.state)+'</span></div></div>'}).join('');document.getElementById('movers').innerHTML=movers||'<div class="metric-note">No movers yet.</div>';
+    var att=d.inventory||[];document.getElementById('attention').innerHTML=att.length?att.map(function(a){return '<div class="action-item"><div class="action-top"><div class="sku">'+esc(a.sku)+'</div><span class="badge '+esc(a.action)+'">'+esc(a.action)+'</span></div><div class="action-product">'+esc(a.product)+'</div><div class="action-stats"><span><b>'+fmt.format(a.available||0)+'</b>on hand</span><span><b>'+fmt.format(a.inbound||0)+'</b>inbound</span><span><b>'+(a.days_cover===null?'—':Number(a.days_cover).toFixed(0))+'</b>days</span></div></div>'}).join(''):'<div class="attention-empty">Nothing urgent. Inventory is covered.</div>';
+    var growth=Number(r.delta28_pct||0),pace=Number(t.pace_vs_same_weekday_pct||0),actions=Number(s.needs_action||0);var words=growth>=5?'growing':growth<=-5?'softening':'steady';var paceword=pace>=5?'ahead of pace':pace<=-5?'behind today’s normal pace':'on pace';
+    document.getElementById('readout').innerHTML='The business is <em>'+words+'</em>. Today is <span class="'+cls(pace)+'">'+paceword+'</span>.';document.getElementById('readout2').textContent=actions?actions+' inventory action'+(actions===1?'':'s')+' need attention. No healthy SKUs are shown here.':'No inventory exceptions need action right now.';
+    var names={'orders_v2026':'Orders','sales_traffic_2024_04_24':'Sales & Traffic','finances_v2024':'Finance','fba_inventory_v1':'Inventory'};document.getElementById('freshness').innerHTML=(d.freshness||[]).map(function(f){var sec=Number(f.age_seconds||0),state=f.latest_status==='error'?'error':sec>21600?'stale':'';return '<span class="pill '+state+'">'+(names[f.job_name]||f.job_name)+' · '+age(sec)+'</span>'}).join('');
+  }
+  function load(){fetch('/api/home',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(function(d){render(d);document.getElementById('errorbox').style.display='none'}).catch(function(e){var b=document.getElementById('errorbox');b.textContent='Board update failed: '+e.message;b.style.display='block'})}
+  setGrafanaLinks();load();setInterval(load,60000);
+})();
+</script>
+</body>
+</html>
