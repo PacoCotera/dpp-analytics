@@ -21,10 +21,15 @@ CREATE TABLE IF NOT EXISTS core.asin_sales_traffic_daily (
 CREATE INDEX IF NOT EXISTS asin_sales_traffic_asin_date_idx
     ON core.asin_sales_traffic_daily (asin, business_date DESC);
 
+-- PostgreSQL will not let CREATE OR REPLACE VIEW change an existing column's
+-- typmod (for example numeric -> numeric(10,4)). This view has no persisted data,
+-- so recreate it explicitly as the catalog model evolves.
+DROP VIEW IF EXISTS mart.sku_daily;
+
 -- Canonical catalog-performance view. Sales/order units remain seller-SKU specific
 -- from Orders, while traffic metrics are joined at the child-ASIN level because
 -- Data Kiosk salesAndTrafficTrends currently supports CHILD aggregation only.
-CREATE OR REPLACE VIEW mart.sku_daily AS
+CREATE VIEW mart.sku_daily AS
 WITH order_sku AS (
     SELECT
         (o.created_time AT TIME ZONE m.timezone)::date AS business_date,
