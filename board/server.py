@@ -14,25 +14,20 @@ from catalog_api import catalog_payload as build_catalog_payload
 from health_api import health_board_payload as build_health_board_payload
 from inventory_api import inventory_payload as build_inventory_payload
 from sales_api import sales_payload as build_sales_payload
+from today_api import today_payload as build_today_payload
 from trajectory_api import trajectory_payload as build_trajectory_payload
 
 ROOT = Path(__file__).parent
 STATIC = ROOT / "static"
 LABELS_PATH = ROOT / "product_labels.json"
-_base_html = (STATIC / "index.html").read_text()
-_refine_css = (STATIC / "refine.css").read_text()
-_refine_js = (STATIC / "refine.js").read_text()
-INDEX = (
-    _base_html
-    .replace("</head>", f"<style id=\"dpp-refine\">{_refine_css}</style></head>")
-    .replace("</body>", f"<script id=\"dpp-refine-js\">{_refine_js}</script></body>")
-    .encode()
-)
+HOME_INDEX = (STATIC / "home.html").read_bytes()
+TODAY_INDEX = (STATIC / "today.html").read_bytes()
 SALES_INDEX = (STATIC / "sales.html").read_bytes()
 CATALOG_INDEX = (STATIC / "catalog.html").read_bytes()
 INVENTORY_INDEX = (STATIC / "inventory.html").read_bytes()
 TRAJECTORY_INDEX = (STATIC / "trajectory.html").read_bytes()
 DATA_HEALTH_INDEX = (STATIC / "data_health.html").read_bytes()
+THEME_CSS = (STATIC / "theme.css").read_bytes()
 MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
 AMAZON_MX_DP = "https://www.amazon.com.mx/dp/"
 
@@ -263,7 +258,7 @@ def health_payload():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "DPPBoard/4"
+    server_version = "DPPBoard/5"
 
     def log_message(self, fmt, *args):
         print(f"{self.address_string()} {fmt % args}")
@@ -286,6 +281,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_bytes(500, "application/json", body)
 
     def do_GET(self):
+        if self.path == "/assets/theme.css":
+            self.send_bytes(200, "text/css; charset=utf-8", THEME_CSS, cache="public, max-age=60")
+            return
         if self.path == "/health":
             try:
                 payload = health_payload()
@@ -295,6 +293,9 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 body = json.dumps({"status": "error", "error": str(exc)[:160]}).encode()
                 self.send_bytes(503, "application/json", body)
+            return
+        if self.path.startswith("/api/today"):
+            self.json_endpoint(lambda: build_today_payload(connect, decorate_products, MARKETPLACE))
             return
         if self.path.startswith("/api/home"):
             self.json_endpoint(home_payload)
@@ -314,6 +315,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/data-health"):
             self.json_endpoint(lambda: build_health_board_payload(connect, MARKETPLACE))
             return
+        if self.path == "/today" or self.path.startswith("/today?"):
+            self.send_bytes(200, "text/html; charset=utf-8", TODAY_INDEX, cache="no-cache")
+            return
         if self.path == "/sales" or self.path.startswith("/sales?"):
             self.send_bytes(200, "text/html; charset=utf-8", SALES_INDEX, cache="no-cache")
             return
@@ -330,7 +334,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_bytes(200, "text/html; charset=utf-8", DATA_HEALTH_INDEX, cache="no-cache")
             return
         if self.path == "/" or self.path.startswith("/?"):
-            self.send_bytes(200, "text/html; charset=utf-8", INDEX, cache="no-cache")
+            self.send_bytes(200, "text/html; charset=utf-8", HOME_INDEX, cache="no-cache")
             return
         self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
 
