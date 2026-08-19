@@ -1,0 +1,119 @@
+{
+  "uid": "dpp-data-health",
+  "title": "DPP | Data Health",
+  "tags": ["dpp", "ops", "data-health"],
+  "timezone": "America/Mexico_City",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "1m",
+  "time": {"from": "now-24h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 2},
+      "options": {"mode": "markdown", "content": "# Data Health  \n[⌂ HOME](/d/dpp-home) · [SALES](/d/dpp-sales) · CATALOG · ADS · [INVENTORY](/d/dpp-inventory) · FINANCE · TRAJECTORY · **DATA HEALTH**  \n*This page answers: are the feeds current, complete enough to use, and failing anywhere?*"}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Orders in Warehouse",
+      "gridPos": {"x": 0, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT count(*)::int AS value FROM core.amazon_order WHERE marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Financial Transactions",
+      "gridPos": {"x": 4, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT count(*)::int AS value FROM core.financial_transaction;"}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Sales & Traffic Days",
+      "gridPos": {"x": 8, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT count(*)::int AS value FROM core.sales_traffic_daily WHERE marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "ASIN Traffic Rows",
+      "gridPos": {"x": 12, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT count(*)::int AS value FROM core.asin_sales_traffic_daily WHERE marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "FBA SKUs",
+      "gridPos": {"x": 16, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT count(*)::int AS value FROM mart.inventory_current WHERE marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Failed Latest Jobs",
+      "gridPos": {"x": 20, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT count(*)::int AS value FROM ops.data_health WHERE latest_status<>'success';"}]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Feed Status",
+      "gridPos": {"x": 0, "y": 6, "w": 14, "h": 9},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT source AS \"Source\",job_name AS \"Job\",latest_status AS \"Status\",records_read AS \"Read\",records_written AS \"Written\",to_char(last_finished_at,'MM-DD HH24:MI:SS') AS \"Finished\",date_trunc('second',age)::text AS \"Age\",COALESCE(error_message,'') AS \"Error\" FROM ops.data_health ORDER BY last_started_at DESC;"}]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Ingestion Cursors",
+      "gridPos": {"x": 14, "y": 6, "w": 10, "h": 9},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT source AS \"Source\",job_name AS \"Job\",cursor_name AS \"Cursor\",cursor_value AS \"Value\",to_char(updated_at,'MM-DD HH24:MI:SS') AS \"Updated\" FROM ops.ingestion_cursor ORDER BY updated_at DESC;"}]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Warehouse Coverage",
+      "gridPos": {"x": 0, "y": 15, "w": 12, "h": 8},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT 'Orders' AS \"Dataset\",min(created_time AT TIME ZONE 'America/Mexico_City')::text AS \"First\",max(created_time AT TIME ZONE 'America/Mexico_City')::text AS \"Latest\",count(*)::bigint AS \"Rows\" FROM core.amazon_order UNION ALL SELECT 'Finances',min(posted_date AT TIME ZONE 'America/Mexico_City')::text,max(posted_date AT TIME ZONE 'America/Mexico_City')::text,count(*)::bigint FROM core.financial_transaction UNION ALL SELECT 'Sales & Traffic',min(business_date)::text,max(business_date)::text,count(*)::bigint FROM core.sales_traffic_daily UNION ALL SELECT 'ASIN Traffic',min(business_date)::text,max(business_date)::text,count(*)::bigint FROM core.asin_sales_traffic_daily UNION ALL SELECT 'Inventory',min(snapshot_at AT TIME ZONE 'America/Mexico_City')::text,max(snapshot_at AT TIME ZONE 'America/Mexico_City')::text,count(*)::bigint FROM core.inventory_snapshot;"}]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Raw Capture",
+      "gridPos": {"x": 12, "y": 15, "w": 12, "h": 8},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT source AS \"Source\",resource_type AS \"Resource\",count(*)::bigint AS \"Payloads\",to_char(max(fetched_at),'MM-DD HH24:MI:SS') AS \"Latest Fetch\" FROM raw.api_payload GROUP BY source,resource_type ORDER BY max(fetched_at) DESC;"}]
+    }
+  ]
+}
