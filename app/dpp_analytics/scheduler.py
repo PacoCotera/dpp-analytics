@@ -11,6 +11,7 @@ from .data_kiosk import ingest_sales_traffic
 from .finances import ingest_finances
 from .inventory import ingest_inventory
 from .orders import ingest_orders
+from .product_roles_probe import probe as product_roles_probe
 from .production_probe import probe as production_probe
 from .sandbox_probe import probe as sandbox_probe
 from .settings import settings
@@ -107,8 +108,10 @@ def main() -> None:
         return
 
     log.info("SP-API production ingestion ENABLED")
-    if not settings.catalog_enabled:
-        log.info("Catalog Items sync disabled until Product Listing role is authorized")
+    if settings.catalog_enabled:
+        _run("product_roles_probe", product_roles_probe)
+    else:
+        log.info("Catalog Items sync disabled")
 
     next_orders = 0.0
     next_inventory = _next_due("amazon_spapi", "fba_inventory_v1", settings.inventory_interval_seconds)
