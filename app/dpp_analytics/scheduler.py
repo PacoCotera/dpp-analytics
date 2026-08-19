@@ -5,6 +5,7 @@ import signal
 import time
 from collections.abc import Callable
 
+from .data_kiosk import ingest_sales_traffic
 from .finances import ingest_finances
 from .inventory import ingest_inventory
 from .orders import ingest_orders
@@ -85,6 +86,7 @@ def main() -> None:
     next_orders = 0.0
     next_inventory = 0.0
     next_finances = 0.0
+    next_data_kiosk = 0.0
 
     while not STOP:
         now = time.monotonic()
@@ -100,6 +102,10 @@ def main() -> None:
         if now >= next_finances:
             _run("finances", ingest_finances)
             next_finances = time.monotonic() + settings.finances_interval_seconds
+
+        if now >= next_data_kiosk:
+            _run("data_kiosk", ingest_sales_traffic)
+            next_data_kiosk = time.monotonic() + settings.data_kiosk_interval_seconds
 
         time.sleep(settings.scheduler_tick_seconds)
 
