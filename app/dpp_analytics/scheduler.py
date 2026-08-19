@@ -4,10 +4,10 @@ import logging
 import signal
 import time
 from collections.abc import Callable
-from typing import Any
 
 from .inventory import ingest_inventory
 from .orders import ingest_orders
+from .production_probe import probe as production_probe
 from .sandbox_probe import probe as sandbox_probe
 from .settings import settings
 
@@ -26,7 +26,7 @@ def _stop(signum: int, frame: object) -> None:
     log.info("shutdown requested signal=%s", signum)
 
 
-def _run(name: str, fn: Callable[[], dict[str, Any]]) -> None:
+def _run(name: str, fn: Callable[[], dict]) -> None:
     started = time.monotonic()
     try:
         result = fn()
@@ -35,43 +35,52 @@ def _run(name: str, fn: Callable[[], dict[str, Any]]) -> None:
         log.exception("job=%s status=error elapsed=%.2fs", name, time.monotonic() - started)
 
 
+def _probe_loop(name: str, fn: Callable[[], dict], interval: int) -> None:
+    next_probe = 0.0
+    while not STOP:
+        now = time.monotonic()
+        if now >= next_probe:
+            _run(name, fn)
+            next_probe = time.monotonic() + interval
+        time.sleep(settings.scheduler_tick_seconds)
+
+
 def main() -> None:
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
 
     log.info(
-        "DPP analytics worker starting environment=%s marketplace=%s spapi_enabled=%s credentials_present=%s",
+        "DPP analytics worker starting environment=%s marketplace=%s spapi_enabled=%s credentials_present=%s production_ingestion_enabled=%s",
         settings.spapi_environment,
         settings.marketplace_id,
         settings.spapi_enabled,
         settings.spapi_credentials_present,
+        settings.production_ingestion_enabled,
     )
 
     if not settings.spapi_enabled:
-        log.info("SP-API ingestion is disabled until credentials are installed on the host")
+        log.info("SP-API ingestion is disabled")
         while not STOP:
             time.sleep(settings.scheduler_tick_seconds)
         return
 
-    # Sandbox responses are mocked. Never let them enter the production warehouse.
-    # In sandbox mode this process only validates authorization/connectivity.
     if settings.is_sandbox:
         log.info("SP-API sandbox mode active; production ingestion is blocked")
-        next_probe = 0.0
-        while not STOP:
-            now = time.monotonic()
-            if now >= next_probe:
-                _run("sandbox_probe", sandbox_probe)
-                next_probe = time.monotonic() + settings.sandbox_probe_interval_seconds
-            time.sleep(settings.scheduler_tick_seconds)
+        _probe_loop("sandbox_probe", sandbox_probe, settings.sandbox_probe_interval_seconds)
         return
 
-    if not settings.spapi_credentials_present:
-        log.error("SP-API production mode enabled but credentials are missing")
+    if not settings.is_production:
+        log.error("Unknown SPAPI_ENVIRONMENT=%s; refusing all SP-API activity", settings.spapi_environment)
         while not STOP:
             time.sleep(settings.scheduler_tick_seconds)
         return
 
+    if not settings.production_ingestion_enabled:
+        log.info("SP-API production credentials active; ingestion kill-switch is OFF, running read-only authorization probes only")
+        _probe_loop("production_probe", production_probe, settings.production_probe_interval_seconds)
+        return
+
+    log.info("SP-API production ingestion ENABLED")
     next_orders = 0.0
     next_inventory = 0.0
 
