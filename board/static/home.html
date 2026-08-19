@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f0e8">
+<title>Dirty Pawz Press · Home</title>
+<link rel="stylesheet" href="/assets/theme.css">
+<style>
+.spark-card{padding:16px 18px}.spark{width:100%;height:130px;display:block}.spark-grid{stroke:#e3ddd3;stroke-width:1}.spark-area{fill:rgba(229,139,31,.12)}.spark-line{fill:none;stroke:#2b2824;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.attention-card{border-left:5px solid var(--warn)}.explore-card{min-height:150px;display:flex;flex-direction:column;justify-content:space-between}.explore-arrow{font-size:22px}.change-list .list-row{padding:16px 0}.change-tag{margin-top:6px}.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#34a15f;margin-right:6px;box-shadow:0 0 0 4px rgba(52,161,95,.12)}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Amazon Mexico · Operating Board</div></div></div>
+  <div class="top-meta"><strong id="clock">--:--</strong><span id="fresh">Loading live data</span></div>
+</header>
+<nav class="primary-nav">
+  <a class="today-link" href="/today">Today</a><a class="active" href="/">Home</a><a href="/sales">Sales</a><a href="/catalog">Catalog</a><a href="/inventory">Inventory</a><a href="/finance">Finance</a><a href="/trajectory">Trajectory</a><a href="/data-health">Data</a>
+</nav>
+
+<header class="page-head">
+  <div><div class="kicker">Operating cockpit</div><h1>What matters right now.</h1><p class="page-summary">A fast read on momentum, today’s activity, and anything that needs attention. Details live one click deeper.</p></div>
+  <div class="page-actions"><a class="btn accent" href="/today?wall=1">Open wall view ↗</a></div>
+</header>
+
+<section class="story" id="story">
+  <div><div class="kicker">Business read</div><h2 id="storyTitle">Reading the business…</h2><p id="storyCopy">Connecting current sales, momentum and inventory signals.</p><a class="story-link" href="/sales">See the sales story →</a></div>
+  <div class="story-side"><div class="story-number" id="storyNumber">$—</div><div class="story-caption" id="storyCaption">Last 28 days</div></div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div><div class="section-title">At a glance</div><div class="section-sub">Current facts, not a wall of KPIs.</div></div></div>
+  <div class="grid four">
+    <a class="card interactive metric" href="/today"><div class="metric-label"><span class="live-dot"></span>Today · live</div><div class="metric-value" id="todaySales">$—</div><div class="metric-note" id="todayMeta">Waiting for orders</div></a>
+    <a class="card interactive metric" href="/sales"><div class="metric-label">Last 28 days</div><div class="metric-value" id="sales28">$—</div><div class="metric-note" id="sales28Meta">Reconciled sales</div></a>
+    <a class="card interactive metric" href="/trajectory"><div class="metric-label">Momentum</div><div class="metric-value" id="momentum">—</div><div class="metric-note">28 days vs prior 28 days</div></a>
+    <a class="card interactive metric" href="/inventory"><div class="metric-label">Needs attention</div><div class="metric-value" id="actions">—</div><div class="metric-note" id="actionMeta">Inventory decisions</div></a>
+  </div>
+</section>
+
+<section class="section grid main-aside">
+  <div class="card spark-card"><div class="section-head"><div><div class="section-title">Business rhythm</div><div class="section-sub">90 days of daily sales. Use Sales for the full analysis.</div></div><a class="section-link" href="/sales">Open Sales →</a></div><svg class="spark" id="spark" viewBox="0 0 900 130" preserveAspectRatio="none"></svg></div>
+  <div class="card card-pad attention-card"><div class="section-head"><div><div class="section-title">What needs attention</div><div class="section-sub">Only decisions worth interrupting you for.</div></div></div><div class="list" id="attention"><div class="empty"><strong>Checking inventory</strong>One moment.</div></div></div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div><div class="section-title">What changed</div><div class="section-sub">Products creating the most movement over the last four weeks.</div></div><a class="section-link" href="/catalog">Open Catalog →</a></div>
+  <div class="card card-pad change-list"><div class="list" id="movers"><div class="empty"><strong>Reading product momentum</strong>One moment.</div></div></div>
+</section>
+
+<section class="section">
+  <div class="section-head"><div><div class="section-title">Go deeper</div><div class="section-sub">Each workspace should answer a different management question.</div></div></div>
+  <div class="grid four">
+    <a href="/sales" class="card card-pad interactive explore-card"><div><div class="kicker">Sales</div><div class="section-title">How are we selling?</div><div class="section-sub">Month, year, recent pace, products and orders.</div></div><div class="explore-arrow">→</div></a>
+    <a href="/inventory" class="card card-pad interactive explore-card"><div><div class="kicker">Inventory</div><div class="section-title">What needs replenishment?</div><div class="section-sub">Coverage, velocity and action queue.</div></div><div class="explore-arrow">→</div></a>
+    <a href="/catalog" class="card card-pad interactive explore-card"><div><div class="kicker">Catalog</div><div class="section-title">What is moving?</div><div class="section-sub">Your products, offers and momentum.</div></div><div class="explore-arrow">→</div></a>
+    <a href="/finance" class="card card-pad interactive explore-card"><div><div class="kicker">Finance</div><div class="section-title">Where is the money going?</div><div class="section-sub">Amazon-side cash events and fees, without pretending external COGS are known.</div></div><div class="explore-arrow">→</div></a>
+  </div>
+</section>
+
+<footer class="footer"><span>MXN · today provisional / historical reconciled</span><span>Dirty Pawz Press Analytics</span></footer>
+</div>
+<script>
+(function(){
+const fmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
+const money=v=>'$'+fmt.format(Math.round(Number(v||0)));
+const pct=v=>v==null?'—':(Number(v)>0?'+':'')+Number(v).toFixed(1)+'%';
+const cls=v=>Number(v)>0?'good':Number(v)<0?'bad':'';
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function businessRead(delta,actions){delta=Number(delta||0);let title,copy;if(delta>=8){title='Momentum is strong.';copy='The last four weeks are clearly ahead of the prior four.'}else if(delta>=2){title='The business is edging up.';copy='Recent sales are modestly ahead of the prior four-week period.'}else if(delta>-2){title='The business is steady.';copy='Recent sales are essentially flat versus the prior four weeks.'}else if(delta>-8){title='The business has softened a little.';copy='Recent sales are below the prior four weeks, but not dramatically.'}else{title='Momentum has cooled.';copy='Recent sales are meaningfully below the prior four weeks and deserve a closer look.'}if(actions>0)copy+=' '+actions+' inventory '+(actions===1?'item needs':'items need')+' attention.';else copy+=' Inventory is not asking for an urgent intervention.';return {title,copy}}
+function draw(rows){const svg=document.getElementById('spark');if(!rows||rows.length<2){svg.innerHTML='';return}const W=900,H=130,P=8,vals=rows.map(r=>Number(r.sales||0)),max=Math.max(...vals,1),x=i=>P+i*(W-P*2)/(rows.length-1),y=v=>H-P-(v/max)*(H-P*2);let pts=vals.map((v,i)=>x(i)+','+y(v)).join(' ');let area=`${P},${H-P} ${pts} ${W-P},${H-P}`;svg.innerHTML=`<line class="spark-grid" x1="0" y1="${H-1}" x2="${W}" y2="${H-1}"/><polygon class="spark-area" points="${area}"/><polyline class="spark-line" points="${pts}"/>`}
+function render(d){
+ document.getElementById('clock').textContent=d.local_time||'--:--';
+ document.getElementById('fresh').textContent='Live operating data';
+ const t=d.today||{},r=d.rolling||{},is=d.inventory_summary||{};
+ document.getElementById('todaySales').textContent=money(t.sales_today);
+ document.getElementById('todayMeta').textContent=`${fmt.format(t.orders_today||0)} orders · ${fmt.format(t.units_today||0)} units`;
+ document.getElementById('sales28').textContent=money(r.sales_t28);
+ document.getElementById('sales28Meta').textContent=`${fmt.format(r.orders_t28||0)} orders · through ${String(r.business_date||'').slice(5)}`;
+ const m=document.getElementById('momentum');m.textContent=pct(r.delta28_pct);m.className='metric-value '+cls(r.delta28_pct);
+ document.getElementById('actions').textContent=fmt.format(is.needs_action||0);
+ document.getElementById('actionMeta').textContent=`${is.stockouts||0} stockout · ${is.produce||0} produce · ${is.plan||0} plan`;
+ const br=businessRead(r.delta28_pct,is.needs_action||0);document.getElementById('storyTitle').textContent=br.title;document.getElementById('storyCopy').textContent=br.copy;document.getElementById('storyNumber').textContent=money(r.sales_t28);document.getElementById('storyCaption').textContent=`Last 28 days · ${pct(r.delta28_pct)} vs prior 28`;
+ draw(d.series);
+ const att=(d.inventory||[]);document.getElementById('attention').innerHTML=att.length?att.slice(0,4).map(x=>`<a class="list-row" href="/inventory"><div><div class="product-sku">${esc(x.sku)} · <span class="chip warn">${esc(x.action)}</span></div><div class="row-title">${esc(x.product||x.sku)}</div><div class="row-sub">${fmt.format(x.available||0)} on hand · ${fmt.format(x.inbound||0)} inbound</div></div><div class="row-value"><strong>${x.days_cover==null?'—':Number(x.days_cover).toFixed(0)}</strong><small>days cover</small></div></a>`).join(''):`<div class="empty"><strong>Nothing urgent.</strong>Inventory does not currently need an intervention.</div>`;
+ const movers=(d.movers||[]).slice(0,6);document.getElementById('movers').innerHTML=movers.map(x=>{const c=cls(x.delta28_pct);const tag=x.state||'STABLE';const img=x.image_url?`<img class="product-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">`:'';return `<a class="list-row" href="/product?sku=${encodeURIComponent(x.sku)}"><div class="product-line">${img}<div style="min-width:0"><div class="product-sku">${esc(x.sku)}</div><div class="product-name">${esc(x.product||x.sku)}</div><div class="change-tag"><span class="chip ${c}">${esc(tag)}</span></div></div></div><div class="row-value"><strong>${money(x.sales_t28)}</strong><small class="${c}">${pct(x.delta28_pct)} vs prior 28</small></div></a>`}).join('')||`<div class="empty"><strong>No mover data yet.</strong>Product trends will appear here as history builds.</div>`;
+}
+function load(){fetch('/api/home',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(render).catch(e=>{document.getElementById('storyTitle').textContent='The operating feed is unavailable.';document.getElementById('storyCopy').textContent=e.message})}load();setInterval(load,60000);
+})();
+</script>
+</body></html>
