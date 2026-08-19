@@ -48,8 +48,15 @@ class SpApiClient:
         self._access_token_expires_at = time.time() + int(payload.get("expires_in", 3600))
         return self._access_token
 
-    def get(self, path: str, params: dict[str, Any] | Iterable[tuple[str, Any]] | None = None) -> dict[str, Any]:
-        url = f"{settings.spapi_endpoint.rstrip('/')}/{path.lstrip('/')}"
+    def get(
+        self,
+        path: str,
+        params: dict[str, Any] | Iterable[tuple[str, Any]] | None = None,
+        *,
+        endpoint: str | None = None,
+    ) -> dict[str, Any]:
+        base = endpoint or settings.spapi_endpoint
+        url = f"{base.rstrip('/')}/{path.lstrip('/')}"
         last_error: str | None = None
 
         for attempt in range(6):
