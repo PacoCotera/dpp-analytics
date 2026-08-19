@@ -26,18 +26,41 @@
     var title=document.querySelector('.context .section-title h2');
     var note=document.querySelector('.context .section-title span');
     if(title) title.textContent='Business pulse';
-    if(note) note.textContent='Deterministic · no agent';
+    if(note) note.textContent='Rules-based';
+
+    document.querySelectorAll('.nav a:not([href]):not([data-grafana])').forEach(function(a){
+      a.classList.add('disabled');
+      a.setAttribute('aria-disabled','true');
+      a.title='Not connected yet';
+    });
+  }
+
+  function refineSignals(){
+    var ordersEl=document.getElementById('todayOrders');
+    var paceEl=document.getElementById('todayPace');
+    var paceWrap=paceEl && paceEl.closest('.pace');
+    if(ordersEl && paceEl && paceWrap){
+      var orders=parseInt(String(ordersEl.textContent||'0').replace(/[^0-9-]/g,''),10)||0;
+      // Intraday percentage swings are noisy at very low order counts. Keep the
+      // number visible, but don't paint it as a strong red/green signal yet.
+      paceWrap.classList.toggle('low-signal',orders<3);
+      if(orders<3){
+        paceEl.classList.remove('good','bad');
+        paceEl.title='Directional only: fewer than 3 orders today';
+      }else{
+        paceEl.title='Compared with the prior matching weekdays at the same local time';
+      }
+    }
   }
 
   function refineDynamic(){
     document.querySelectorAll('.product,.action-product').forEach(function(el){
       if(!el.dataset.rawProduct) el.dataset.rawProduct=el.textContent;
       var next=shortProduct(el.dataset.rawProduct);
-      // Setting textContent unconditionally retriggers MutationObserver and can
-      // starve the browser's paint/event loop. Only touch the DOM when needed.
       if(el.textContent!==next) el.textContent=next;
       if(el.title!==el.dataset.rawProduct) el.title=el.dataset.rawProduct;
     });
+
     var attention=document.querySelector('.attention');
     var list=document.getElementById('attention');
     if(attention && list){
@@ -45,6 +68,7 @@
       attention.classList.toggle('single',count===1);
       attention.classList.toggle('clear',count===0);
     }
+    refineSignals();
   }
 
   relocateAttention();
@@ -59,6 +83,6 @@
         pending=false;
         refineDynamic();
       });
-    }).observe(app,{childList:true,subtree:true});
+    }).observe(app,{childList:true,subtree:true,characterData:true});
   }
 })();
