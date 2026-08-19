@@ -21,9 +21,9 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
             cur,
             """
             SELECT
-              COALESCE(sl.seller_sku,s.sku) AS sku,
+              s.sku,
               COALESCE(sl.asin,s.asin) AS asin,
-              COALESCE(sl.item_name,ci.title,s.title,sl.seller_sku,s.sku) AS product,
+              COALESCE(sl.item_name,ci.title,s.title,s.sku) AS product,
               COALESCE(sl.image_url,ci.image_url) AS image_url,
               COALESCE(sl.price,s.list_price) AS listing_price,
               sl.status AS listing_status,
@@ -38,13 +38,13 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
               a.sales_t28 AS inventory_sales_t28,
               a.units_t28 AS inventory_units_t28
             FROM core.sku s
-            FULL JOIN core.seller_listing sl
+            LEFT JOIN core.seller_listing sl
               ON sl.seller_sku=s.sku AND sl.marketplace_id=%s
             LEFT JOIN core.catalog_item ci
               ON ci.marketplace_id=%s AND ci.asin=COALESCE(sl.asin,s.asin)
             LEFT JOIN mart.inventory_attention a
-              ON a.marketplace_id=%s AND a.seller_sku=COALESCE(sl.seller_sku,s.sku)
-            WHERE COALESCE(sl.seller_sku,s.sku)=%s
+              ON a.marketplace_id=%s AND a.seller_sku=s.sku
+            WHERE s.sku=%s
             LIMIT 1
             """,
             (marketplace, marketplace, marketplace, sku),
