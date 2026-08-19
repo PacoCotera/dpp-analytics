@@ -1,0 +1,112 @@
+{
+  "uid": "dpp-inventory",
+  "title": "DPP | Inventory",
+  "tags": ["dpp", "inventory"],
+  "timezone": "America/Mexico_City",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "5m",
+  "time": {"from": "now-30d", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 2},
+      "options": {"mode": "markdown", "content": "# Inventory  \n[⌂ HOME](/d/dpp-home) · [SALES](/d/dpp-sales) · CATALOG · ADS · **INVENTORY** · FINANCE · TRAJECTORY · [DATA HEALTH](/d/dpp-data-health)  \n*Days cover uses trailing-28-day unit velocity. Treat new/no-sales SKUs separately.*"}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "FBA Available",
+      "gridPos": {"x": 0, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(sum(fulfillable_quantity),0)::int AS value FROM mart.inventory_current WHERE marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Inbound",
+      "gridPos": {"x": 4, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(sum(inbound_working_quantity+inbound_shipped_quantity+inbound_receiving_quantity),0)::int AS value FROM mart.inventory_current WHERE marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Stockouts",
+      "gridPos": {"x": 8, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH v AS (SELECT seller_sku,sum(units)::numeric/28 units_day FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date>=CURRENT_DATE-27 GROUP BY seller_sku) SELECT count(*)::int AS value FROM mart.inventory_current i JOIN v USING(seller_sku) WHERE i.marketplace_id='A1AM78C64UM0Y8' AND i.fulfillable_quantity=0 AND v.units_day>0;"}]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "< 14 Days Cover",
+      "gridPos": {"x": 12, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH v AS (SELECT seller_sku,sum(units)::numeric/28 units_day FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date>=CURRENT_DATE-27 GROUP BY seller_sku) SELECT count(*)::int AS value FROM mart.inventory_current i JOIN v USING(seller_sku) WHERE i.marketplace_id='A1AM78C64UM0Y8' AND v.units_day>0 AND i.fulfillable_quantity/v.units_day<14;"}]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Unfulfillable",
+      "gridPos": {"x": 16, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(sum(unfulfillable_quantity),0)::int AS value FROM mart.inventory_current WHERE marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Snapshot Age",
+      "gridPos": {"x": 20, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "m", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT extract(epoch from (now()-max(snapshot_at)))/60 AS value FROM core.inventory_snapshot WHERE marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Produce Now / Plan / Hold",
+      "gridPos": {"x": 0, "y": 6, "w": 24, "h": 12},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm", "footer": {"show": false}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH v AS (SELECT seller_sku,sum(units)::numeric/28 units_day,sum(units) units_t28,sum(sales) sales_t28 FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date>=CURRENT_DATE-27 GROUP BY seller_sku) SELECT i.seller_sku AS \"SKU\", COALESCE(k.title,'') AS \"Product\", i.asin AS \"ASIN\", i.fulfillable_quantity AS \"Available\", i.reserved_quantity AS \"Reserved\", (i.inbound_working_quantity+i.inbound_shipped_quantity+i.inbound_receiving_quantity) AS \"Inbound\", COALESCE(v.units_t28,0) AS \"Units T28\", round(COALESCE(v.sales_t28,0),0) AS \"Sales T28\", CASE WHEN COALESCE(v.units_day,0)>0 THEN round(i.fulfillable_quantity/v.units_day,1) END AS \"Days Cover\", CASE WHEN i.fulfillable_quantity=0 AND COALESCE(v.units_day,0)>0 THEN 'STOCKOUT' WHEN COALESCE(v.units_day,0)=0 THEN 'HOLD' WHEN i.fulfillable_quantity/v.units_day<14 THEN 'PRODUCE' WHEN i.fulfillable_quantity/v.units_day<28 THEN 'PLAN' ELSE 'OK' END AS \"Action\" FROM mart.inventory_current i LEFT JOIN v USING(seller_sku) LEFT JOIN core.sku k ON k.sku=i.seller_sku WHERE i.marketplace_id='A1AM78C64UM0Y8' ORDER BY CASE WHEN i.fulfillable_quantity=0 AND COALESCE(v.units_day,0)>0 THEN 0 WHEN COALESCE(v.units_day,0)>0 AND i.fulfillable_quantity/v.units_day<14 THEN 1 WHEN COALESCE(v.units_day,0)>0 AND i.fulfillable_quantity/v.units_day<28 THEN 2 WHEN COALESCE(v.units_day,0)=0 THEN 4 ELSE 3 END, \"Days Cover\" NULLS LAST;"}]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Total FBA Inventory Snapshots",
+      "gridPos": {"x": 0, "y": 18, "w": 12, "h": 8},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"refId": "A", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT snapshot_at AS time,sum(fulfillable_quantity) AS value,'Available' AS metric FROM core.inventory_snapshot WHERE marketplace_id='A1AM78C64UM0Y8' GROUP BY snapshot_at ORDER BY snapshot_at;"},
+        {"refId": "B", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT snapshot_at AS time,sum(inbound_working_quantity+inbound_shipped_quantity+inbound_receiving_quantity) AS value,'Inbound' AS metric FROM core.inventory_snapshot WHERE marketplace_id='A1AM78C64UM0Y8' GROUP BY snapshot_at ORDER BY snapshot_at;"}
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Inventory Exceptions",
+      "gridPos": {"x": 12, "y": 18, "w": 12, "h": 8},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT seller_sku AS \"SKU\", unfulfillable_quantity AS \"Unfulfillable\", researching_quantity AS \"Researching\", reserved_quantity AS \"Reserved\" FROM mart.inventory_current WHERE marketplace_id='A1AM78C64UM0Y8' AND (unfulfillable_quantity>0 OR researching_quantity>0) ORDER BY unfulfillable_quantity DESC,researching_quantity DESC;"}]
+    }
+  ]
+}
