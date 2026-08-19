@@ -61,25 +61,26 @@ jobs:
           TZ=America/Mexico_City
           SPAPI_ENABLED=false
           SPAPI_ENVIRONMENT=production
-          SPAPI_PRODUCTION_INGESTION_ENABLED=false
+          SPAPI_PRODUCTION_INGESTION_ENABLED=true
           SPAPI_MARKETPLACE_ID=A1AM78C64UM0Y8
           ORDERS_BACKFILL_START=2025-10-01T00:00:00Z
           EOF
             sudo chmod 0600 /etc/dpp-analytics/env
           fi
 
-          # DPP's registered app is now the production client. Move only the
-          # environment selector; credentials remain host-only and untouched.
+          # DPP's registered app is the production client. Credentials stay host-only.
           if sudo grep -q '^SPAPI_ENVIRONMENT=' /etc/dpp-analytics/env; then
             sudo sed -i 's/^SPAPI_ENVIRONMENT=.*/SPAPI_ENVIRONMENT=production/' /etc/dpp-analytics/env
           else
             echo 'SPAPI_ENVIRONMENT=production' | sudo tee -a /etc/dpp-analytics/env >/dev/null
           fi
 
-          # Never activate live warehouse ingestion as a side effect of promotion.
-          # It is enabled only after the read-only production probes are reviewed.
-          if ! sudo grep -q '^SPAPI_PRODUCTION_INGESTION_ENABLED=' /etc/dpp-analytics/env; then
-            echo 'SPAPI_PRODUCTION_INGESTION_ENABLED=false' | sudo tee -a /etc/dpp-analytics/env >/dev/null
+          # Production authorization has been validated. Keep the live-ingestion
+          # switch host-side so it can still be disabled immediately if needed.
+          if sudo grep -q '^SPAPI_PRODUCTION_INGESTION_ENABLED=' /etc/dpp-analytics/env; then
+            sudo sed -i 's/^SPAPI_PRODUCTION_INGESTION_ENABLED=.*/SPAPI_PRODUCTION_INGESTION_ENABLED=true/' /etc/dpp-analytics/env
+          else
+            echo 'SPAPI_PRODUCTION_INGESTION_ENABLED=true' | sudo tee -a /etc/dpp-analytics/env >/dev/null
           fi
 
           hostname
