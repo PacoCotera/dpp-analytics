@@ -12,6 +12,7 @@ from psycopg.rows import dict_row
 
 ROOT = Path(__file__).parent
 STATIC = ROOT / "static"
+LABELS_PATH = ROOT / "product_labels.json"
 _base_html = (STATIC / "index.html").read_text()
 _refine_css = (STATIC / "refine.css").read_text()
 _refine_js = (STATIC / "refine.js").read_text()
@@ -22,6 +23,7 @@ INDEX = (
     .encode()
 )
 MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
+AMAZON_MX_DP = "https://www.amazon.com.mx/dp/"
 
 
 def connect():
@@ -55,6 +57,33 @@ def one(cur, sql, params=()):
 def all_rows(cur, sql, params=()):
     cur.execute(sql, params)
     return list(cur.fetchall())
+
+
+def product_labels() -> dict[str, dict]:
+    try:
+        data = json.loads(LABELS_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {
+        str(sku): value
+        for sku, value in data.items()
+        if not str(sku).startswith("_") and isinstance(value, dict)
+    }
+
+
+def decorate_products(rows: list[dict]) -> list[dict]:
+    labels = product_labels()
+    for row in rows:
+        sku = str(row.get("sku") or "")
+        override = labels.get(sku, {})
+        raw_title = row.get("product") or sku
+        asin = row.get("asin")
+        row["catalog_title"] = raw_title
+        row["product"] = override.get("name") or raw_title
+        row["amazon_url"] = override.get("amazon_url") or (f"{AMAZON_MX_DP}{asin}" if asin else None)
+        row["image_url"] = override.get("image_url") or row.get("image_url")
+        row["label_source"] = "override" if override.get("name") else "catalog"
+    return rows
 
 
 def home_payload():
@@ -95,10 +124,14 @@ def home_payload():
         inventory = all_rows(
             cur,
             """
-            SELECT a.seller_sku sku, COALESCE(s.title,'') product, a.available, a.inbound,
-                   a.units_t28, a.days_cover_with_inbound days_cover, a.action
+            SELECT a.seller_sku sku, s.asin,
+                   COALESCE(ci.title,s.title,'') product, ci.image_url,
+                   a.available, a.inbound, a.units_t28,
+                   a.days_cover_with_inbound days_cover, a.action
             FROM mart.inventory_attention a
             LEFT JOIN core.sku s ON s.sku=a.seller_sku
+            LEFT JOIN core.catalog_item ci
+              ON ci.marketplace_id=a.marketplace_id AND ci.asin=s.asin
             WHERE a.marketplace_id=%s AND a.action IN ('STOCKOUT','PRODUCE','PLAN')
             ORDER BY CASE a.action WHEN 'STOCKOUT' THEN 0 WHEN 'PRODUCE' THEN 1 ELSE 2 END,
                      a.days_cover_with_inbound NULLS FIRST
@@ -109,10 +142,13 @@ def home_payload():
         movers = all_rows(
             cur,
             """
-            SELECT m.seller_sku sku, COALESCE(s.title,'') product, m.sales_t28, m.units_t28,
-                   m.delta28_pct, m.state
+            SELECT m.seller_sku sku, s.asin,
+                   COALESCE(ci.title,s.title,'') product, ci.image_url,
+                   m.sales_t28, m.units_t28, m.delta28_pct, m.state
             FROM mart.catalog_movers_t28 m
             LEFT JOIN core.sku s ON s.sku=m.seller_sku
+            LEFT JOIN core.catalog_item ci
+              ON ci.marketplace_id=m.marketplace_id AND ci.asin=s.asin
             WHERE m.marketplace_id=%s AND m.sales_t28>0
             ORDER BY m.sales_t28 DESC
             LIMIT 8
@@ -135,10 +171,13 @@ def home_payload():
             SELECT job_name, latest_status,
                    extract(epoch from age)::bigint age_seconds
             FROM ops.data_health
-            WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1')
+            WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1','catalog_items_2022_04_01')
             ORDER BY CASE job_name
-              WHEN 'orders_v2026' THEN 1 WHEN 'sales_traffic_2024_04_24' THEN 2
-              WHEN 'finances_v2024' THEN 3 ELSE 4 END
+              WHEN 'orders_v2026' THEN 1
+              WHEN 'sales_traffic_2024_04_24' THEN 2
+              WHEN 'finances_v2024' THEN 3
+              WHEN 'fba_inventory_v1' THEN 4
+              ELSE 5 END
             """,
         )
         local_clock = one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
@@ -149,8 +188,8 @@ def home_payload():
         "today": today,
         "rolling": rolling,
         "inventory_summary": inventory_summary,
-        "inventory": inventory,
-        "movers": movers,
+        "inventory": decorate_products(inventory),
+        "movers": decorate_products(movers),
         "series": series,
         "freshness": freshness,
     })
@@ -162,31 +201,12 @@ def health_payload():
         cur.execute("SELECT 1")
         cur.fetchone()
 
-        today = one(
-            cur,
-            "SELECT count(*)::int AS n FROM mart.today_operating WHERE marketplace_id=%s",
-            (MARKETPLACE,),
-        )
-        rolling = one(
-            cur,
-            "SELECT count(*)::int AS n FROM mart.business_rolling WHERE marketplace_id=%s",
-            (MARKETPLACE,),
-        )
-        sales = one(
-            cur,
-            "SELECT count(*)::int AS n, max(business_date) AS last_date FROM mart.business_daily WHERE marketplace_id=%s",
-            (MARKETPLACE,),
-        )
-        inventory = one(
-            cur,
-            "SELECT count(*)::int AS n FROM mart.inventory_attention WHERE marketplace_id=%s",
-            (MARKETPLACE,),
-        )
-        finance = one(
-            cur,
-            "SELECT count(*)::int AS n, max(posted_date) AS last_posted FROM core.financial_transaction WHERE marketplace_id=%s",
-            (MARKETPLACE,),
-        )
+        today = one(cur, "SELECT count(*)::int AS n FROM mart.today_operating WHERE marketplace_id=%s", (MARKETPLACE,))
+        rolling = one(cur, "SELECT count(*)::int AS n FROM mart.business_rolling WHERE marketplace_id=%s", (MARKETPLACE,))
+        sales = one(cur, "SELECT count(*)::int AS n, max(business_date) AS last_date FROM mart.business_daily WHERE marketplace_id=%s", (MARKETPLACE,))
+        inventory = one(cur, "SELECT count(*)::int AS n FROM mart.inventory_attention WHERE marketplace_id=%s", (MARKETPLACE,))
+        finance = one(cur, "SELECT count(*)::int AS n, max(posted_date) AS last_posted FROM core.financial_transaction WHERE marketplace_id=%s", (MARKETPLACE,))
+        catalog = one(cur, "SELECT count(*)::int AS n, max(updated_at) AS last_updated FROM core.catalog_item WHERE marketplace_id=%s", (MARKETPLACE,))
         freshness = all_rows(
             cur,
             """
@@ -204,16 +224,14 @@ def health_payload():
         "finance_transactions": int(finance.get("n") or 0),
     }
     missing = [name for name, count in dependency_counts.items() if count <= 0]
-    feed_errors = [
-        row.get("job_name")
-        for row in freshness
-        if row.get("latest_status") not in ("success", "running")
-    ]
+    feed_errors = [row.get("job_name") for row in freshness if row.get("latest_status") not in ("success", "running")]
     status = "ok" if not missing and not feed_errors else "degraded"
     return clean({
         "status": status,
         "marketplace": MARKETPLACE,
         "dependencies": dependency_counts,
+        "catalog_items": int(catalog.get("n") or 0),
+        "catalog_last_updated": catalog.get("last_updated"),
         "sales_last_date": sales.get("last_date"),
         "finance_last_posted": finance.get("last_posted"),
         "feed_errors": feed_errors,
