@@ -87,8 +87,11 @@ jobs:
       - name: Initialize local board config
         run: |
           set -euo pipefail
-          # This file is deliberately outside the Git checkout. Create it once,
-          # then preserve local edits forever across pulls/deploys.
+          # An earlier Docker bind can have auto-created this path as a directory.
+          # Normalize it once, then never overwrite the host-side file again.
+          if sudo test -d /etc/dpp-analytics/product_labels.json; then
+            sudo rm -rf /etc/dpp-analytics/product_labels.json
+          fi
           if ! sudo test -f /etc/dpp-analytics/product_labels.json; then
             sudo install -m 0644 board/product_labels.json /etc/dpp-analytics/product_labels.json
           fi
