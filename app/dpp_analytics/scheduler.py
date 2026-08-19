@@ -68,12 +68,13 @@ def main() -> None:
     signal.signal(signal.SIGINT, _stop)
 
     log.info(
-        "DPP analytics worker starting environment=%s marketplace=%s spapi_enabled=%s credentials_present=%s production_ingestion_enabled=%s",
+        "DPP analytics worker starting environment=%s marketplace=%s spapi_enabled=%s credentials_present=%s production_ingestion_enabled=%s catalog_enabled=%s",
         settings.spapi_environment,
         settings.marketplace_id,
         settings.spapi_enabled,
         settings.spapi_credentials_present,
         settings.production_ingestion_enabled,
+        settings.catalog_enabled,
     )
 
     try:
@@ -106,11 +107,17 @@ def main() -> None:
         return
 
     log.info("SP-API production ingestion ENABLED")
+    if not settings.catalog_enabled:
+        log.info("Catalog Items sync disabled until Product Listing role is authorized")
 
     next_orders = 0.0
     next_inventory = _next_due("amazon_spapi", "fba_inventory_v1", settings.inventory_interval_seconds)
     next_finances = _next_due("amazon_spapi", "finances_v2024", settings.finances_interval_seconds)
-    next_catalog = _next_due("amazon_spapi", "catalog_items_2022_04_01", settings.catalog_interval_seconds)
+    next_catalog = (
+        _next_due("amazon_spapi", "catalog_items_2022_04_01", settings.catalog_interval_seconds)
+        if settings.catalog_enabled
+        else float("inf")
+    )
     next_data_kiosk = _next_due(
         "amazon_data_kiosk",
         "sales_traffic_2024_04_24",
