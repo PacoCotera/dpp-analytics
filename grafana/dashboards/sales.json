@@ -1,0 +1,119 @@
+{
+  "uid": "dpp-sales",
+  "title": "DPP | Sales",
+  "tags": ["dpp", "sales"],
+  "timezone": "America/Mexico_City",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "1m",
+  "time": {"from": "now-90d", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 2},
+      "options": {"mode": "markdown", "content": "# Sales  \n[⌂ HOME](/d/dpp-home) · **SALES** · CATALOG · ADS · [INVENTORY](/d/dpp-inventory) · FINANCE · TRAJECTORY · [DATA HEALTH](/d/dpp-data-health)  \n*Today is compared at the same clock time; current-day Orders data is provisional.*"}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Today",
+      "gridPos": {"x": 0, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(sum(grand_total_amount),0) AS value FROM core.amazon_order o JOIN core.marketplace m USING(marketplace_id) WHERE o.marketplace_id='A1AM78C64UM0Y8' AND (created_time AT TIME ZONE m.timezone)::date=CURRENT_DATE AND fulfillment_status IS DISTINCT FROM 'CANCELLED';"}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Yesterday @ Same Time",
+      "gridPos": {"x": 4, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(sum(grand_total_amount),0) AS value FROM core.amazon_order o JOIN core.marketplace m USING(marketplace_id) WHERE o.marketplace_id='A1AM78C64UM0Y8' AND (created_time AT TIME ZONE m.timezone)::date=CURRENT_DATE-1 AND (created_time AT TIME ZONE m.timezone)::time <= LOCALTIME AND fulfillment_status IS DISTINCT FROM 'CANCELLED';"}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Same Weekday @ Same Time",
+      "gridPos": {"x": 8, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(sum(grand_total_amount),0) AS value FROM core.amazon_order o JOIN core.marketplace m USING(marketplace_id) WHERE o.marketplace_id='A1AM78C64UM0Y8' AND (created_time AT TIME ZONE m.timezone)::date=CURRENT_DATE-7 AND (created_time AT TIME ZONE m.timezone)::time <= LOCALTIME AND fulfillment_status IS DISTINCT FROM 'CANCELLED';"}]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "T7 Sales",
+      "gridPos": {"x": 12, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT sales_t7 AS value FROM mart.business_rolling WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date=CURRENT_DATE;"}]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "T28 Sales",
+      "gridPos": {"x": 16, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT sales_t28 AS value FROM mart.business_rolling WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date=CURRENT_DATE;"}]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "T28 Orders",
+      "gridPos": {"x": 20, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT orders_t28 AS value FROM mart.business_rolling WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date=CURRENT_DATE;"}]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Today Pace | Today vs Yesterday vs Same Weekday",
+      "gridPos": {"x": 0, "y": 6, "w": 14, "h": 9},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "WITH h AS (SELECT generate_series(0,extract(hour from LOCALTIME)::int) hr), d(label,day) AS (VALUES ('Today',CURRENT_DATE),('Yesterday',CURRENT_DATE-1),('Same weekday',CURRENT_DATE-7)), hourly AS (SELECT d.label, extract(hour from (o.created_time AT TIME ZONE m.timezone))::int hr, sum(o.grand_total_amount) sales FROM d JOIN core.amazon_order o ON (o.created_time AT TIME ZONE 'America/Mexico_City')::date=d.day JOIN core.marketplace m ON m.marketplace_id=o.marketplace_id WHERE o.marketplace_id='A1AM78C64UM0Y8' AND o.fulfillment_status IS DISTINCT FROM 'CANCELLED' GROUP BY 1,2), grid AS (SELECT d.label,h.hr,COALESCE(hourly.sales,0) sales FROM d CROSS JOIN h LEFT JOIN hourly USING(label,hr)) SELECT CURRENT_DATE::timestamp + make_interval(hours=>hr) AS time, sum(sales) OVER (PARTITION BY label ORDER BY hr) AS value, label AS metric FROM grid ORDER BY time,metric;"}]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Daily Sales | 90 Days",
+      "gridPos": {"x": 14, "y": 6, "w": 10, "h": 9},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": false}, "tooltip": {"mode": "single", "sort": "none"}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT business_date::timestamp AS time,sales AS value FROM mart.business_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date>=CURRENT_DATE-89 ORDER BY business_date;"}]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "SKU Performance | T28",
+      "gridPos": {"x": 0, "y": 15, "w": 13, "h": 9},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT s.seller_sku AS \"SKU\", COALESCE(k.title,'') AS \"Product\", round(sum(s.sales),0) AS \"Sales\", sum(s.units) AS \"Units\", count(DISTINCT s.business_date) FILTER (WHERE s.sales>0) AS \"Selling Days\", round(sum(s.sales)/NULLIF(sum(s.units),0),0) AS \"Avg / Unit\" FROM mart.sku_daily s LEFT JOIN core.sku k ON k.sku=s.seller_sku WHERE s.marketplace_id='A1AM78C64UM0Y8' AND s.business_date>=CURRENT_DATE-27 GROUP BY s.seller_sku,k.title ORDER BY sum(s.sales) DESC NULLS LAST;"}]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Recent Orders",
+      "gridPos": {"x": 13, "y": 15, "w": 11, "h": 9},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT to_char(created_time AT TIME ZONE 'America/Mexico_City','MM-DD HH24:MI') AS \"Time\", amazon_order_id AS \"Order\", fulfillment_status AS \"Status\", round(grand_total_amount,0) AS \"MXN\", COALESCE(quantity_fulfilled,0)+COALESCE(quantity_unfulfilled,0) AS \"Units\" FROM core.amazon_order WHERE marketplace_id='A1AM78C64UM0Y8' ORDER BY created_time DESC LIMIT 30;"}]
+    }
+  ]
+}
