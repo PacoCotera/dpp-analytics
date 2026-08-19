@@ -60,10 +60,17 @@ jobs:
           GRAFANA_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
           TZ=America/Mexico_City
           SPAPI_ENABLED=false
+          SPAPI_ENVIRONMENT=sandbox
           SPAPI_MARKETPLACE_ID=A1AM78C64UM0Y8
           ORDERS_BACKFILL_START=2025-10-01T00:00:00Z
           EOF
             sudo chmod 0600 /etc/dpp-analytics/env
+          fi
+
+          # Safe default: an existing installation without an explicit environment
+          # remains in sandbox. Production ingestion requires an intentional switch.
+          if ! sudo grep -q '^SPAPI_ENVIRONMENT=' /etc/dpp-analytics/env; then
+            echo 'SPAPI_ENVIRONMENT=sandbox' | sudo tee -a /etc/dpp-analytics/env >/dev/null
           fi
 
           hostname
@@ -122,6 +129,18 @@ jobs:
           sudo docker logs --tail 100 dpp-worker
           exit 1
 
+      - name: Verify SP-API sandbox credentials
+        run: |
+          set -euo pipefail
+          SPAPI_ENABLED="$(sudo grep -E '^SPAPI_ENABLED=' /etc/dpp-analytics/env | tail -1 | cut -d= -f2-)"
+          SPAPI_ENVIRONMENT="$(sudo grep -E '^SPAPI_ENVIRONMENT=' /etc/dpp-analytics/env | tail -1 | cut -d= -f2-)"
+          if [[ "${SPAPI_ENABLED,,}" =~ ^(1|true|yes|on)$ && "${SPAPI_ENVIRONMENT,,}" == "sandbox" ]]; then
+            sudo docker compose --env-file /etc/dpp-analytics/env exec -T worker \
+              python -m dpp_analytics.sandbox_probe | tee /tmp/dpp-sandbox-probe.json
+          else
+            echo "Sandbox probe skipped: enabled=${SPAPI_ENABLED:-unknown} environment=${SPAPI_ENVIRONMENT:-unknown}"
+          fi
+
       - name: Verify Grafana
         run: |
           set -euo pipefail
@@ -143,10 +162,11 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           set +e
-          POSTGRES_DB="$(grep -E '^POSTGRES_DB=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
-          POSTGRES_USER="$(grep -E '^POSTGRES_USER=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
-          SPAPI_ENABLED="$(grep -E '^SPAPI_ENABLED=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
-          SPAPI_MARKETPLACE_ID="$(grep -E '^SPAPI_MARKETPLACE_ID=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
+          POSTGRES_DB="$(sudo grep -E '^POSTGRES_DB=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
+          POSTGRES_USER="$(sudo grep -E '^POSTGRES_USER=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
+          SPAPI_ENABLED="$(sudo grep -E '^SPAPI_ENABLED=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
+          SPAPI_ENVIRONMENT="$(sudo grep -E '^SPAPI_ENVIRONMENT=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
+          SPAPI_MARKETPLACE_ID="$(sudo grep -E '^SPAPI_MARKETPLACE_ID=' /etc/dpp-analytics/env 2>/dev/null | tail -1 | cut -d= -f2-)"
           {
             echo '# DPP Analytics deployment heartbeat'
             echo
@@ -157,7 +177,17 @@ jobs:
             echo "**Host:** \`$(hostname)\`"
             echo "**LAN addresses:** \`$(hostname -I 2>/dev/null | xargs)\`"
             echo "**SP-API enabled:** \`${SPAPI_ENABLED:-unknown}\`"
+            echo "**SP-API environment:** \`${SPAPI_ENVIRONMENT:-unknown}\`"
             echo "**Marketplace:** \`${SPAPI_MARKETPLACE_ID:-unknown}\`"
+            echo
+            echo '## SP-API sandbox probe'
+            echo '```text'
+            if [[ -s /tmp/dpp-sandbox-probe.json ]]; then
+              cat /tmp/dpp-sandbox-probe.json
+            else
+              echo 'No successful deployment probe recorded.'
+            fi
+            echo '```'
             echo
             echo '## Host'
             echo '```text'
@@ -191,7 +221,7 @@ jobs:
             echo '## Worker'
             echo '```text'
             sudo docker inspect --format='health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} status={{.State.Status}}' dpp-worker 2>&1 || true
-            sudo docker logs --tail 20 dpp-worker 2>&1 || true
+            sudo docker logs --tail 30 dpp-worker 2>&1 || true
             echo '```'
             echo
             echo '## PostgreSQL'
