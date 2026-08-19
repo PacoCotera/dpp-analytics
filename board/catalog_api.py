@@ -20,8 +20,8 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
               count(*)::int AS listings,
               count(*) FILTER (WHERE lower(COALESCE(sc.status,'')) <> 'inactive')::int AS active,
               count(*) FILTER (WHERE lower(COALESCE(sc.status,'')) = 'inactive')::int AS inactive,
-              count(*) FILTER (WHERE upper(COALESCE(sc.fulfillment_channel,'')) LIKE '%AMAZON%')::int AS fba,
-              count(*) FILTER (WHERE upper(COALESCE(sc.fulfillment_channel,'')) NOT LIKE '%AMAZON%')::int AS merchant,
+              count(*) FILTER (WHERE position('AMAZON' in upper(COALESCE(sc.fulfillment_channel,''))) > 0)::int AS fba,
+              count(*) FILTER (WHERE position('AMAZON' in upper(COALESCE(sc.fulfillment_channel,''))) = 0)::int AS merchant,
               count(*) FILTER (WHERE sc.image_url IS NOT NULL)::int AS with_image,
               count(*) FILTER (WHERE ci.asin IS NOT NULL)::int AS catalog_enriched,
               max(sc.fetched_at) AS fetched_at
