@@ -1,0 +1,71 @@
+name: Deploy DPP Analytics
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: dpp-analytics-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, x64, dpp-analytics]
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify host
+        run: |
+          set -euo pipefail
+          hostname
+          docker version
+          docker compose version
+          test -r /etc/dpp-analytics/env
+
+      - name: Validate compose
+        run: |
+          set -euo pipefail
+          docker compose --env-file /etc/dpp-analytics/env config --quiet
+
+      - name: Pull images
+        run: |
+          set -euo pipefail
+          docker compose --env-file /etc/dpp-analytics/env pull
+
+      - name: Deploy
+        run: |
+          set -euo pipefail
+          docker compose --env-file /etc/dpp-analytics/env up -d --remove-orphans
+
+      - name: Wait for PostgreSQL
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if docker inspect --format='{{json .State.Health.Status}}' dpp-postgres 2>/dev/null | grep -q healthy; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs --tail 100 dpp-postgres
+          exit 1
+
+      - name: Verify Grafana
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health >/tmp/grafana-health.json; then
+              cat /tmp/grafana-health.json
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs --tail 100 dpp-grafana
+          exit 1
+
+      - name: Deployment state
+        if: always()
+        run: docker compose --env-file /etc/dpp-analytics/env ps
