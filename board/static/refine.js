@@ -22,12 +22,10 @@
     if(title) title.textContent='Business pulse';
     if(note) note.textContent='Rules-based';
 
-    // Sales is now a first-class custom operating page, not a Grafana drill-down.
-    var sales=document.querySelector('.nav a[data-grafana="/d/dpp-sales"]');
-    if(sales){
-      sales.removeAttribute('data-grafana');
-      sales.href='/sales';
-    }
+    [['/d/dpp-sales','/sales'],['/d/dpp-inventory','/inventory']].forEach(function(pair){
+      var a=document.querySelector('.nav a[data-grafana="'+pair[0]+'"]');
+      if(a){a.removeAttribute('data-grafana');a.href=pair[1]}
+    });
 
     document.querySelectorAll('.nav a:not([href]):not([data-grafana])').forEach(function(a){
       a.classList.add('disabled');
