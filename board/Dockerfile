@@ -4,6 +4,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY server.py .
 COPY sales_api.py .
+COPY today_api.py .
 COPY inventory_api.py .
 COPY catalog_api.py .
 COPY trajectory_api.py .
