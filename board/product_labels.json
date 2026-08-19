@@ -1,0 +1,16 @@
+{
+  "_meta": {
+    "description": "Human-friendly labels for the DPP operating board. Edit only the entries you want to override; missing SKUs fall back to the Amazon catalog title.",
+    "fields": {
+      "name": "Short display name used on the board",
+      "image_url": "Optional manual image override; normally populated automatically from Amazon Catalog Items",
+      "amazon_url": "Optional manual product-page override; otherwise built from the SKU's ASIN"
+    }
+  },
+  "PNC-001": {"name": "Naturaleza · 3-pack pocket"},
+  "PNC-001B": {"name": "Naturaleza · 3-pack pocket"},
+  "PNC-004": {"name": "Pequeños Momentos · 3-pack pocket"},
+  "PNC-004B": {"name": "Pequeños Momentos · 3-pack pocket"},
+  "PNC-005": {"name": "Sobremesa · 3-pack pocket"},
+  "BLC-001": {"name": "Kit magnético · Súper + Pendientes"}
+}
