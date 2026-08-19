@@ -6,6 +6,7 @@ import time
 from collections.abc import Callable
 
 from . import db
+from .catalog import ingest_catalog
 from .data_kiosk import ingest_sales_traffic
 from .finances import ingest_finances
 from .inventory import ingest_inventory
@@ -75,9 +76,6 @@ def main() -> None:
         settings.production_ingestion_enabled,
     )
 
-    # If the previous container was terminated mid-request, its context manager
-    # never got a chance to close the ops row. At this point no job from this
-    # process exists yet, so every lingering 'running' row is safely historical.
     try:
         interrupted = db.mark_interrupted_runs()
         if interrupted:
@@ -109,12 +107,10 @@ def main() -> None:
 
     log.info("SP-API production ingestion ENABLED")
 
-    # Orders remain eager on startup because they are our near-real-time feed.
-    # The slower collectors respect their persisted last-success time so a deploy
-    # does not create duplicate work or burst Amazon's rate limits.
     next_orders = 0.0
     next_inventory = _next_due("amazon_spapi", "fba_inventory_v1", settings.inventory_interval_seconds)
     next_finances = _next_due("amazon_spapi", "finances_v2024", settings.finances_interval_seconds)
+    next_catalog = _next_due("amazon_spapi", "catalog_items_2022_04_01", settings.catalog_interval_seconds)
     next_data_kiosk = _next_due(
         "amazon_data_kiosk",
         "sales_traffic_2024_04_24",
@@ -135,6 +131,10 @@ def main() -> None:
         if now >= next_finances:
             _run("finances", ingest_finances)
             next_finances = time.monotonic() + settings.finances_interval_seconds
+
+        if now >= next_catalog:
+            _run("catalog", ingest_catalog)
+            next_catalog = time.monotonic() + settings.catalog_interval_seconds
 
         if now >= next_data_kiosk:
             _run("data_kiosk", ingest_sales_traffic)
