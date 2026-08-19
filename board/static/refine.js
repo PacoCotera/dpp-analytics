@@ -22,7 +22,13 @@
     if(title) title.textContent='Business pulse';
     if(note) note.textContent='Rules-based';
 
-    [['/d/dpp-sales','/sales'],['/d/dpp-inventory','/inventory']].forEach(function(pair){
+    [
+      ['/d/dpp-sales','/sales'],
+      ['/d/dpp-catalog','/catalog'],
+      ['/d/dpp-inventory','/inventory'],
+      ['/d/dpp-trajectory','/trajectory'],
+      ['/d/dpp-data-health','/data-health']
+    ].forEach(function(pair){
       var a=document.querySelector('.nav a[data-grafana="'+pair[0]+'"]');
       if(a){a.removeAttribute('data-grafana');a.href=pair[1]}
     });
