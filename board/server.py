@@ -6,13 +6,16 @@ from datetime import date, datetime
 from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import psycopg
 from psycopg.rows import dict_row
 
 from catalog_api import catalog_payload as build_catalog_payload
+from finance_api import finance_payload as build_finance_payload
 from health_api import health_board_payload as build_health_board_payload
 from inventory_api import inventory_payload as build_inventory_payload
+from product_api import product_payload as build_product_payload
 from sales_api import sales_payload as build_sales_payload
 from today_api import today_payload as build_today_payload
 from trajectory_api import trajectory_payload as build_trajectory_payload
@@ -25,6 +28,8 @@ TODAY_INDEX = (STATIC / "today.html").read_bytes()
 SALES_INDEX = (STATIC / "sales.html").read_bytes()
 CATALOG_INDEX = (STATIC / "catalog.html").read_bytes()
 INVENTORY_INDEX = (STATIC / "inventory.html").read_bytes()
+FINANCE_INDEX = (STATIC / "finance.html").read_bytes()
+PRODUCT_INDEX = (STATIC / "product.html").read_bytes()
 TRAJECTORY_INDEX = (STATIC / "trajectory.html").read_bytes()
 DATA_HEALTH_INDEX = (STATIC / "data_health.html").read_bytes()
 THEME_CSS = (STATIC / "theme.css").read_bytes()
@@ -130,7 +135,7 @@ def home_payload():
         inventory = all_rows(
             cur,
             """
-            SELECT a.seller_sku sku, s.asin,
+            SELECT a.seller_sku sku, COALESCE(a.asin,s.asin) asin,
                    COALESCE(sl.item_name,ci.title,s.title,'') product,
                    COALESCE(sl.image_url,ci.image_url) image_url,
                    a.available, a.inbound, a.units_t28,
@@ -140,7 +145,7 @@ def home_payload():
             LEFT JOIN core.seller_listing sl
               ON sl.marketplace_id=a.marketplace_id AND sl.seller_sku=a.seller_sku
             LEFT JOIN core.catalog_item ci
-              ON ci.marketplace_id=a.marketplace_id AND ci.asin=s.asin
+              ON ci.marketplace_id=a.marketplace_id AND ci.asin=COALESCE(a.asin,s.asin)
             WHERE a.marketplace_id=%s AND a.action IN ('STOCKOUT','PRODUCE','PLAN')
             ORDER BY CASE a.action WHEN 'STOCKOUT' THEN 0 WHEN 'PRODUCE' THEN 1 ELSE 2 END,
                      a.days_cover_with_inbound NULLS FIRST
@@ -151,7 +156,7 @@ def home_payload():
         movers = all_rows(
             cur,
             """
-            SELECT m.seller_sku sku, s.asin,
+            SELECT m.seller_sku sku, COALESCE(m.asin,s.asin) asin,
                    COALESCE(sl.item_name,ci.title,s.title,'') product,
                    COALESCE(sl.image_url,ci.image_url) image_url,
                    m.sales_t28, m.units_t28, m.delta28_pct, m.state
@@ -160,7 +165,7 @@ def home_payload():
             LEFT JOIN core.seller_listing sl
               ON sl.marketplace_id=m.marketplace_id AND sl.seller_sku=m.seller_sku
             LEFT JOIN core.catalog_item ci
-              ON ci.marketplace_id=m.marketplace_id AND ci.asin=s.asin
+              ON ci.marketplace_id=m.marketplace_id AND ci.asin=COALESCE(m.asin,s.asin)
             WHERE m.marketplace_id=%s AND m.sales_t28>0
             ORDER BY m.sales_t28 DESC
             LIMIT 8
@@ -258,7 +263,7 @@ def health_payload():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "DPPBoard/5"
+    server_version = "DPPBoard/6"
 
     def log_message(self, fmt, *args):
         print(f"{self.address_string()} {fmt % args}")
@@ -281,10 +286,14 @@ class Handler(BaseHTTPRequestHandler):
             self.send_bytes(500, "application/json", body)
 
     def do_GET(self):
-        if self.path == "/assets/theme.css":
+        parsed = urlsplit(self.path)
+        path = parsed.path
+        query = parse_qs(parsed.query)
+
+        if path == "/assets/theme.css":
             self.send_bytes(200, "text/css; charset=utf-8", THEME_CSS, cache="public, max-age=60")
             return
-        if self.path == "/health":
+        if path == "/health":
             try:
                 payload = health_payload()
                 status = 200 if payload.get("status") == "ok" else 503
@@ -294,47 +303,48 @@ class Handler(BaseHTTPRequestHandler):
                 body = json.dumps({"status": "error", "error": str(exc)[:160]}).encode()
                 self.send_bytes(503, "application/json", body)
             return
-        if self.path.startswith("/api/today"):
+        if path == "/api/today":
             self.json_endpoint(lambda: build_today_payload(connect, decorate_products, MARKETPLACE))
             return
-        if self.path.startswith("/api/home"):
+        if path == "/api/home":
             self.json_endpoint(home_payload)
             return
-        if self.path.startswith("/api/sales"):
+        if path == "/api/sales":
             self.json_endpoint(lambda: build_sales_payload(connect, decorate_products, MARKETPLACE))
             return
-        if self.path.startswith("/api/catalog"):
+        if path == "/api/catalog":
             self.json_endpoint(lambda: build_catalog_payload(connect, decorate_products, MARKETPLACE))
             return
-        if self.path.startswith("/api/inventory"):
+        if path == "/api/inventory":
             self.json_endpoint(lambda: build_inventory_payload(connect, decorate_products, MARKETPLACE))
             return
-        if self.path.startswith("/api/trajectory"):
+        if path == "/api/finance":
+            self.json_endpoint(lambda: build_finance_payload(connect, MARKETPLACE))
+            return
+        if path == "/api/product":
+            sku = (query.get("sku") or [""])[0]
+            self.json_endpoint(lambda: build_product_payload(connect, decorate_products, MARKETPLACE, sku))
+            return
+        if path == "/api/trajectory":
             self.json_endpoint(lambda: build_trajectory_payload(connect, MARKETPLACE))
             return
-        if self.path.startswith("/api/data-health"):
+        if path == "/api/data-health":
             self.json_endpoint(lambda: build_health_board_payload(connect, MARKETPLACE))
             return
-        if self.path == "/today" or self.path.startswith("/today?"):
-            self.send_bytes(200, "text/html; charset=utf-8", TODAY_INDEX, cache="no-cache")
-            return
-        if self.path == "/sales" or self.path.startswith("/sales?"):
-            self.send_bytes(200, "text/html; charset=utf-8", SALES_INDEX, cache="no-cache")
-            return
-        if self.path == "/catalog" or self.path.startswith("/catalog?"):
-            self.send_bytes(200, "text/html; charset=utf-8", CATALOG_INDEX, cache="no-cache")
-            return
-        if self.path == "/inventory" or self.path.startswith("/inventory?"):
-            self.send_bytes(200, "text/html; charset=utf-8", INVENTORY_INDEX, cache="no-cache")
-            return
-        if self.path == "/trajectory" or self.path.startswith("/trajectory?"):
-            self.send_bytes(200, "text/html; charset=utf-8", TRAJECTORY_INDEX, cache="no-cache")
-            return
-        if self.path == "/data-health" or self.path.startswith("/data-health?"):
-            self.send_bytes(200, "text/html; charset=utf-8", DATA_HEALTH_INDEX, cache="no-cache")
-            return
-        if self.path == "/" or self.path.startswith("/?"):
-            self.send_bytes(200, "text/html; charset=utf-8", HOME_INDEX, cache="no-cache")
+
+        pages = {
+            "/": HOME_INDEX,
+            "/today": TODAY_INDEX,
+            "/sales": SALES_INDEX,
+            "/catalog": CATALOG_INDEX,
+            "/inventory": INVENTORY_INDEX,
+            "/finance": FINANCE_INDEX,
+            "/product": PRODUCT_INDEX,
+            "/trajectory": TRAJECTORY_INDEX,
+            "/data-health": DATA_HEALTH_INDEX,
+        }
+        if path in pages:
+            self.send_bytes(200, "text/html; charset=utf-8", pages[path], cache="no-cache")
             return
         self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
 
