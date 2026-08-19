@@ -12,9 +12,9 @@ def _all(cur, sql: str, params=()):
 
 
 def sales_payload(connect, decorate_products, marketplace: str) -> dict:
-    """Build the decision-oriented Sales page payload.
+    """Sales-manager view.
 
-    Historical headline/period metrics use the latest reconciled Data Kiosk day.
+    Historical metrics are reconciled through the latest Data Kiosk day.
     Today remains the near-real-time Orders API view. No customer PII is selected.
     """
     with connect() as conn, conn.cursor() as cur:
@@ -30,7 +30,7 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
 
         if cutoff is None:
             return {
-                "today": {}, "headline": {}, "periods": [], "series": [],
+                "today": {}, "headline": {}, "months": [], "series": [],
                 "skus": [], "orders": [], "local_time": None,
             }
 
@@ -39,72 +39,81 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
         headline = _one(
             cur,
             """
-            WITH c AS (SELECT %s::date AS d),
-            now28 AS (
+            WITH c AS (
+              SELECT %s::date AS d,
+                     date_trunc('month', %s::date)::date AS month_start,
+                     date_trunc('year', %s::date)::date AS year_start,
+                     extract(day from %s::date)::int AS dom,
+                     extract(day from (date_trunc('month', %s::date) + interval '1 month - 1 day'))::int AS dim
+            ), x AS (
               SELECT
-                COALESCE(sum(sales),0)::numeric(14,2) sales_t28,
-                COALESCE(sum(orders),0)::bigint orders_t28,
-                COALESCE(sum(units),0)::bigint units_t28,
-                COALESCE(sum(sessions),0)::bigint sessions_t28
+                COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.month_start AND c.d),0)::numeric(14,2) AS sales_mtd,
+                COALESCE(sum(orders) FILTER (WHERE business_date BETWEEN c.month_start AND c.d),0)::bigint AS orders_mtd,
+                COALESCE(sum(units) FILTER (WHERE business_date BETWEEN c.month_start AND c.d),0)::bigint AS units_mtd,
+                COALESCE(sum(sales) FILTER (
+                  WHERE business_date BETWEEN (c.month_start - interval '1 month')::date
+                  AND ((c.month_start - interval '1 month')::date + (c.dom-1))
+                ),0)::numeric(14,2) AS sales_prev_month_same_days,
+                COALESCE(sum(sales) FILTER (
+                  WHERE business_date BETWEEN (c.month_start - interval '1 month')::date AND (c.month_start-1)
+                ),0)::numeric(14,2) AS sales_prev_month_full,
+                COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.year_start AND c.d),0)::numeric(14,2) AS sales_ytd,
+                COALESCE(sum(orders) FILTER (WHERE business_date BETWEEN c.year_start AND c.d),0)::bigint AS orders_ytd,
+                COALESCE(sum(units) FILTER (WHERE business_date BETWEEN c.year_start AND c.d),0)::bigint AS units_ytd,
+                COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-6 AND c.d),0)::numeric(14,2) AS sales_t7,
+                COALESCE(sum(orders) FILTER (WHERE business_date BETWEEN c.d-6 AND c.d),0)::bigint AS orders_t7,
+                COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-13 AND c.d-7),0)::numeric(14,2) AS sales_prior_t7,
+                COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::numeric(14,2) AS sales_t28,
+                COALESCE(sum(orders) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint AS orders_t28,
+                COALESCE(sum(units) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint AS units_t28,
+                COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-55 AND c.d-28),0)::numeric(14,2) AS sales_prior_t28,
+                COALESCE(sum(sessions) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint AS sessions_t28
               FROM mart.business_daily, c
-              WHERE marketplace_id=%s AND business_date BETWEEN c.d-27 AND c.d
-            ),
-            prev28 AS (
-              SELECT COALESCE(sum(sales),0)::numeric(14,2) sales_prior_t28
-              FROM mart.business_daily, c
-              WHERE marketplace_id=%s AND business_date BETWEEN c.d-55 AND c.d-28
-            ),
-            now7 AS (
-              SELECT COALESCE(sum(sales),0)::numeric(14,2) sales_t7
-              FROM mart.business_daily, c
-              WHERE marketplace_id=%s AND business_date BETWEEN c.d-6 AND c.d
-            ),
-            prev7 AS (
-              SELECT COALESCE(sum(sales),0)::numeric(14,2) sales_prior_t7
-              FROM mart.business_daily, c
-              WHERE marketplace_id=%s AND business_date BETWEEN c.d-13 AND c.d-7
+              WHERE marketplace_id=%s
+                AND business_date BETWEEN least(c.year_start,(c.month_start - interval '1 month')::date,c.d-55) AND c.d
             )
             SELECT
               c.d AS business_date,
-              n.sales_t28, n.orders_t28, n.units_t28, n.sessions_t28,
-              n7.sales_t7,
-              round(n7.sales_t7/7.0,2) AS daily_avg_t7,
-              CASE WHEN p7.sales_prior_t7>0
-                   THEN round(100.0*(n7.sales_t7-p7.sales_prior_t7)/p7.sales_prior_t7,1) END delta7_pct,
-              CASE WHEN p.sales_prior_t28>0
-                   THEN round(100.0*(n.sales_t28-p.sales_prior_t28)/p.sales_prior_t28,1) END delta28_pct,
-              CASE WHEN n.sessions_t28>0
-                   THEN round(100.0*n.units_t28/n.sessions_t28,1) END cvr28_pct
-            FROM c CROSS JOIN now28 n CROSS JOIN prev28 p CROSS JOIN now7 n7 CROSS JOIN prev7 p7
+              c.dom AS month_days_elapsed,
+              c.dim AS month_days_total,
+              x.sales_mtd, x.orders_mtd, x.units_mtd,
+              x.sales_prev_month_same_days, x.sales_prev_month_full,
+              round(x.sales_mtd / greatest(c.dom,1),2) AS daily_avg_mtd,
+              round((x.sales_mtd / greatest(c.dom,1)) * c.dim,2) AS projected_month_sales,
+              CASE WHEN x.sales_prev_month_same_days>0
+                   THEN round(100.0*(x.sales_mtd-x.sales_prev_month_same_days)/x.sales_prev_month_same_days,1) END AS delta_mtd_pct,
+              x.sales_ytd, x.orders_ytd, x.units_ytd,
+              x.sales_t7, x.orders_t7,
+              round(x.sales_t7/7.0,2) AS daily_avg_t7,
+              CASE WHEN x.sales_prior_t7>0
+                   THEN round(100.0*(x.sales_t7-x.sales_prior_t7)/x.sales_prior_t7,1) END AS delta7_pct,
+              x.sales_t28, x.orders_t28, x.units_t28, x.sessions_t28,
+              round(x.sales_t28/28.0,2) AS daily_avg_t28,
+              CASE WHEN x.sales_prior_t28>0
+                   THEN round(100.0*(x.sales_t28-x.sales_prior_t28)/x.sales_prior_t28,1) END AS delta28_pct,
+              CASE WHEN x.sessions_t28>0
+                   THEN round(100.0*x.units_t28/x.sessions_t28,1) END AS cvr28_pct
+            FROM c CROSS JOIN x
             """,
-            (cutoff, marketplace, marketplace, marketplace, marketplace),
+            (cutoff, cutoff, cutoff, cutoff, cutoff, marketplace),
         )
 
-        periods = []
-        for label, days in (("7 days", 7), ("28 days", 28), ("56 days", 56), ("90 days", 90)):
-            row = _one(
-                cur,
-                """
-                WITH c AS (SELECT %s::date AS d),
-                x AS (
-                  SELECT
-                    COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-(%s-1) AND c.d),0)::numeric(14,2) sales,
-                    COALESCE(sum(orders) FILTER (WHERE business_date BETWEEN c.d-(%s-1) AND c.d),0)::bigint orders,
-                    COALESCE(sum(units) FILTER (WHERE business_date BETWEEN c.d-(%s-1) AND c.d),0)::bigint units,
-                    COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-(%s*2-1) AND c.d-%s),0)::numeric(14,2) prior_sales
-                  FROM mart.business_daily, c
-                  WHERE marketplace_id=%s
-                    AND business_date BETWEEN c.d-(%s*2-1) AND c.d
-                )
-                SELECT sales, orders, units,
-                       round(sales/%s::numeric,2) daily_avg,
-                       CASE WHEN prior_sales>0 THEN round(100.0*(sales-prior_sales)/prior_sales,1) END delta_pct
-                FROM x
-                """,
-                (cutoff, days, days, days, days, days, marketplace, days, days),
-            )
-            row["label"] = label
-            periods.append(row)
+        months = _all(
+            cur,
+            """
+            SELECT date_trunc('month',business_date)::date AS month,
+                   COALESCE(sum(sales),0)::numeric(14,2) AS sales,
+                   COALESCE(sum(orders),0)::bigint AS orders,
+                   COALESCE(sum(units),0)::bigint AS units,
+                   (date_trunc('month',business_date)=date_trunc('month',%s::date)) AS partial
+            FROM mart.business_daily
+            WHERE marketplace_id=%s
+              AND business_date BETWEEN (date_trunc('month',%s::date)-interval '11 months')::date AND %s::date
+            GROUP BY 1,5
+            ORDER BY 1
+            """,
+            (cutoff, marketplace, cutoff, cutoff),
+        )
 
         series = _all(
             cur,
@@ -134,7 +143,7 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
               ON ci.marketplace_id=m.marketplace_id AND ci.asin=COALESCE(m.asin,s.asin)
             WHERE m.marketplace_id=%s AND m.sales_t28>0
             ORDER BY m.sales_t28 DESC
-            LIMIT 12
+            LIMIT 20
             """,
             (marketplace,),
         )
@@ -162,7 +171,7 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
             LEFT JOIN items i USING (amazon_order_id)
             WHERE o.marketplace_id=%s
             ORDER BY o.created_time DESC
-            LIMIT 20
+            LIMIT 30
             """,
             (marketplace,),
         )
@@ -175,7 +184,7 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
     return {
         "today": today,
         "headline": headline,
-        "periods": periods,
+        "months": months,
         "series": series,
         "skus": decorate_products(skus),
         "orders": orders,
