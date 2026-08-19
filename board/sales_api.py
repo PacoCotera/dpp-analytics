@@ -152,6 +152,7 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
             )
             SELECT
               to_char(o.created_time AT TIME ZONE mp.timezone,'MM-DD HH24:MI') AS local_time,
+              extract(epoch FROM (CURRENT_TIMESTAMP-o.created_time))::bigint AS age_seconds,
               right(o.amazon_order_id,9) AS order_short,
               COALESCE(i.items,'') AS items,
               COALESCE(o.grand_total_amount,i.item_sales,0)::numeric(14,2) AS sales,
@@ -161,7 +162,7 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
             LEFT JOIN items i USING (amazon_order_id)
             WHERE o.marketplace_id=%s
             ORDER BY o.created_time DESC
-            LIMIT 14
+            LIMIT 20
             """,
             (marketplace,),
         )
