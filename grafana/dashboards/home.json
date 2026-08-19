@@ -1,0 +1,133 @@
+{
+  "uid": "dpp-home",
+  "title": "DPP | Home",
+  "tags": ["dpp", "home", "wall"],
+  "timezone": "America/Mexico_City",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "1m",
+  "time": {"from": "now-90d", "to": "now"},
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 2},
+      "options": {
+        "mode": "markdown",
+        "content": "# Dirty Pawz Press  \n[⌂ HOME](/d/dpp-home) · [SALES](/d/dpp-sales) · CATALOG · ADS · [INVENTORY](/d/dpp-inventory) · FINANCE · TRAJECTORY · [DATA HEALTH](/d/dpp-data-health)  \n*Operational sales are live from Orders and remain provisional until daily Sales & Traffic and Finances reconciliation.*"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Sales Today",
+      "gridPos": {"x": 0, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(sales,0) AS value FROM mart.business_daily WHERE business_date=CURRENT_DATE AND marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Orders Today",
+      "gridPos": {"x": 4, "y": 2, "w": 3, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(orders,0) AS value FROM mart.business_daily WHERE business_date=CURRENT_DATE AND marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Units Today",
+      "gridPos": {"x": 7, "y": 2, "w": 3, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(units,0) AS value FROM mart.business_daily WHERE business_date=CURRENT_DATE AND marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Sales T28",
+      "gridPos": {"x": 10, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(sales_t28,0) AS value FROM mart.business_rolling WHERE business_date=CURRENT_DATE AND marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "T28 vs Prior T28",
+      "gridPos": {"x": 14, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH x AS (SELECT business_date,sales_t28 FROM mart.business_rolling WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date IN (CURRENT_DATE,CURRENT_DATE-28)) SELECT CASE WHEN MAX(sales_t28) FILTER (WHERE business_date=CURRENT_DATE-28) > 0 THEN 100.0*(MAX(sales_t28) FILTER (WHERE business_date=CURRENT_DATE)-MAX(sales_t28) FILTER (WHERE business_date=CURRENT_DATE-28))/(MAX(sales_t28) FILTER (WHERE business_date=CURRENT_DATE-28)) ELSE NULL END AS value FROM x;"}]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Sales T56",
+      "gridPos": {"x": 18, "y": 2, "w": 3, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(sales_t56,0) AS value FROM mart.business_rolling WHERE business_date=CURRENT_DATE AND marketplace_id='A1AM78C64UM0Y8';"}]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "FBA Stockouts",
+      "gridPos": {"x": 21, "y": 2, "w": 3, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT count(*)::int AS value FROM mart.inventory_current WHERE marketplace_id='A1AM78C64UM0Y8' AND fulfillable_quantity=0;"}]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Daily Sales | 90 Days",
+      "gridPos": {"x": 0, "y": 6, "w": 16, "h": 8},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": false}, "tooltip": {"mode": "single", "sort": "none"}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT business_date::timestamp AS time, sales AS value FROM mart.business_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date >= CURRENT_DATE-89 ORDER BY 1;"}]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Top SKUs | T28",
+      "gridPos": {"x": 16, "y": 6, "w": 8, "h": 8},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH s AS (SELECT seller_sku, max(asin) asin, sum(sales) sales_t28, sum(units) units_t28 FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date >= CURRENT_DATE-27 GROUP BY seller_sku) SELECT s.seller_sku AS \"SKU\", COALESCE(k.title,'') AS \"Product\", round(s.sales_t28,0) AS \"T28 Sales\", s.units_t28 AS \"Units\", COALESCE(i.fulfillable_quantity,0) AS \"FBA\" FROM s LEFT JOIN core.sku k ON k.sku=s.seller_sku LEFT JOIN mart.inventory_current i ON i.marketplace_id='A1AM78C64UM0Y8' AND i.seller_sku=s.seller_sku ORDER BY s.sales_t28 DESC NULLS LAST LIMIT 10;"}]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Produce / Watch",
+      "gridPos": {"x": 0, "y": 14, "w": 14, "h": 8},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH v AS (SELECT seller_sku, sum(units)::numeric/28 AS units_day FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date >= CURRENT_DATE-27 GROUP BY seller_sku) SELECT i.seller_sku AS \"SKU\", COALESCE(k.title,'') AS \"Product\", i.fulfillable_quantity AS \"Available\", (i.inbound_working_quantity+i.inbound_shipped_quantity+i.inbound_receiving_quantity) AS \"Inbound\", CASE WHEN COALESCE(v.units_day,0)>0 THEN round(i.fulfillable_quantity/v.units_day,1) END AS \"Days Cover\", CASE WHEN i.fulfillable_quantity=0 AND COALESCE(v.units_day,0)>0 THEN 'STOCKOUT' WHEN COALESCE(v.units_day,0)=0 THEN 'HOLD' WHEN i.fulfillable_quantity/v.units_day < 14 THEN 'PRODUCE' WHEN i.fulfillable_quantity/v.units_day < 28 THEN 'PLAN' ELSE 'OK' END AS \"Action\" FROM mart.inventory_current i LEFT JOIN v USING (seller_sku) LEFT JOIN core.sku k ON k.sku=i.seller_sku WHERE i.marketplace_id='A1AM78C64UM0Y8' ORDER BY CASE WHEN i.fulfillable_quantity=0 AND COALESCE(v.units_day,0)>0 THEN 0 WHEN COALESCE(v.units_day,0)>0 AND i.fulfillable_quantity/v.units_day<14 THEN 1 WHEN COALESCE(v.units_day,0)>0 AND i.fulfillable_quantity/v.units_day<28 THEN 2 ELSE 3 END, \"Days Cover\" NULLS LAST;"}]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Data Freshness",
+      "gridPos": {"x": 14, "y": 14, "w": 10, "h": 8},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT job_name AS \"Feed\", latest_status AS \"Status\", records_read AS \"Read\", records_written AS \"Written\", date_trunc('second',age)::text AS \"Age\" FROM ops.data_health ORDER BY last_started_at DESC;"}]
+    }
+  ]
+}
