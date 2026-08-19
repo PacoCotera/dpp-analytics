@@ -1,0 +1,145 @@
+{
+  "uid": "dpp-catalog",
+  "title": "DPP | Catalog",
+  "tags": ["dpp", "catalog"],
+  "timezone": "America/Mexico_City",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "5m",
+  "time": {"from": "now-90d", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "sku",
+        "label": "SKU Detail",
+        "type": "query",
+        "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+        "query": "SELECT sku FROM core.sku WHERE marketplace_id='A1AM78C64UM0Y8' ORDER BY sku",
+        "definition": "SELECT sku FROM core.sku WHERE marketplace_id='A1AM78C64UM0Y8' ORDER BY sku",
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 2},
+      "options": {"mode": "markdown", "content": "# Catalog  \n[⌂ HOME](/d/dpp-home) · [SALES](/d/dpp-sales) · **CATALOG** · ADS · [INVENTORY](/d/dpp-inventory) · FINANCE · TRAJECTORY · [DATA HEALTH](/d/dpp-data-health)  \n*State is a directional operating signal based on recent sales velocity, not a permanent product classification.*"}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Active SKUs",
+      "gridPos": {"x": 0, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT count(*)::int AS value FROM core.sku WHERE marketplace_id='A1AM78C64UM0Y8' AND active;"}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Productive SKUs T28",
+      "gridPos": {"x": 4, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT count(DISTINCT seller_sku)::int AS value FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date>=CURRENT_DATE-27 AND units>0;"}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Catalog Productivity",
+      "gridPos": {"x": 8, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH a AS (SELECT count(*)::numeric n FROM core.sku WHERE marketplace_id='A1AM78C64UM0Y8' AND active), p AS (SELECT count(DISTINCT seller_sku)::numeric n FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date>=CURRENT_DATE-27 AND units>0) SELECT 100*p.n/NULLIF(a.n,0) AS value FROM a,p;"}]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "T28 Sales / Active SKU",
+      "gridPos": {"x": 12, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH a AS (SELECT count(*)::numeric n FROM core.sku WHERE marketplace_id='A1AM78C64UM0Y8' AND active), s AS (SELECT COALESCE(sum(sales),0) v FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date>=CURRENT_DATE-27) SELECT s.v/NULLIF(a.n,0) AS value FROM a,s;"}]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Top 3 SKU Concentration",
+      "gridPos": {"x": 16, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH s AS (SELECT seller_sku,sum(sales) v FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date>=CURRENT_DATE-27 GROUP BY seller_sku), r AS (SELECT v,row_number() OVER(ORDER BY v DESC) rn FROM s) SELECT 100*sum(v) FILTER (WHERE rn<=3)/NULLIF(sum(v),0) AS value FROM r;"}]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "New SKU Sales Share",
+      "gridPos": {"x": 20, "y": 2, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH firsts AS (SELECT seller_sku,min(business_date) first_sale FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' GROUP BY seller_sku), s AS (SELECT d.seller_sku,sum(d.sales) sales,max(f.first_sale) first_sale FROM mart.sku_daily d JOIN firsts f USING(seller_sku) WHERE d.marketplace_id='A1AM78C64UM0Y8' AND d.business_date>=CURRENT_DATE-27 GROUP BY d.seller_sku) SELECT 100*sum(sales) FILTER (WHERE first_sale>=CURRENT_DATE-55)/NULLIF(sum(sales),0) AS value FROM s;"}]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Catalog Heatmap | Sales + Traffic + Stock",
+      "gridPos": {"x": 0, "y": 6, "w": 24, "h": 12},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true, "cellHeight": "sm"},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "WITH s AS (SELECT seller_sku,max(asin) asin,min(business_date) first_sale,sum(sales) FILTER (WHERE business_date>=CURRENT_DATE-6) t7,sum(sales) FILTER (WHERE business_date>=CURRENT_DATE-27) t28,sum(sales) FILTER (WHERE business_date BETWEEN CURRENT_DATE-55 AND CURRENT_DATE-28) p28,sum(sales) FILTER (WHERE business_date>=CURRENT_DATE-55) t56,sum(units) FILTER (WHERE business_date>=CURRENT_DATE-27) units28 FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' GROUP BY seller_sku), t AS (SELECT asin,sum(sessions) sessions28,sum(units_ordered) traffic_units28 FROM core.asin_sales_traffic_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date>=CURRENT_DATE-27 GROUP BY asin) SELECT s.seller_sku AS \"SKU\",COALESCE(k.title,'') AS \"Product\",round(COALESCE(s.t7,0),0) AS \"T7\",round(COALESCE(s.t28,0),0) AS \"T28\",CASE WHEN COALESCE(s.p28,0)>0 THEN round(100*(s.t28-s.p28)/s.p28,0) END AS \"Δ28 %\",round(COALESCE(s.t56,0),0) AS \"T56\",COALESCE(t.sessions28,0) AS \"Sessions\",CASE WHEN COALESCE(t.sessions28,0)>0 THEN round(100.0*t.traffic_units28/t.sessions28,1) END AS \"CVR %\",COALESCE(i.fulfillable_quantity,0) AS \"Stock\",CASE WHEN s.first_sale>=CURRENT_DATE-27 THEN 'NEW' WHEN COALESCE(s.p28,0)>0 AND s.t28>=s.p28*1.25 AND COALESCE(s.t7,0)/7 > COALESCE(s.t28,0)/28*1.15 THEN 'ACCELERATING' WHEN COALESCE(s.p28,0)>0 AND s.t28>=s.p28*1.10 THEN 'GROWING' WHEN COALESCE(s.t28,0)>0 AND COALESCE(s.t7,0)/7 < s.t28/28*0.65 THEN 'COOLING' WHEN COALESCE(s.p28,0)>0 AND s.t28<s.p28*0.80 THEN 'DECLINING' ELSE 'STABLE' END AS \"State\" FROM s LEFT JOIN core.sku k ON k.sku=s.seller_sku LEFT JOIN t ON t.asin=s.asin LEFT JOIN mart.inventory_current i ON i.marketplace_id='A1AM78C64UM0Y8' AND i.seller_sku=s.seller_sku ORDER BY COALESCE(s.t28,0) DESC;"}]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Selected SKU | Daily Sales",
+      "gridPos": {"x": 0, "y": 18, "w": 12, "h": 8},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "currencyMXN", "decimals": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": false}, "tooltip": {"mode": "single", "sort": "none"}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT business_date::timestamp AS time,sales AS value FROM mart.sku_daily WHERE marketplace_id='A1AM78C64UM0Y8' AND seller_sku='${sku}' AND business_date>=CURRENT_DATE-89 ORDER BY business_date;"}]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Selected SKU | ASIN Sessions",
+      "gridPos": {"x": 12, "y": 18, "w": 8, "h": 8},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": false}, "tooltip": {"mode": "single", "sort": "none"}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT a.business_date::timestamp AS time,a.sessions AS value FROM core.asin_sales_traffic_daily a JOIN core.sku s ON s.asin=a.asin AND s.marketplace_id=a.marketplace_id WHERE a.marketplace_id='A1AM78C64UM0Y8' AND s.sku='${sku}' AND a.business_date>=CURRENT_DATE-89 ORDER BY a.business_date;"}]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Selected SKU | FBA",
+      "gridPos": {"x": 20, "y": 18, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"decimals": 0}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(fulfillable_quantity,0) AS value FROM mart.inventory_current WHERE marketplace_id='A1AM78C64UM0Y8' AND seller_sku='${sku}';"}]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Selected SKU | T28 CVR",
+      "gridPos": {"x": 20, "y": 22, "w": 4, "h": 4},
+      "datasource": {"type": "postgres", "uid": "dpp-postgres"},
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT 100.0*sum(a.units_ordered)/NULLIF(sum(a.sessions),0) AS value FROM core.asin_sales_traffic_daily a JOIN core.sku s ON s.asin=a.asin AND s.marketplace_id=a.marketplace_id WHERE a.marketplace_id='A1AM78C64UM0Y8' AND s.sku='${sku}' AND a.business_date>=CURRENT_DATE-27;"}]
+    }
+  ]
+}
