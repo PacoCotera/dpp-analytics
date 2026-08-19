@@ -10,8 +10,11 @@ from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
 
+from catalog_api import catalog_payload as build_catalog_payload
+from health_api import health_board_payload as build_health_board_payload
 from inventory_api import inventory_payload as build_inventory_payload
 from sales_api import sales_payload as build_sales_payload
+from trajectory_api import trajectory_payload as build_trajectory_payload
 
 ROOT = Path(__file__).parent
 STATIC = ROOT / "static"
@@ -26,7 +29,10 @@ INDEX = (
     .encode()
 )
 SALES_INDEX = (STATIC / "sales.html").read_bytes()
+CATALOG_INDEX = (STATIC / "catalog.html").read_bytes()
 INVENTORY_INDEX = (STATIC / "inventory.html").read_bytes()
+TRAJECTORY_INDEX = (STATIC / "trajectory.html").read_bytes()
+DATA_HEALTH_INDEX = (STATIC / "data_health.html").read_bytes()
 MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
 AMAZON_MX_DP = "https://www.amazon.com.mx/dp/"
 
@@ -257,7 +263,7 @@ def health_payload():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "DPPBoard/3"
+    server_version = "DPPBoard/4"
 
     def log_message(self, fmt, *args):
         print(f"{self.address_string()} {fmt % args}")
@@ -296,14 +302,32 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/sales"):
             self.json_endpoint(lambda: build_sales_payload(connect, decorate_products, MARKETPLACE))
             return
+        if self.path.startswith("/api/catalog"):
+            self.json_endpoint(lambda: build_catalog_payload(connect, decorate_products, MARKETPLACE))
+            return
         if self.path.startswith("/api/inventory"):
             self.json_endpoint(lambda: build_inventory_payload(connect, decorate_products, MARKETPLACE))
+            return
+        if self.path.startswith("/api/trajectory"):
+            self.json_endpoint(lambda: build_trajectory_payload(connect, MARKETPLACE))
+            return
+        if self.path.startswith("/api/data-health"):
+            self.json_endpoint(lambda: build_health_board_payload(connect, MARKETPLACE))
             return
         if self.path == "/sales" or self.path.startswith("/sales?"):
             self.send_bytes(200, "text/html; charset=utf-8", SALES_INDEX, cache="no-cache")
             return
+        if self.path == "/catalog" or self.path.startswith("/catalog?"):
+            self.send_bytes(200, "text/html; charset=utf-8", CATALOG_INDEX, cache="no-cache")
+            return
         if self.path == "/inventory" or self.path.startswith("/inventory?"):
             self.send_bytes(200, "text/html; charset=utf-8", INVENTORY_INDEX, cache="no-cache")
+            return
+        if self.path == "/trajectory" or self.path.startswith("/trajectory?"):
+            self.send_bytes(200, "text/html; charset=utf-8", TRAJECTORY_INDEX, cache="no-cache")
+            return
+        if self.path == "/data-health" or self.path.startswith("/data-health?"):
+            self.send_bytes(200, "text/html; charset=utf-8", DATA_HEALTH_INDEX, cache="no-cache")
             return
         if self.path == "/" or self.path.startswith("/?"):
             self.send_bytes(200, "text/html; charset=utf-8", INDEX, cache="no-cache")
