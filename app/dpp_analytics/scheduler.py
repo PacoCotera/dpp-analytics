@@ -40,6 +40,23 @@ def _run(name: str, fn: Callable[[], dict]) -> None:
         log.exception("job=%s status=error elapsed=%.2fs", name, time.monotonic() - started)
 
 
+def _probe_product_roles() -> tuple[bool, dict]:
+    """Return whether Product Listing is usable while keeping Pricing independent."""
+    started = time.monotonic()
+    try:
+        result = product_roles_probe()
+        listing_ok = (result.get("product_listing") or {}).get("status") == "ok"
+        log.info(
+            "job=product_roles_probe status=success result=%s elapsed=%.2fs",
+            result,
+            time.monotonic() - started,
+        )
+        return listing_ok, result
+    except Exception:
+        log.exception("job=product_roles_probe status=error elapsed=%.2fs", time.monotonic() - started)
+        return False, {}
+
+
 def _probe_loop(name: str, fn: Callable[[], dict], interval: int) -> None:
     next_probe = 0.0
     while not STOP:
@@ -108,8 +125,16 @@ def main() -> None:
         return
 
     log.info("SP-API production ingestion ENABLED")
+
+    catalog_role_ready = False
     if settings.catalog_enabled:
-        _run("product_roles_probe", product_roles_probe)
+        catalog_role_ready, product_roles = _probe_product_roles()
+        if not catalog_role_ready:
+            pricing_ok = (product_roles.get("pricing") or {}).get("status") == "ok"
+            log.warning(
+                "Catalog Items sync paused: Product Listing is not authorized yet; pricing_authorized=%s",
+                pricing_ok,
+            )
     else:
         log.info("Catalog Items sync disabled")
 
@@ -118,6 +143,11 @@ def main() -> None:
     next_finances = _next_due("amazon_spapi", "finances_v2024", settings.finances_interval_seconds)
     next_catalog = (
         _next_due("amazon_spapi", "catalog_items_2022_04_01", settings.catalog_interval_seconds)
+        if settings.catalog_enabled and catalog_role_ready
+        else float("inf")
+    )
+    next_product_roles_probe = (
+        time.monotonic() + settings.production_probe_interval_seconds
         if settings.catalog_enabled
         else float("inf")
     )
@@ -142,7 +172,22 @@ def main() -> None:
             _run("finances", ingest_finances)
             next_finances = time.monotonic() + settings.finances_interval_seconds
 
-        if now >= next_catalog:
+        if now >= next_product_roles_probe:
+            was_ready = catalog_role_ready
+            catalog_role_ready, product_roles = _probe_product_roles()
+            if catalog_role_ready and not was_ready:
+                log.info("Product Listing authorization is now active; enabling Catalog Items sync")
+                next_catalog = time.monotonic()
+            elif not catalog_role_ready:
+                pricing_ok = (product_roles.get("pricing") or {}).get("status") == "ok"
+                log.warning(
+                    "Product Listing still unavailable; Catalog Items sync remains paused; pricing_authorized=%s",
+                    pricing_ok,
+                )
+                next_catalog = float("inf")
+            next_product_roles_probe = time.monotonic() + settings.production_probe_interval_seconds
+
+        if catalog_role_ready and now >= next_catalog:
             _run("catalog", ingest_catalog)
             next_catalog = time.monotonic() + settings.catalog_interval_seconds
 
