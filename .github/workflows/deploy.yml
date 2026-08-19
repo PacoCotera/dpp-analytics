@@ -87,8 +87,6 @@ jobs:
       - name: Initialize local board config
         run: |
           set -euo pipefail
-          # An earlier Docker bind can have auto-created this path as a directory.
-          # Normalize it once, then never overwrite the host-side file again.
           if sudo test -d /etc/dpp-analytics/product_labels.json; then
             sudo rm -rf /etc/dpp-analytics/product_labels.json
           fi
@@ -112,10 +110,12 @@ jobs:
           set -euo pipefail
           sudo docker compose --env-file /etc/dpp-analytics/env build worker board
 
-      - name: Deploy stack
+      # Keep database migrations ahead of new worker code. This also means a
+      # board-only change no longer restarts the ingestion worker unnecessarily.
+      - name: Ensure database is running
         run: |
           set -euo pipefail
-          sudo docker compose --env-file /etc/dpp-analytics/env up -d --remove-orphans
+          sudo docker compose --env-file /etc/dpp-analytics/env up -d postgres
 
       - name: Wait for PostgreSQL
         run: |
@@ -133,7 +133,11 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/migrate.sh /etc/dpp-analytics/env
-          sudo docker compose --env-file /etc/dpp-analytics/env restart worker
+
+      - name: Deploy application stack
+        run: |
+          set -euo pipefail
+          sudo docker compose --env-file /etc/dpp-analytics/env up -d --remove-orphans
 
       - name: Verify worker
         run: |
@@ -180,24 +184,34 @@ jobs:
           sudo docker logs --tail 100 dpp-grafana
           exit 1
 
-      - name: Verify operating board
+      - name: Verify operating boards
         run: |
           set -euo pipefail
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8088/health >/tmp/board-health.json \
-              && curl -fsS http://127.0.0.1:8088/api/home >/tmp/board-home.json; then
+              && curl -fsS http://127.0.0.1:8088/api/home >/tmp/board-home.json \
+              && curl -fsS http://127.0.0.1:8088/api/sales >/tmp/board-sales.json \
+              && curl -fsS http://127.0.0.1:8088/api/inventory >/tmp/board-inventory.json \
+              && curl -fsS -o /dev/null http://127.0.0.1:8088/sales \
+              && curl -fsS -o /dev/null http://127.0.0.1:8088/inventory; then
               cat /tmp/board-health.json
               python3 - <<'PY'
           import json
-          d=json.load(open('/tmp/board-home.json'))
-          print('board_home=ok today_sales=%s movers=%s actions=%s' % (
-              d.get('today',{}).get('sales_today'), len(d.get('movers',[])), len(d.get('inventory',[]))))
+          h=json.load(open('/tmp/board-home.json'))
+          s=json.load(open('/tmp/board-sales.json'))
+          i=json.load(open('/tmp/board-inventory.json'))
+          print('home=ok today_sales=%s movers=%s actions=%s' % (
+              h.get('today',{}).get('sales_today'), len(h.get('movers',[])), len(h.get('inventory',[]))))
+          print('sales=ok t28=%s skus=%s orders=%s' % (
+              s.get('headline',{}).get('sales_t28'), len(s.get('skus',[])), len(s.get('orders',[]))))
+          print('inventory=ok available=%s inbound=%s rows=%s' % (
+              i.get('summary',{}).get('available'), i.get('summary',{}).get('inbound'), len(i.get('rows',[]))))
           PY
               exit 0
             fi
             sleep 2
           done
-          sudo docker logs --tail 100 dpp-board
+          sudo docker logs --tail 150 dpp-board
           exit 1
 
       - name: Collect deployment heartbeat
@@ -281,10 +295,19 @@ jobs:
             if [[ -s /tmp/board-home.json ]]; then
               python3 - <<'PY' || true
           import json
-          d=json.load(open('/tmp/board-home.json'))
-          print('today_sales=%s t28_sales=%s growth=%s movers=%s actions=%s' % (
-              d.get('today',{}).get('sales_today'), d.get('rolling',{}).get('sales_t28'),
-              d.get('rolling',{}).get('delta28_pct'), len(d.get('movers',[])), len(d.get('inventory',[]))))
+          h=json.load(open('/tmp/board-home.json'))
+          print('home today_sales=%s t28_sales=%s growth=%s movers=%s actions=%s' % (
+              h.get('today',{}).get('sales_today'), h.get('rolling',{}).get('sales_t28'),
+              h.get('rolling',{}).get('delta28_pct'), len(h.get('movers',[])), len(h.get('inventory',[]))))
+          if __import__('os').path.exists('/tmp/board-sales.json'):
+              s=json.load(open('/tmp/board-sales.json'))
+              print('sales t28=%s skus=%s recent_orders=%s' % (
+                  s.get('headline',{}).get('sales_t28'), len(s.get('skus',[])), len(s.get('orders',[]))))
+          if __import__('os').path.exists('/tmp/board-inventory.json'):
+              i=json.load(open('/tmp/board-inventory.json'))
+              print('inventory available=%s inbound=%s rows=%s actions=%s' % (
+                  i.get('summary',{}).get('available'), i.get('summary',{}).get('inbound'),
+                  len(i.get('rows',[])), i.get('summary',{}).get('needs_action')))
           PY
             fi
             echo '```'
