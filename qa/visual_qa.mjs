@@ -18,8 +18,10 @@ const scenarios = [
   { name: 'sales-overview', url: '/sales', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'sales-sku-performance', url: '/sales', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="skus"]').click() },
   { name: 'sales-orders', url: '/sales', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="orders"]').click() },
-  { name: 'catalog', url: '/catalog', views: ['mobile', 'desktop'] },
+  { name: 'catalog', url: '/catalog', views: ['mobile', 'tablet', 'desktop'] },
+  { name: 'product-pnc-001', url: '/product?sku=PNC-001', views: ['mobile', 'desktop'] },
   { name: 'inventory', url: '/inventory', views: ['mobile', 'tablet', 'desktop'] },
+  { name: 'finance', url: '/finance', views: ['mobile', 'desktop'] },
   { name: 'trajectory', url: '/trajectory', views: ['mobile', 'desktop'] },
   { name: 'data-health', url: '/data-health', views: ['mobile', 'desktop'] },
 ];
