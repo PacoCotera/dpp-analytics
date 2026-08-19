@@ -12,6 +12,8 @@ const viewports = {
 };
 
 const scenarios = [
+  { name: 'today', url: '/today', views: ['mobile', 'desktop'] },
+  { name: 'today-wall', url: '/today?wall=1', views: ['desktop'] },
   { name: 'home', url: '/', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'sales-overview', url: '/sales', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'sales-sku-performance', url: '/sales', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="skus"]').click() },
@@ -42,7 +44,6 @@ for (const scenario of scenarios) {
       isMobile: viewport.isMobile,
       hasTouch: viewport.hasTouch,
       deviceScaleFactor: viewport.deviceScaleFactor,
-      colorScheme: 'dark',
     });
     const page = await context.newPage();
     const errors = [];
@@ -54,9 +55,11 @@ for (const scenario of scenarios) {
       if (msg.type() === 'error') errors.push(`console: ${msg.text()}`);
       if (msg.type() === 'warning') warnings.push(`console: ${msg.text()}`);
     });
-    page.on('response', response => {
+    page.on('response', async response => {
       if (response.status() >= 400 && response.url().startsWith(baseUrl)) {
-        failedResponses.push(`${response.status()} ${response.request().method()} ${response.url()}`);
+        let body = '';
+        try { body = (await response.text()).replace(/\s+/g, ' ').slice(0, 500); } catch {}
+        failedResponses.push(`${response.status()} ${response.request().method()} ${response.url()}${body ? ` :: ${body}` : ''}`);
       }
     });
 
@@ -192,6 +195,8 @@ lines.push(`- Small-text signals: ${summary.smallTextSignals}`);
 lines.push(`- Small tap-target signals: ${summary.smallTapTargetSignals}`);
 lines.push(`- Failed local HTTP responses: ${summary.failedResponseCount}`);
 lines.push(`- Browser/page errors: ${summary.consoleErrorCount}`);
+const failures = results.flatMap(r => r.failedResponses.map(x => `${r.scenario}/${r.viewport}: ${x}`));
+if (failures.length) lines.push('', '## Failed local responses', '', ...failures.map(x => `- ${x}`));
 lines.push('', '_These are review signals, not automatic design failures. Screenshots remain the source of truth for visual judgment._', '');
 await fs.writeFile(path.join(outDir, 'report.md'), lines.join('\n'));
 
@@ -202,6 +207,7 @@ console.log(JSON.stringify({
   overflowCaptures: summary.horizontalOverflowCaptures,
   smallTextSignals: summary.smallTextSignals,
   smallTapTargetSignals: summary.smallTapTargetSignals,
+  failedResponses: summary.failedResponseCount,
   browserErrors: summary.consoleErrorCount,
 }, null, 2));
 
