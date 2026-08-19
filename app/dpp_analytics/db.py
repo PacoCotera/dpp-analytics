@@ -70,6 +70,23 @@ def ingestion_run(source: str, job_name: str, metadata: dict[str, Any] | None = 
         conn.close()
 
 
+def mark_interrupted_runs() -> int:
+    """Close runs left 'running' when the previous worker was stopped/redeployed."""
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE ops.ingestion_runs
+            SET finished_at = now(),
+                status = 'interrupted',
+                error_message = COALESCE(error_message, 'Worker stopped before job completion')
+            WHERE status = 'running'
+            """
+        )
+        count = cur.rowcount
+        conn.commit()
+        return count
+
+
 def get_cursor(source: str, job_name: str, cursor_name: str = "default") -> str | None:
     with connect() as conn, conn.cursor() as cur:
         cur.execute(
