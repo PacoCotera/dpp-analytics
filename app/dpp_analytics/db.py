@@ -95,3 +95,22 @@ def set_cursor(source: str, job_name: str, value: str, cursor_name: str = "defau
             (source, job_name, cursor_name, value),
         )
         conn.commit()
+
+
+def seconds_since_last_success(source: str, job_name: str) -> float | None:
+    """Return the age of the most recent successful run, or None if none exists."""
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT extract(epoch FROM (now() - finished_at)) AS age_seconds
+            FROM ops.ingestion_runs
+            WHERE source=%s AND job_name=%s AND status='success' AND finished_at IS NOT NULL
+            ORDER BY finished_at DESC
+            LIMIT 1
+            """,
+            (source, job_name),
+        )
+        row = cur.fetchone()
+        if not row or row["age_seconds"] is None:
+            return None
+        return max(0.0, float(row["age_seconds"]))
