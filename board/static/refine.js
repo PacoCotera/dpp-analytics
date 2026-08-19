@@ -3,6 +3,10 @@
   var params=new URLSearchParams(location.search);
   if(params.get('wall')==='1') document.body.classList.add('wall');
 
+  var productStyle=document.createElement('style');
+  productStyle.textContent='.product-cell{display:flex;align-items:center;gap:9px;min-width:0}.product-copy{min-width:0;flex:1}.product-thumb{width:34px;height:42px;object-fit:contain;border-radius:5px;background:#f4f0e8;flex:0 0 auto}.product-link{color:inherit;text-decoration:none}.product-link:hover .product,.product-link:hover .action-product{color:var(--accent2);text-decoration:underline;text-decoration-color:rgba(255,210,119,.35);text-underline-offset:3px}@media(max-width:1100px){.product-thumb{width:27px;height:34px}.product-cell{gap:6px}}';
+  document.head.appendChild(productStyle);
+
   var productMeta={};
 
   function relocateAttention(){
