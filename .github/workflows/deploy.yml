@@ -68,15 +68,12 @@ jobs:
             sudo chmod 0600 /etc/dpp-analytics/env
           fi
 
-          # DPP's registered app is the production client. Credentials stay host-only.
           if sudo grep -q '^SPAPI_ENVIRONMENT=' /etc/dpp-analytics/env; then
             sudo sed -i 's/^SPAPI_ENVIRONMENT=.*/SPAPI_ENVIRONMENT=production/' /etc/dpp-analytics/env
           else
             echo 'SPAPI_ENVIRONMENT=production' | sudo tee -a /etc/dpp-analytics/env >/dev/null
           fi
 
-          # Production authorization has been validated. Keep the live-ingestion
-          # switch host-side so it can still be disabled immediately if needed.
           if sudo grep -q '^SPAPI_PRODUCTION_INGESTION_ENABLED=' /etc/dpp-analytics/env; then
             sudo sed -i 's/^SPAPI_PRODUCTION_INGESTION_ENABLED=.*/SPAPI_PRODUCTION_INGESTION_ENABLED=true/' /etc/dpp-analytics/env
           else
@@ -97,10 +94,10 @@ jobs:
           set -euo pipefail
           sudo docker compose --env-file /etc/dpp-analytics/env pull postgres grafana
 
-      - name: Build worker
+      - name: Build application images
         run: |
           set -euo pipefail
-          sudo docker compose --env-file /etc/dpp-analytics/env build worker
+          sudo docker compose --env-file /etc/dpp-analytics/env build worker board
 
       - name: Deploy stack
         run: |
@@ -170,6 +167,26 @@ jobs:
           sudo docker logs --tail 100 dpp-grafana
           exit 1
 
+      - name: Verify operating board
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8088/health >/tmp/board-health.json \
+              && curl -fsS http://127.0.0.1:8088/api/home >/tmp/board-home.json; then
+              cat /tmp/board-health.json
+              python3 - <<'PY'
+          import json
+          d=json.load(open('/tmp/board-home.json'))
+          print('board_home=ok today_sales=%s movers=%s actions=%s' % (
+              d.get('today',{}).get('sales_today'), len(d.get('movers',[])), len(d.get('inventory',[]))))
+          PY
+              exit 0
+            fi
+            sleep 2
+          done
+          sudo docker logs --tail 100 dpp-board
+          exit 1
+
       - name: Collect deployment heartbeat
         if: always()
         env:
@@ -200,20 +217,12 @@ jobs:
             echo
             echo '## SP-API authorization probe'
             echo '```text'
-            if [[ -s /tmp/dpp-spapi-probe.json ]]; then
-              cat /tmp/dpp-spapi-probe.json
-            else
-              echo 'No successful deployment probe recorded.'
-            fi
+            if [[ -s /tmp/dpp-spapi-probe.json ]]; then cat /tmp/dpp-spapi-probe.json; else echo 'No successful deployment probe recorded.'; fi
             echo '```'
             echo
             echo '## Host'
             echo '```text'
-            uname -a
-            echo
-            free -h
-            echo
-            df -h /
+            uname -a; echo; free -h; echo; df -h /
             echo '```'
             echo
             echo '## Docker'
@@ -249,8 +258,22 @@ jobs:
             echo
             echo '## Grafana'
             echo '```text'
-            curl -fsS http://127.0.0.1:3000/api/health 2>&1 || true
+            curl -fsS http://127.0.0.1:3000/api/health 2>&1 || true; echo
+            echo '```'
             echo
+            echo '## Operating board'
+            echo '```text'
+            sudo docker inspect --format='health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} status={{.State.Status}}' dpp-board 2>&1 || true
+            curl -fsS http://127.0.0.1:8088/health 2>&1 || true; echo
+            if [[ -s /tmp/board-home.json ]]; then
+              python3 - <<'PY' || true
+          import json
+          d=json.load(open('/tmp/board-home.json'))
+          print('today_sales=%s t28_sales=%s growth=%s movers=%s actions=%s' % (
+              d.get('today',{}).get('sales_today'), d.get('rolling',{}).get('sales_t28'),
+              d.get('rolling',{}).get('delta28_pct'), len(d.get('movers',[])), len(d.get('inventory',[]))))
+          PY
+            fi
             echo '```'
             echo
             echo '_This issue is updated automatically by the self-hosted deployment runner. No credentials are included._'
