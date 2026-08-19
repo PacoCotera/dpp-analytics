@@ -29,7 +29,9 @@ class Settings:
     # only after the smoke test succeeds and this explicit kill-switch is set true.
     production_ingestion_enabled: bool = _bool("SPAPI_PRODUCTION_INGESTION_ENABLED")
 
-    orders_interval_seconds: int = int(os.getenv("ORDERS_INTERVAL_SECONDS", "600"))
+    # searchOrders v2026-01-01 has a low default steady-state rate limit. Three minutes
+    # keeps the Today wall meaningfully live while respecting Amazon's documented default.
+    orders_interval_seconds: int = int(os.getenv("ORDERS_INTERVAL_SECONDS", "180"))
     inventory_interval_seconds: int = int(os.getenv("INVENTORY_INTERVAL_SECONDS", "1800"))
     finances_interval_seconds: int = int(os.getenv("FINANCES_INTERVAL_SECONDS", "14400"))
     data_kiosk_interval_seconds: int = int(os.getenv("DATA_KIOSK_INTERVAL_SECONDS", "43200"))
