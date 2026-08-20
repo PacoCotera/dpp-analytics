@@ -1,0 +1,61 @@
+/* Home operating layout v4
+   The first fold is one operating band: chart left, signal rail right.
+   Movers are secondary and sit below both columns. */
+body.home-page .home-read{display:none!important}
+body.home-page .home-dashboard{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(300px,340px)!important;
+  gap:18px!important;
+  align-items:stretch!important;
+  margin-top:0!important;
+}
+body.home-page .home-canvas{display:contents!important}
+body.home-page .rhythm-section{
+  grid-column:1!important;
+  grid-row:1!important;
+  margin-top:0!important;
+  min-width:0!important;
+  min-height:0!important;
+}
+body.home-page .home-rail{
+  grid-column:2!important;
+  grid-row:1!important;
+  display:grid!important;
+  gap:10px!important;
+  align-content:stretch!important;
+  min-height:0!important;
+}
+body.home-page .movers-section{
+  grid-column:1 / -1!important;
+  grid-row:2!important;
+  margin-top:16px!important;
+}
+body.home-page .spark-card{
+  height:100%!important;
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+}
+body.home-page .spark-card .section-head{flex:0 0 auto!important}
+body.home-page .spark-card .spark{
+  flex:1 1 0!important;
+  height:0!important;
+  min-height:0!important;
+  width:100%!important;
+}
+body.home-page .signal-card.primary .signal-note{font-weight:650;color:var(--ink)}
+
+@media(max-width:980px){
+  body.home-page .home-dashboard{grid-template-columns:minmax(0,1fr) 290px!important;gap:14px!important}
+}
+@media(max-width:720px){
+  body.home-page .home-dashboard{grid-template-columns:1fr!important;gap:12px!important}
+  body.home-page .rhythm-section{grid-column:1!important;grid-row:1!important}
+  body.home-page .home-rail{grid-column:1!important;grid-row:2!important;order:initial!important}
+  body.home-page .movers-section{grid-column:1!important;grid-row:3!important;margin-top:4px!important}
+  body.home-page .spark-card{height:auto!important}
+  body.home-page .spark-card .spark{flex:none!important;height:250px!important;min-height:250px!important}
+}
+@media(max-width:640px){
+  body.home-page .spark-card .spark{height:230px!important;min-height:230px!important}
+}
