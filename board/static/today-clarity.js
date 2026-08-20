@@ -21,6 +21,8 @@
     .day-choice b{font-size:12px!important;overflow:hidden;text-overflow:ellipsis}
     .day-choice span{font-size:9.5px!important}
     .day-choice.partial:after{font-size:7.5px!important;margin-left:4px!important}
+    .latest-context{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--muted);line-height:1.35}
+    .latest-context b{color:var(--ink);font-weight:760}
     .order-stream.order-ledger{
       display:grid!important;
       grid-template-columns:repeat(3,minmax(0,1fr));
@@ -41,8 +43,8 @@
     .order-transaction .ot-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;color:var(--muted);font-size:11px;line-height:1.35}
     .order-transaction .ot-meta b{color:var(--ink);font-weight:760}
     .wall-mode .order-transaction{background:#1d1915;border-color:#3a3127}
-    .wall-mode .order-transaction .ot-meta,.wall-mode .order-transaction .ot-time{color:#c5baaa}
-    .wall-mode .order-transaction .ot-meta b{color:#fff8ed}
+    .wall-mode .order-transaction .ot-meta,.wall-mode .order-transaction .ot-time,.wall-mode .latest-context{color:#c5baaa}
+    .wall-mode .order-transaction .ot-meta b,.wall-mode .latest-context b{color:#fff8ed}
     @media(max-width:980px){
       .day-picker{grid-template-columns:repeat(4,minmax(0,1fr))!important}
       .order-stream.order-ledger{grid-template-columns:repeat(2,minmax(0,1fr))!important}
@@ -81,18 +83,31 @@
     if (productsTitle) productsTitle.textContent = document.querySelector('#dayPicker .day-choice.active')?.classList.contains('live') ? 'Products sold today' : 'Products sold that day';
     const productsSub = document.getElementById('productsSub');
     if (productsSub) productsSub.textContent = 'Sales mix by product';
-    const wins = document.querySelector('.wins .panel-title');
-    if (wins) wins.textContent = 'Orders';
-    const winsSub = document.getElementById('winsSub');
-    if (winsSub) {
-      const current = winsSub.textContent.replace(/\s*·\s*newest first/i, '').trim();
-      winsSub.textContent = `${current || 'Selected day'} · sale transactions · newest first`;
+    const ordersTitle = document.querySelector('.wins .panel-title');
+    if (ordersTitle) ordersTitle.textContent = 'Orders';
+    const ordersSub = document.getElementById('winsSub');
+    if (ordersSub) {
+      const current = ordersSub.textContent.replace(/\s*·\s*(sale transactions\s*·\s*)?newest first/i, '').trim();
+      ordersSub.textContent = `${current || 'Selected day'} · sale transactions · newest first`;
     }
   }
 
   function selectedDate() {
     const active = document.querySelector('#dayPicker .day-choice.active');
     return active?.dataset?.date || new URLSearchParams(location.search).get('date') || '';
+  }
+
+  function enrichLatest(order) {
+    const root = document.getElementById('latest');
+    if (!root || !order) return;
+    const old = root.querySelector('.latest-context');
+    if (old) old.remove();
+    const units = Number(order.units || 0);
+    const orderShort = order.order_short || String(order.order_id || '').slice(-9) || '—';
+    const meta = document.createElement('div');
+    meta.className = 'latest-context';
+    meta.innerHTML = `<span><b>${esc(order.sku || '—')}</b></span><span>${units} ${units === 1 ? 'unit' : 'units'}</span><span>order ${esc(orderShort)}</span>${order.status ? `<span>${esc(order.status)}</span>` : ''}`;
+    root.appendChild(meta);
   }
 
   let rendering = false;
@@ -109,6 +124,7 @@
       const d = await r.json();
       const orders = d.recent_orders || [];
       const key = `${d.selected_date || ''}:${orders.map(o => o.order_id).join(',')}`;
+      enrichLatest(d.latest_order);
       if (key === lastKey && stream.classList.contains('order-ledger')) return;
       lastKey = key;
       rendering = true;
