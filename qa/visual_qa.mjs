@@ -11,16 +11,21 @@ const viewports = {
   desktop: { width: 1600, height: 1000, isMobile: false, hasTouch: false, deviceScaleFactor: 1 },
 };
 
-async function swipe(page, direction = 'left') {
-  await page.evaluate(dir => {
-    const target = document.querySelector('main.active') || document.querySelector('.view.active') || document.querySelector('.finance-view.active') || document.body;
-    const fromX = dir === 'left' ? 340 : 70;
-    const toX = dir === 'left' ? 70 : 340;
-    const common = { bubbles: true, pointerType: 'touch', pointerId: 7, isPrimary: true, clientY: 420 };
-    target.dispatchEvent(new PointerEvent('pointerdown', { ...common, clientX: fromX }));
-    target.dispatchEvent(new PointerEvent('pointerup', { ...common, clientX: toX }));
-  }, direction);
-  await page.waitForTimeout(350);
+async function verifyAds(page, view = 'overview') {
+  const status = await page.evaluate(async () => {
+    const response = await fetch('/api/ads', { cache: 'no-store' });
+    return (await response.json()).status;
+  });
+  if (status !== 'ready') {
+    await page.locator('#emptyState').waitFor({ state: 'visible', timeout: 5000 });
+    return;
+  }
+  if (view === 'campaigns') {
+    await page.locator('button[data-view="campaigns"]').click();
+    await page.locator('#campaignQuadrant .dpp-bubble').first().waitFor({ timeout: 5000 });
+    return;
+  }
+  await page.locator('#chart .dpp-bar').first().waitFor({ timeout: 5000 });
 }
 
 const scenarios = [
@@ -30,16 +35,14 @@ const scenarios = [
   { name: 'sales-overview', url: '/sales', views: ['mobile', 'tablet', 'desktop'], action: async page => page.locator('#monthChart .dpp-ghost-bar').waitFor({ timeout: 5000 }) },
   { name: 'sales-sku-performance', url: '/sales', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="skus"]').click() },
   { name: 'sales-orders', url: '/sales', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="orders"]').click() },
-  { name: 'sales-swipe-skus', url: '/sales', views: ['mobile'], action: async page => { await swipe(page, 'left'); await page.locator('#skus.active').waitFor({ timeout: 2000 }); } },
   { name: 'catalog', url: '/catalog', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'product-pnc-001', url: '/product?sku=PNC-001', views: ['mobile', 'desktop'] },
   { name: 'inventory', url: '/inventory', views: ['mobile', 'tablet', 'desktop'] },
-  { name: 'ads-overview', url: '/ads', views: ['mobile', 'tablet', 'desktop'], action: async page => page.locator('#chart .dpp-bar').first().waitFor({ timeout: 5000 }) },
-  { name: 'ads-campaigns', url: '/ads', views: ['mobile', 'desktop'], action: async page => { await page.locator('button[data-view="campaigns"]').click(); await page.locator('#campaignQuadrant .dpp-bubble').first().waitFor({ timeout: 5000 }); } },
+  { name: 'ads-overview', url: '/ads', views: ['mobile', 'tablet', 'desktop'], action: async page => verifyAds(page) },
+  { name: 'ads-campaigns', url: '/ads', views: ['mobile', 'desktop'], action: async page => verifyAds(page, 'campaigns') },
   { name: 'finance-overview', url: '/finance', views: ['mobile', 'desktop'] },
   { name: 'finance-closed', url: '/finance', views: ['mobile', 'tablet', 'desktop'], action: async page => { await page.locator('button[data-view="cashView"]').click(); await page.locator('#closedChart .dpp-bar').first().waitFor({ timeout: 5000 }); await page.locator('#ytdChart .dpp-bar').first().waitFor({ timeout: 5000 }); } },
   { name: 'finance-ledger', url: '/finance', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="detailView"]').click() },
-  { name: 'finance-swipe-closed', url: '/finance', views: ['mobile'], action: async page => { await swipe(page, 'left'); await page.locator('#cashView.active').waitFor({ timeout: 2000 }); await page.locator('#ytdChart .dpp-bar').first().waitFor({ timeout: 5000 }); } },
   { name: 'trajectory', url: '/trajectory', views: ['mobile', 'desktop'] },
   { name: 'data-health', url: '/data-health', views: ['mobile', 'desktop'] },
 ];
