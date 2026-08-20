@@ -106,6 +106,44 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
             (cutoff, marketplace, asin),
         ) if cutoff and asin else {}
 
+        ads_through = _one(cur, """
+            SELECT max(d.business_date) AS d
+            FROM ads.daily_advertised_product d
+            JOIN ads.account a USING(account_id)
+            WHERE a.marketplace_id=%s
+              AND (d.advertised_sku=%s OR (%s<>'' AND d.advertised_asin=%s))
+        """, (marketplace, sku, asin or '', asin or '')).get('d')
+
+        ads = _one(cur, """
+            WITH c AS (SELECT %s::date d), ad AS (
+              SELECT
+                coalesce(sum(spend) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0) spend_t28,
+                coalesce(sum(attributed_sales) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0) attributed_sales_t28,
+                coalesce(sum(clicks) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint clicks_t28,
+                coalesce(sum(impressions) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint impressions_t28,
+                coalesce(sum(purchases) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint purchases_t28,
+                coalesce(sum(spend) FILTER (WHERE business_date BETWEEN c.d-55 AND c.d-28),0) spend_prior_t28,
+                coalesce(sum(attributed_sales) FILTER (WHERE business_date BETWEEN c.d-55 AND c.d-28),0) attributed_sales_prior_t28
+              FROM ads.daily_advertised_product d, c
+              JOIN ads.account a ON a.account_id=d.account_id
+              WHERE a.marketplace_id=%s
+                AND (d.advertised_sku=%s OR (%s<>'' AND d.advertised_asin=%s))
+                AND d.business_date BETWEEN c.d-55 AND c.d
+            ), seller AS (
+              SELECT coalesce(sum(sales),0) sales_t28
+              FROM mart.sku_daily, c
+              WHERE marketplace_id=%s AND seller_sku=%s AND business_date BETWEEN c.d-27 AND c.d
+            )
+            SELECT ad.*,
+              CASE WHEN spend_t28>0 THEN attributed_sales_t28/spend_t28 END AS roas_t28,
+              CASE WHEN attributed_sales_t28>0 THEN spend_t28/attributed_sales_t28 END AS acos_t28,
+              CASE WHEN seller.sales_t28>0 THEN spend_t28/seller.sales_t28 END AS tacos_t28,
+              CASE WHEN spend_prior_t28>0 THEN round(100.0*(spend_t28-spend_prior_t28)/spend_prior_t28,1) END AS spend_delta28_pct,
+              c.d AS through_date
+            FROM ad CROSS JOIN seller CROSS JOIN c
+        """, (ads_through, marketplace, sku, asin or '', asin or '', marketplace, sku)) if ads_through else {}
+        ads['status'] = 'ready' if ads_through else 'awaiting_ads_data'
+
         series = _all(
             cur,
             """
@@ -123,15 +161,25 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
               FROM core.asin_sales_traffic_daily
               WHERE marketplace_id=%s AND asin=%s
                 AND business_date BETWEEN %s::date-89 AND %s::date
+            ), ad AS (
+              SELECT d.business_date, sum(d.spend) ad_spend, sum(d.attributed_sales) ad_attributed_sales
+              FROM ads.daily_advertised_product d
+              JOIN ads.account a USING(account_id)
+              WHERE a.marketplace_id=%s
+                AND (d.advertised_sku=%s OR (%s<>'' AND d.advertised_asin=%s))
+                AND d.business_date BETWEEN %s::date-89 AND %s::date
+              GROUP BY d.business_date
             )
             SELECT d.business_date,
                    COALESCE(s.sales,0)::numeric(14,2) sales,
                    COALESCE(s.units,0)::bigint units,
-                   t.sessions,t.page_views,t.units_ordered,t.unit_session_percentage
-            FROM days d LEFT JOIN s USING (business_date) LEFT JOIN t USING (business_date)
+                   t.sessions,t.page_views,t.units_ordered,t.unit_session_percentage,
+                   ad.ad_spend,ad.ad_attributed_sales
+            FROM days d LEFT JOIN s USING (business_date) LEFT JOIN t USING (business_date) LEFT JOIN ad USING (business_date)
             ORDER BY d.business_date
             """,
-            (cutoff, marketplace, sku, cutoff, cutoff, marketplace, asin or '', cutoff, cutoff),
+            (cutoff, marketplace, sku, cutoff, cutoff, marketplace, asin or '', cutoff, cutoff,
+             marketplace, sku, asin or '', asin or '', cutoff, cutoff),
         ) if cutoff else []
 
         recent_orders = _all(
@@ -175,6 +223,7 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
         'profile': decorate_products([profile])[0],
         'performance': performance,
         'traffic': traffic,
+        'ads': ads,
         'series': series,
         'recent_orders': recent_orders,
         'inventory_history': inventory_history,
