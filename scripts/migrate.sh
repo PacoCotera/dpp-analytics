@@ -4,6 +4,11 @@ set -euo pipefail
 ENV_FILE="${1:-/etc/dpp-analytics/env}"
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-sql/migrations}"
 
+# This script already runs before the application stack is deployed, so use it
+# as the host-side safety gate for persistent board configuration as well.
+# The helper is idempotent and never overwrites an existing product-cost file.
+bash scripts/init-host-config.sh
+
 if ! sudo test -r "$ENV_FILE"; then
   echo "Environment file not readable via sudo: $ENV_FILE" >&2
   exit 1
