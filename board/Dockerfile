@@ -69,6 +69,13 @@ home_ads_tag = '<script>\n' + home_ads + '\n</script>'
 if '</body>' in text and 'Paid-support efficiency is broadly stable' not in text:
     home.write_text(text.replace('</body>', home_ads_tag + '\n</body>', 1))
 
+ads = static / 'ads.html'
+text = ads.read_text()
+ads_targeting = (static / 'ads-targeting-enhance.js').read_text()
+ads_targeting_tag = '<script>\n' + ads_targeting + '\n</script>'
+if '</body>' in text and 'ads-targeting-search-term-workspaces-v1' not in text:
+    ads.write_text(text.replace('</body>', ads_targeting_tag + '\n</body>', 1))
+
 finance = static / 'finance.html'
 text = finance.read_text()
 finance_ads = (static / 'finance-ads-reconcile.js').read_text()
