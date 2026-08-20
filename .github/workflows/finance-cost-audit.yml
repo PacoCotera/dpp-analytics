@@ -1,0 +1,68 @@
+name: Finance Cost Audit
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    runs-on: [self-hosted, linux, x64, dpp-analytics]
+    timeout-minutes: 7
+    steps:
+      - name: Wait for current board
+        run: sleep 20
+      - name: Audit missing historical COGS
+        run: |
+          set -euo pipefail
+          curl -fsS http://127.0.0.1:8088/api/finance >/tmp/finance-cost-audit.json
+          python3 - <<'PY' >/tmp/finance-cost-audit.md
+          import json
+          p=json.load(open('/tmp/finance-cost-audit.json'))
+          print('# Finance product-cost audit')
+          print()
+          print('Commit: `%s`' % __import__('os').environ.get('GITHUB_SHA',''))
+          print()
+          print('## Historical months not yet management-closed')
+          print('```text')
+          final=p.get('finalizing_months') or []
+          if not final:
+              print('None')
+          for m in final:
+              missing=m.get('missing_skus') or []
+              miss=', '.join('%s (%s units)'%(x.get('sku'),x.get('units')) for x in missing) or 'none'
+              print('%s amazon=%s cogs_coverage=%s%% missing=%s waits=%s' % (
+                  m.get('month'),m.get('amazon_state'),m.get('cogs_coverage_pct'),miss,', '.join(m.get('close_waits_for') or [])))
+          print('```')
+          print()
+          print('## Consolidated missing SKUs')
+          print('```text')
+          agg={}
+          months={}
+          for m in final:
+              for x in m.get('missing_skus') or []:
+                  sku=x.get('sku')
+                  agg[sku]=agg.get(sku,0)+int(x.get('units') or 0)
+                  months.setdefault(sku,[]).append(str(m.get('month'))[:7])
+          if not agg:
+              print('None')
+          for sku,units in sorted(agg.items()):
+              print('%s total_units=%s months=%s' % (sku,units,','.join(months.get(sku,[]))))
+          print('```')
+          print()
+          print('Closed snapshots: %s' % len(p.get('closed_months') or []))
+          PY
+          cat /tmp/finance-cost-audit.md
+      - name: Publish audit
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs=require('fs');
+            const body=fs.existsSync('/tmp/finance-cost-audit.md') ? fs.readFileSync('/tmp/finance-cost-audit.md','utf8') : '# Finance product-cost audit\nAudit did not produce output.';
+            await github.rest.issues.update({owner:context.repo.owner,repo:context.repo.repo,issue_number:10,body});
