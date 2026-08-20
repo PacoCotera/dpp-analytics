@@ -1,4 +1,4 @@
-/* sales-current-state-rail-v1
+/* sales-current-state-rail-js-v1
    Stable operating-state rail: MTD hero, grouped momentum, Today and YTD utility rows.
    The rail meaning does not change with the analytical chart window. */
 (() => {
