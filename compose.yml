@@ -35,6 +35,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       TZ: ${TZ}
+      PRODUCT_COSTS_PATH: /config/product_costs.json
+      FINANCE_ADS_CLOSE_GRACE_DAYS: ${FINANCE_ADS_CLOSE_GRACE_DAYS:-10}
       SPAPI_ENABLED: ${SPAPI_ENABLED:-false}
       SPAPI_ENVIRONMENT: ${SPAPI_ENVIRONMENT:-sandbox}
       SPAPI_PRODUCTION_INGESTION_ENABLED: ${SPAPI_PRODUCTION_INGESTION_ENABLED:-false}
@@ -67,6 +69,8 @@ services:
       DATA_KIOSK_POLL_TIMEOUT_SECONDS: ${DATA_KIOSK_POLL_TIMEOUT_SECONDS:-300}
       SANDBOX_PROBE_INTERVAL_SECONDS: ${SANDBOX_PROBE_INTERVAL_SECONDS:-21600}
       PRODUCTION_PROBE_INTERVAL_SECONDS: ${PRODUCTION_PROBE_INTERVAL_SECONDS:-21600}
+    volumes:
+      - /etc/dpp-analytics/board-config:/config:ro
     healthcheck:
       test: ["CMD", "python", "-m", "dpp_analytics.health"]
       interval: 30s
