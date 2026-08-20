@@ -153,7 +153,7 @@ function render(d){
  document.getElementById('momentumRead').textContent=momentumRead(r.delta28_pct);
  document.getElementById('actions').textContent=fmt.format(is.needs_action||0);
  document.getElementById('actionMeta').textContent=`${is.stockouts||0} stockout · ${is.produce||0} produce · ${is.plan||0} plan`;
- DPPCharts.homeRhythm('#spark',d.series);
+ DPPCharts.homeRhythm('#spark',d.series,d.weekly_products);
  const att=(d.inventory||[]).filter(x=>['STOCKOUT','PRODUCE','PLAN'].includes(String(x.action||'').toUpperCase()));
  const restock=document.getElementById('restockSection');
  if(att.length){
