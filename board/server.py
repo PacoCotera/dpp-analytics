@@ -304,7 +304,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_bytes(503, "application/json", body)
             return
         if path == "/api/today":
-            self.json_endpoint(lambda: build_today_payload(connect, decorate_products, MARKETPLACE))
+            selected_date = (query.get("date") or [None])[0]
+            self.json_endpoint(lambda: build_today_payload(connect, decorate_products, MARKETPLACE, selected_date))
             return
         if path == "/api/home":
             self.json_endpoint(home_payload)
