@@ -11,4 +11,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY dpp_analytics ./dpp_analytics
 
+# Fail the image build before replacing production if a scheduler dependency is
+# missing or a newly added collector has a syntax/import error.
+RUN python -m compileall -q dpp_analytics && python - <<'PY'
+import dpp_analytics.scheduler
+import dpp_analytics.amazon_ads
+PY
+
 CMD ["python", "-m", "dpp_analytics.scheduler"]
