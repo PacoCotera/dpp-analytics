@@ -1,165 +1,119 @@
 (() => {
+  const fmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   const money = value => {
     const n = Number(value || 0);
-    return (n < 0 ? '−$' : '$') + new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.abs(Math.round(n)));
+    return (n < 0 ? '−$' : '$') + fmt.format(Math.abs(Math.round(n)));
   };
-  const pct = value => value == null ? '—' : `${Number(value) > 0 ? '+' : ''}${Number(value).toFixed(1)}%`;
+  const absMoney = value => '$' + fmt.format(Math.abs(Math.round(Number(value || 0))));
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   const style = document.createElement('style');
   style.textContent = `
-    /* Finance should read like a compact P&L bridge, not a stack of hero cards. */
-    #overview .balance-story{
-      background:transparent!important;
-      color:var(--ink)!important;
-      box-shadow:none!important;
-      border:0!important;
-      border-radius:0!important;
-      padding:10px 3px 8px!important;
-      grid-template-columns:minmax(0,1fr) auto!important;
-      align-items:end!important;
-      gap:26px!important;
-      overflow:visible!important;
+    /* Finance manager statement: topline -> deductions -> contribution -> cash. */
+    #overview .balance-story,#overview .grid.four,#overview .manager-key{display:none!important}
+    .finance-statement{margin-top:12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px 0 0}
+    .fs-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;padding:14px 2px 16px}
+    .fs-head h2{font-size:clamp(27px,3vw,40px);letter-spacing:-.045em;line-height:1;margin:4px 0 7px}
+    .fs-sub{font-size:13px;color:var(--muted);line-height:1.45}
+    .fs-source{text-align:right;font-size:11px;color:var(--muted);max-width:330px;line-height:1.4}
+    .fs-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(310px,.65fr);gap:26px;border-top:1px solid var(--line);padding:18px 0}
+    .fs-lines{min-width:0}
+    .fs-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:baseline;padding:8px 2px;border-top:1px solid #e9e2d8}
+    .fs-line:first-child{border-top:0}
+    .fs-label{font-size:14px;color:#514b44}.fs-label small{display:block;color:var(--muted);font-size:11px;margin-top:2px;line-height:1.35}
+    .fs-amount{font-size:18px;font-weight:790;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .fs-line.major{padding:11px 2px}.fs-line.major .fs-label{font-weight:820;color:var(--ink);font-size:15px}.fs-line.major .fs-amount{font-size:25px;letter-spacing:-.03em}
+    .fs-line.result{border-top:2px solid #bdb3a5;margin-top:5px;padding-top:13px}.fs-line.result .fs-label{font-weight:840;color:var(--ink)}.fs-line.result .fs-amount{font-size:28px;letter-spacing:-.04em}
+    .fs-neg{color:var(--bad)}.fs-pos{color:var(--good)}.fs-neutral{color:var(--ink)}
+    .fs-side{border-left:1px solid var(--line);padding-left:24px;display:flex;flex-direction:column;justify-content:space-between;gap:18px}
+    .fs-side-block{padding-bottom:16px;border-bottom:1px solid var(--line)}.fs-side-block:last-child{border-bottom:0;padding-bottom:0}
+    .fs-side-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:820;color:var(--muted)}
+    .fs-side-value{font-size:34px;font-weight:850;letter-spacing:-.05em;line-height:1;margin-top:6px}
+    .fs-side-note{font-size:12px;color:var(--muted);line-height:1.4;margin-top:6px}
+    .fs-answer{font-size:19px;font-weight:820;line-height:1.15;margin-top:5px}
+    #overview .section.grid.main-aside{margin-top:18px}
+    #overview .section.grid.main-aside .section-sub{max-width:620px}
+    @media(max-width:760px){
+      .fs-head{display:block}.fs-source{text-align:left;margin-top:8px}
+      .fs-grid{grid-template-columns:1fr;gap:14px;padding-top:12px}
+      .fs-side{border-left:0;border-top:1px solid var(--line);padding:16px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+      .fs-side-block{border-bottom:0;padding:0}.fs-side-value{font-size:29px}
+      .fs-line{padding:9px 0}.fs-label{font-size:14px}.fs-amount{font-size:17px}
+      .fs-line.major .fs-amount{font-size:23px}.fs-line.result .fs-amount{font-size:25px}
     }
-    #overview .balance-story:after{display:none!important}
-    #overview .balance-story .kicker{color:var(--accent-ink)!important}
-    #overview .balance-story h2{color:var(--ink)!important;font-size:clamp(28px,3vw,42px)!important;margin:5px 0 7px!important}
-    #overview .balance-story p{color:var(--muted)!important;font-size:14px!important;line-height:1.5!important;max-width:760px!important}
-    #overview .balance-story .story-side{text-align:right;min-width:220px}
-    #overview .balance-story .story-number{font-size:48px!important;line-height:.95!important}
-    #overview .balance-story .story-caption{color:var(--muted)!important;font-size:12px!important}
-    #overview .balance-explain{display:none!important}
-
-    .profit-bridge{
-      margin-top:12px;
-      background:rgba(255,253,249,.78);
-      border:1px solid var(--line);
-      border-radius:18px;
-      padding:15px 17px;
-    }
-    .profit-answer{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:13px}
-    .profit-answer .answer{font-size:21px;font-weight:830;letter-spacing:-.025em;line-height:1.15}
-    .profit-answer .answer-copy{font-size:13px;color:var(--muted);line-height:1.45;margin-top:4px;max-width:760px}
-    .cost-coverage{font-size:11px;color:var(--muted);white-space:nowrap;padding-top:3px}
-    .bridge-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:1px solid var(--line)}
-    .bridge-step{padding:12px 14px 3px 0;min-width:0}
-    .bridge-step+ .bridge-step{border-left:1px solid var(--line);padding-left:14px}
-    .bridge-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:var(--muted)}
-    .bridge-value{font-size:25px;font-weight:840;letter-spacing:-.04em;margin-top:4px;line-height:1}
-    .bridge-note{font-size:11px;color:var(--muted);line-height:1.35;margin-top:5px}
-    .bridge-op{font-weight:500;color:var(--faint);margin-right:4px}
-
-    @media(max-width:640px){
-      #overview .balance-story{grid-template-columns:1fr!important;padding-top:4px!important;gap:10px!important}
-      #overview .balance-story .story-side{text-align:left!important;min-width:0!important;display:flex!important;flex-direction:row!important;align-items:baseline!important;gap:9px!important}
-      #overview .balance-story .story-number{font-size:38px!important}
-      #overview .balance-story h2{font-size:29px!important}
-      #overview .balance-story p{font-size:14px!important}
-      .profit-answer{display:block}
-      .cost-coverage{margin-top:6px;white-space:normal}
-      .bridge-row{grid-template-columns:1fr!important}
-      .bridge-step{padding:10px 0!important;border-left:0!important;border-top:1px solid var(--line)}
-      .bridge-step:first-child{border-top:0}
-      .bridge-value{font-size:24px}
-      #overview .grid.four{grid-template-columns:1fr 1fr!important;gap:8px!important}
-      #overview .grid.four .metric{min-height:104px!important;padding:13px 14px!important}
-      #overview .grid.four .metric-value{font-size:28px!important;margin:7px 0!important}
-      #overview .grid.four .metric-note{font-size:11px!important;line-height:1.35!important}
-    }
+    @media(max-width:430px){.fs-side{grid-template-columns:1fr}.fs-side-block+ .fs-side-block{border-top:1px solid var(--line);padding-top:13px}}
   `;
   document.head.appendChild(style);
 
-  function redrawScale(rows) {
-    const svg = document.getElementById('chart');
-    if (!svg || !rows?.length) return;
-    const W = 900, H = 280, L = 70, R = 12, T = 16, B = 32;
-    const w = W - L - R, h = H - T - B;
-    const vals = rows.map(r => Number(r.operating_balance || 0));
-    const raw = Math.max(...vals.map(Math.abs), 100);
-    const step = raw > 10000 ? 5000 : raw > 5000 ? 2500 : raw > 2000 ? 1000 : raw > 1000 ? 500 : 250;
-    const abs = Math.ceil(raw / step) * step;
-    const mid = T + h / 2;
-    const x = i => L + (i + .5) * w / vals.length;
-    const y = v => mid - (v / abs) * (h / 2 - 5);
-    const bw = Math.max(2, w / vals.length * .62);
-    const out = [];
-    [1, .5, 0, -.5, -1].forEach(fr => {
-      const value = abs * fr;
-      const yy = y(value);
-      out.push(`<line class="${fr === 0 ? 'zero' : 'gline'}" x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}"/>`);
-      out.push(`<text class="axis" x="${L-8}" y="${yy+4}" text-anchor="end">${money(value)}</text>`);
-    });
-    vals.forEach((v, i) => {
-      const yy = y(v), top = Math.min(mid, yy), height = Math.max(1, Math.abs(mid - yy));
-      out.push(`<rect class="${v >= 0 ? 'bar-pos' : 'bar-neg'}" x="${x(i)-bw/2}" y="${top}" width="${bw}" height="${height}" rx="2"><title>${String(rows[i].business_date).slice(5)} · ${money(v)}</title></rect>`);
-    });
-    [0, Math.floor((vals.length - 1) / 2), vals.length - 1].forEach(i => {
-      out.push(`<text class="axis" x="${x(i)}" y="${H-7}" text-anchor="middle">${String(rows[i].business_date).slice(5)}</text>`);
-    });
-    svg.innerHTML = out.join('');
+  function row(label, value, opts={}) {
+    const n = Number(value || 0);
+    const cls = opts.tone || (n < 0 ? 'fs-neg' : opts.positive ? 'fs-pos' : 'fs-neutral');
+    const amount = opts.forceMinus && n > 0 ? `−${absMoney(n)}` : money(n);
+    return `<div class="fs-line ${opts.major?'major':''} ${opts.result?'result':''}"><div class="fs-label">${esc(label)}${opts.note?`<small>${esc(opts.note)}</small>`:''}</div><div class="fs-amount ${cls}">${amount}</div></div>`;
   }
 
-  function addProfitBridge(summary, cogsRows) {
-    const story = document.querySelector('.balance-story');
-    if (!story || document.getElementById('profitBridge')) return;
-    const amazon = Number(summary.operating_ledger_balance_28 || 0);
-    const complete = !!summary.product_cogs_complete_28;
-    const knownCogs = Number(summary.product_cogs_known_28 || 0);
-    const coverage = Number(summary.product_cogs_coverage_pct_28 ?? 0);
-    const after = summary.contribution_after_product_cogs_28 == null ? null : Number(summary.contribution_after_product_cogs_28);
-    const missing = (cogsRows || []).filter(x => !x.configured);
+  function buildStatement(st) {
+    const existing = document.getElementById('financeStatement');
+    if (existing) existing.remove();
+    const tabs = document.querySelector('.view-tabs');
+    if (!tabs) return;
 
-    let answer, copy, tone;
-    if (!complete) {
-      answer = 'We cannot answer yet.';
-      copy = `Amazon leaves ${money(amazon)} over the latest 28-day finance window, but product COGS is missing for ${missing.length || 'some'} shipped SKU${missing.length === 1 ? '' : 's'}. Add unit costs and this becomes a contribution-after-COGS read.`;
-      tone = 'warn';
-    } else if (after > 0) {
-      answer = 'Positive after product COGS.';
-      copy = `${money(after)} remains after Amazon-recorded operating events and configured product COGS. This is still before payroll, rent, freight-to-FBA and other off-Amazon overhead.`;
-      tone = 'good';
-    } else {
-      answer = 'Negative after product COGS.';
-      copy = `Configured product COGS takes the latest 28-day contribution to ${money(after)} before other off-Amazon overhead.`;
-      tone = 'bad';
+    const period = `${String(st.period_start || '').slice(5)} to ${String(st.through_date || '').slice(5)}`;
+    const cogsComplete = !!st.cogs_complete;
+    const after = st.after_product_cogs == null ? null : Number(st.after_product_cogs);
+    const taxCollected = Number(st.tax_collected || 0);
+    const taxWithheld = Number(st.tax_withheld || 0);
+    const deductions = [
+      ['Promotions', st.promotions, 'Discounts/promotions funded through Amazon'],
+      ['Refunds', st.refunds, 'Customer refunds posted in the period'],
+      ['Selling fees', st.selling_fees, 'Referral/commission-type charges'],
+      ['FBA fees', st.fba_fees, 'Fulfillment-related Amazon charges'],
+      ['Other Amazon fees', st.other_amazon_fees, 'Other Amazon operating charges'],
+      ['Advertising', st.advertising, 'Amazon advertising charges posted in Finance'],
+      ['Tax withheld/remitted', taxWithheld, 'Tax amounts withheld/remitted by Amazon'],
+      ['Adjustments', st.adjustments, 'Reimbursements and ledger adjustments, net'],
+    ];
+
+    let answer = 'COGS incomplete';
+    let answerTone = 'warn';
+    if (after != null) {
+      answer = after >= 0 ? 'Positive after product COGS' : 'Negative after product COGS';
+      answerTone = after >= 0 ? 'fs-pos' : 'fs-neg';
     }
 
-    const cogsValue = complete ? money(knownCogs) : `${money(knownCogs)} known`;
-    const afterValue = after == null ? 'Pending COGS' : money(after);
     const node = document.createElement('section');
-    node.id = 'profitBridge';
-    node.className = 'profit-bridge';
+    node.id = 'financeStatement';
+    node.className = 'finance-statement';
     node.innerHTML = `
-      <div class="profit-answer">
-        <div><div class="kicker">Are we making money?</div><div class="answer ${tone}">${answer}</div><div class="answer-copy">${copy}</div></div>
-        <div class="cost-coverage">COGS coverage · ${coverage.toFixed(0)}% of shipped units</div>
+      <div class="fs-head">
+        <div><div class="kicker">Management statement · MTD</div><h2>Where the sales went.</h2><div class="fs-sub">${esc(period)} · ${Number(st.orders || 0)} orders · ${Number(st.units || 0)} units</div></div>
+        <div class="fs-source">${esc(st.source_note || '')}</div>
       </div>
-      <div class="bridge-row">
-        <div class="bridge-step"><div class="bridge-label">Amazon-side contribution</div><div class="bridge-value ${amazon >= 0 ? 'good' : 'bad'}">${money(amazon)}</div><div class="bridge-note">After Amazon-recorded fees, ads, refunds and operating events.</div></div>
-        <div class="bridge-step"><div class="bridge-label">Product COGS</div><div class="bridge-value"><span class="bridge-op">−</span>${cogsValue}</div><div class="bridge-note">Seller-owned unit costs applied to shipment-linked orders.</div></div>
-        <div class="bridge-step"><div class="bridge-label">After product COGS</div><div class="bridge-value ${after == null ? '' : after >= 0 ? 'good' : 'bad'}">${afterValue}</div><div class="bridge-note">Contribution before other off-Amazon operating overhead.</div></div>
+      <div class="fs-grid">
+        <div class="fs-lines">
+          ${row('Product sales', st.sales, {major:true,positive:true,note:'Marketplace sales topline'})}
+          ${row('Tax collected from customers', taxCollected, {note:'Shown separately; not operating revenue'})}
+          ${deductions.map(([l,v,n]) => row(l,v,{note:n,forceMinus:Number(v)>0})).join('')}
+          ${row('Amazon operating contribution', st.amazon_operating_net, {major:true,result:true,tone:Number(st.amazon_operating_net)>=0?'fs-pos':'fs-neg',note:'After Amazon-posted operating events; before product COGS'})}
+          ${row('Product COGS', st.product_cogs, {forceMinus:true,note:`Seller-owned unit costs · ${Number(st.cogs_coverage_pct || 0).toFixed(0)}% coverage`})}
+          ${after == null ? `<div class="fs-line result"><div class="fs-label">Contribution after product COGS<small>Complete COGS required</small></div><div class="fs-amount">Pending</div></div>` : row('Contribution after product COGS', after, {result:true,tone:after>=0?'fs-pos':'fs-neg',note:'Before payroll, rent, freight-to-FBA and other off-Amazon overhead'})}
+        </div>
+        <aside class="fs-side">
+          <div class="fs-side-block"><div class="fs-side-label">Cash transferred by Amazon · MTD</div><div class="fs-side-value">${money(st.cash_transferred)}</div><div class="fs-side-note">Actual Transfer events posted in the finance ledger. Timing will not equal the P&amp;L period exactly.</div></div>
+          <div class="fs-side-block"><div class="fs-side-label">Operating read</div><div class="fs-answer ${answerTone}">${answer}</div><div class="fs-side-note">${cogsComplete ? 'Product cost coverage is complete for shipment-linked units in this period.' : `Product COGS coverage is ${Number(st.cogs_coverage_pct || 0).toFixed(0)}%; do not treat the result as complete.`}</div></div>
+        </aside>
       </div>`;
-    story.insertAdjacentElement('afterend', node);
+    tabs.insertAdjacentElement('afterend', node);
   }
 
-  fetch('/api/finance', { cache: 'no-store' })
+  fetch('/api/finance', { cache:'no-store' })
     .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
     .then(data => {
-      const s = data.summary || {};
       const h1 = document.querySelector('.page-head h1');
       const summary = document.querySelector('.page-summary');
-      if (h1) h1.textContent = 'Are we making money?';
-      if (summary) summary.textContent = 'Follow the money from Amazon contribution to product COGS. Only costs we can support are included; off-Amazon overhead remains separate.';
-      const title = document.getElementById('storyTitle');
-      const copy = document.getElementById('storyCopy');
-      const caption = document.querySelector('.story-caption');
-      const balance = Number(s.operating_ledger_balance_28 || 0);
-      if (title) title.textContent = balance > 0 ? 'Amazon contribution is positive.' : 'Amazon contribution is negative.';
-      if (copy) copy.textContent = balance > 0
-        ? 'This is what remains after Amazon-recorded fees, advertising, refunds and other operating events in the latest 28-day finance window.'
-        : 'Amazon-recorded operating events already take the latest 28-day finance window below zero.';
-      if (caption) caption.textContent = `28 days${s.amazon_contribution_rate_28 == null ? '' : ` · ${pct(s.amazon_contribution_rate_28)} of shipment-event value`}`;
-      addProfitBridge(s, data.cogs || []);
-      window.setTimeout(() => redrawScale(data.daily || []), 450);
+      if (h1) h1.textContent = 'Finance';
+      if (summary) summary.textContent = 'Sales, taxes, Amazon charges, product cost and cash. Start with the statement; drill into drivers or raw events only when something needs explaining.';
+      buildStatement(data.statement || {});
     })
     .catch(() => {});
 })();
