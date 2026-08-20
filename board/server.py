@@ -37,6 +37,7 @@ DATA_HEALTH_INDEX = (STATIC / "data_health.html").read_bytes()
 THEME_CSS = (STATIC / "theme.css").read_bytes()
 CHART_CSS = (STATIC / "chart-system.css").read_bytes()
 CHART_JS = (STATIC / "chart-system.js").read_bytes()
+UI_SHELL_JS = (STATIC / "ui-shell.js").read_bytes()
 D3_JS = (STATIC / "vendor" / "d3.v7.min.js").read_bytes()
 MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
 AMAZON_MX_DP = "https://www.amazon.com.mx/dp/"
@@ -176,6 +177,7 @@ class Handler(BaseHTTPRequestHandler):
         if path=="/assets/theme.css": self.send_bytes(200,"text/css; charset=utf-8",THEME_CSS,cache="public, max-age=60"); return
         if path=="/assets/chart-system.css": self.send_bytes(200,"text/css; charset=utf-8",CHART_CSS,cache="public, max-age=300"); return
         if path=="/assets/chart-system.js": self.send_bytes(200,"text/javascript; charset=utf-8",CHART_JS,cache="public, max-age=300"); return
+        if path=="/assets/ui-shell.js": self.send_bytes(200,"text/javascript; charset=utf-8",UI_SHELL_JS,cache="public, max-age=300"); return
         if path=="/assets/vendor/d3.v7.min.js": self.send_bytes(200,"text/javascript; charset=utf-8",D3_JS,cache="public, max-age=31536000, immutable"); return
         if path=="/health":
             try:

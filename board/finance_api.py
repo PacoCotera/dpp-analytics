@@ -300,6 +300,93 @@ def finance_payload(connect, marketplace: str) -> dict:
             "cash_transferred": float(tx_mtd.get("transfers") or 0),
         }
 
+        sales_through = _one(
+            cur,
+            """
+            SELECT max(business_date) AS business_date
+            FROM mart.business_daily
+            WHERE marketplace_id=%s AND reconciled_daily_report
+            """,
+            (marketplace,),
+        ).get("business_date")
+
+        current_order = _one(
+            cur,
+            """
+            SELECT COALESCE(sum(t.total_amount),0)::numeric(16,2) AS amazon_order_net
+            FROM core.financial_transaction t
+            JOIN core.amazon_order o
+              ON o.marketplace_id=t.marketplace_id
+             AND o.amazon_order_id=t.amazon_order_id
+            WHERE t.marketplace_id=%s
+              AND t.transaction_status='RELEASED'
+              AND t.transaction_type IN ('Shipment','Refund')
+              AND (o.created_time AT TIME ZONE 'America/Mexico_City')::date
+                    BETWEEN %s::date AND %s::date
+            """,
+            (marketplace, window["start_date"], window["through_date"]),
+        )
+        current_sales = float(sales_mtd.get("sales") or 0)
+        current_order_net = float(current_order.get("amazon_order_net") or 0)
+        current_month = {
+            "month": window["start_date"],
+            "net_sales_ex_vat": round(current_sales, 2),
+            "iva_on_sales": round(current_sales * 0.16, 2),
+            "shopper_product_spend": round(current_sales * 1.16, 2),
+            "amazon_order_net": round(current_order_net, 2),
+            "product_cogs": cogs_mtd["known_cogs"],
+            "cogs_coverage_pct": cogs_mtd["coverage_pct"],
+            "cogs_complete": cogs_mtd["complete"],
+            "estimated_contribution_before_current_ads": (
+                round(current_order_net - cogs_mtd["known_cogs"], 2)
+                if cogs_mtd["complete"] else None
+            ),
+            "cash_transferred": float(tx_mtd.get("transfers") or 0),
+        }
+
+        closed_months = _all(
+            cur,
+            """
+            SELECT month,version,state,net_sales_ex_vat,iva_on_sales,
+                   shopper_product_spend,amazon_order_net,amazon_order_effect,
+                   advertising,other_amazon_postings,product_cogs,
+                   contribution_after_product_cogs,contribution_margin_pct,
+                   cash_transferred,closed_at,
+                   COALESCE((close_basis->>'cogs_coverage_pct')::numeric,100)
+                     AS cogs_coverage_pct
+            FROM mart.finance_month_close_latest
+            WHERE marketplace_id=%s
+            ORDER BY month
+            """,
+            (marketplace,),
+        )
+
+        def aggregate_closed(rows: list[dict]) -> dict:
+            sales = sum(float(row.get("net_sales_ex_vat") or 0) for row in rows)
+            contribution = sum(float(row.get("contribution_after_product_cogs") or 0) for row in rows)
+            return {
+                "months": len(rows),
+                "net_sales_ex_vat": round(sales, 2),
+                "amazon_order_effect": round(sum(float(row.get("amazon_order_effect") or 0) for row in rows), 2),
+                "advertising": round(sum(float(row.get("advertising") or 0) for row in rows), 2),
+                "other_amazon_postings": round(sum(float(row.get("other_amazon_postings") or 0) for row in rows), 2),
+                "product_cogs": round(sum(float(row.get("product_cogs") or 0) for row in rows), 2),
+                "contribution_after_product_cogs": round(contribution, 2),
+                "contribution_margin_pct": round(100.0 * contribution / sales, 1) if sales else None,
+            }
+
+        closed_aggregate = aggregate_closed(closed_months)
+        ytd_closed_aggregate = {}
+        if closed_months:
+            latest_month = closed_months[-1]["month"]
+            latest_year = latest_month.year
+            ytd_rows = [row for row in closed_months if row["month"].year == latest_year]
+            ytd_closed_aggregate = aggregate_closed(ytd_rows)
+            ytd_closed_aggregate.update({
+                "year": latest_year,
+                "through_month": latest_month,
+            })
+
         types = _all(
             cur,
             """
@@ -380,5 +467,16 @@ def finance_payload(connect, marketplace: str) -> dict:
         "breakdowns": breakdowns,
         "recent": recent,
         "cogs": cogs28["rows"],
+        "current_month": current_month,
+        "closed_months": closed_months,
+        "closed_aggregate": closed_aggregate,
+        "ytd_closed_aggregate": ytd_closed_aggregate,
+        "finalizing_months": [],
+        "close_policy": {
+            "release_coverage_min_pct": float(os.getenv("FINANCE_CLOSE_RELEASE_COVERAGE_MIN_PCT", "98")),
+            "grace_days": int(os.getenv("FINANCE_CLOSE_GRACE_DAYS", "10")),
+        },
+        "sales_through": sales_through,
+        "finance_cutoff": cutoff,
         "local_time": local_clock.get("local_time"),
     }
