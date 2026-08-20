@@ -16,6 +16,7 @@ from .orders import ingest_orders
 from .product_roles_probe import probe as product_roles_probe
 from .production_probe import probe as production_probe
 from .sandbox_probe import probe as sandbox_probe
+from .settlement_reports import ingest_settlement_reports
 from .settings import settings
 
 logging.basicConfig(
@@ -138,14 +139,15 @@ def main() -> None:
     else:
         log.info("Amazon Ads ingestion disabled")
 
-    # Bulk seller catalog comes from GET_MERCHANT_LISTINGS_ALL_DATA. It is the
-    # authoritative enumeration of our listings and also includes item-name,
-    # image-url, price, quantity, fulfillment channel and status. Catalog Items
-    # is retained only as optional Amazon-catalog enrichment.
     next_listings_report = _next_due(
         "amazon_reports",
         "merchant_listings_all_data",
         settings.listings_report_interval_seconds,
+    )
+    next_settlements = _next_due(
+        "amazon_reports",
+        "settlement_reports_v2",
+        settings.settlement_reports_interval_seconds,
     )
 
     catalog_role_ready = False
@@ -198,6 +200,10 @@ def main() -> None:
         if now >= next_finances:
             _run("finances", ingest_finances)
             next_finances = time.monotonic() + settings.finances_interval_seconds
+
+        if now >= next_settlements:
+            _run("settlement_reports", ingest_settlement_reports)
+            next_settlements = time.monotonic() + settings.settlement_reports_interval_seconds
 
         if now >= next_listings_report:
             _run("seller_listings_report", ingest_listings_report)
