@@ -17,9 +17,9 @@ COPY board/ads_api.py .
 COPY board/product_labels.json .
 COPY board/product_costs.json .
 COPY board/static ./static
-# Stamp the exact workflow checkout SHA into every rendered footer. The SHA is
-# supplied as a build arg by the production deployment workflow; do not infer it
-# from .git/HEAD because actions/checkout may leave HEAD attached to main.
+# Prefer an explicit build arg, but actions/checkout can leave HEAD attached to
+# main. The checked-out main ref therefore provides an exact fallback revision.
+COPY .git/refs/heads/main .build_main_ref
 RUN DEPLOY_SHA="$DEPLOY_SHA" python - <<'PY'
 from pathlib import Path
 import os
@@ -27,6 +27,8 @@ import re
 
 static = Path('static')
 raw_sha = os.getenv('DEPLOY_SHA', '').strip()
+if not re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha):
+    raw_sha = Path('.build_main_ref').read_text().strip()
 build_sha = raw_sha[:8] if re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha) else 'dev'
 footer_stamp = f'Dirty Pawz Press Analytics · main {build_sha}'
 
