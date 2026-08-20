@@ -1,7 +1,7 @@
-/* Home weekly rhythm v1
-   Home is a repeated operating glance, so aggregate the 90-day feed into weeks.
-   The current partial week remains visible as a lighter WTD bar; the 4-week
-   signal only uses complete weeks so a partial week never fakes a slowdown. */
+/* Home weekly rhythm v2
+   Home stays visually quiet. Rich weekly context is available on hover/focus:
+   sales movement, orders/units/AOV and the top three product contributors.
+   The current partial week remains visible but is never compared as if complete. */
 (() => {
   'use strict';
   const d3 = window.d3;
@@ -10,8 +10,6 @@
   const ink = '#26231f';
   const bar = '#d8bd95';
   const accent = '#e58b1f';
-  const line = '#ddd5c9';
-  const muted = '#746c62';
   const paper = '#f8f5ef';
   const money = new Intl.NumberFormat('en-US',{style:'currency',currency:'MXN',maximumFractionDigits:0});
   const fullMoney = value => money.format(Number(value||0)).replace('-MX$','−$').replace('MX$','$');
@@ -21,38 +19,62 @@
     if(a>=1e3)return `${n<0?'−':''}$${(a/1e3).toFixed(a>=1e4?0:1)}k`;
     return `${n<0?'−':''}$${Math.round(a)}`;
   };
+  const pct = value => `${Number(value)>=0?'+':'−'}${Math.abs(Number(value||0)).toFixed(0)}%`;
   const parseDate = value => value ? new Date(`${String(value).slice(0,10)}T12:00:00Z`) : null;
+  const iso = value => d3.utcFormat('%Y-%m-%d')(value);
+  const trim = (value,max=27) => {
+    const s=String(value||'');
+    return s.length>max ? s.slice(0,max-1)+'…' : s;
+  };
+  const esc = value => String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   function ensureTip(host){
     host.classList.add('dpp-chart-host');
     let tip=host.querySelector('.dpp-chart-tooltip');
     if(!tip){tip=document.createElement('div');tip.className='dpp-chart-tooltip';tip.setAttribute('role','status');host.appendChild(tip)}
+    tip.style.maxWidth='310px';
     return tip;
   }
   function tipShow(host,tip,event,title,lines){
     const rect=host.getBoundingClientRect();
     const src=event.touches?.[0]||event;
-    const x=Math.max(70,Math.min(rect.width-70,(src.clientX||rect.left+rect.width/2)-rect.left));
-    const y=Math.max(56,(src.clientY||rect.top+80)-rect.top);
-    tip.innerHTML=`<strong>${title}</strong>${lines.map(x=>`<span>${x}</span>`).join('')}`;
+    const x=Math.max(80,Math.min(rect.width-80,(src.clientX||rect.left+rect.width/2)-rect.left));
+    const y=Math.max(64,(src.clientY||rect.top+80)-rect.top);
+    tip.innerHTML=`<strong>${esc(title)}</strong>${lines.map(x=>`<span>${x}</span>`).join('')}`;
     tip.style.left=`${x}px`;tip.style.top=`${y}px`;tip.classList.add('show');
   }
   function tipHide(tip){tip.classList.remove('show')}
 
-  function weeklyRhythm(selector,rows){
-    const daily=(rows||[]).map(d=>({date:parseDate(d.business_date),value:Number(d.sales||0)})).filter(d=>d.date).sort((a,b)=>d3.ascending(a.date,b.date));
+  function weeklyRhythm(selector,rows,weeklyProducts){
+    const daily=(rows||[]).map(d=>({
+      date:parseDate(d.business_date),
+      value:Number(d.sales||0),
+      orders:Number(d.orders||0),
+      units:Number(d.units||0)
+    })).filter(d=>d.date).sort((a,b)=>d3.ascending(a.date,b.date));
     const svg=d3.select(selector); if(svg.empty())return;
     svg.selectAll('*').remove();
     if(daily.length<7){svg.attr('viewBox','0 0 960 220').append('text').attr('x',480).attr('y',110).attr('text-anchor','middle').attr('class','dpp-muted').text('Not enough sales history yet.');return}
 
-    const grouped=d3.rollups(daily,v=>({value:d3.sum(v,x=>x.value),days:v.length,last:d3.max(v,x=>x.date)}),d=>+d3.utcMonday.floor(d.date))
+    const productsByWeek=d3.group((weeklyProducts||[]).map(p=>({...p,week:parseDate(p.week_start),through:parseDate(p.through_date)})).filter(p=>p.week),p=>iso(p.week));
+    const grouped=d3.rollups(daily,v=>({
+      value:d3.sum(v,x=>x.value),
+      orders:d3.sum(v,x=>x.orders),
+      units:d3.sum(v,x=>x.units),
+      days:v.length,
+      last:d3.max(v,x=>x.date)
+    }),d=>+d3.utcMonday.floor(d.date))
       .map(([k,v])=>({week:new Date(Number(k)),...v}))
       .sort((a,b)=>d3.ascending(a.week,b.week))
       .slice(-13);
+
     grouped.forEach((d,i)=>{
       d.complete=d.days>=7;
       const history=grouped.slice(0,i+1).filter(x=>x.complete).slice(-4);
       d.signal=d.complete&&history.length?d3.mean(history,x=>x.value):null;
+      d.previous=i>0?grouped[i-1]:null;
+      d.aov=d.orders>0?d.value/d.orders:0;
+      d.products=(productsByWeek.get(iso(d.week))||[]).slice(0,3);
     });
 
     const node=svg.node(),host=node.parentElement,tip=ensureTip(host);
@@ -60,9 +82,9 @@
     const compact=window.innerWidth<=720;
     const width=Math.max(compact?520:760,Math.round(rect.width||960));
     const height=Math.max(compact?230:320,Math.round(rect.height||420));
-    const m={top:18,right:14,bottom:42,left:compact?54:64};
+    const m={top:24,right:compact?14:62,bottom:42,left:compact?54:64};
     const innerW=width-m.left-m.right,innerH=height-m.top-m.bottom;
-    svg.classed('dpp-chart',true).attr('viewBox',`0 0 ${width} ${height}`).attr('preserveAspectRatio','xMidYMid meet').attr('role','img').attr('aria-label','Thirteen weeks of weekly sales with a four-week sales signal');
+    svg.classed('dpp-chart',true).attr('viewBox',`0 0 ${width} ${height}`).attr('preserveAspectRatio','xMidYMid meet').attr('role','img').attr('aria-label','Thirteen weeks of weekly sales with a four-week average; current week is partial');
     const plot=svg.append('g').attr('transform',`translate(${m.left},${m.top})`);
     const x=d3.scaleBand().domain(grouped.map(d=>+d.week)).range([0,innerW]).padding(.24);
     const ymax=d3.max(grouped,d=>Math.max(d.value,d.signal||0))||1;
@@ -81,11 +103,22 @@
       .attr('x',d=>x(+d.week)).attr('width',x.bandwidth()).attr('y',d=>y(d.value)).attr('height',d=>Math.max(1,innerH-y(d.value))).attr('rx',3)
       .attr('fill',d=>d.complete?bar:`url(#${pid})`).attr('opacity',d=>d.complete?.82:1);
 
+    const partial=grouped.findLast(d=>!d.complete);
+    if(partial){
+      plot.append('text').attr('x',x(+partial.week)+x.bandwidth()/2).attr('y',Math.max(12,y(partial.value)-8)).attr('text-anchor','middle')
+        .attr('fill',accent).attr('font-size',10).attr('font-weight',800).attr('letter-spacing','.08em').text('WTD');
+    }
+
     const signalData=grouped.filter(d=>d.signal!=null);
     if(signalData.length>1){
       const lineGen=d3.line().x(d=>x(+d.week)+x.bandwidth()/2).y(d=>y(d.signal)).curve(d3.curveMonotoneX);
       plot.append('path').datum(signalData).attr('d',lineGen).attr('fill','none').attr('stroke',paper).attr('stroke-width',7).attr('stroke-linecap','round').attr('stroke-linejoin','round');
       plot.append('path').datum(signalData).attr('d',lineGen).attr('fill','none').attr('stroke',ink).attr('stroke-width',3.2).attr('stroke-linecap','round').attr('stroke-linejoin','round');
+      if(!compact){
+        const last=signalData[signalData.length-1];
+        plot.append('text').attr('x',x(+last.week)+x.bandwidth()/2+9).attr('y',Math.max(12,y(last.signal)-10))
+          .attr('class','dpp-muted').attr('font-weight',750).text('4-wk avg');
+      }
     }
 
     const tickEvery=Math.max(1,Math.ceil(grouped.length/5));
@@ -95,16 +128,31 @@
       .call(g=>g.select('.domain').attr('stroke','#cfc5b7'));
 
     bars.attr('tabindex',0).on('pointerenter pointermove focus',function(event,d){
-      const end=new Date(d.week);end.setUTCDate(end.getUTCDate()+6);
-      const period=`${d3.utcFormat('%b %-d')(d.week)}–${d3.utcFormat('%b %-d')(end)}`;
-      const lines=[`Sales ${fullMoney(d.value)}`];
-      if(d.complete&&d.signal!=null)lines.push(`4-week signal ${fullMoney(d.signal)}`);else lines.push('Current week · partial');
-      tipShow(host,tip,event,period,lines);
+      const lines=[`Sales ${esc(fullMoney(d.value))}`];
+      if(d.complete){
+        if(d.previous&&d.previous.complete&&d.previous.value>0)lines.push(`vs prior week ${esc(pct(100*(d.value-d.previous.value)/d.previous.value))}`);
+        if(d.signal&&d.signal>0){
+          lines.push(`vs 4-week avg ${esc(pct(100*(d.value-d.signal)/d.signal))}`);
+          lines.push(`4-week avg ${esc(fullMoney(d.signal))}`);
+        }
+      }else{
+        lines.push('Current week · partial');
+      }
+      lines.push(`${d.orders.toLocaleString('en-US')} orders · ${d.units.toLocaleString('en-US')} units · AOV ${esc(fullMoney(d.aov))}`);
+      if(d.products.length){
+        const through=d3.max(d.products,p=>p.through);
+        lines.push(d.complete?'Top products':'Top products in reconciled days'+(through?` · through ${d3.utcFormat('%b %-d')(through)}`:''));
+        d.products.forEach((p,i)=>{
+          const share=d.value>0?100*Number(p.sales||0)/d.value:0;
+          lines.push(`${i+1}. ${esc(trim(p.product||p.asin))} · ${share.toFixed(0)}%`);
+        });
+      }
+      tipShow(host,tip,event,`Week of ${d3.utcFormat('%b %-d')(d.week)}`,lines);
     }).on('pointerleave blur',()=>tipHide(tip));
 
     if(node.__dppWeeklyResize)window.removeEventListener('resize',node.__dppWeeklyResize);
     let timer;
-    node.__dppWeeklyResize=()=>{clearTimeout(timer);timer=setTimeout(()=>weeklyRhythm(selector,rows),120)};
+    node.__dppWeeklyResize=()=>{clearTimeout(timer);timer=setTimeout(()=>weeklyRhythm(selector,rows,weeklyProducts),120)};
     window.addEventListener('resize',node.__dppWeeklyResize,{passive:true});
   }
 
@@ -113,6 +161,6 @@
     const title=document.querySelector('body.home-page .spark-card .section-title');
     const sub=document.querySelector('body.home-page .spark-card .section-sub');
     if(title)title.textContent='Business rhythm';
-    if(sub)sub.textContent='13 weeks of weekly sales with the four-week signal. Current week is partial.';
+    if(sub)sub.textContent='13 weeks · weekly sales · 4-week average · current week partial';
   });
 })();
