@@ -77,6 +77,10 @@ sales_runtime = (static / 'sales-operating-v2.js').read_text()
 sales_runtime_tag = '<script>\n' + sales_runtime + '\n</script>'
 if '</body>' in text and 'Primary canvas + signal rail' not in text:
     text = text.replace('</body>', sales_runtime_tag + '\n</body>', 1)
+sales_chart_rail = (static / 'sales-chart-rail.js').read_text()
+sales_chart_rail_tag = '<script>\n' + sales_chart_rail + '\n</script>'
+if '</body>' in text and 'Sales chart period rail v2' not in text:
+    text = text.replace('</body>', sales_chart_rail_tag + '\n</body>', 1)
 sales_ads = (static / 'sales-ads-enhance.js').read_text()
 sales_ads_tag = '<script>\n' + sales_ads + '\n</script>'
 if '</body>' in text and 'Advertising context is ready to connect' not in text:
