@@ -1,0 +1,42 @@
+/* Product-wide visual refinements.
+   Summary reads are editorial hierarchy, not dark hero cards. Product image wells
+   are pure white because marketplace thumbnails are authored on white. */
+
+.story{
+  background:transparent!important;
+  color:var(--ink)!important;
+  border:0!important;
+  border-top:1px solid var(--line)!important;
+  border-bottom:1px solid var(--line)!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  padding:18px 2px!important;
+  overflow:visible!important;
+}
+.story:after{display:none!important}
+.story .kicker{color:var(--accent-ink)!important}
+.story h2{color:var(--ink)!important}
+.story p{color:var(--muted)!important}
+.story-caption{color:var(--muted)!important}
+.story-link{color:var(--accent-ink)!important}
+.story-number{color:var(--ink)}
+.story-side{align-items:flex-end;text-align:right}
+.story .source-meter span{color:var(--muted)!important}
+
+/* Never tint the visual field around Amazon product art. */
+.product-thumb,
+.pc-image,
+.latest-product img,
+.product-win img,
+.product-line img,
+.product-card img,
+.product-identity img,
+.product-image,
+[class*="product"] > img{
+  background:#fff!important;
+}
+
+@media(max-width:640px){
+  .story{padding:15px 0!important}
+  .story-side{align-items:flex-start;text-align:left}
+}
