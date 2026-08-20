@@ -15,7 +15,9 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
     """Sales-manager view.
 
     Historical metrics are reconciled through the latest Data Kiosk day.
-    Today remains the near-real-time Orders API view. No customer PII is selected.
+    Today remains the near-real-time Orders API view. Advertising is kept on its
+    own reportable cutoff so stale attribution is never presented as live sales.
+    No customer PII is selected.
     """
     with connect() as conn, conn.cursor() as cur:
         cutoff = _one(
@@ -31,7 +33,7 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
         if cutoff is None:
             return {
                 "today": {}, "headline": {}, "months": [], "series": [],
-                "skus": [], "orders": [], "local_time": None,
+                "skus": [], "orders": [], "ads": {"status": "unavailable"}, "local_time": None,
             }
 
         today = _one(cur, "SELECT * FROM mart.today_operating WHERE marketplace_id=%s", (marketplace,))
@@ -176,6 +178,45 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
             (marketplace,),
         )
 
+        ads = _one(cur, """
+            WITH c AS (
+              SELECT max(d.business_date) AS d
+              FROM ads.daily_account d JOIN ads.account a USING(account_id)
+              WHERE a.marketplace_id=%s
+            ), ad AS (
+              SELECT
+                c.d AS through_date,
+                coalesce(sum(d.spend) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0) spend_t28,
+                coalesce(sum(d.attributed_sales) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0) attributed_sales_t28,
+                coalesce(sum(d.spend) FILTER (WHERE d.business_date BETWEEN c.d-55 AND c.d-28),0) spend_prior_t28,
+                coalesce(sum(d.attributed_sales) FILTER (WHERE d.business_date BETWEEN c.d-55 AND c.d-28),0) attributed_sales_prior_t28
+              FROM c LEFT JOIN ads.daily_account d ON d.business_date BETWEEN c.d-55 AND c.d
+              LEFT JOIN ads.account a ON a.account_id=d.account_id AND a.marketplace_id=%s
+              GROUP BY c.d
+            ), seller AS (
+              SELECT
+                coalesce(sum(b.sales) FILTER (WHERE b.business_date BETWEEN c.d-27 AND c.d),0) sales_t28,
+                coalesce(sum(b.sales) FILTER (WHERE b.business_date BETWEEN c.d-55 AND c.d-28),0) sales_prior_t28
+              FROM c LEFT JOIN mart.business_daily b ON b.marketplace_id=%s AND b.reconciled_daily_report
+                AND b.business_date BETWEEN c.d-55 AND c.d
+              GROUP BY c.d
+            )
+            SELECT ad.*,
+              CASE WHEN attributed_sales_t28>0 THEN spend_t28/attributed_sales_t28 END AS acos_t28,
+              CASE WHEN spend_t28>0 THEN attributed_sales_t28/spend_t28 END AS roas_t28,
+              CASE WHEN seller.sales_t28>0 THEN spend_t28/seller.sales_t28 END AS tacos_t28,
+              CASE WHEN attributed_sales_prior_t28>0 THEN spend_prior_t28/attributed_sales_prior_t28 END AS acos_prior_t28,
+              CASE WHEN seller.sales_prior_t28>0 THEN spend_prior_t28/seller.sales_prior_t28 END AS tacos_prior_t28,
+              CASE WHEN spend_prior_t28>0 THEN round(100.0*(spend_t28-spend_prior_t28)/spend_prior_t28,1) END AS spend_delta28_pct,
+              seller.sales_t28 AS total_sales_aligned
+            FROM ad CROSS JOIN seller
+        """, (marketplace, marketplace, marketplace))
+        ads["status"] = "ready" if ads.get("through_date") else "awaiting_ads_data"
+        if ads.get("acos_t28") is not None and ads.get("acos_prior_t28") is not None:
+            ads["acos_delta_points"] = 100 * (ads["acos_t28"] - ads["acos_prior_t28"])
+        if ads.get("tacos_t28") is not None and ads.get("tacos_prior_t28") is not None:
+            ads["tacos_delta_points"] = 100 * (ads["tacos_t28"] - ads["tacos_prior_t28"])
+
         local_clock = _one(
             cur,
             "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time",
@@ -188,5 +229,6 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
         "series": series,
         "skus": decorate_products(skus),
         "orders": orders,
+        "ads": ads,
         "local_time": local_clock.get("local_time"),
     }
