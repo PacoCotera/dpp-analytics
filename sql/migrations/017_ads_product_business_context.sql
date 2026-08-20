@@ -31,17 +31,19 @@ WITH ads_product AS (
     FROM ads_product
     GROUP BY marketplace_id
 ), seller_product AS (
+    -- Data Kiosk SKU sales/traffic rows are the reconciled seller-business source at
+    -- product/day grain. Do not use mart.sku_daily here: that view is order-derived,
+    -- exposes seller_sku rather than sku, and has no reconciled-report state.
     SELECT
         marketplace_id,
         business_date,
-        sku,
-        asin,
-        sum(sales)::numeric(16,4) AS total_business_sales,
-        sum(orders)::bigint AS total_business_orders,
-        sum(units)::bigint AS total_business_units
-    FROM mart.sku_daily
-    WHERE reconciled_daily_report
-    GROUP BY marketplace_id, business_date, sku, asin
+        seller_sku AS sku,
+        max(asin) AS asin,
+        COALESCE(sum(ordered_product_sales), 0)::numeric(16,4) AS total_business_sales,
+        COALESCE(sum(total_order_items), 0)::bigint AS total_business_orders,
+        COALESCE(sum(units_ordered), 0)::bigint AS total_business_units
+    FROM core.sku_sales_traffic_daily
+    GROUP BY marketplace_id, business_date, seller_sku
 )
 SELECT
     p.marketplace_id,
