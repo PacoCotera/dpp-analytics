@@ -28,6 +28,12 @@ jobs:
           DEPLOY_SHA="${{ github.event.workflow_run.head_sha }}"
           [[ -n "$DEPLOY_SHA" ]] || DEPLOY_SHA="${GITHUB_SHA}"
           sudo cat /etc/dpp-analytics/board-config/product_costs.json >/tmp/product-costs.json
+          POSTGRES_DB="$(sudo grep -E '^POSTGRES_DB=' /etc/dpp-analytics/env | tail -1 | cut -d= -f2-)"
+          POSTGRES_USER="$(sudo grep -E '^POSTGRES_USER=' /etc/dpp-analytics/env | tail -1 | cut -d= -f2-)"
+          sudo docker compose --env-file /etc/dpp-analytics/env exec -T postgres \
+            psql -X -At -F '|' -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+            -c "SELECT month, seller_sku, units, unit_cogs, extended_cogs FROM core.finance_month_cogs_snapshot ORDER BY month, seller_sku" \
+            >/tmp/closed-cogs.txt
           {
             echo '# Finance API smoke'
             echo
@@ -62,6 +68,9 @@ jobs:
               if str(sku).startswith('_'):
                   continue
               print(sku, '=', value)
+          print('\nfrozen SKU COGS snapshots:')
+          for line in open('/tmp/closed-cogs.txt'):
+              print(line.rstrip())
           print('\nclosed detail:')
           for m in closed:
               print(m.get('month'), 'sales=',m.get('net_sales_ex_vat'),'amazon_effect=',m.get('amazon_order_effect'),'ads=',m.get('advertising'),'cogs=',m.get('product_cogs'),'contribution=',m.get('contribution_after_product_cogs'),'margin=',m.get('contribution_margin_pct'),'release=',m.get('release_coverage_pct'))
@@ -86,4 +95,3 @@ jobs:
             const fs=require('fs');
             const body=fs.existsSync('/tmp/finance-smoke.md') ? fs.readFileSync('/tmp/finance-smoke.md','utf8') : '# Finance API smoke\nNo diagnostic file produced.';
             await github.rest.issues.update({owner:context.repo.owner,repo:context.repo.repo,issue_number:10,body});
-
