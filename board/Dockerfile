@@ -12,6 +12,7 @@ COPY catalog_api.py .
 COPY trajectory_api.py .
 COPY health_api.py .
 COPY product_labels.json .
+COPY product_costs.json .
 COPY static ./static
 RUN python - <<'PY'
 from pathlib import Path
