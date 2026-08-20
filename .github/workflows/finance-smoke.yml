@@ -27,6 +27,7 @@ jobs:
           done
           DEPLOY_SHA="${{ github.event.workflow_run.head_sha }}"
           [[ -n "$DEPLOY_SHA" ]] || DEPLOY_SHA="${GITHUB_SHA}"
+          sudo cat /etc/dpp-analytics/board-config/product_costs.json >/tmp/product-costs.json
           {
             echo '# Finance API smoke'
             echo
@@ -55,6 +56,12 @@ jobs:
           print('closed contribution:', a.get('contribution_after_product_cogs'))
           print('closed margin:', a.get('contribution_margin_pct'))
           print('diagnostic:', p.get('diagnostic'))
+          cfg=json.load(open('/tmp/product-costs.json'))
+          print('\nconfigured COGS:')
+          for sku,value in sorted((cfg.get('costs') or cfg).items()):
+              if str(sku).startswith('_'):
+                  continue
+              print(sku, '=', value)
           print('\nclosed detail:')
           for m in closed:
               print(m.get('month'), 'sales=',m.get('net_sales_ex_vat'),'amazon_effect=',m.get('amazon_order_effect'),'ads=',m.get('advertising'),'cogs=',m.get('product_cogs'),'contribution=',m.get('contribution_after_product_cogs'),'margin=',m.get('contribution_margin_pct'),'release=',m.get('release_coverage_pct'))
@@ -79,3 +86,4 @@ jobs:
             const fs=require('fs');
             const body=fs.existsSync('/tmp/finance-smoke.md') ? fs.readFileSync('/tmp/finance-smoke.md','utf8') : '# Finance API smoke\nNo diagnostic file produced.';
             await github.rest.issues.update({owner:context.repo.owner,repo:context.repo.repo,issue_number:10,body});
+
