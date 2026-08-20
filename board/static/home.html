@@ -16,11 +16,7 @@ body.home-page .top-meta strong{font-size:14px}
 body.home-page .primary-nav{margin:8px 0 12px;padding-bottom:5px;gap:3px}
 body.home-page .primary-nav a{min-height:34px;padding:0 11px;font-size:11.5px}
 body.home-page .home-main{margin-top:0}
-body.home-page .home-read{grid-template-columns:1fr!important;padding:10px 2px 12px!important;border-top:0!important;border-bottom:0!important}
-body.home-page .home-read h2{font-size:clamp(30px,3vw,44px)!important;margin:3px 0 4px!important}
-body.home-page .home-read p{font-size:13.5px!important;line-height:1.4!important}
-body.home-page .home-read .story-side{display:none!important}
-body.home-page .home-dashboard{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,340px);gap:18px;align-items:start;margin-top:2px}
+body.home-page .home-dashboard{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,340px);gap:18px;align-items:start;margin-top:0}
 body.home-page .home-canvas{min-width:0}
 body.home-page .home-rail{display:grid;gap:10px;align-content:start}
 body.home-page .signal-card{display:block;background:rgba(255,253,249,.76);border:1px solid var(--line);border-radius:16px;padding:15px 16px;min-width:0}
@@ -28,8 +24,9 @@ body.home-page .signal-card:hover{background:#fffdf9;border-color:#c9bfb1}
 body.home-page .signal-card.primary{padding:18px 18px 16px;background:#fffdf9}
 body.home-page .signal-label{font-size:10px;font-weight:820;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 body.home-page .signal-value{font-size:28px;font-weight:840;line-height:1;letter-spacing:-.045em;margin:5px 0 4px;font-variant-numeric:tabular-nums}
-body.home-page .signal-card.primary .signal-value{font-size:46px;margin:7px 0 6px}
+body.home-page .signal-card.primary .signal-value{font-size:46px;margin:7px 0 5px}
 body.home-page .signal-note{font-size:11px;line-height:1.35;color:var(--muted)}
+body.home-page .momentum-read{font-size:13px;font-weight:720;line-height:1.35;color:var(--ink);margin-top:2px}
 body.home-page .signal-divider{height:1px;background:var(--line);margin:13px 0 11px}
 body.home-page .signal-subread{display:flex;justify-content:space-between;gap:12px;align-items:end}
 body.home-page .signal-subread strong{font-size:22px;letter-spacing:-.035em}
@@ -48,7 +45,7 @@ body.home-page .restock-cover span{font-size:10px;color:var(--muted)}
 body.home-page .rhythm-section{margin-top:0!important}
 body.home-page .spark-card{padding:13px 14px 8px!important;background:rgba(255,253,249,.56)!important;border:1px solid var(--line)!important;border-radius:16px!important}
 body.home-page .spark-card .section-head{margin:0 2px 4px!important}
-body.home-page .spark{width:100%;height:330px!important;display:block}
+body.home-page .spark{width:100%;height:360px!important;display:block}
 body.home-page .movers-section{margin-top:14px!important}
 body.home-page .change-list{padding:0 14px!important}
 body.home-page .change-list .list-row{padding:11px 0}
@@ -57,12 +54,12 @@ body.home-page .change-list .list-row:nth-child(n+4){display:none!important}
 @media(max-width:980px){
  body.home-page .home-dashboard{grid-template-columns:minmax(0,1fr) 280px;gap:14px}
  body.home-page .signal-card.primary .signal-value{font-size:40px}
- body.home-page .spark{height:290px!important}
+ body.home-page .spark{height:310px!important}
 }
 @media(max-width:720px){
  body.home-page .home-dashboard{grid-template-columns:1fr}
- body.home-page .home-rail{order:-1;grid-template-columns:1fr}
- body.home-page .spark{height:220px!important}
+ body.home-page .home-rail{grid-template-columns:1fr;gap:8px}
+ body.home-page .spark{height:240px!important}
 }
 @media(max-width:640px){
  body.home-page .app{padding-top:10px}
@@ -72,18 +69,14 @@ body.home-page .change-list .list-row:nth-child(n+4){display:none!important}
  body.home-page .brand-sub{font-size:9.5px}
  body.home-page .primary-nav{margin:7px -14px 10px;padding:5px 14px 6px}
  body.home-page .primary-nav a{min-height:42px;padding:0 12px;font-size:12px}
- body.home-page .home-read{padding:8px 0 9px!important}
- body.home-page .home-read .kicker{font-size:10px}
- body.home-page .home-read h2{font-size:29px!important}
- body.home-page .home-read p{font-size:12.5px!important}
- body.home-page .home-dashboard{gap:12px}
+ body.home-page .home-dashboard{gap:10px}
  body.home-page .home-rail{gap:8px}
  body.home-page .signal-card{padding:12px 13px;border-radius:14px}
  body.home-page .signal-card.primary{padding:14px}
  body.home-page .signal-card.primary .signal-value{font-size:38px}
  body.home-page .signal-subread strong{font-size:20px}
  body.home-page .spark-card{padding:10px 8px 5px!important}
- body.home-page .spark{height:205px!important}
+ body.home-page .spark{height:220px!important}
  body.home-page .spark-card .section-sub{display:none}
  body.home-page .movers-section{margin-top:12px!important}
  body.home-page .change-list{padding:0 8px!important}
@@ -101,20 +94,10 @@ body.home-page .change-list .list-row:nth-child(n+4){display:none!important}
 </nav>
 
 <main class="home-main">
-<section class="story home-read" id="story">
-  <div><div class="kicker">Business read</div><h2 id="storyTitle">Reading the business…</h2><p id="storyCopy">Connecting current sales and momentum.</p></div>
-  <div class="story-side"><div class="story-number" id="storyNumber">—</div><div class="story-caption" id="storyCaption">28 days vs prior 28</div></div>
-</section>
-
 <div class="home-dashboard">
   <div class="home-canvas">
     <section class="section rhythm-section">
       <div class="card spark-card"><div class="section-head"><div><div class="section-title">Business rhythm</div><div class="section-sub">90 days of daily sales with the seven-day signal.</div></div><a class="section-link" href="/sales">Open Sales →</a></div><svg class="spark" id="spark" viewBox="0 0 960 190"></svg></div>
-    </section>
-
-    <section class="section movers-section">
-      <div class="section-head"><div><div class="section-title">What changed</div><div class="section-sub">The three products creating the most movement over the last four weeks.</div></div><a class="section-link" href="/catalog">Open Catalog →</a></div>
-      <div class="card change-list"><div class="list" id="movers"><div class="empty"><strong>Reading product momentum</strong>One moment.</div></div></div>
     </section>
   </div>
 
@@ -122,7 +105,7 @@ body.home-page .change-list .list-row:nth-child(n+4){display:none!important}
     <a class="signal-card primary" href="/trajectory">
       <div class="signal-label">Momentum · 28 days</div>
       <div class="signal-value" id="momentum">—</div>
-      <div class="signal-note">Versus the prior 28 days</div>
+      <div class="momentum-read" id="momentumRead">Reading recent momentum…</div>
       <div class="signal-divider"></div>
       <div class="signal-subread"><div><strong id="sales28">$—</strong><span>Last 28 days</span></div><div class="signal-submeta" id="sales28Meta">Reconciled sales</div></div>
     </a>
@@ -141,6 +124,11 @@ body.home-page .change-list .list-row:nth-child(n+4){display:none!important}
     </a>
   </aside>
 </div>
+
+<section class="section movers-section">
+  <div class="section-head"><div><div class="section-title">What changed</div><div class="section-sub">The three products creating the most movement over the last four weeks.</div></div><a class="section-link" href="/catalog">Open Catalog →</a></div>
+  <div class="card change-list"><div class="list" id="movers"><div class="empty"><strong>Reading product momentum</strong>One moment.</div></div></div>
+</section>
 </main>
 
 <footer class="footer"><span>MXN · today provisional / historical reconciled</span><span>Dirty Pawz Press Analytics</span></footer>
@@ -152,7 +140,7 @@ const money=v=>'$'+fmt.format(Math.round(Number(v||0)));
 const pct=v=>v==null?'—':(Number(v)>0?'+':'')+Number(v).toFixed(1)+'%';
 const cls=v=>Number(v)>0?'good':Number(v)<0?'bad':'';
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function businessRead(delta){delta=Number(delta||0);if(delta>=8)return {title:'Momentum is strong.',copy:'The last four weeks are clearly ahead of the prior four.'};if(delta>=2)return {title:'The business is edging up.',copy:'Recent sales are modestly ahead of the prior four-week period.'};if(delta>-2)return {title:'The business is steady.',copy:'Recent sales are essentially flat versus the prior four weeks.'};if(delta>-8)return {title:'The business has softened a little.',copy:'Recent sales are below the prior four weeks, but not dramatically.'};return {title:'Momentum has cooled.',copy:'Recent sales are meaningfully below the prior four weeks and deserve a closer look.'}}
+function momentumRead(delta){delta=Number(delta||0);if(delta>=8)return 'Strong. Clearly ahead of the prior four weeks.';if(delta>=2)return 'Positive. Modestly ahead of the prior four weeks.';if(delta>-2)return 'Steady. Essentially flat versus the prior four weeks.';if(delta>-8)return 'Softer. Recent sales are below the prior four weeks.';return 'Cooling. Recent sales are meaningfully below the prior four weeks.'}
 function render(d){
  document.getElementById('clock').textContent=d.local_time||'--:--';
  document.getElementById('fresh').textContent='Live operating data';
@@ -162,9 +150,9 @@ function render(d){
  document.getElementById('sales28').textContent=money(r.sales_t28);
  document.getElementById('sales28Meta').textContent=`${fmt.format(r.orders_t28||0)} orders · through ${String(r.business_date||'').slice(5)}`;
  const m=document.getElementById('momentum');m.textContent=pct(r.delta28_pct);m.className='signal-value '+cls(r.delta28_pct);
+ document.getElementById('momentumRead').textContent=momentumRead(r.delta28_pct);
  document.getElementById('actions').textContent=fmt.format(is.needs_action||0);
  document.getElementById('actionMeta').textContent=`${is.stockouts||0} stockout · ${is.produce||0} produce · ${is.plan||0} plan`;
- const br=businessRead(r.delta28_pct);document.getElementById('storyTitle').textContent=br.title;document.getElementById('storyCopy').textContent=br.copy;document.getElementById('storyNumber').textContent=pct(r.delta28_pct);document.getElementById('storyCaption').textContent='28 days vs prior 28';
  DPPCharts.homeRhythm('#spark',d.series);
  const att=(d.inventory||[]).filter(x=>['STOCKOUT','PRODUCE','PLAN'].includes(String(x.action||'').toUpperCase()));
  const restock=document.getElementById('restockSection');
@@ -177,7 +165,7 @@ function render(d){
  }
  const movers=(d.movers||[]).slice(0,3);document.getElementById('movers').innerHTML=movers.map(x=>{const c=cls(x.delta28_pct);const tag=x.state||'STABLE';const img=x.image_url?`<img class="product-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">`:'';return `<a class="list-row" href="/product?sku=${encodeURIComponent(x.sku)}"><div class="product-line">${img}<div style="min-width:0"><div class="product-sku">${esc(x.sku)}</div><div class="product-name">${esc(x.product||x.sku)}</div><div class="change-tag"><span class="chip ${c}">${esc(tag)}</span></div></div></div><div class="row-value"><strong>${money(x.sales_t28)}</strong><small class="${c}">${pct(x.delta28_pct)} vs prior 28</small></div></a>`}).join('')||`<div class="empty"><strong>No mover data yet.</strong>Product trends will appear here as history builds.</div>`;
 }
-function load(){fetch('/api/home',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(render).catch(e=>{document.getElementById('storyTitle').textContent='The operating feed is unavailable.';document.getElementById('storyCopy').textContent=e.message})}load();setInterval(load,60000);
+function load(){fetch('/api/home',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(render).catch(e=>{document.getElementById('momentumRead').textContent='Operating feed unavailable · '+e.message})}load();setInterval(load,60000);
 })();
 </script>
 </body></html>
