@@ -75,19 +75,47 @@ def trajectory_payload(connect, marketplace: str) -> dict:
         weekly = _all(
             cur,
             """
-            WITH d AS (
+            WITH c AS (
+              SELECT %s::date AS cutoff,
+                     date_trunc('week',%s::date)::date AS current_week_start
+            ), d AS (
               SELECT business_date, sales
-              FROM mart.business_daily
-              WHERE marketplace_id=%s AND business_date BETWEEN %s::date-97 AND %s::date
+              FROM mart.business_daily, c
+              WHERE marketplace_id=%s
+                AND business_date BETWEEN c.cutoff-104 AND c.cutoff
+                AND reconciled_daily_report
+            ), w AS (
+              SELECT
+                date_trunc('week',business_date)::date AS week_start,
+                (date_trunc('week',business_date)::date+6) AS week_end,
+                extract(week FROM business_date)::int AS iso_week,
+                count(*)::int AS days_loaded,
+                sum(sales)::numeric(14,2) AS sales,
+                round(avg(sales),2) AS daily_avg
+              FROM d
+              GROUP BY 1,2,3
+            ), enriched AS (
+              SELECT w.*,
+                     lag(w.sales) OVER (ORDER BY w.week_start) AS prior_week_sales,
+                     c.cutoff,
+                     c.current_week_start,
+                     (w.week_start=c.current_week_start) AS current_week,
+                     (w.week_end<=c.cutoff) AS complete_week
+              FROM w CROSS JOIN c
             )
-            SELECT date_trunc('week',business_date)::date AS week_start,
-                   sum(sales)::numeric(14,2) AS sales,
-                   round(avg(sales),2) AS daily_avg
-            FROM d
-            GROUP BY 1
-            ORDER BY 1
+            SELECT *,
+                   CASE WHEN prior_week_sales>0 AND complete_week
+                        THEN round(100.0*(sales-prior_week_sales)/prior_week_sales,1)
+                   END AS delta_vs_prior_week_pct,
+                   CASE WHEN current_week
+                        THEN ('through ' || to_char(cutoff,'Dy Mon DD'))
+                        ELSE (to_char(week_start,'Mon DD') || ' – ' || to_char(week_end,'Mon DD'))
+                   END AS date_range
+            FROM enriched
+            ORDER BY week_start DESC
+            LIMIT 10
             """,
-            (marketplace, cutoff, cutoff),
+            (cutoff, cutoff, marketplace),
         )
 
         local_clock = _one(
