@@ -64,10 +64,20 @@ if '</body>' in text and 'Advertising context is ready to connect' not in text:
 
 home = static / 'home.html'
 text = home.read_text()
+home_layout = (static / 'home-operating-v4.css').read_text()
+home_layout_tag = '<style>\n' + home_layout + '\n</style>'
+if '</head>' in text and 'Home operating layout v4' not in text:
+    text = text.replace('</head>', home_layout_tag + '\n</head>', 1)
+home_weekly = (static / 'home-weekly-rhythm.js').read_text()
+home_weekly_tag = '<script>\n' + home_weekly + '\n</script>'
+chart_tag = '<script src="/assets/chart-system.js"></script>'
+if 'Home weekly rhythm v1' not in text and chart_tag in text:
+    text = text.replace(chart_tag, chart_tag + home_weekly_tag, 1)
 home_ads = (static / 'home-ads-enhance.js').read_text()
 home_ads_tag = '<script>\n' + home_ads + '\n</script>'
 if '</body>' in text and 'Paid-support efficiency is broadly stable' not in text:
-    home.write_text(text.replace('</body>', home_ads_tag + '\n</body>', 1))
+    text = text.replace('</body>', home_ads_tag + '\n</body>', 1)
+home.write_text(text)
 
 ads = static / 'ads.html'
 text = ads.read_text()
