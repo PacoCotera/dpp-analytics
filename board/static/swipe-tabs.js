@@ -25,7 +25,7 @@
 
   for (const group of groups) {
     group.tablist.setAttribute('role', group.tablist.getAttribute('role') || 'tablist');
-    group.tabs.forEach((tab, i) => {
+    group.tabs.forEach(tab => {
       tab.setAttribute('role', tab.getAttribute('role') || 'tab');
       tab.addEventListener('keydown', event => {
         if (event.key === 'ArrowRight') { event.preventDefault(); move(group, 1); }
@@ -39,7 +39,7 @@
   let start = null;
   document.addEventListener('pointerdown', event => {
     if (event.pointerType !== 'touch') return;
-    if (event.target.closest('.primary-nav,.table-wrap,.order-stream,input,textarea,select,button,a,[data-no-swipe]')) return;
+    if (event.target.closest('.primary-nav,.tabs,.view-tabs,.table-wrap,.order-stream,input,textarea,select,[data-no-swipe]')) return;
     start = { x: event.clientX, y: event.clientY, t: performance.now() };
   }, { passive: true });
 
@@ -50,7 +50,6 @@
     const dt = performance.now() - start.t;
     start = null;
     if (dt > 900 || Math.abs(dx) < 58 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
-    const group = groups[0];
-    move(group, dx < 0 ? 1 : -1);
+    move(groups[0], dx < 0 ? 1 : -1);
   }, { passive: true });
 })();
