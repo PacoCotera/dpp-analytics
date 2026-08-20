@@ -1,25 +1,32 @@
 FROM python:3.13-slim
 WORKDIR /app
-COPY requirements.txt .
+COPY board/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY server.py .
-COPY sales_api.py .
-COPY today_api.py .
-COPY product_api.py .
-COPY finance_api.py .
-COPY finance_emergency.py ./finance_api.py
-COPY inventory_api.py .
-COPY catalog_api.py .
-COPY trajectory_api.py .
-COPY health_api.py .
-COPY ads_api.py .
-COPY product_labels.json .
-COPY product_costs.json .
-COPY static ./static
+COPY board/server.py .
+COPY board/sales_api.py .
+COPY board/today_api.py .
+COPY board/product_api.py .
+COPY board/finance_api.py .
+COPY board/finance_emergency.py ./finance_api.py
+COPY board/inventory_api.py .
+COPY board/catalog_api.py .
+COPY board/trajectory_api.py .
+COPY board/health_api.py .
+COPY board/ads_api.py .
+COPY board/product_labels.json .
+COPY board/product_costs.json .
+COPY board/static ./static
+# Production checkout is detached at the exact deployed commit. Keep only HEAD,
+# not repository history, and stamp that revision into every rendered footer.
+COPY .git/HEAD .build_git_head
 RUN python - <<'PY'
 from pathlib import Path
+import re
 
 static = Path('static')
+head = Path('.build_git_head').read_text().strip()
+build_sha = head[:8] if re.fullmatch(r'[0-9a-fA-F]{40}', head) else 'dev'
+footer_stamp = f'Dirty Pawz Press Analytics · main {build_sha}'
 
 mobile_css = (static / 'mobile-ux.css').read_text()
 mobile_tag = '<style>\n' + mobile_css + '\n</style>'
@@ -31,6 +38,7 @@ nav = (static / 'nav-enhance.js').read_text()
 nav_tag = '<script>\n' + nav + '\n</script>'
 for page in static.glob('*.html'):
     text = page.read_text()
+    text = text.replace('Dirty Pawz Press Analytics', footer_stamp)
     if '</head>' in text and 'Mobile-specific information design' not in text:
         text = text.replace('</head>', mobile_tag + '\n</head>', 1)
     if '</head>' in text and 'Summary reads are editorial hierarchy' not in text:
