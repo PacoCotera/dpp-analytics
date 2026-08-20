@@ -1,5 +1,6 @@
 FROM python:3.13-slim
 WORKDIR /app
+ARG DEPLOY_SHA=dev
 COPY board/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY board/server.py .
@@ -16,16 +17,17 @@ COPY board/ads_api.py .
 COPY board/product_labels.json .
 COPY board/product_costs.json .
 COPY board/static ./static
-# Production checkout is detached at the exact deployed commit. Keep only HEAD,
-# not repository history, and stamp that revision into every rendered footer.
-COPY .git/HEAD .build_git_head
-RUN python - <<'PY'
+# Stamp the exact workflow checkout SHA into every rendered footer. The SHA is
+# supplied as a build arg by the production deployment workflow; do not infer it
+# from .git/HEAD because actions/checkout may leave HEAD attached to main.
+RUN DEPLOY_SHA="$DEPLOY_SHA" python - <<'PY'
 from pathlib import Path
+import os
 import re
 
 static = Path('static')
-head = Path('.build_git_head').read_text().strip()
-build_sha = head[:8] if re.fullmatch(r'[0-9a-fA-F]{40}', head) else 'dev'
+raw_sha = os.getenv('DEPLOY_SHA', '').strip()
+build_sha = raw_sha[:8] if re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha) else 'dev'
 footer_stamp = f'Dirty Pawz Press Analytics · main {build_sha}'
 
 mobile_css = (static / 'mobile-ux.css').read_text()
