@@ -67,6 +67,10 @@ today_runtime = (static / 'today-operating-v2.js').read_text()
 today_runtime_tag = '<script>\n' + today_runtime + '\n</script>'
 if '</body>' in text and 'Reframes normal Today as live state' not in text:
     text = text.replace('</body>', today_runtime_tag + '\n</body>', 1)
+today_comp = (static / 'today-composition-v3.js').read_text()
+today_comp_tag = '<script>\n' + today_comp + '\n</script>'
+if '</body>' in text and 'today-composition-v3' not in text:
+    text = text.replace('</body>', today_comp_tag + '\n</body>', 1)
 today.write_text(text)
 
 product = static / 'product.html'
