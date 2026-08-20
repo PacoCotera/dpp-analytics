@@ -74,7 +74,12 @@ text = finance.read_text()
 finance_ads = (static / 'finance-ads-reconcile.js').read_text()
 finance_ads_tag = '<script>\n' + finance_ads + '\n</script>'
 if '</body>' in text and 'Advertising has two accounting clocks.' not in text:
-    finance.write_text(text.replace('</body>', finance_ads_tag + '\n</body>', 1))
+    text = text.replace('</body>', finance_ads_tag + '\n</body>', 1)
+finance_manager = (static / 'finance-manager-v2.js').read_text()
+finance_manager_tag = '<script>\n' + finance_manager + '\n</script>'
+if '</body>' in text and 'Sales → deductions → contribution' not in text:
+    text = text.replace('</body>', finance_manager_tag + '\n</body>', 1)
+finance.write_text(text)
 PY
 # Fail the image build before production replacement if imports or static assets are broken.
 RUN python -c "import server; print('board import smoke test: ok')"
