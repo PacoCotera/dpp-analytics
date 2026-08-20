@@ -16,18 +16,6 @@ BEGIN
             WHERE table_schema='ads' AND table_name='daily_target' AND column_name='search_term'
        ) THEN
         ALTER TABLE ads.daily_target RENAME TO daily_target_legacy;
-
-        -- Table renames do not rename the underlying PK/index objects. Free the
-        -- schema-level names before creating the clean daily_target replacement.
-        IF to_regclass('ads.daily_target_pkey') IS NOT NULL THEN
-            ALTER INDEX ads.daily_target_pkey RENAME TO daily_target_legacy_pkey;
-        END IF;
-        IF to_regclass('ads.ads_daily_target_date_idx') IS NOT NULL THEN
-            ALTER INDEX ads.ads_daily_target_date_idx RENAME TO ads_daily_target_legacy_date_idx;
-        END IF;
-        IF to_regclass('ads.ads_daily_target_campaign_idx') IS NOT NULL THEN
-            ALTER INDEX ads.ads_daily_target_campaign_idx RENAME TO ads_daily_target_legacy_campaign_idx;
-        END IF;
     END IF;
 END $$;
 
