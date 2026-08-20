@@ -1,6 +1,7 @@
-/* Home weekly rhythm v4
+/* Home weekly rhythm v5
    Home stays visually quiet. Hover/focus answers only the operating questions
    needed for a repeated glance: sales, direction, orders and units.
+   Tooltip placement avoids obscuring the selected week.
    The current partial week remains visible but is never compared as complete. */
 (() => {
   'use strict';
@@ -21,22 +22,47 @@
   };
   const pct = value => `${Number(value)>=0?'+':'−'}${Math.abs(Number(value||0)).toFixed(0)}%`;
   const parseDate = value => value ? new Date(`${String(value).slice(0,10)}T12:00:00Z`) : null;
-  const esc = value => String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const esc = value => String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   function ensureTip(host){
     host.classList.add('dpp-chart-host');
-    let tip=host.querySelector('.dpp-chart-tooltip');
-    if(!tip){tip=document.createElement('div');tip.className='dpp-chart-tooltip';tip.setAttribute('role','status');host.appendChild(tip)}
-    tip.style.maxWidth='210px';
+    let tip=host.querySelector('.dpp-chart-tooltip.home-week-tooltip');
+    if(!tip){
+      tip=document.createElement('div');
+      tip.className='dpp-chart-tooltip home-week-tooltip';
+      tip.setAttribute('role','status');
+      host.appendChild(tip);
+    }
     return tip;
   }
-  function tipShow(host,tip,event,title,lines){
-    const rect=host.getBoundingClientRect();
-    const src=event.touches?.[0]||event;
-    const x=Math.max(80,Math.min(rect.width-80,(src.clientX||rect.left+rect.width/2)-rect.left));
-    const y=Math.max(64,(src.clientY||rect.top+80)-rect.top);
-    tip.innerHTML=`<strong>${esc(title)}</strong>${lines.map(x=>`<span>${x}</span>`).join('')}`;
-    tip.style.left=`${x}px`;tip.style.top=`${y}px`;tip.classList.add('show');
+
+  function tipShow(host,tip,target,title,rows,footer){
+    const hostRect=host.getBoundingClientRect();
+    const targetRect=target.getBoundingClientRect();
+    tip.innerHTML=`<strong>${esc(title)}</strong>${rows.map(row=>`<span class="home-tip-row"><span class="home-tip-label">${esc(row.label)}</span><span class="home-tip-value">${esc(row.value)}</span></span>`).join('')}${footer?`<span class="home-tip-footer">${esc(footer)}</span>`:''}`;
+
+    tip.style.visibility='hidden';
+    tip.classList.add('show');
+    const tipW=tip.offsetWidth||190;
+    const tipH=tip.offsetHeight||120;
+    const targetCenter=targetRect.left-hostRect.left+targetRect.width/2;
+    const placeRight=targetCenter < hostRect.width/2;
+    const gap=12;
+    let left;
+    if(placeRight){
+      left=targetRect.right-hostRect.left+gap;
+      left=Math.min(left,hostRect.width-tipW-8);
+      tip.style.transform='translate(0,-50%)';
+    }else{
+      left=targetRect.left-hostRect.left-gap;
+      left=Math.max(left,tipW+8);
+      tip.style.transform='translate(-100%,-50%)';
+    }
+    const desiredY=targetRect.top-hostRect.top+Math.max(18,targetRect.height*.42);
+    const y=Math.max(tipH/2+8,Math.min(hostRect.height-tipH/2-8,desiredY));
+    tip.style.left=`${left}px`;
+    tip.style.top=`${y}px`;
+    tip.style.visibility='visible';
   }
   function tipHide(tip){tip.classList.remove('show')}
 
@@ -119,15 +145,14 @@
       .call(g=>g.select('.domain').attr('stroke','#cfc5b7'));
 
     bars.attr('tabindex',0).on('pointerenter pointermove focus',function(event,d){
-      const lines=[`Sales ${esc(fullMoney(d.value))}`];
+      const tipRows=[{label:'Sales',value:fullMoney(d.value)}];
       if(d.complete){
-        if(d.previous&&d.previous.complete&&d.previous.value>0)lines.push(`LW ${esc(pct(100*(d.value-d.previous.value)/d.previous.value))}`);
-        if(d.signal&&d.signal>0)lines.push(`4W ${esc(pct(100*(d.value-d.signal)/d.signal))}`);
+        if(d.previous&&d.previous.complete&&d.previous.value>0)tipRows.push({label:'LW',value:pct(100*(d.value-d.previous.value)/d.previous.value)});
+        if(d.signal&&d.signal>0)tipRows.push({label:'4W',value:pct(100*(d.value-d.signal)/d.signal)});
       }else{
-        lines.push('WTD · partial');
+        tipRows.push({label:'WTD',value:'partial'});
       }
-      lines.push(`${d.orders.toLocaleString('en-US')} orders · ${d.units.toLocaleString('en-US')} units`);
-      tipShow(host,tip,event,`Week of ${d3.utcFormat('%b %-d')(d.week)}`,lines);
+      tipShow(host,tip,this,`Week of ${d3.utcFormat('%b %-d')(d.week)}`,tipRows,`${d.orders.toLocaleString('en-US')} orders · ${d.units.toLocaleString('en-US')} units`);
     }).on('pointerleave blur',()=>tipHide(tip));
 
     if(node.__dppWeeklyResize)window.removeEventListener('resize',node.__dppWeeklyResize);
