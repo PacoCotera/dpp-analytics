@@ -84,6 +84,8 @@ services:
     build:
       context: .
       dockerfile: board/Dockerfile
+      args:
+        DEPLOY_SHA: ${DEPLOY_SHA:-dev}
     image: dpp-analytics-board:local
     container_name: dpp-board
     restart: unless-stopped
