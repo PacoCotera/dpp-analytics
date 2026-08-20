@@ -19,7 +19,9 @@ The cost config is backward compatible:
       {"effective_from": "2025-11-01", "effective_to": "2026-07-31", "unit_cogs": 50}
     ]
   }
-The resolver uses the cost applicable to the business month being closed.
+Explicit history wins for matching months. Otherwise the current standard cost is
+the fallback, including earlier months, so already-sold units are never left
+without COGS merely because effective_from was added later.
 """
 
 import argparse
@@ -105,15 +107,12 @@ def _unit_cost(costs: dict[str, object], sku: str, when: date) -> float | None:
     if matches:
         return max(matches, key=lambda x: x[0])[1]
 
-    # Current/standard value can optionally have its own effective-from date.
+    # The current standard is the fallback whenever dated history does not
+    # provide an override. effective_from documents the current cost era; it
+    # must not turn earlier sold units into unknown COGS.
     amount = _numeric(value.get("unit_cogs"))
     if amount is None:
         amount = _numeric(value.get("current"))
-    if amount is None:
-        return None
-    effective_from = _parse_dateish(value.get("effective_from"))
-    if effective_from and when < effective_from:
-        return None
     return amount
 
 
@@ -428,3 +427,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
