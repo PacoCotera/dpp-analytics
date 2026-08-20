@@ -270,7 +270,7 @@ def finance_payload(connect, marketplace: str) -> dict:
             last_sales_date = _one(cur, "SELECT max(business_date) AS d FROM mart.business_daily WHERE marketplace_id=%s AND reconciled_daily_report", (marketplace,)).get("d")
             first_sales_date = _one(cur, "SELECT min(business_date) AS d FROM mart.business_daily WHERE marketplace_id=%s AND reconciled_daily_report", (marketplace,)).get("d")
             if cutoff is None or last_sales_date is None:
-                return {"summary": {}, "current_month": {}, "closed_months": [], "finalizing_months": [], "closed_aggregate": {}, "types": [], "recent": [], "cogs": [], "local_time": local_time, "diagnostic": errors}
+                return {"summary": {}, "current_month": {}, "closed_months": [], "finalizing_months": [], "closed_aggregate": {}, "ytd_closed_aggregate": {}, "types": [], "recent": [], "cogs": [], "sales_through": last_sales_date, "finance_cutoff": cutoff, "local_time": local_time, "diagnostic": errors}
 
             current_month = last_sales_date.replace(day=1)
             costs = _costs()
@@ -345,19 +345,29 @@ def finance_payload(connect, marketplace: str) -> dict:
                         errors.append(f"probe_{cursor}:{type(exc).__name__}:{exc}")
                 cursor = _next_month(cursor)
 
-            agg_sales = round(sum(float(m.get("net_sales_ex_vat") or 0) for m in closed), 2)
-            agg_contribution = round(sum(float(m.get("contribution_after_product_cogs") or 0) for m in closed), 2)
-            aggregate = {
-                "months": len(closed),
-                "net_sales_ex_vat": agg_sales,
-                "shopper_product_spend": round(sum(float(m.get("shopper_product_spend") or 0) for m in closed), 2),
-                "amazon_order_effect": round(sum(float(m.get("amazon_order_effect") or 0) for m in closed), 2),
-                "advertising": round(sum(float(m.get("advertising") or 0) for m in closed), 2),
-                "product_cogs": round(sum(float(m.get("product_cogs") or 0) for m in closed), 2),
-                "contribution_after_product_cogs": agg_contribution,
-                "contribution_margin_pct": round(100.0 * agg_contribution / agg_sales, 1) if agg_sales else None,
-                "cash_transferred": round(sum(float(m.get("cash_transferred") or 0) for m in closed), 2),
-            }
+            def aggregate_months(rows: list[dict]) -> dict:
+                agg_sales = round(sum(float(m.get("net_sales_ex_vat") or 0) for m in rows), 2)
+                agg_contribution = round(sum(float(m.get("contribution_after_product_cogs") or 0) for m in rows), 2)
+                return {
+                    "months": len(rows),
+                    "net_sales_ex_vat": agg_sales,
+                    "shopper_product_spend": round(sum(float(m.get("shopper_product_spend") or 0) for m in rows), 2),
+                    "amazon_order_effect": round(sum(float(m.get("amazon_order_effect") or 0) for m in rows), 2),
+                    "advertising": round(sum(float(m.get("advertising") or 0) for m in rows), 2),
+                    "product_cogs": round(sum(float(m.get("product_cogs") or 0) for m in rows), 2),
+                    "contribution_after_product_cogs": agg_contribution,
+                    "contribution_margin_pct": round(100.0 * agg_contribution / agg_sales, 1) if agg_sales else None,
+                    "cash_transferred": round(sum(float(m.get("cash_transferred") or 0) for m in rows), 2),
+                }
+
+            aggregate = aggregate_months(closed)
+            ytd_aggregate = {}
+            if closed:
+                latest_closed = str(closed[0].get("month") or "")
+                latest_year = latest_closed[:4]
+                ytd_rows = [m for m in closed if str(m.get("month") or "").startswith(f"{latest_year}-")]
+                ytd_aggregate = aggregate_months(ytd_rows)
+                ytd_aggregate.update({"year": int(latest_year), "through_month": latest_closed})
 
             types = _all(cur, """
                 SELECT transaction_type,count(*)::int AS transactions,
@@ -385,6 +395,13 @@ def finance_payload(connect, marketplace: str) -> dict:
                 "closed_months": closed,
                 "finalizing_months": finalizing,
                 "closed_aggregate": aggregate,
+                "ytd_closed_aggregate": ytd_aggregate,
+                "close_policy": {
+                    "release_coverage_min_pct": float(os.getenv("FINANCE_CLOSE_RELEASE_COVERAGE_MIN_PCT", "98")),
+                    "grace_days": CLOSE_GRACE_DAYS,
+                },
+                "sales_through": last_sales_date,
+                "finance_cutoff": cutoff,
                 "types": types,
                 "recent": recent,
                 "cogs": cogs["rows"],
@@ -393,4 +410,4 @@ def finance_payload(connect, marketplace: str) -> dict:
             }
     except Exception as exc:
         errors.append(f"fatal:{type(exc).__name__}:{exc}")
-        return {"summary": {}, "current_month": {}, "closed_months": [], "finalizing_months": [], "closed_aggregate": {}, "types": [], "recent": [], "cogs": [], "local_time": local_time, "diagnostic": errors}
+        return {"summary": {}, "current_month": {}, "closed_months": [], "finalizing_months": [], "closed_aggregate": {}, "ytd_closed_aggregate": {}, "types": [], "recent": [], "cogs": [], "sales_through": None, "finance_cutoff": None, "local_time": local_time, "diagnostic": errors}

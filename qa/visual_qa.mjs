@@ -13,7 +13,7 @@ const viewports = {
 
 async function swipe(page, direction = 'left') {
   await page.evaluate(dir => {
-    const target = document.querySelector('main.active') || document.querySelector('.view.active') || document.body;
+    const target = document.querySelector('main.active') || document.querySelector('.view.active') || document.querySelector('.finance-view.active') || document.body;
     const fromX = dir === 'left' ? 340 : 70;
     const toX = dir === 'left' ? 70 : 340;
     const common = { bubbles: true, pointerType: 'touch', pointerId: 7, isPrimary: true, clientY: 420 };
@@ -24,20 +24,22 @@ async function swipe(page, direction = 'left') {
 }
 
 const scenarios = [
-  { name: 'today', url: '/today', views: ['mobile', 'desktop'] },
+  { name: 'today', url: '/today', views: ['mobile', 'desktop'], action: async page => page.locator('#rhythm .dpp-bar').first().waitFor({ timeout: 5000 }) },
   { name: 'today-wall', url: '/today?wall=1', views: ['desktop'] },
   { name: 'home', url: '/', views: ['mobile', 'tablet', 'desktop'] },
-  { name: 'sales-overview', url: '/sales', views: ['mobile', 'tablet', 'desktop'] },
+  { name: 'sales-overview', url: '/sales', views: ['mobile', 'tablet', 'desktop'], action: async page => page.locator('#monthChart .dpp-ghost-bar').waitFor({ timeout: 5000 }) },
   { name: 'sales-sku-performance', url: '/sales', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="skus"]').click() },
   { name: 'sales-orders', url: '/sales', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="orders"]').click() },
   { name: 'sales-swipe-skus', url: '/sales', views: ['mobile'], action: async page => { await swipe(page, 'left'); await page.locator('#skus.active').waitFor({ timeout: 2000 }); } },
   { name: 'catalog', url: '/catalog', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'product-pnc-001', url: '/product?sku=PNC-001', views: ['mobile', 'desktop'] },
   { name: 'inventory', url: '/inventory', views: ['mobile', 'tablet', 'desktop'] },
+  { name: 'ads-overview', url: '/ads', views: ['mobile', 'tablet', 'desktop'], action: async page => page.locator('#chart .dpp-bar').first().waitFor({ timeout: 5000 }) },
+  { name: 'ads-campaigns', url: '/ads', views: ['mobile', 'desktop'], action: async page => { await page.locator('button[data-view="campaigns"]').click(); await page.locator('#campaignQuadrant .dpp-bubble').first().waitFor({ timeout: 5000 }); } },
   { name: 'finance-overview', url: '/finance', views: ['mobile', 'desktop'] },
-  { name: 'finance-breakdown', url: '/finance', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="breakdown"]').click() },
-  { name: 'finance-events', url: '/finance', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="events"]').click() },
-  { name: 'finance-swipe-breakdown', url: '/finance', views: ['mobile'], action: async page => { await swipe(page, 'left'); await page.locator('#breakdown.active').waitFor({ timeout: 2000 }); } },
+  { name: 'finance-closed', url: '/finance', views: ['mobile', 'tablet', 'desktop'], action: async page => { await page.locator('button[data-view="cashView"]').click(); await page.locator('#closedChart .dpp-bar').first().waitFor({ timeout: 5000 }); await page.locator('#ytdChart .dpp-bar').first().waitFor({ timeout: 5000 }); } },
+  { name: 'finance-ledger', url: '/finance', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="detailView"]').click() },
+  { name: 'finance-swipe-closed', url: '/finance', views: ['mobile'], action: async page => { await swipe(page, 'left'); await page.locator('#cashView.active').waitFor({ timeout: 2000 }); await page.locator('#ytdChart .dpp-bar').first().waitFor({ timeout: 5000 }); } },
   { name: 'trajectory', url: '/trajectory', views: ['mobile', 'desktop'] },
   { name: 'data-health', url: '/data-health', views: ['mobile', 'desktop'] },
 ];
@@ -165,7 +167,7 @@ for (const scenario of scenarios) {
       const filePath = path.join(outDir, fileName);
       await page.screenshot({ path: filePath, fullPage: true });
       result.screenshot = fileName;
-      result.ok = true;
+      result.ok = errors.length === 0 && failedResponses.length === 0;
     } catch (err) {
       errors.push(`qa: ${err.message}`);
       try {
@@ -234,4 +236,4 @@ console.log(JSON.stringify({
   browserErrors: summary.consoleErrorCount,
 }, null, 2));
 
-if (summary.navigationFailures > 0) process.exitCode = 2;
+if (summary.navigationFailures > 0 || summary.consoleErrorCount > 0 || summary.failedResponseCount > 0) process.exitCode = 2;

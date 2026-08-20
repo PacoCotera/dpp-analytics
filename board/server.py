@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from hashlib import sha256
 from datetime import date, datetime
 from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -24,21 +25,37 @@ from trajectory_api import trajectory_payload as build_trajectory_payload
 ROOT = Path(__file__).parent
 STATIC = ROOT / "static"
 LABELS_PATH = ROOT / "product_labels.json"
-HOME_INDEX = (STATIC / "home.html").read_bytes()
-TODAY_INDEX = (STATIC / "today.html").read_bytes()
-SALES_INDEX = (STATIC / "sales.html").read_bytes()
-CATALOG_INDEX = (STATIC / "catalog.html").read_bytes()
-INVENTORY_INDEX = (STATIC / "inventory.html").read_bytes()
-ADS_INDEX = (STATIC / "ads.html").read_bytes()
-FINANCE_INDEX = (STATIC / "finance.html").read_bytes()
-PRODUCT_INDEX = (STATIC / "product.html").read_bytes()
-TRAJECTORY_INDEX = (STATIC / "trajectory.html").read_bytes()
-DATA_HEALTH_INDEX = (STATIC / "data_health.html").read_bytes()
 THEME_CSS = (STATIC / "theme.css").read_bytes()
 CHART_CSS = (STATIC / "chart-system.css").read_bytes()
 CHART_JS = (STATIC / "chart-system.js").read_bytes()
 UI_SHELL_JS = (STATIC / "ui-shell.js").read_bytes()
 D3_JS = (STATIC / "vendor" / "d3.v7.min.js").read_bytes()
+ASSET_VERSION = sha256(THEME_CSS + CHART_CSS + CHART_JS + UI_SHELL_JS).hexdigest()[:12]
+
+
+def versioned_page(name: str) -> bytes:
+    """Give every HTML response a content-derived asset generation.
+
+    Production browsers may retain the previous shared chart bundle for a few
+    minutes. A content hash keeps a newly deployed page from ever pairing with
+    an older DPPCharts API.
+    """
+    text = (STATIC / name).read_text()
+    for asset in ("theme.css", "chart-system.css", "chart-system.js", "ui-shell.js"):
+        text = text.replace(f"/assets/{asset}", f"/assets/{asset}?v={ASSET_VERSION}")
+    return text.encode()
+
+
+HOME_INDEX = versioned_page("home.html")
+TODAY_INDEX = versioned_page("today.html")
+SALES_INDEX = versioned_page("sales.html")
+CATALOG_INDEX = versioned_page("catalog.html")
+INVENTORY_INDEX = versioned_page("inventory.html")
+ADS_INDEX = versioned_page("ads.html")
+FINANCE_INDEX = versioned_page("finance.html")
+PRODUCT_INDEX = versioned_page("product.html")
+TRAJECTORY_INDEX = versioned_page("trajectory.html")
+DATA_HEALTH_INDEX = versioned_page("data_health.html")
 MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
 AMAZON_MX_DP = "https://www.amazon.com.mx/dp/"
 
