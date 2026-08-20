@@ -51,6 +51,7 @@ class Settings:
     orders_interval_seconds: int = int(os.getenv("ORDERS_INTERVAL_SECONDS", "180"))
     inventory_interval_seconds: int = int(os.getenv("INVENTORY_INTERVAL_SECONDS", "1800"))
     finances_interval_seconds: int = int(os.getenv("FINANCES_INTERVAL_SECONDS", "14400"))
+    settlement_reports_interval_seconds: int = int(os.getenv("SETTLEMENT_REPORTS_INTERVAL_SECONDS", "21600"))
     data_kiosk_interval_seconds: int = int(os.getenv("DATA_KIOSK_INTERVAL_SECONDS", "43200"))
     listings_report_interval_seconds: int = int(os.getenv("LISTINGS_REPORT_INTERVAL_SECONDS", "21600"))
     reports_poll_seconds: int = int(os.getenv("REPORTS_POLL_SECONDS", "5"))
