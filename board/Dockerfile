@@ -17,8 +17,6 @@ COPY board/ads_api.py .
 COPY board/product_labels.json .
 COPY board/product_costs.json .
 COPY board/static ./static
-# Prefer an explicit build arg, but actions/checkout can leave HEAD attached to
-# main. The checked-out main ref therefore provides an exact fallback revision.
 COPY .git/refs/heads/main .build_main_ref
 RUN DEPLOY_SHA="$DEPLOY_SHA" python - <<'PY'
 from pathlib import Path
@@ -76,6 +74,8 @@ product_ads_tag = '<script>\n' + product_ads + '\n</script>'
 if '</body>' in text and 'Paid support is part of this product' not in text:
     product.write_text(text.replace('</body>', product_ads_tag + '\n</body>', 1))
 
+# Sales has one composition/runtime owner. Do not re-introduce post-render
+# chart, rail, state, or ads mutation layers here.
 sales = static / 'sales.html'
 text = sales.read_text()
 sales_layout = (static / 'sales-operating-v2.css').read_text()
@@ -86,26 +86,10 @@ sales_state_css = (static / 'sales-state-rail.css').read_text()
 sales_state_css_tag = '<style>\n' + sales_state_css + '\n</style>'
 if '</head>' in text and 'sales-current-state-rail-v1' not in text:
     text = text.replace('</head>', sales_state_css_tag + '\n</head>', 1)
-sales_runtime = (static / 'sales-operating-v2.js').read_text()
+sales_runtime = (static / 'sales-canonical.js').read_text()
 sales_runtime_tag = '<script>\n' + sales_runtime + '\n</script>'
-if '</body>' in text and 'Primary canvas + signal rail' not in text:
+if '</body>' in text and 'Sales canonical renderer v1' not in text:
     text = text.replace('</body>', sales_runtime_tag + '\n</body>', 1)
-sales_chart_rail = (static / 'sales-chart-rail.js').read_text()
-sales_chart_rail_tag = '<script>\n' + sales_chart_rail + '\n</script>'
-if '</body>' in text and 'Sales chart period rail v2' not in text:
-    text = text.replace('</body>', sales_chart_rail_tag + '\n</body>', 1)
-sales_chart_extensions = (static / 'sales-chart-extensions.js').read_text()
-sales_chart_extensions_tag = '<script>\n' + sales_chart_extensions + '\n</script>'
-if '</body>' in text and 'Sales chart extensions v1' not in text:
-    text = text.replace('</body>', sales_chart_extensions_tag + '\n</body>', 1)
-sales_state_rail = (static / 'sales-state-rail.js').read_text()
-sales_state_rail_tag = '<script>\n' + sales_state_rail + '\n</script>'
-if '</body>' in text and 'sales-current-state-rail-js-v1' not in text:
-    text = text.replace('</body>', sales_state_rail_tag + '\n</body>', 1)
-sales_ads = (static / 'sales-ads-enhance.js').read_text()
-sales_ads_tag = '<script>\n' + sales_ads + '\n</script>'
-if '</body>' in text and 'Advertising context is ready to connect' not in text:
-    text = text.replace('</body>', sales_ads_tag + '\n</body>', 1)
 sales.write_text(text)
 
 home = static / 'home.html'
@@ -152,7 +136,6 @@ if '</body>' in text and 'Historical months not yet management-closed' not in te
     text = text.replace('</body>', finance_cost_tag + '\n</body>', 1)
 finance.write_text(text)
 PY
-# Fail the image build before production replacement if imports or static assets are broken.
 RUN python -c "import server; print('board import smoke test: ok')"
 EXPOSE 8080
 CMD ["python", "server.py"]
