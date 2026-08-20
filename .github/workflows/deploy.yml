@@ -226,6 +226,43 @@ jobs:
           sudo docker logs --tail 150 dpp-board
           exit 1
 
+      - name: Build production browser QA image
+        run: |
+          set -euo pipefail
+          sudo docker build -t dpp-production-visual-qa:local qa
+
+      - name: Test the deployed UI in a browser
+        run: |
+          set -uo pipefail
+          sudo rm -rf /tmp/dpp-production-visual-qa
+          sudo install -d -m 0777 /tmp/dpp-production-visual-qa
+
+          set +e
+          sudo docker run --rm --network host \
+            -v /tmp/dpp-production-visual-qa:/out \
+            dpp-production-visual-qa:local \
+            http://127.0.0.1:8088 /out \
+            | tee /tmp/dpp-production-visual-qa-run.txt
+          rc=${PIPESTATUS[0]}
+          set -e
+
+          sudo chown -R "$(id -u):$(id -g)" /tmp/dpp-production-visual-qa
+          if [[ -s /tmp/dpp-production-visual-qa/report.md ]]; then
+            cat /tmp/dpp-production-visual-qa/report.md
+          fi
+          exit "$rc"
+
+      - name: Upload production browser QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dpp-production-visual-qa-${{ github.run_id }}
+          path: |
+            /tmp/dpp-production-visual-qa
+            /tmp/dpp-production-visual-qa-run.txt
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Collect deployment heartbeat
         if: always()
         env:
@@ -321,6 +358,26 @@ jobs:
                   i.get('summary',{}).get('available'), i.get('summary',{}).get('inbound'),
                   len(i.get('rows',[])), i.get('summary',{}).get('needs_action')))
           PY
+            fi
+            echo '```'
+            echo
+            echo '## Production browser QA'
+            echo '```text'
+            if [[ -s /tmp/dpp-production-visual-qa/summary.json ]]; then
+              python3 - <<'PY' || true
+          import json
+          q=json.load(open('/tmp/dpp-production-visual-qa/summary.json'))
+          print('captures=%s/%s browser_errors=%s failed_responses=%s overflow_captures=%s' % (
+              q.get('successfulCaptures'), q.get('captures'), q.get('consoleErrorCount'),
+              q.get('failedResponseCount'), q.get('horizontalOverflowCaptures')))
+          for r in q.get('results', []):
+              if not r.get('ok'):
+                  print('%s/%s: %s' % (
+                      r.get('scenario'), r.get('viewport'),
+                      '; '.join((r.get('errors') or []) + (r.get('failedResponses') or []))))
+          PY
+            else
+              echo 'Production browser QA did not produce summary.json.'
             fi
             echo '```'
             echo
