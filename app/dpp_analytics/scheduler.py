@@ -9,6 +9,7 @@ from . import db
 from .amazon_ads import ingest_ads, probe_ads
 from .catalog import ingest_catalog
 from .data_kiosk import ingest_sales_traffic
+from .finance_close import close_ready_months
 from .finances import ingest_finances
 from .inventory import ingest_inventory
 from .listings_report import ingest_listings_report
@@ -26,6 +27,7 @@ logging.basicConfig(
 log = logging.getLogger("dpp.scheduler")
 
 STOP = False
+FINANCE_CLOSE_INTERVAL_SECONDS = 3600
 
 
 def _stop(signum: int, frame: object) -> None:
@@ -44,16 +46,11 @@ def _run(name: str, fn: Callable[[], dict]) -> None:
 
 
 def _probe_product_roles() -> tuple[bool, dict]:
-    """Return whether Product Listing is usable while keeping Pricing independent."""
     started = time.monotonic()
     try:
         result = product_roles_probe()
         listing_ok = (result.get("product_listing") or {}).get("status") == "ok"
-        log.info(
-            "job=product_roles_probe status=success result=%s elapsed=%.2fs",
-            result,
-            time.monotonic() - started,
-        )
+        log.info("job=product_roles_probe status=success result=%s elapsed=%.2fs", result, time.monotonic() - started)
         return listing_ok, result
     except Exception:
         log.exception("job=product_roles_probe status=error elapsed=%.2fs", time.monotonic() - started)
@@ -71,7 +68,6 @@ def _probe_loop(name: str, fn: Callable[[], dict], interval: int) -> None:
 
 
 def _next_due(source: str, job_name: str, interval: int) -> float:
-    """Keep durable job cadence across container restarts and frequent deploys."""
     try:
         age = db.seconds_since_last_success(source, job_name)
     except Exception:
@@ -139,52 +135,26 @@ def main() -> None:
     else:
         log.info("Amazon Ads ingestion disabled")
 
-    next_listings_report = _next_due(
-        "amazon_reports",
-        "merchant_listings_all_data",
-        settings.listings_report_interval_seconds,
-    )
-    next_settlements = _next_due(
-        "amazon_reports",
-        "settlement_reports_v2",
-        settings.settlement_reports_interval_seconds,
-    )
+    next_listings_report = _next_due("amazon_reports", "merchant_listings_all_data", settings.listings_report_interval_seconds)
+    next_settlements = _next_due("amazon_reports", "settlement_reports_v2", settings.settlement_reports_interval_seconds)
 
     catalog_role_ready = False
     if settings.catalog_enabled:
         catalog_role_ready, product_roles = _probe_product_roles()
         if not catalog_role_ready:
             pricing_ok = (product_roles.get("pricing") or {}).get("status") == "ok"
-            log.warning(
-                "Catalog Items enrichment paused: Product Listing is not authorized yet; pricing_authorized=%s",
-                pricing_ok,
-            )
+            log.warning("Catalog Items enrichment paused: Product Listing is not authorized yet; pricing_authorized=%s", pricing_ok)
     else:
         log.info("Catalog Items enrichment disabled")
 
     next_orders = 0.0
     next_inventory = _next_due("amazon_spapi", "fba_inventory_v1", settings.inventory_interval_seconds)
     next_finances = _next_due("amazon_spapi", "finances_v2024", settings.finances_interval_seconds)
-    next_catalog = (
-        _next_due("amazon_spapi", "catalog_items_2022_04_01", settings.catalog_interval_seconds)
-        if settings.catalog_enabled and catalog_role_ready
-        else float("inf")
-    )
-    next_product_roles_probe = (
-        time.monotonic() + settings.production_probe_interval_seconds
-        if settings.catalog_enabled
-        else float("inf")
-    )
-    next_data_kiosk = _next_due(
-        "amazon_data_kiosk",
-        "sales_traffic_2024_04_24",
-        settings.data_kiosk_interval_seconds,
-    )
-    next_ads = (
-        _next_due("amazon_ads", "sponsored_products_reporting_v3", settings.ads_reporting_interval_seconds)
-        if settings.ads_enabled and settings.ads_credentials_present
-        else float("inf")
-    )
+    next_finance_close = _next_due("dpp_finance", "month_close", FINANCE_CLOSE_INTERVAL_SECONDS)
+    next_catalog = _next_due("amazon_spapi", "catalog_items_2022_04_01", settings.catalog_interval_seconds) if settings.catalog_enabled and catalog_role_ready else float("inf")
+    next_product_roles_probe = time.monotonic() + settings.production_probe_interval_seconds if settings.catalog_enabled else float("inf")
+    next_data_kiosk = _next_due("amazon_data_kiosk", "sales_traffic_2024_04_24", settings.data_kiosk_interval_seconds)
+    next_ads = _next_due("amazon_ads", "sponsored_products_reporting_v3", settings.ads_reporting_interval_seconds) if settings.ads_enabled and settings.ads_credentials_present else float("inf")
 
     while not STOP:
         now = time.monotonic()
@@ -200,10 +170,15 @@ def main() -> None:
         if now >= next_finances:
             _run("finances", ingest_finances)
             next_finances = time.monotonic() + settings.finances_interval_seconds
+            next_finance_close = min(next_finance_close, time.monotonic())
 
         if now >= next_settlements:
             _run("settlement_reports", ingest_settlement_reports)
             next_settlements = time.monotonic() + settings.settlement_reports_interval_seconds
+
+        if now >= next_finance_close:
+            _run("finance_month_close", close_ready_months)
+            next_finance_close = time.monotonic() + FINANCE_CLOSE_INTERVAL_SECONDS
 
         if now >= next_listings_report:
             _run("seller_listings_report", ingest_listings_report)
@@ -217,10 +192,7 @@ def main() -> None:
                 next_catalog = time.monotonic()
             elif not catalog_role_ready:
                 pricing_ok = (product_roles.get("pricing") or {}).get("status") == "ok"
-                log.warning(
-                    "Product Listing still unavailable; Catalog Items enrichment remains paused; pricing_authorized=%s",
-                    pricing_ok,
-                )
+                log.warning("Product Listing still unavailable; Catalog Items enrichment remains paused; pricing_authorized=%s", pricing_ok)
                 next_catalog = float("inf")
             next_product_roles_probe = time.monotonic() + settings.production_probe_interval_seconds
 
