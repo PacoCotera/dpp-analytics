@@ -6,7 +6,9 @@
     }))
     .filter(x => x.tabs.length > 1);
 
-  const primaryLinks = [...document.querySelectorAll('.primary-nav a:not(.disabled)')]
+  // Resolve primary links at gesture time. Shared navigation can be enhanced after
+  // this script loads (for example when a new native workspace such as Ads appears).
+  const primaryLinks = () => [...document.querySelectorAll('.primary-nav a:not(.disabled)')]
     .filter(link => link.href && new URL(link.href, location.href).origin === location.origin);
 
   const activeIndex = group => {
@@ -14,33 +16,54 @@
     return i < 0 ? 0 : i;
   };
 
+  const syncTabA11y = group => {
+    const active = activeIndex(group);
+    group.tabs.forEach((tab, i) => {
+      const target = tab.dataset.view;
+      tab.setAttribute('aria-selected', i === active ? 'true' : 'false');
+      tab.setAttribute('tabindex', i === active ? '0' : '-1');
+      if (target) {
+        tab.setAttribute('aria-controls', target);
+        const panel = document.getElementById(target);
+        if (panel) {
+          panel.setAttribute('role', 'tabpanel');
+          panel.setAttribute('aria-labelledby', tab.id || `tab-${target}`);
+          if (!tab.id) tab.id = `tab-${target}`;
+        }
+      }
+    });
+  };
+
   const moveTab = (group, delta) => {
     const from = activeIndex(group);
     const to = from + delta;
     if (to < 0 || to >= group.tabs.length) return false;
     group.tabs[to].click();
+    syncTabA11y(group);
+    group.tabs[to].focus({ preventScroll: true });
     group.tabs[to].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     document.body.classList.add('tab-swiped');
     window.setTimeout(() => document.body.classList.remove('tab-swiped'), 180);
     return true;
   };
 
-  const currentPrimaryIndex = () => {
-    const explicit = primaryLinks.findIndex(link => link.classList.contains('active'));
+  const currentPrimaryIndex = links => {
+    const explicit = links.findIndex(link => link.classList.contains('active'));
     if (explicit >= 0) return explicit;
     const here = location.pathname.replace(/\/$/, '') || '/';
-    return primaryLinks.findIndex(link => {
+    return links.findIndex(link => {
       const path = new URL(link.href, location.href).pathname.replace(/\/$/, '') || '/';
       return path === here;
     });
   };
 
   const movePrimary = delta => {
-    const from = currentPrimaryIndex();
+    const links = primaryLinks();
+    const from = currentPrimaryIndex(links);
     if (from < 0) return false;
     const to = from + delta;
-    if (to < 0 || to >= primaryLinks.length) return false;
-    const target = primaryLinks[to];
+    if (to < 0 || to >= links.length) return false;
+    const target = links[to];
     document.body.classList.add('page-swiped');
     window.setTimeout(() => { location.assign(target.href); }, 70);
     return true;
@@ -50,13 +73,15 @@
     group.tablist.setAttribute('role', group.tablist.getAttribute('role') || 'tablist');
     group.tabs.forEach(tab => {
       tab.setAttribute('role', tab.getAttribute('role') || 'tab');
+      tab.addEventListener('click', () => window.setTimeout(() => syncTabA11y(group), 0));
       tab.addEventListener('keydown', event => {
         if (event.key === 'ArrowRight') { event.preventDefault(); moveTab(group, 1); }
         if (event.key === 'ArrowLeft') { event.preventDefault(); moveTab(group, -1); }
-        if (event.key === 'Home') { event.preventDefault(); group.tabs[0].click(); }
-        if (event.key === 'End') { event.preventDefault(); group.tabs.at(-1).click(); }
+        if (event.key === 'Home') { event.preventDefault(); group.tabs[0].click(); syncTabA11y(group); group.tabs[0].focus(); }
+        if (event.key === 'End') { event.preventDefault(); group.tabs.at(-1).click(); syncTabA11y(group); group.tabs.at(-1).focus(); }
       });
     });
+    syncTabA11y(group);
   }
 
   let start = null;
@@ -91,8 +116,6 @@
     if (dt > 900 || Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
     const delta = dx < 0 ? 1 : -1;
 
-    // A swipe may begin on a normal card/link. Suppress the synthetic click that
-    // some mobile browsers emit after the gesture so navigation happens only once.
     suppressClickUntil = performance.now() + 450;
 
     // Internal workspaces are part of the swipe sequence. Once the user reaches
