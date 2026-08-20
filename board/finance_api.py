@@ -62,7 +62,7 @@ def finance_payload(connect, marketplace: str) -> dict:
               greatest(operating_ledger_balance_28,0)::numeric(16,2) AS break_even_off_amazon_costs_28
             FROM a
             """,
-            (marketplace, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff),
+            (marketplace, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff),
         )
 
         types = _all(
