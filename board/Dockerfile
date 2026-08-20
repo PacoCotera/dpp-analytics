@@ -56,6 +56,13 @@ product_ads = (static / 'product-ads-enhance.js').read_text()
 product_ads_tag = '<script>\n' + product_ads + '\n</script>'
 if '</body>' in text and 'Paid support is part of this product' not in text:
     product.write_text(text.replace('</body>', product_ads_tag + '\n</body>', 1))
+
+sales = static / 'sales.html'
+text = sales.read_text()
+sales_ads = (static / 'sales-ads-enhance.js').read_text()
+sales_ads_tag = '<script>\n' + sales_ads + '\n</script>'
+if '</body>' in text and 'Advertising context is ready to connect' not in text:
+    sales.write_text(text.replace('</body>', sales_ads_tag + '\n</body>', 1))
 PY
 # Fail the image build before production replacement if imports or static assets are broken.
 RUN python -c "import server; print('board import smoke test: ok')"
