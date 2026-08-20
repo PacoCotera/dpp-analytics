@@ -100,6 +100,8 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
             (cutoff, cutoff, cutoff, cutoff, cutoff, marketplace),
         )
 
+        # Return the complete monthly history. The client chooses the last 12
+        # months for the operating view and the full series for the FULL view.
         months = _all(
             cur,
             """
@@ -110,11 +112,12 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
                    (date_trunc('month',business_date)=date_trunc('month',%s::date)) AS partial
             FROM mart.business_daily
             WHERE marketplace_id=%s
-              AND business_date BETWEEN (date_trunc('month',%s::date)-interval '11 months')::date AND %s::date
+              AND reconciled_daily_report
+              AND business_date <= %s::date
             GROUP BY 1,5
             ORDER BY 1
             """,
-            (cutoff, marketplace, cutoff, cutoff),
+            (cutoff, marketplace, cutoff),
         )
 
         series = _all(
