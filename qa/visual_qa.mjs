@@ -21,7 +21,9 @@ const scenarios = [
   { name: 'catalog', url: '/catalog', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'product-pnc-001', url: '/product?sku=PNC-001', views: ['mobile', 'desktop'] },
   { name: 'inventory', url: '/inventory', views: ['mobile', 'tablet', 'desktop'] },
-  { name: 'finance', url: '/finance', views: ['mobile', 'desktop'] },
+  { name: 'finance-overview', url: '/finance', views: ['mobile', 'desktop'] },
+  { name: 'finance-breakdown', url: '/finance', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="breakdown"]').click() },
+  { name: 'finance-events', url: '/finance', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="events"]').click() },
   { name: 'trajectory', url: '/trajectory', views: ['mobile', 'desktop'] },
   { name: 'data-health', url: '/data-health', views: ['mobile', 'desktop'] },
 ];
