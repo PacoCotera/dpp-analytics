@@ -13,5 +13,16 @@ COPY trajectory_api.py .
 COPY health_api.py .
 COPY product_labels.json .
 COPY static ./static
+RUN python - <<'PY'
+from pathlib import Path
+
+static = Path('static')
+js = (static / 'swipe-tabs.js').read_text()
+tag = '<script>\n' + js + '\n</script>'
+for page in static.glob('*.html'):
+    text = page.read_text()
+    if '</body>' in text and 'touch swipe navigation for tabbed workspaces' not in text:
+        page.write_text(text.replace('</body>', tag + '\n</body>', 1))
+PY
 EXPOSE 8080
 CMD ["python", "server.py"]
