@@ -37,6 +37,8 @@ class Settings:
     ads_api_endpoint: str = os.getenv("AMAZON_ADS_API_ENDPOINT", "https://advertising-api.amazon.com").rstrip("/")
     ads_reporting_interval_seconds: int = int(os.getenv("AMAZON_ADS_REPORTING_INTERVAL_SECONDS", "21600"))
     ads_backfill_days: int = int(os.getenv("AMAZON_ADS_BACKFILL_DAYS", "450"))
+    ads_report_poll_seconds: int = int(os.getenv("AMAZON_ADS_REPORT_POLL_SECONDS", "5"))
+    ads_report_poll_timeout_seconds: int = int(os.getenv("AMAZON_ADS_REPORT_POLL_TIMEOUT_SECONDS", "300"))
 
     # Production is deliberately two-stage. We first prove the production credentials
     # and authorized roles with read-only calls. Historical/live ingestion is enabled
