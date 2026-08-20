@@ -117,15 +117,16 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
         ads = _one(cur, """
             WITH c AS (SELECT %s::date d), ad AS (
               SELECT
-                coalesce(sum(spend) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0) spend_t28,
-                coalesce(sum(attributed_sales) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0) attributed_sales_t28,
-                coalesce(sum(clicks) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint clicks_t28,
-                coalesce(sum(impressions) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint impressions_t28,
-                coalesce(sum(purchases) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint purchases_t28,
-                coalesce(sum(spend) FILTER (WHERE business_date BETWEEN c.d-55 AND c.d-28),0) spend_prior_t28,
-                coalesce(sum(attributed_sales) FILTER (WHERE business_date BETWEEN c.d-55 AND c.d-28),0) attributed_sales_prior_t28
-              FROM ads.daily_advertised_product d, c
+                coalesce(sum(d.spend) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0) spend_t28,
+                coalesce(sum(d.attributed_sales) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0) attributed_sales_t28,
+                coalesce(sum(d.clicks) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0)::bigint clicks_t28,
+                coalesce(sum(d.impressions) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0)::bigint impressions_t28,
+                coalesce(sum(d.purchases) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0)::bigint purchases_t28,
+                coalesce(sum(d.spend) FILTER (WHERE d.business_date BETWEEN c.d-55 AND c.d-28),0) spend_prior_t28,
+                coalesce(sum(d.attributed_sales) FILTER (WHERE d.business_date BETWEEN c.d-55 AND c.d-28),0) attributed_sales_prior_t28
+              FROM ads.daily_advertised_product d
               JOIN ads.account a ON a.account_id=d.account_id
+              CROSS JOIN c
               WHERE a.marketplace_id=%s
                 AND (d.advertised_sku=%s OR (%s<>'' AND d.advertised_asin=%s))
                 AND d.business_date BETWEEN c.d-55 AND c.d
