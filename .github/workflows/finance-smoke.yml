@@ -1,0 +1,32 @@
+name: Finance API Smoke
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  finance-smoke:
+    runs-on: [self-hosted, linux, x64, dpp-analytics]
+    timeout-minutes: 5
+    steps:
+      - name: Probe Finance API
+        run: |
+          set -euo pipefail
+          sleep 20
+          code="$(curl -sS -o /tmp/finance-smoke.json -w '%{http_code}' http://127.0.0.1:8088/api/finance || true)"
+          echo "HTTP ${code}"
+          cat /tmp/finance-smoke.json 2>/dev/null || true
+          echo
+          if [[ "$code" != "200" ]]; then
+            echo '--- board logs ---'
+            sudo docker logs --tail 120 dpp-board 2>&1 || true
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          p=json.load(open('/tmp/finance-smoke.json'))
+          print('statement_source=', p.get('statement',{}).get('source'))
+          print('statement_sales=', p.get('statement',{}).get('sales'))
+          print('recent=', len(p.get('recent',[])))
+          PY
