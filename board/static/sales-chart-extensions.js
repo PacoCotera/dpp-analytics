@@ -227,7 +227,7 @@
     svg.selectAll('line').filter(function(){
       const line=d3.select(this),x1=line.attr('x1'),x2=line.attr('x2'),y1=Number(line.attr('y1'));
       return x1!=null&&x1===x2&&y1===0&&line.attr('stroke-dasharray')==='3 4';
-    }).attr('stroke',CURRENT_BAR).attr('stroke-width',1.15).attr('stroke-dasharray','2 4').attr('opacity',.76);
+    }).attr('stroke',CURRENT_BAR).attr('stroke-width',2.2).attr('stroke-dasharray',null).attr('opacity',.95);
   }
 
   function updateFullRail(){
