@@ -11,6 +11,18 @@ const viewports = {
   desktop: { width: 1600, height: 1000, isMobile: false, hasTouch: false, deviceScaleFactor: 1 },
 };
 
+async function swipe(page, direction = 'left') {
+  await page.evaluate(dir => {
+    const target = document.querySelector('main.active') || document.querySelector('.view.active') || document.body;
+    const fromX = dir === 'left' ? 340 : 70;
+    const toX = dir === 'left' ? 70 : 340;
+    const common = { bubbles: true, pointerType: 'touch', pointerId: 7, isPrimary: true, clientY: 420 };
+    target.dispatchEvent(new PointerEvent('pointerdown', { ...common, clientX: fromX }));
+    target.dispatchEvent(new PointerEvent('pointerup', { ...common, clientX: toX }));
+  }, direction);
+  await page.waitForTimeout(350);
+}
+
 const scenarios = [
   { name: 'today', url: '/today', views: ['mobile', 'desktop'] },
   { name: 'today-wall', url: '/today?wall=1', views: ['desktop'] },
@@ -18,12 +30,14 @@ const scenarios = [
   { name: 'sales-overview', url: '/sales', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'sales-sku-performance', url: '/sales', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="skus"]').click() },
   { name: 'sales-orders', url: '/sales', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="orders"]').click() },
+  { name: 'sales-swipe-skus', url: '/sales', views: ['mobile'], action: async page => { await swipe(page, 'left'); await page.locator('#skus.active').waitFor({ timeout: 2000 }); } },
   { name: 'catalog', url: '/catalog', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'product-pnc-001', url: '/product?sku=PNC-001', views: ['mobile', 'desktop'] },
   { name: 'inventory', url: '/inventory', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'finance-overview', url: '/finance', views: ['mobile', 'desktop'] },
   { name: 'finance-breakdown', url: '/finance', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="breakdown"]').click() },
   { name: 'finance-events', url: '/finance', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="events"]').click() },
+  { name: 'finance-swipe-breakdown', url: '/finance', views: ['mobile'], action: async page => { await swipe(page, 'left'); await page.locator('#breakdown.active').waitFor({ timeout: 2000 }); } },
   { name: 'trajectory', url: '/trajectory', views: ['mobile', 'desktop'] },
   { name: 'data-health', url: '/data-health', views: ['mobile', 'desktop'] },
 ];
@@ -127,11 +141,16 @@ for (const scenario of scenarios) {
           .slice(0, 40);
         const doc = document.documentElement;
         const body = document.body;
+        const bodyStyle = getComputedStyle(body);
         const scrollWidth = Math.max(doc.scrollWidth, body.scrollWidth);
         const overflowPx = Math.max(0, scrollWidth - doc.clientWidth);
         return {
           title: document.title,
           bodyTextLength: (body.innerText || '').length,
+          bodyBackgroundColor: bodyStyle.backgroundColor,
+          bodyBackgroundImage: bodyStyle.backgroundImage,
+          themeColor: document.querySelector('meta[name="theme-color"]')?.content || null,
+          activeTab: document.querySelector('.tabs button.active,.view-tabs button.active')?.textContent?.trim() || null,
           scrollWidth,
           scrollHeight: Math.max(doc.scrollHeight, body.scrollHeight),
           horizontalOverflowPx: overflowPx,
@@ -187,11 +206,11 @@ const lines = [
   '',
   `**${summary.successfulCaptures}/${summary.captures} captures succeeded.**`,
   '',
-  '| Screen | Viewport | Overflow | Small text | Small tap targets | Browser errors |',
-  '|---|---:|---:|---:|---:|---:|',
+  '| Screen | Viewport | Active tab | Overflow | Small text | Small tap targets | Browser errors |',
+  '|---|---:|---|---:|---:|---:|---:|',
 ];
 for (const r of results) {
-  lines.push(`| ${r.scenario} | ${r.viewport} ${r.width}×${r.height} | ${r.metrics?.horizontalOverflowPx ?? '—'}px | ${r.metrics?.smallTextCount ?? '—'} | ${r.metrics?.smallTapTargetCount ?? '—'} | ${r.errors.length} |`);
+  lines.push(`| ${r.scenario} | ${r.viewport} ${r.width}×${r.height} | ${r.metrics?.activeTab ?? '—'} | ${r.metrics?.horizontalOverflowPx ?? '—'}px | ${r.metrics?.smallTextCount ?? '—'} | ${r.metrics?.smallTapTargetCount ?? '—'} | ${r.errors.length} |`);
 }
 lines.push('', '## Signals', '');
 lines.push(`- Horizontal overflow: ${summary.horizontalOverflowCaptures} capture(s)`);
@@ -201,7 +220,7 @@ lines.push(`- Failed local HTTP responses: ${summary.failedResponseCount}`);
 lines.push(`- Browser/page errors: ${summary.consoleErrorCount}`);
 const failures = results.flatMap(r => r.failedResponses.map(x => `${r.scenario}/${r.viewport}: ${x}`));
 if (failures.length) lines.push('', '## Failed local responses', '', ...failures.map(x => `- ${x}`));
-lines.push('', '_These are review signals, not automatic design failures. Screenshots remain the source of truth for visual judgment._', '');
+lines.push('', '_Theme/background values and active tab are recorded in summary.json. Screenshots remain the source of truth for visual judgment._', '');
 await fs.writeFile(path.join(outDir, 'report.md'), lines.join('\n'));
 
 console.log(JSON.stringify({
