@@ -17,11 +17,5 @@
       style.textContent = `#productsTitle{font-size:0!important}#productsTitle:after{font-size:16px;font-weight:830;letter-spacing:.03em;content:'Products sold today'}body[data-day-mode='closed'] #productsTitle:after{content:'Products sold that day'}`;
       document.head.appendChild(style);
     }
-    if (!document.querySelector('script[data-today-responsive-v2]')) {
-      const script = document.createElement('script');
-      script.src = '/assets/today-responsive-v2.js';
-      script.dataset.todayResponsiveV2 = '1';
-      document.body.appendChild(script);
-    }
   }
 })();
