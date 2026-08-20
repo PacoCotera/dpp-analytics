@@ -29,6 +29,7 @@ TODAY_INDEX = (STATIC / "today.html").read_bytes()
 SALES_INDEX = (STATIC / "sales.html").read_bytes()
 CATALOG_INDEX = (STATIC / "catalog.html").read_bytes()
 INVENTORY_INDEX = (STATIC / "inventory.html").read_bytes()
+ADS_INDEX = (STATIC / "ads.html").read_bytes()
 FINANCE_INDEX = (STATIC / "finance.html").read_bytes()
 PRODUCT_INDEX = (STATIC / "product.html").read_bytes()
 TRAJECTORY_INDEX = (STATIC / "trajectory.html").read_bytes()
@@ -158,7 +159,7 @@ def health_payload():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version="DPPBoard/7"
+    server_version="DPPBoard/8"
     def log_message(self,fmt,*args): print(f"{self.address_string()} {fmt % args}")
     def send_bytes(self,status,content_type,body,cache="no-store"):
         self.send_response(status); self.send_header("Content-Type",content_type); self.send_header("Cache-Control",cache); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
@@ -187,7 +188,7 @@ class Handler(BaseHTTPRequestHandler):
             sku=(query.get("sku") or [""])[0]; self.json_endpoint(lambda:build_product_payload(connect,decorate_products,MARKETPLACE,sku)); return
         if path=="/api/trajectory": self.json_endpoint(lambda:build_trajectory_payload(connect,MARKETPLACE)); return
         if path=="/api/data-health": self.json_endpoint(lambda:build_health_board_payload(connect,MARKETPLACE)); return
-        pages={"/":HOME_INDEX,"/today":TODAY_INDEX,"/sales":SALES_INDEX,"/catalog":CATALOG_INDEX,"/inventory":INVENTORY_INDEX,"/finance":FINANCE_INDEX,"/product":PRODUCT_INDEX,"/trajectory":TRAJECTORY_INDEX,"/data-health":DATA_HEALTH_INDEX}
+        pages={"/":HOME_INDEX,"/today":TODAY_INDEX,"/sales":SALES_INDEX,"/catalog":CATALOG_INDEX,"/inventory":INVENTORY_INDEX,"/ads":ADS_INDEX,"/finance":FINANCE_INDEX,"/product":PRODUCT_INDEX,"/trajectory":TRAJECTORY_INDEX,"/data-health":DATA_HEALTH_INDEX}
         if path in pages: self.send_bytes(200,"text/html; charset=utf-8",pages[path],cache="no-cache"); return
         self.send_bytes(404,"text/plain; charset=utf-8",b"Not found")
 
