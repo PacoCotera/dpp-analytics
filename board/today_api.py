@@ -48,15 +48,38 @@ def today_payload(connect, decorate_products, marketplace: str) -> dict:
                 ),0)::numeric(14,2) AS month_before_today,
                 COALESCE(sum(b.sales) FILTER (
                   WHERE b.business_date BETWEEN c.local_now::date-29 AND c.local_now::date-1
-                ),0)::numeric(14,2) AS last30_before_today
+                ),0)::numeric(14,2) AS last30_before_today,
+                COALESCE(sum(b.sales) FILTER (
+                  WHERE b.business_date BETWEEN date_trunc('week',c.local_now)::date-7 AND c.local_now::date-7
+                ),0)::numeric(14,2) AS prior_week_same_days,
+                COALESCE(sum(b.sales) FILTER (
+                  WHERE b.business_date BETWEEN date_trunc('month',c.local_now-interval '1 month')::date
+                    AND LEAST(
+                      (date_trunc('month',c.local_now-interval '1 month')
+                        + (extract(day FROM c.local_now)::int-1)*interval '1 day')::date,
+                      date_trunc('month',c.local_now)::date-1
+                    )
+                ),0)::numeric(14,2) AS prior_mtd_same_days,
+                COALESCE(sum(b.sales) FILTER (
+                  WHERE b.business_date BETWEEN c.local_now::date-59 AND c.local_now::date-30
+                ),0)::numeric(14,2) AS prior_30
               FROM clock c
               LEFT JOIN mart.business_daily b
                 ON b.marketplace_id=c.marketplace_id
-               AND b.business_date BETWEEN c.local_now::date-29 AND c.local_now::date-1
+               AND b.business_date BETWEEN c.local_now::date-60 AND c.local_now::date-1
               GROUP BY c.local_now
             ), live AS (
               SELECT COALESCE(sales_today,0)::numeric(14,2) AS sales_today
               FROM mart.today_operating WHERE marketplace_id=%s
+            ), totals AS (
+              SELECT
+                (h.week_before_today+l.sales_today)::numeric(14,2) AS sales_week,
+                (h.month_before_today+l.sales_today)::numeric(14,2) AS sales_mtd,
+                (h.last30_before_today+l.sales_today)::numeric(14,2) AS sales_last30,
+                h.prior_week_same_days,
+                h.prior_mtd_same_days,
+                h.prior_30
+              FROM hist h CROSS JOIN live l
             )
             SELECT
               to_char(c.local_now,'HH24:MI') AS local_time,
@@ -64,14 +87,23 @@ def today_payload(connect, decorate_products, marketplace: str) -> dict:
               extract(hour FROM c.local_now)::int AS local_hour,
               round(avg(comparable.sales),2) AS typical_same_weekday_full_day,
               max(comparable.sales)::numeric(14,2) AS best_same_weekday_full_day,
-              (h.week_before_today+l.sales_today)::numeric(14,2) AS sales_week,
-              (h.month_before_today+l.sales_today)::numeric(14,2) AS sales_mtd,
-              (h.last30_before_today+l.sales_today)::numeric(14,2) AS sales_last30
+              t.sales_week,
+              t.sales_mtd,
+              t.sales_last30,
+              t.prior_week_same_days,
+              t.prior_mtd_same_days,
+              t.prior_30,
+              CASE WHEN t.prior_week_same_days>0
+                   THEN round(100.0*(t.sales_week-t.prior_week_same_days)/t.prior_week_same_days,1) END AS week_delta_pct,
+              CASE WHEN t.prior_mtd_same_days>0
+                   THEN round(100.0*(t.sales_mtd-t.prior_mtd_same_days)/t.prior_mtd_same_days,1) END AS mtd_delta_pct,
+              CASE WHEN t.prior_30>0
+                   THEN round(100.0*(t.sales_last30-t.prior_30)/t.prior_30,1) END AS last30_delta_pct
             FROM clock c
-            CROSS JOIN hist h
-            CROSS JOIN live l
+            CROSS JOIN totals t
             LEFT JOIN comparable ON true
-            GROUP BY c.local_now,h.week_before_today,h.month_before_today,h.last30_before_today,l.sales_today
+            GROUP BY c.local_now,t.sales_week,t.sales_mtd,t.sales_last30,
+                     t.prior_week_same_days,t.prior_mtd_same_days,t.prior_30
             """,
             (marketplace, marketplace),
         )
