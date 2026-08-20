@@ -4,6 +4,12 @@
     if (v === null || v === undefined) return '—';
     const n=Number(v); return `${n<0?'−':''}$${new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(Math.abs(Math.round(n)))}`;
   };
+  const shortMoney = v => {
+    const n=Number(v||0), a=Math.abs(n);
+    if(a>=1000000) return `${n<0?'−':''}$${(a/1000000).toFixed(a>=10000000?0:1)}m`;
+    if(a>=1000) return `${n<0?'−':''}$${(a/1000).toFixed(a>=10000?0:1)}k`;
+    return `${n<0?'−':''}$${Math.round(a)}`;
+  };
   const monthName = s => {
     if(!s) return '—';
     const [y,m]=String(s).slice(0,7).split('-').map(Number);
@@ -18,11 +24,11 @@
   .money-bridge{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--line)}.money-cell{padding:16px 18px 15px 0;min-width:0}.money-cell+.money-cell{border-left:1px solid var(--line);padding-left:18px}.money-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:850;color:var(--muted)}.money-value{font-size:34px;font-weight:870;letter-spacing:-.05em;margin-top:5px}.money-note{font-size:11px;color:var(--muted);line-height:1.4;margin-top:5px}.money-value.pos{color:var(--good)}.money-value.neg{color:var(--bad)}
   .finance-columns{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,.45fr);gap:22px;margin-top:18px}.statement-list{border-top:1px solid var(--line)}.statement-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;padding:11px 0;border-bottom:1px solid var(--line);align-items:start}.statement-line.total{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);padding:14px 0}.statement-line .name{font-size:14px;font-weight:760}.statement-line .note{font-size:11px;color:var(--muted);line-height:1.35;margin-top:2px}.statement-line .val{font-size:18px;font-weight:830;white-space:nowrap}.statement-line.total .name,.statement-line.total .val{font-size:21px}
   .finance-note{padding:14px 15px;border-radius:16px;background:#efe9df;font-size:12px;line-height:1.5;color:#554e46}.finance-note strong{color:var(--ink)}.finance-note+.finance-note{margin-top:10px}
-  .monthly-section{margin-top:30px}.monthly-head{display:flex;justify-content:space-between;gap:14px;align-items:end;margin-bottom:9px}.monthly-head h3{font-size:21px;margin:0}.monthly-head p{font-size:12px;color:var(--muted);margin:2px 0 0}.monthly-grid{border-top:2px solid var(--ink)}.monthly-row{display:grid;grid-template-columns:90px 1.05fr .8fr .85fr .9fr .9fr .95fr .95fr;gap:12px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line)}.monthly-row.header{padding:8px 4px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:850;color:var(--muted)}.monthly-row:not(.header):hover{background:rgba(255,255,255,.42)}.m-month{font-weight:830}.m-month small{display:block;font-size:9px;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.06em}.m-num{text-align:right;font-variant-numeric:tabular-nums}.m-num strong{font-size:14px}.m-num span{display:block;font-size:9px;color:var(--muted);margin-top:2px}.m-num.neg strong{color:var(--bad)}.m-num.pos strong{color:var(--good)}
-  .cash-months{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.cash-month{border-top:2px solid var(--ink);padding:13px 2px}.cash-month .month{font-size:11px;font-weight:830}.cash-month .transfer{font-size:31px;font-weight:870;letter-spacing:-.05em;margin:5px 0}.cash-month .meta{font-size:11px;color:var(--muted);line-height:1.4}.cash-month .ads{color:var(--bad);font-weight:760}
+  .monthly-section{margin-top:30px}.monthly-head{display:flex;justify-content:space-between;gap:14px;align-items:end;margin-bottom:9px}.monthly-head h3{font-size:21px;margin:0}.monthly-head p{font-size:12px;color:var(--muted);margin:2px 0 0}.monthly-grid{border-top:2px solid var(--ink)}.monthly-row{display:grid;grid-template-columns:90px 1.05fr .8fr .9fr .9fr .95fr .95fr;gap:12px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line)}.monthly-row.header{padding:8px 4px;font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:850;color:var(--muted)}.monthly-row:not(.header):hover{background:rgba(255,255,255,.42)}.m-month{font-weight:830}.m-month small{display:block;font-size:9px;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.06em}.m-num{text-align:right;font-variant-numeric:tabular-nums}.m-num strong{font-size:14px}.m-num span{display:block;font-size:9px;color:var(--muted);margin-top:2px}.m-num.neg strong{color:var(--bad)}.m-num.pos strong{color:var(--good)}
+  .cash-chart-wrap{margin-top:18px;border-top:2px solid var(--ink);padding-top:13px}.cash-chart-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:8px}.cash-chart-title{font-size:18px;font-weight:830}.cash-chart-sub{font-size:11px;color:var(--muted);line-height:1.4;margin-top:2px}.cash-legend{display:flex;flex-wrap:wrap;gap:12px 16px;justify-content:flex-end;font-size:11px;color:var(--muted)}.cash-legend span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.cash-swatch{width:10px;height:10px;border-radius:2px;display:inline-block}.cash-swatch.transfer{background:var(--good)}.cash-swatch.ads{background:var(--bad)}.cash-swatch.net{background:#575047}.cash-svg{width:100%;height:auto;display:block;overflow:visible}.cash-grid-line{stroke:var(--line);stroke-width:1}.cash-zero{stroke:var(--ink);stroke-width:1.4}.cash-axis{fill:var(--muted);font-size:11px;font-family:inherit}.cash-month-label{fill:var(--ink);font-size:11px;font-weight:760;font-family:inherit}.cash-bar.transfer{fill:var(--good)}.cash-bar.ads{fill:var(--bad)}.cash-bar.net{fill:#575047}.cash-bar.partial{opacity:.62}.cash-chart-foot{display:flex;justify-content:space-between;gap:16px;margin-top:5px;font-size:11px;color:var(--muted);line-height:1.4}.cash-chart-foot strong{color:var(--ink)}
   .released-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.released-item{display:flex;justify-content:space-between;gap:12px;padding:11px 12px;border-radius:12px;background:#f7f3ec}.released-item strong{font-size:13px}.released-item span{font-size:13px;font-variant-numeric:tabular-nums}.ledger-warning{font-size:12px;color:var(--muted);line-height:1.5;margin:4px 0 14px;max-width:900px}
-  @media(max-width:980px){.finance-columns{grid-template-columns:1fr}.monthly-row{grid-template-columns:72px repeat(7,minmax(86px,1fr));font-size:11px}.cash-months{grid-template-columns:1fr 1fr}}
-  @media(max-width:640px){.fmv2-head{display:block}.fmv2-basis{text-align:left;margin-top:5px}.fmv2-head h2{font-size:26px}.money-bridge{grid-template-columns:1fr 1fr}.money-cell{padding:13px 10px 13px 0}.money-cell+.money-cell{padding-left:10px}.money-cell:nth-child(3){grid-column:1/-1;border-left:0;border-top:1px solid var(--line);padding-left:0}.money-value{font-size:28px}.finance-columns{margin-top:14px}.monthly-grid{display:grid;gap:9px;border-top:0}.monthly-row.header{display:none}.monthly-row{display:grid;grid-template-columns:1fr 1fr;gap:9px 14px;border:1px solid var(--line);border-radius:16px;padding:13px 14px;background:rgba(255,253,249,.7)}.m-month{grid-column:1/-1;font-size:16px;padding-bottom:5px;border-bottom:1px solid var(--line)}.m-num{text-align:left}.m-num:before{content:attr(data-label);display:block;font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:820;margin-bottom:2px}.cash-months,.released-list{grid-template-columns:1fr}.statement-line .name{font-size:15px}.statement-line .note{font-size:12px}}
+  @media(max-width:980px){.finance-columns{grid-template-columns:1fr}.monthly-row{grid-template-columns:72px repeat(6,minmax(86px,1fr));font-size:11px}}
+  @media(max-width:640px){.fmv2-head{display:block}.fmv2-basis{text-align:left;margin-top:5px}.fmv2-head h2{font-size:26px}.money-bridge{grid-template-columns:1fr 1fr}.money-cell{padding:13px 10px 13px 0}.money-cell+.money-cell{padding-left:10px}.money-cell:nth-child(3){grid-column:1/-1;border-left:0;border-top:1px solid var(--line);padding-left:0}.money-value{font-size:28px}.finance-columns{margin-top:14px}.monthly-grid{display:grid;gap:9px;border-top:0}.monthly-row.header{display:none}.monthly-row{display:grid;grid-template-columns:1fr 1fr;gap:9px 14px;border:1px solid var(--line);border-radius:16px;padding:13px 14px;background:rgba(255,253,249,.7)}.m-month{grid-column:1/-1;font-size:16px;padding-bottom:5px;border-bottom:1px solid var(--line)}.m-num{text-align:left}.m-num:before{content:attr(data-label);display:block;font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:820;margin-bottom:2px}.statement-line .name{font-size:15px}.statement-line .note{font-size:12px}.cash-chart-head{display:block}.cash-legend{justify-content:flex-start;margin-top:8px;gap:8px 12px}.cash-chart-foot{display:block}.cash-chart-foot span{display:block;margin-top:3px}}
   `;
   document.head.appendChild(css);
 
@@ -30,7 +36,6 @@
     const s=d.statement||{}, months=d.monthly||[];
     const view=document.getElementById('statementView'); if(!view)return;
     const start=String(s.period_start||'').slice(0,10), end=String(s.through_date||'').slice(0,10);
-    const fees=s.settled_amazon_fees;
     view.innerHTML=`<div class="fmv2">
       <section class="fmv2-head"><div><div class="kicker">Current month</div><h2>Sales → deductions → contribution</h2></div><div class="fmv2-basis"><strong>${esc(start)} → ${esc(end)}</strong>Sales ex IVA · finance events RELEASED only</div></section>
       <section class="money-bridge">
@@ -41,7 +46,6 @@
       <div class="finance-columns"><section>
         <div class="statement-list">
           <div class="statement-line"><div><div class="name">Advertising posted by Amazon</div><div class="note">Cash/accounting posting date. This is intentionally not spread across days.</div></div><div class="val ${cls(s.advertising)}">${money(s.advertising)}</div></div>
-          <div class="statement-line"><div><div class="name">Amazon fees from closed settlements</div><div class="note">Referral, FBA and other identifiable settlement fees. Current open month may not have a closed settlement yet.</div></div><div class="val ${cls(fees)}">${fees==null?'Awaiting settlement':money(fees)}</div></div>
           <div class="statement-line"><div><div class="name">Refunds posted</div><div class="note">Released Amazon refund transactions.</div></div><div class="val ${cls(s.refunds)}">${money(s.refunds)}</div></div>
           <div class="statement-line"><div><div class="name">Other adjustments / service fees</div><div class="note">Released accounting adjustments outside the lines above.</div></div><div class="val ${cls(Number(s.adjustments||0)+Number(s.service_fees||0))}">${money(Number(s.adjustments||0)+Number(s.service_fees||0))}</div></div>
           <div class="statement-line"><div><div class="name">Amazon operating net · released ledger</div><div class="note">Amazon-side accounting result on its posting clock; do not force it to equal sales for the same calendar dates.</div></div><div class="val ${cls(s.amazon_operating_net)}">${money(s.amazon_operating_net)}</div></div>
@@ -49,7 +53,7 @@
           <div class="statement-line total"><div><div class="name">Contribution after product COGS</div><div class="note">Before payroll, rent, freight-to-FBA and other off-Amazon overhead.</div></div><div class="val ${cls(s.after_product_cogs)}">${s.after_product_cogs==null?'Incomplete COGS':money(s.after_product_cogs)}</div></div>
         </div>
       </section><aside>
-        <div class="finance-note"><strong>Two clocks, deliberately.</strong><br>Sales are recognized on the business-sales date. Advertising, fees and transfers hit Amazon's finance ledger when Amazon posts/releases them. Monthly history is therefore more useful than forcing MTD lines to reconcile day-for-day.</div>
+        <div class="finance-note"><strong>Two clocks, deliberately.</strong><br>Sales are recognized on the business-sales date. Advertising and transfers hit Amazon's finance ledger when Amazon posts/releases them. Monthly history is more useful than forcing MTD lines to reconcile day-for-day.</div>
         <div class="finance-note accounting-note"><strong>Cash transferred this month</strong><br><span style="font-size:30px;font-weight:870;letter-spacing:-.04em;color:var(--ink)">${money(s.cash_transferred)}</span><br>Actual released Transfer events, not estimated profit.</div>
       </aside></div>
       ${monthlyTable(months)}
@@ -59,12 +63,11 @@
   function monthlyTable(months){
     const rows=(months||[]).slice(-10).reverse();
     return `<section class="monthly-section"><div class="monthly-head"><div><h3>Monthly money flow</h3><p>Newest first · current month marked MTD · advertising stays on the month Amazon posts it.</p></div></div><div class="monthly-grid">
-      <div class="monthly-row header"><div>Month</div><div class="m-num">Net sales</div><div class="m-num">IVA</div><div class="m-num">Ads posted</div><div class="m-num">Settled fees</div><div class="m-num">Amazon net</div><div class="m-num">COGS</div><div class="m-num">Cash transfer</div></div>
+      <div class="monthly-row header"><div>Month</div><div class="m-num">Net sales</div><div class="m-num">IVA</div><div class="m-num">Ads posted</div><div class="m-num">Amazon net</div><div class="m-num">COGS</div><div class="m-num">Cash transfer</div></div>
       ${rows.map(m=>`<div class="monthly-row"><div class="m-month">${monthName(m.month)}${m.partial?'<small>MTD</small>':''}</div>
         <div class="m-num" data-label="Net sales"><strong>${money(m.net_sales_ex_vat)}</strong><span>gross ${money(m.shopper_product_spend)}</span></div>
         <div class="m-num" data-label="IVA"><strong>${money(m.iva_on_sales)}</strong><span>${(100*Number(m.vat_rate||.16)).toFixed(0)}%</span></div>
         <div class="m-num ${cls(m.advertising)}" data-label="Ads posted"><strong>${money(m.advertising)}</strong><span>posting month</span></div>
-        <div class="m-num ${cls(m.settled_amazon_fees)}" data-label="Settled fees"><strong>${m.settled_amazon_fees==null?'—':money(m.settled_amazon_fees)}</strong><span>${m.settlement_lines?'closed settlement':'not closed'}</span></div>
         <div class="m-num ${cls(m.amazon_operating_net)}" data-label="Amazon net"><strong>${money(m.amazon_operating_net)}</strong><span>released ledger</span></div>
         <div class="m-num neg" data-label="COGS"><strong>${money(-Math.abs(Number(m.product_cogs||0)))}</strong><span>${Number(m.cogs_coverage_pct||0).toFixed(0)}% covered</span></div>
         <div class="m-num ${cls(m.cash_transferred)}" data-label="Cash transfer"><strong>${money(m.cash_transferred)}</strong><span>actual payout</span></div>
@@ -72,13 +75,69 @@
     </div></section>`;
   }
 
+  function niceStep(maxAbs){
+    if(maxAbs<=0) return 1000;
+    const rough=maxAbs/3;
+    const pow=Math.pow(10,Math.floor(Math.log10(rough)));
+    const n=rough/pow;
+    const mult=n<=1?1:n<=2?2:n<=5?5:10;
+    return mult*pow;
+  }
+
+  function drawCashChart(rows){
+    const svg=document.getElementById('cashHistogram');
+    if(!svg || !rows.length) return;
+    const host=svg.parentElement;
+    const W=Math.max(420,Math.min(1080,host?.clientWidth||900));
+    const H=W<620?300:340, L=58, R=14, T=18, B=48;
+    const w=W-L-R, h=H-T-B;
+    const series=[
+      {key:'cash_transferred',label:'Cash transfers',klass:'transfer'},
+      {key:'advertising',label:'Ads posted',klass:'ads'},
+      {key:'amazon_operating_net',label:'Amazon operating net',klass:'net'}
+    ];
+    const values=rows.flatMap(r=>series.map(s=>Number(r[s.key]||0)));
+    const maxAbs=Math.max(100,...values.map(Math.abs));
+    const step=niceStep(maxAbs);
+    const limit=Math.ceil(maxAbs/step)*step;
+    const y=v=>T+(limit-Number(v||0))*(h/(2*limit));
+    const zero=y(0);
+    const group=w/rows.length;
+    const barW=Math.max(5,Math.min(18,group*.19));
+    const totalW=barW*series.length+4*(series.length-1);
+    const out=[];
+    [-limit,-limit/2,0,limit/2,limit].forEach(v=>{
+      const yy=y(v);
+      out.push(`<line class="${v===0?'cash-zero':'cash-grid-line'}" x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}"/>`);
+      out.push(`<text class="cash-axis" x="${L-8}" y="${yy+4}" text-anchor="end">${shortMoney(v)}</text>`);
+    });
+    rows.forEach((r,i)=>{
+      const center=L+group*(i+.5);
+      series.forEach((s,j)=>{
+        const v=Number(r[s.key]||0);
+        const yy=y(v), top=Math.min(zero,yy), height=Math.max(1,Math.abs(zero-yy));
+        const x=center-totalW/2+j*(barW+4);
+        out.push(`<rect class="cash-bar ${s.klass}${r.partial?' partial':''}" x="${x}" y="${top}" width="${barW}" height="${height}" rx="2"><title>${esc(monthName(r.month))} · ${esc(s.label)} · ${money(v)}</title></rect>`);
+      });
+      out.push(`<text class="cash-month-label" x="${center}" y="${H-18}" text-anchor="middle">${esc(monthName(r.month).replace(' 20',' '))}${r.partial?'*':''}</text>`);
+    });
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    svg.innerHTML=out.join('');
+  }
+
   function renderCash(d){
     const view=document.getElementById('cashView'); if(!view)return;
-    const rows=(d.monthly||[]).slice(-9).reverse();
-    view.innerHTML=`<section class="fmv2"><div class="fmv2-head"><div><div class="kicker">Cash flow</div><h2>What Amazon actually moved.</h2></div><div class="fmv2-basis">Monthly view<br>RELEASED events only</div></div>
-      <div class="cash-months">${rows.map(m=>`<article class="cash-month"><div class="month">${monthName(m.month)}${m.partial?' · MTD':''}</div><div class="transfer ${cls(m.cash_transferred)}">${money(m.cash_transferred)}</div><div class="meta">Amazon transfers<br><span class="ads">Ads posted ${money(m.advertising)}</span><br>Released operating net ${money(m.amazon_operating_net)}</div></article>`).join('')}</div>
-      <div class="finance-note" style="margin-top:18px"><strong>Why this view is monthly.</strong> Advertising charges and Amazon payouts are lumpy settlement events. A daily or current-month-only view hides the cash pattern rather than explaining it.</div>
+    const rows=(d.monthly||[]).slice(-9);
+    const latest=rows[rows.length-1]||{};
+    view.innerHTML=`<section class="fmv2"><div class="fmv2-head"><div><div class="kicker">Cash flow</div><h2>Monthly cash rhythm.</h2></div><div class="fmv2-basis">Monthly view<br>RELEASED events only</div></div>
+      <div class="cash-chart-wrap">
+        <div class="cash-chart-head"><div><div class="cash-chart-title">Transfers, advertising and Amazon operating net</div><div class="cash-chart-sub">Bars share one zero line so the monthly timing mismatch is visible immediately. Current partial month is shown lighter.</div></div><div class="cash-legend"><span><i class="cash-swatch transfer"></i>Cash transfers</span><span><i class="cash-swatch ads"></i>Ads posted</span><span><i class="cash-swatch net"></i>Amazon operating net</span></div></div>
+        <svg id="cashHistogram" class="cash-svg" role="img" aria-label="Monthly cash transfers, advertising postings and Amazon operating net"></svg>
+        <div class="cash-chart-foot"><span><strong>${monthName(latest.month)}${latest.partial?' · MTD':''}</strong> · transfer ${money(latest.cash_transferred)} · ads ${money(latest.advertising)} · net ${money(latest.amazon_operating_net)}</span><span>* partial month</span></div>
+      </div>
+      <div class="finance-note" style="margin-top:16px"><strong>Why monthly.</strong> Advertising charges and Amazon payouts are lumpy settlement events. The chart makes the pattern visible without pretending those postings belong evenly to each sales day.</div>
     </section>`;
+    requestAnimationFrame(()=>drawCashChart(rows));
   }
 
   function renderDetail(d){
