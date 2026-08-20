@@ -1,0 +1,98 @@
+/* Today operating layout v2
+   Live operating state first, rhythm second, evidence last.
+   Normal app mode only; wall mode intentionally keeps its dedicated dark composition. */
+html:not(.wall-mode) .today-shell.today-operating-v2 .today-head{display:none!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .day-picker{
+  margin:-4px 0 12px!important;padding:0 0 7px!important;gap:2px!important;border-bottom:1px solid var(--line)
+}
+html:not(.wall-mode) .today-shell.today-operating-v2 .day-choice{min-height:34px!important;padding:3px 5px!important;border-radius:8px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .day-choice b{font-size:11.5px!important;line-height:1.05!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .day-choice span{font-size:8.8px!important;margin-top:2px!important}
+
+html:not(.wall-mode) .today-operating-stage{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,.45fr);gap:14px;align-items:stretch}
+html:not(.wall-mode) .today-operating-main{min-width:0}
+html:not(.wall-mode) .today-operating-main .hero-main{height:100%;min-height:246px!important;padding:22px 25px!important;border-radius:24px!important;box-shadow:none!important}
+html:not(.wall-mode) .today-operating-main .hero-main:after{width:320px;height:320px;right:-120px;top:-175px;opacity:.72}
+html:not(.wall-mode) .today-operating-main .eyebrow{font-size:10px!important;letter-spacing:.11em!important;font-weight:760!important;color:#8a5b21!important}
+html:not(.wall-mode) .today-operating-main .hero-sales{font-size:clamp(72px,7.2vw,108px)!important;line-height:.86!important;margin:7px 0 4px!important}
+html:not(.wall-mode) .today-operating-main .hero-bottom{grid-template-columns:auto auto auto minmax(210px,1fr)!important;gap:18px 25px!important;align-items:end!important}
+html:not(.wall-mode) .today-operating-main .hero-stat strong{font-size:27px!important;font-weight:820!important}
+html:not(.wall-mode) .today-operating-main .hero-stat span{font-size:10.5px!important}
+html:not(.wall-mode) .today-operating-main .benchmark-line{font-size:20px!important;font-weight:780!important}
+html:not(.wall-mode) .today-operating-main .benchmark-note{font-size:10.5px!important;max-width:250px;margin-left:auto}
+
+html:not(.wall-mode) .today-state-rail{min-width:0;display:flex;flex-direction:column;padding:0 4px 0 14px;border-left:1px solid var(--line)}
+html:not(.wall-mode) .today-state-rail .latest{min-height:0!important;padding:14px 15px!important;margin-bottom:3px;border-radius:18px!important;box-shadow:none!important;background:rgba(255,253,249,.72)!important}
+html:not(.wall-mode) .today-state-rail .latest-product{margin:8px 0!important;gap:10px!important}
+html:not(.wall-mode) .today-state-rail .latest-product img{width:58px!important;height:70px!important;border-radius:10px!important;background:#fff!important}
+html:not(.wall-mode) .today-state-rail .latest-name{font-size:15px!important;line-height:1.18!important}
+html:not(.wall-mode) .today-state-rail .latest-sku{font-size:9px!important}
+html:not(.wall-mode) .today-state-rail .latest-amount{font-size:27px!important}
+html:not(.wall-mode) .today-state-rail .latest-age{font-size:10px!important}
+html:not(.wall-mode) .today-state-rail .latest-context{font-size:9.5px!important;gap:5px!important;margin-top:3px!important}
+html:not(.wall-mode) .today-state-rail .empty-live{font-size:13px!important;line-height:1.35!important;margin:8px 0!important}
+html:not(.wall-mode) .today-state-row{
+  padding:12px 3px 11px!important;border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important
+}
+html:not(.wall-mode) .today-state-row:last-child{border-bottom:0!important}
+html:not(.wall-mode) .today-state-row .context-top{align-items:baseline!important}
+html:not(.wall-mode) .today-state-row .context-top strong{font-size:21px!important;font-weight:820!important;letter-spacing:-.035em!important}
+html:not(.wall-mode) .today-state-row .context-label{font-size:9px!important;letter-spacing:.08em!important;margin-top:1px!important;font-weight:760!important}
+html:not(.wall-mode) .today-state-row .context-bench{margin-top:4px!important;font-size:10px!important;gap:5px!important}
+html:not(.wall-mode) .today-state-row .signal-dot{width:8px!important;height:8px!important;box-shadow:none!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 > .app > .hero,
+html:not(.wall-mode) .today-shell.today-operating-v2 > .app > .context-strip{display:none!important}
+
+html:not(.wall-mode) .today-shell.today-operating-v2 .content-grid{grid-template-columns:minmax(0,1.55fr) minmax(300px,.45fr)!important;gap:14px!important;margin-top:14px!important;align-items:stretch}
+html:not(.wall-mode) .today-shell.today-operating-v2 .content-grid>.panel{padding:18px 20px!important;border-radius:22px!important;box-shadow:none!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .content-grid>.panel:first-child{min-height:330px}
+html:not(.wall-mode) .today-shell.today-operating-v2 .panel-head{margin-bottom:8px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .panel-title{font-size:14px!important;font-weight:800!important;letter-spacing:.01em!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .panel-sub{font-size:10.5px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .period{min-height:29px!important;padding:0 9px!important;font-size:9.5px!important;font-weight:760!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .rhythm-chart{height:260px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .product-win{grid-template-columns:48px minmax(0,1fr) auto!important;padding:9px!important;border-radius:13px!important;background:transparent!important;border:0!important;border-bottom:1px solid var(--line)!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .product-win:last-child{border-bottom:0!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .product-win img{width:48px!important;height:57px!important;background:#fff!important;border-radius:8px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .product-win .name{font-size:12.5px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .product-win .meta{font-size:9.5px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .product-win .value{font-size:15px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .wins{margin-top:14px!important;padding:17px 19px!important;border-radius:22px!important;box-shadow:none!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .wins .panel-head{margin-bottom:9px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .order-transaction{border-radius:13px!important;background:transparent!important;padding:11px 12px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .order-transaction .ot-amount{font-size:19px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .order-transaction .ot-name{font-size:12px!important;margin-top:5px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .order-transaction .ot-meta{font-size:9.5px!important;margin-top:6px!important}
+html:not(.wall-mode) .today-shell.today-operating-v2 .live-footer{margin-top:10px!important;padding-top:8px;border-top:1px solid var(--line);font-size:9.5px!important;letter-spacing:.035em!important;text-transform:none!important}
+
+/* Amazon product-image wells are always pure white. */
+.today-shell .latest-product img,.today-shell .product-win img{background:#fff!important}
+
+@media(max-width:980px){
+  html:not(.wall-mode) .today-operating-stage,
+  html:not(.wall-mode) .today-shell.today-operating-v2 .content-grid{grid-template-columns:1fr!important}
+  html:not(.wall-mode) .today-state-rail{border-left:0;border-top:1px solid var(--line);padding:10px 0 0;display:grid;grid-template-columns:minmax(0,1.15fr) repeat(3,minmax(0,.62fr));gap:0 12px}
+  html:not(.wall-mode) .today-state-rail .latest{grid-row:1/2;margin:0 6px 0 0!important}
+  html:not(.wall-mode) .today-state-row{border-bottom:0!important;border-left:1px solid var(--line)!important;padding:8px 0 8px 12px!important}
+}
+@media(max-width:640px){
+  html:not(.wall-mode) .today-shell.today-operating-v2 .day-picker{grid-template-columns:repeat(8,minmax(0,1fr))!important;gap:1px!important;margin:-5px 0 9px!important;overflow:visible!important}
+  html:not(.wall-mode) .today-shell.today-operating-v2 .day-choice{min-height:33px!important;padding:3px 1px!important}
+  html:not(.wall-mode) .today-shell.today-operating-v2 .day-choice b{font-size:10px!important}
+  html:not(.wall-mode) .today-shell.today-operating-v2 .day-choice span{font-size:7.8px!important}
+  html:not(.wall-mode) .today-operating-main .hero-main{min-height:218px!important;padding:17px 16px!important}
+  html:not(.wall-mode) .today-operating-main .hero-sales{font-size:69px!important;margin:5px 0 3px!important}
+  html:not(.wall-mode) .today-operating-main .hero-bottom{grid-template-columns:repeat(3,auto)!important;gap:12px 18px!important}
+  html:not(.wall-mode) .today-operating-main .hero-stat strong{font-size:24px!important}
+  html:not(.wall-mode) .today-operating-main .benchmark{grid-column:1/-1;text-align:left!important;margin-top:2px!important}
+  html:not(.wall-mode) .today-operating-main .benchmark-line{justify-content:flex-start!important;font-size:17px!important}
+  html:not(.wall-mode) .today-operating-main .benchmark-note{margin-left:0;max-width:none}
+  html:not(.wall-mode) .today-state-rail{display:flex;padding-top:8px}
+  html:not(.wall-mode) .today-state-rail .latest{margin:0 0 2px!important}
+  html:not(.wall-mode) .today-state-row{border-left:0!important;border-bottom:1px solid var(--line)!important;padding:10px 2px!important}
+  html:not(.wall-mode) .today-state-row:last-child{border-bottom:0!important}
+  html:not(.wall-mode) .today-shell.today-operating-v2 .content-grid>.panel{padding:15px!important}
+  html:not(.wall-mode) .today-shell.today-operating-v2 .content-grid>.panel:first-child{min-height:290px}
+  html:not(.wall-mode) .today-shell.today-operating-v2 .rhythm-chart{height:220px!important}
+  html:not(.wall-mode) .today-shell.today-operating-v2 .order-stream.order-ledger{grid-template-columns:1fr!important}
+}
