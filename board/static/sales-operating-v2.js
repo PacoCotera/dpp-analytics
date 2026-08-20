@@ -1,7 +1,8 @@
 /* Sales operating layout v3
    One analytical canvas + a temporal signal rail.
    The chart explores 12M monthly, 13W weekly and 28D daily without changing screens.
-   The rail reads live -> MTD -> 7D -> 28D -> YTD, with Sales / Orders / Units kept visible. */
+   The rail reads live -> MTD -> 7D -> 28D -> YTD, with Sales / Orders / Units kept visible.
+   Legacy renderer nodes stay in the DOM until its async render completes; CSS hides them. */
 (() => {
   'use strict';
   const d3=window.d3;
@@ -37,7 +38,7 @@
     return volume;
   }
   function setVolume(panel,orders,units){
-    const volume=ensureVolume(panel); if(!volume)return;
+    const volume=ensureVolume(panel);if(!volume)return;
     volume.innerHTML=`<span><strong>${nf.format(Number(orders||0))}</strong> orders</span><span><strong>${nf.format(Number(units||0))}</strong> units</span>`;
   }
   function sum(rows,key){return d3.sum(rows||[],d=>Number(d[key]||0))}
@@ -48,12 +49,10 @@
     overview.dataset.operatingV3='1';
     document.body.classList.add('sales-operating-v2');
 
-    document.querySelector('.page-head')?.remove();
-    overview.querySelector(':scope > .story')?.remove();
+    // Keep legacy renderer targets alive. The stylesheet hides the old shell/story/context.
     document.querySelectorAll('.tabs button').forEach(btn=>{if(btn.dataset.view==='skus')btn.textContent='Products'});
 
     const metricGrid=overview.querySelector('.grid.four');
-    const metricSection=metricGrid?.parentElement;
     const mtd=metricToPanel(metricGrid?.querySelector('[data-insight="mtd"]'),'primary');
     const ytd=metricToPanel(metricGrid?.querySelector('[data-insight="ytd"]'),'ytd');
     const t7=metricToPanel(metricGrid?.querySelector('[data-insight="t7"]'));
@@ -94,10 +93,6 @@
     if(chartCard)main.appendChild(chartCard);
     [live,mtd,t7,t28,ytd].forEach(node=>{if(node)rail.appendChild(node)});
     grid.append(main,rail);overview.prepend(grid);
-
-    if(metricSection?.isConnected)metricSection.remove();
-    if(mainAside?.isConnected)mainAside.remove();
-    document.getElementById('insight')?.remove();
   }
 
   function signalTip(host,tip,event,title,lines){
@@ -109,10 +104,13 @@
     tip.classList.add('sales-window-tip');
     tip.style.left=preferRight?`${Math.min(rect.width-12,mark.right-rect.left+12)}px`:`${Math.max(12,mark.left-rect.left-12)}px`;
     tip.style.top=`${Math.max(54,mark.top-rect.top+mark.height/2)}px`;
-    tip.dataset.side=preferRight?'right':'left';tip.classList.add('show');
+    tip.style.transform=preferRight?'translate(0,-50%)':'translate(-100%,-50%)';
+    tip.style.maxWidth='220px';tip.style.minWidth='178px';
+    tip.querySelectorAll('.tip-row').forEach(row=>{row.style.display='grid';row.style.gridTemplateColumns='48px minmax(0,1fr)';row.style.gap='10px';row.style.alignItems='baseline';const em=row.querySelector('em'),b=row.querySelector('b');if(em){em.style.fontStyle='normal';em.style.color='#aaa197';em.style.fontWeight='700'}if(b){b.style.color='#fffaf1';b.style.fontWeight='820'}});
+    tip.classList.add('show');
   }
 
-  function renderWindowBars(rows,{title,sub,signalWindow,signalLabel,periodLabel,partial=false}){
+  function renderWindowBars(rows,{title,sub,signalWindow,signalLabel,periodLabel}){
     const svg=d3.select('#monthChart');if(svg.empty())return;
     svg.selectAll('*').remove();
     const node=svg.node(),host=node.parentElement;host.classList.add('dpp-chart-host');
@@ -179,7 +177,7 @@
       renderWindowBars(rows,{title:'Daily sales',sub:'28 days · daily sales · 7-day average',signalWindow:7,signalLabel:'7D avg',periodLabel:'Prev'});
       return;
     }
-    const weekly=d3.rollups(daily,v=>({sales:sum(v,'sales'),orders:sum(v,'orders'),units:sum(v,'units'),days:v.length}),d=>+d3.utcMonday.floor(d.date))
+    const weekly=d3.rollups(daily,v=>({sales:sum(v,'sales'),orders:sum(v,'orders'),units:sum(v,'units')}),d=>+d3.utcMonday.floor(d.date))
       .map(([key,v])=>({date:new Date(Number(key)),...v})).sort((a,b)=>d3.ascending(a.date,b.date)).slice(-13)
       .map(d=>({key:d3.utcFormat('%Y-%m-%d')(d.date),axis:d3.utcFormat('%b %-d')(d.date),label:`Week of ${d3.utcFormat('%b %-d')(d.date)}`,sales:d.sales,orders:d.orders,units:d.units}));
     renderWindowBars(weekly,{title:'Weekly sales',sub:'13 weeks · weekly sales · 4-week average',signalWindow:4,signalLabel:'4W avg',periodLabel:'LW'});
