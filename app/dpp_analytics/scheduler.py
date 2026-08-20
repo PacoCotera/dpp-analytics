@@ -6,6 +6,7 @@ import time
 from collections.abc import Callable
 
 from . import db
+from .amazon_ads import ingest_ads, probe_ads
 from .catalog import ingest_catalog
 from .data_kiosk import ingest_sales_traffic
 from .finances import ingest_finances
@@ -87,13 +88,15 @@ def main() -> None:
     signal.signal(signal.SIGINT, _stop)
 
     log.info(
-        "DPP analytics worker starting environment=%s marketplace=%s spapi_enabled=%s credentials_present=%s production_ingestion_enabled=%s catalog_enabled=%s",
+        "DPP analytics worker starting environment=%s marketplace=%s spapi_enabled=%s credentials_present=%s production_ingestion_enabled=%s catalog_enabled=%s ads_enabled=%s ads_credentials_present=%s",
         settings.spapi_environment,
         settings.marketplace_id,
         settings.spapi_enabled,
         settings.spapi_credentials_present,
         settings.production_ingestion_enabled,
         settings.catalog_enabled,
+        settings.ads_enabled,
+        settings.ads_credentials_present,
     )
 
     try:
@@ -126,6 +129,14 @@ def main() -> None:
         return
 
     log.info("SP-API production ingestion ENABLED")
+
+    if settings.ads_enabled:
+        if settings.ads_credentials_present:
+            _run("amazon_ads_probe", probe_ads)
+        else:
+            log.warning("Amazon Ads enabled but credentials are incomplete; Ads ingestion will remain idle")
+    else:
+        log.info("Amazon Ads ingestion disabled")
 
     # Bulk seller catalog comes from GET_MERCHANT_LISTINGS_ALL_DATA. It is the
     # authoritative enumeration of our listings and also includes item-name,
@@ -166,6 +177,11 @@ def main() -> None:
         "amazon_data_kiosk",
         "sales_traffic_2024_04_24",
         settings.data_kiosk_interval_seconds,
+    )
+    next_ads = (
+        _next_due("amazon_ads", "sponsored_products_reporting_v3", settings.ads_reporting_interval_seconds)
+        if settings.ads_enabled and settings.ads_credentials_present
+        else float("inf")
     )
 
     while not STOP:
@@ -209,6 +225,10 @@ def main() -> None:
         if now >= next_data_kiosk:
             _run("data_kiosk", ingest_sales_traffic)
             next_data_kiosk = time.monotonic() + settings.data_kiosk_interval_seconds
+
+        if now >= next_ads:
+            _run("amazon_ads", ingest_ads)
+            next_ads = time.monotonic() + settings.ads_reporting_interval_seconds
 
         time.sleep(settings.scheduler_tick_seconds)
 
