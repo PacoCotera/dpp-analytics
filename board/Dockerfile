@@ -17,12 +17,20 @@ RUN python - <<'PY'
 from pathlib import Path
 
 static = Path('static')
-js = (static / 'swipe-tabs.js').read_text()
-tag = '<script>\n' + js + '\n</script>'
+
+swipe = (static / 'swipe-tabs.js').read_text()
+swipe_tag = '<script>\n' + swipe + '\n</script>'
 for page in static.glob('*.html'):
     text = page.read_text()
     if '</body>' in text and 'touch swipe navigation for tabbed workspaces' not in text:
-        page.write_text(text.replace('</body>', tag + '\n</body>', 1))
+        page.write_text(text.replace('</body>', swipe_tag + '\n</body>', 1))
+
+finance = static / 'finance.html'
+text = finance.read_text()
+enhance = (static / 'finance-enhance.js').read_text()
+enhance_tag = '<script>\n' + enhance + '\n</script>'
+if '</body>' in text and 'maximum COGS + off-Amazon cost' not in text:
+    finance.write_text(text.replace('</body>', enhance_tag + '\n</body>', 1))
 PY
 EXPOSE 8080
 CMD ["python", "server.py"]
