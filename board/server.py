@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 import psycopg
 from psycopg.rows import dict_row
 
+from ads_api import ads_payload as build_ads_payload
 from catalog_api import catalog_payload as build_catalog_payload
 from finance_api import finance_payload as build_finance_payload
 from health_api import health_board_payload as build_health_board_payload
@@ -75,11 +76,7 @@ def product_labels() -> dict[str, dict]:
         data = json.loads(LABELS_PATH.read_text())
     except (OSError, json.JSONDecodeError):
         return {}
-    return {
-        str(sku): value
-        for sku, value in data.items()
-        if not str(sku).startswith("_") and isinstance(value, dict)
-    }
+    return {str(sku): value for sku, value in data.items() if not str(sku).startswith("_") and isinstance(value, dict)}
 
 
 def decorate_products(rows: list[dict]) -> list[dict]:
@@ -100,255 +97,99 @@ def decorate_products(rows: list[dict]) -> list[dict]:
 def home_payload():
     with connect() as conn, conn.cursor() as cur:
         today = one(cur, "SELECT * FROM mart.today_operating WHERE marketplace_id=%s", (MARKETPLACE,))
-        rolling = one(
-            cur,
-            """
-            WITH d AS (
-              SELECT max(business_date) d
-              FROM mart.business_daily
-              WHERE marketplace_id=%s AND reconciled_daily_report
-            ), x AS (
-              SELECT b.* FROM mart.business_rolling b, d
-              WHERE b.marketplace_id=%s AND b.business_date=d.d
-            ), p AS (
-              SELECT b.sales_t28 prior_t28 FROM mart.business_rolling b, d
-              WHERE b.marketplace_id=%s AND b.business_date=d.d-28
-            )
-            SELECT x.business_date, x.sales_t28, x.sales_t56, x.orders_t28, x.units_t28,
+        rolling = one(cur, """
+            WITH d AS (SELECT max(business_date) d FROM mart.business_daily WHERE marketplace_id=%s AND reconciled_daily_report),
+            x AS (SELECT b.* FROM mart.business_rolling b,d WHERE b.marketplace_id=%s AND b.business_date=d.d),
+            p AS (SELECT b.sales_t28 prior_t28 FROM mart.business_rolling b,d WHERE b.marketplace_id=%s AND b.business_date=d.d-28)
+            SELECT x.business_date,x.sales_t28,x.sales_t56,x.orders_t28,x.units_t28,
                    CASE WHEN p.prior_t28>0 THEN round(100.0*(x.sales_t28-p.prior_t28)/p.prior_t28,1) END delta28_pct
             FROM x LEFT JOIN p ON true
-            """,
-            (MARKETPLACE, MARKETPLACE, MARKETPLACE),
-        )
-        inventory_summary = one(
-            cur,
-            """
-            SELECT
-              count(*) FILTER (WHERE action IN ('STOCKOUT','PRODUCE','PLAN'))::int needs_action,
-              count(*) FILTER (WHERE action='STOCKOUT')::int stockouts,
-              count(*) FILTER (WHERE action='PRODUCE')::int produce,
-              count(*) FILTER (WHERE action='PLAN')::int plan
+        """, (MARKETPLACE, MARKETPLACE, MARKETPLACE))
+        inventory_summary = one(cur, """
+            SELECT count(*) FILTER (WHERE action IN ('STOCKOUT','PRODUCE','PLAN'))::int needs_action,
+                   count(*) FILTER (WHERE action='STOCKOUT')::int stockouts,
+                   count(*) FILTER (WHERE action='PRODUCE')::int produce,
+                   count(*) FILTER (WHERE action='PLAN')::int plan
             FROM mart.inventory_attention WHERE marketplace_id=%s
-            """,
-            (MARKETPLACE,),
-        )
-        inventory = all_rows(
-            cur,
-            """
-            SELECT a.seller_sku sku, COALESCE(a.asin,s.asin) asin,
-                   COALESCE(sl.item_name,ci.title,s.title,'') product,
-                   COALESCE(sl.image_url,ci.image_url) image_url,
-                   a.available, a.inbound, a.units_t28,
-                   a.days_cover_with_inbound days_cover, a.action
-            FROM mart.inventory_attention a
-            LEFT JOIN core.sku s ON s.sku=a.seller_sku
-            LEFT JOIN core.seller_listing sl
-              ON sl.marketplace_id=a.marketplace_id AND sl.seller_sku=a.seller_sku
-            LEFT JOIN core.catalog_item ci
-              ON ci.marketplace_id=a.marketplace_id AND ci.asin=COALESCE(a.asin,s.asin)
+        """, (MARKETPLACE,))
+        inventory = all_rows(cur, """
+            SELECT a.seller_sku sku,COALESCE(a.asin,s.asin) asin,COALESCE(sl.item_name,ci.title,s.title,'') product,
+                   COALESCE(sl.image_url,ci.image_url) image_url,a.available,a.inbound,a.units_t28,
+                   a.days_cover_with_inbound days_cover,a.action
+            FROM mart.inventory_attention a LEFT JOIN core.sku s ON s.sku=a.seller_sku
+            LEFT JOIN core.seller_listing sl ON sl.marketplace_id=a.marketplace_id AND sl.seller_sku=a.seller_sku
+            LEFT JOIN core.catalog_item ci ON ci.marketplace_id=a.marketplace_id AND ci.asin=COALESCE(a.asin,s.asin)
             WHERE a.marketplace_id=%s AND a.action IN ('STOCKOUT','PRODUCE','PLAN')
-            ORDER BY CASE a.action WHEN 'STOCKOUT' THEN 0 WHEN 'PRODUCE' THEN 1 ELSE 2 END,
-                     a.days_cover_with_inbound NULLS FIRST
-            LIMIT 8
-            """,
-            (MARKETPLACE,),
-        )
-        movers = all_rows(
-            cur,
-            """
-            SELECT m.seller_sku sku, COALESCE(m.asin,s.asin) asin,
-                   COALESCE(sl.item_name,ci.title,s.title,'') product,
-                   COALESCE(sl.image_url,ci.image_url) image_url,
-                   m.sales_t28, m.units_t28, m.delta28_pct, m.state
-            FROM mart.catalog_movers_t28 m
-            LEFT JOIN core.sku s ON s.sku=m.seller_sku
-            LEFT JOIN core.seller_listing sl
-              ON sl.marketplace_id=m.marketplace_id AND sl.seller_sku=m.seller_sku
-            LEFT JOIN core.catalog_item ci
-              ON ci.marketplace_id=m.marketplace_id AND ci.asin=COALESCE(m.asin,s.asin)
-            WHERE m.marketplace_id=%s AND m.sales_t28>0
-            ORDER BY m.sales_t28 DESC
-            LIMIT 8
-            """,
-            (MARKETPLACE,),
-        )
-        series = all_rows(
-            cur,
-            """
-            SELECT business_date, sales
-            FROM mart.business_daily
-            WHERE marketplace_id=%s AND business_date>=CURRENT_DATE-89
-            ORDER BY business_date
-            """,
-            (MARKETPLACE,),
-        )
-        freshness = all_rows(
-            cur,
-            """
-            SELECT job_name, latest_status,
-                   extract(epoch from age)::bigint age_seconds
-            FROM ops.data_health
-            WHERE job_name IN (
-              'orders_v2026','sales_traffic_2024_04_24','finances_v2024',
-              'fba_inventory_v1','merchant_listings_all_data','catalog_items_2022_04_01'
-            )
-            ORDER BY CASE job_name
-              WHEN 'orders_v2026' THEN 1
-              WHEN 'sales_traffic_2024_04_24' THEN 2
-              WHEN 'finances_v2024' THEN 3
-              WHEN 'fba_inventory_v1' THEN 4
-              WHEN 'merchant_listings_all_data' THEN 5
-              ELSE 6 END
-            """,
-        )
+            ORDER BY CASE a.action WHEN 'STOCKOUT' THEN 0 WHEN 'PRODUCE' THEN 1 ELSE 2 END,a.days_cover_with_inbound NULLS FIRST LIMIT 8
+        """, (MARKETPLACE,))
+        movers = all_rows(cur, """
+            SELECT m.seller_sku sku,COALESCE(m.asin,s.asin) asin,COALESCE(sl.item_name,ci.title,s.title,'') product,
+                   COALESCE(sl.image_url,ci.image_url) image_url,m.sales_t28,m.units_t28,m.delta28_pct,m.state
+            FROM mart.catalog_movers_t28 m LEFT JOIN core.sku s ON s.sku=m.seller_sku
+            LEFT JOIN core.seller_listing sl ON sl.marketplace_id=m.marketplace_id AND sl.seller_sku=m.seller_sku
+            LEFT JOIN core.catalog_item ci ON ci.marketplace_id=m.marketplace_id AND ci.asin=COALESCE(m.asin,s.asin)
+            WHERE m.marketplace_id=%s AND m.sales_t28>0 ORDER BY m.sales_t28 DESC LIMIT 8
+        """, (MARKETPLACE,))
+        series = all_rows(cur, "SELECT business_date,sales FROM mart.business_daily WHERE marketplace_id=%s AND business_date>=CURRENT_DATE-89 ORDER BY business_date", (MARKETPLACE,))
+        freshness = all_rows(cur, """
+            SELECT job_name,latest_status,extract(epoch from age)::bigint age_seconds FROM ops.data_health
+            WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1','merchant_listings_all_data','catalog_items_2022_04_01')
+        """)
         local_clock = one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
-
-    return clean({
-        "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-        "local_time": local_clock.get("local_time"),
-        "today": today,
-        "rolling": rolling,
-        "inventory_summary": inventory_summary,
-        "inventory": decorate_products(inventory),
-        "movers": decorate_products(movers),
-        "series": series,
-        "freshness": freshness,
-    })
+    return clean({"generated_at":datetime.utcnow().isoformat(timespec="seconds")+"Z","local_time":local_clock.get("local_time"),"today":today,"rolling":rolling,"inventory_summary":inventory_summary,"inventory":decorate_products(inventory),"movers":decorate_products(movers),"series":series,"freshness":freshness})
 
 
 def health_payload():
-    """Validate the board's actual data dependencies, not just database reachability."""
     with connect() as conn, conn.cursor() as cur:
-        cur.execute("SELECT 1")
-        cur.fetchone()
-
-        today = one(cur, "SELECT count(*)::int AS n FROM mart.today_operating WHERE marketplace_id=%s", (MARKETPLACE,))
-        rolling = one(cur, "SELECT count(*)::int AS n FROM mart.business_rolling WHERE marketplace_id=%s", (MARKETPLACE,))
-        sales = one(cur, "SELECT count(*)::int AS n, max(business_date) AS last_date FROM mart.business_daily WHERE marketplace_id=%s", (MARKETPLACE,))
-        inventory = one(cur, "SELECT count(*)::int AS n FROM mart.inventory_attention WHERE marketplace_id=%s", (MARKETPLACE,))
-        finance = one(cur, "SELECT count(*)::int AS n, max(posted_date) AS last_posted FROM core.financial_transaction WHERE marketplace_id=%s", (MARKETPLACE,))
-        catalog = one(cur, "SELECT count(*)::int AS n, max(updated_at) AS last_updated FROM core.catalog_item WHERE marketplace_id=%s", (MARKETPLACE,))
-        listings = one(cur, "SELECT count(*)::int AS n, max(fetched_at) AS last_updated FROM core.seller_listing WHERE marketplace_id=%s", (MARKETPLACE,))
-        freshness = all_rows(
-            cur,
-            """
-            SELECT job_name, latest_status, extract(epoch from age)::bigint age_seconds
-            FROM ops.data_health
-            WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1')
-            """,
-        )
-
-    dependency_counts = {
-        "today": int(today.get("n") or 0),
-        "rolling": int(rolling.get("n") or 0),
-        "sales_days": int(sales.get("n") or 0),
-        "inventory_rows": int(inventory.get("n") or 0),
-        "finance_transactions": int(finance.get("n") or 0),
-    }
-    missing = [name for name, count in dependency_counts.items() if count <= 0]
-    feed_errors = [row.get("job_name") for row in freshness if row.get("latest_status") not in ("success", "running")]
-    status = "ok" if not missing and not feed_errors else "degraded"
-    return clean({
-        "status": status,
-        "marketplace": MARKETPLACE,
-        "dependencies": dependency_counts,
-        "seller_listings": int(listings.get("n") or 0),
-        "seller_listings_last_updated": listings.get("last_updated"),
-        "catalog_items": int(catalog.get("n") or 0),
-        "catalog_last_updated": catalog.get("last_updated"),
-        "sales_last_date": sales.get("last_date"),
-        "finance_last_posted": finance.get("last_posted"),
-        "feed_errors": feed_errors,
-    })
+        cur.execute("SELECT 1"); cur.fetchone()
+        today=one(cur,"SELECT count(*)::int AS n FROM mart.today_operating WHERE marketplace_id=%s",(MARKETPLACE,))
+        rolling=one(cur,"SELECT count(*)::int AS n FROM mart.business_rolling WHERE marketplace_id=%s",(MARKETPLACE,))
+        sales=one(cur,"SELECT count(*)::int AS n,max(business_date) AS last_date FROM mart.business_daily WHERE marketplace_id=%s",(MARKETPLACE,))
+        inventory=one(cur,"SELECT count(*)::int AS n FROM mart.inventory_attention WHERE marketplace_id=%s",(MARKETPLACE,))
+        finance=one(cur,"SELECT count(*)::int AS n,max(posted_date) AS last_posted FROM core.financial_transaction WHERE marketplace_id=%s",(MARKETPLACE,))
+        catalog=one(cur,"SELECT count(*)::int AS n,max(updated_at) AS last_updated FROM core.catalog_item WHERE marketplace_id=%s",(MARKETPLACE,))
+        listings=one(cur,"SELECT count(*)::int AS n,max(fetched_at) AS last_updated FROM core.seller_listing WHERE marketplace_id=%s",(MARKETPLACE,))
+        freshness=all_rows(cur,"SELECT job_name,latest_status,extract(epoch from age)::bigint age_seconds FROM ops.data_health WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1')")
+    dependency_counts={"today":int(today.get("n") or 0),"rolling":int(rolling.get("n") or 0),"sales_days":int(sales.get("n") or 0),"inventory_rows":int(inventory.get("n") or 0),"finance_transactions":int(finance.get("n") or 0)}
+    missing=[name for name,count in dependency_counts.items() if count<=0]
+    feed_errors=[row.get("job_name") for row in freshness if row.get("latest_status") not in ("success","running")]
+    status="ok" if not missing and not feed_errors else "degraded"
+    return clean({"status":status,"marketplace":MARKETPLACE,"dependencies":dependency_counts,"seller_listings":int(listings.get("n") or 0),"seller_listings_last_updated":listings.get("last_updated"),"catalog_items":int(catalog.get("n") or 0),"catalog_last_updated":catalog.get("last_updated"),"sales_last_date":sales.get("last_date"),"finance_last_posted":finance.get("last_posted"),"feed_errors":feed_errors})
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "DPPBoard/6"
-
-    def log_message(self, fmt, *args):
-        print(f"{self.address_string()} {fmt % args}")
-
-    def send_bytes(self, status, content_type, body, cache="no-store"):
-        self.send_response(status)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Cache-Control", cache)
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def json_endpoint(self, builder):
+    server_version="DPPBoard/7"
+    def log_message(self,fmt,*args): print(f"{self.address_string()} {fmt % args}")
+    def send_bytes(self,status,content_type,body,cache="no-store"):
+        self.send_response(status); self.send_header("Content-Type",content_type); self.send_header("Cache-Control",cache); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
+    def json_endpoint(self,builder):
         try:
-            payload = clean(builder())
-            body = json.dumps(payload, separators=(",", ":")).encode()
-            self.send_bytes(200, "application/json", body)
+            payload=clean(builder()); body=json.dumps(payload,separators=(",",":")).encode(); self.send_bytes(200,"application/json",body)
         except Exception as exc:
-            body = json.dumps({"error": str(exc)[:500]}).encode()
-            self.send_bytes(500, "application/json", body)
-
+            body=json.dumps({"error":str(exc)[:500]}).encode(); self.send_bytes(500,"application/json",body)
     def do_GET(self):
-        parsed = urlsplit(self.path)
-        path = parsed.path
-        query = parse_qs(parsed.query)
-
-        if path == "/assets/theme.css":
-            self.send_bytes(200, "text/css; charset=utf-8", THEME_CSS, cache="public, max-age=60")
-            return
-        if path == "/health":
+        parsed=urlsplit(self.path); path=parsed.path; query=parse_qs(parsed.query)
+        if path=="/assets/theme.css": self.send_bytes(200,"text/css; charset=utf-8",THEME_CSS,cache="public, max-age=60"); return
+        if path=="/health":
             try:
-                payload = health_payload()
-                status = 200 if payload.get("status") == "ok" else 503
-                body = json.dumps(payload, separators=(",", ":")).encode()
-                self.send_bytes(status, "application/json", body)
-            except Exception as exc:
-                body = json.dumps({"status": "error", "error": str(exc)[:160]}).encode()
-                self.send_bytes(503, "application/json", body)
+                payload=health_payload(); status=200 if payload.get("status")=="ok" else 503; self.send_bytes(status,"application/json",json.dumps(payload,separators=(",",":")).encode())
+            except Exception as exc: self.send_bytes(503,"application/json",json.dumps({"status":"error","error":str(exc)[:160]}).encode())
             return
-        if path == "/api/today":
-            selected_date = (query.get("date") or [None])[0]
-            self.json_endpoint(lambda: build_today_payload(connect, decorate_products, MARKETPLACE, selected_date))
-            return
-        if path == "/api/home":
-            self.json_endpoint(home_payload)
-            return
-        if path == "/api/sales":
-            self.json_endpoint(lambda: build_sales_payload(connect, decorate_products, MARKETPLACE))
-            return
-        if path == "/api/catalog":
-            self.json_endpoint(lambda: build_catalog_payload(connect, decorate_products, MARKETPLACE))
-            return
-        if path == "/api/inventory":
-            self.json_endpoint(lambda: build_inventory_payload(connect, decorate_products, MARKETPLACE))
-            return
-        if path == "/api/finance":
-            self.json_endpoint(lambda: build_finance_payload(connect, MARKETPLACE))
-            return
-        if path == "/api/product":
-            sku = (query.get("sku") or [""])[0]
-            self.json_endpoint(lambda: build_product_payload(connect, decorate_products, MARKETPLACE, sku))
-            return
-        if path == "/api/trajectory":
-            self.json_endpoint(lambda: build_trajectory_payload(connect, MARKETPLACE))
-            return
-        if path == "/api/data-health":
-            self.json_endpoint(lambda: build_health_board_payload(connect, MARKETPLACE))
-            return
-
-        pages = {
-            "/": HOME_INDEX,
-            "/today": TODAY_INDEX,
-            "/sales": SALES_INDEX,
-            "/catalog": CATALOG_INDEX,
-            "/inventory": INVENTORY_INDEX,
-            "/finance": FINANCE_INDEX,
-            "/product": PRODUCT_INDEX,
-            "/trajectory": TRAJECTORY_INDEX,
-            "/data-health": DATA_HEALTH_INDEX,
-        }
-        if path in pages:
-            self.send_bytes(200, "text/html; charset=utf-8", pages[path], cache="no-cache")
-            return
-        self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
+        if path=="/api/today":
+            selected_date=(query.get("date") or [None])[0]; self.json_endpoint(lambda:build_today_payload(connect,decorate_products,MARKETPLACE,selected_date)); return
+        if path=="/api/home": self.json_endpoint(home_payload); return
+        if path=="/api/sales": self.json_endpoint(lambda:build_sales_payload(connect,decorate_products,MARKETPLACE)); return
+        if path=="/api/catalog": self.json_endpoint(lambda:build_catalog_payload(connect,decorate_products,MARKETPLACE)); return
+        if path=="/api/inventory": self.json_endpoint(lambda:build_inventory_payload(connect,decorate_products,MARKETPLACE)); return
+        if path=="/api/finance": self.json_endpoint(lambda:build_finance_payload(connect,MARKETPLACE)); return
+        if path=="/api/ads": self.json_endpoint(lambda:build_ads_payload(connect,MARKETPLACE)); return
+        if path=="/api/product":
+            sku=(query.get("sku") or [""])[0]; self.json_endpoint(lambda:build_product_payload(connect,decorate_products,MARKETPLACE,sku)); return
+        if path=="/api/trajectory": self.json_endpoint(lambda:build_trajectory_payload(connect,MARKETPLACE)); return
+        if path=="/api/data-health": self.json_endpoint(lambda:build_health_board_payload(connect,MARKETPLACE)); return
+        pages={"/":HOME_INDEX,"/today":TODAY_INDEX,"/sales":SALES_INDEX,"/catalog":CATALOG_INDEX,"/inventory":INVENTORY_INDEX,"/finance":FINANCE_INDEX,"/product":PRODUCT_INDEX,"/trajectory":TRAJECTORY_INDEX,"/data-health":DATA_HEALTH_INDEX}
+        if path in pages: self.send_bytes(200,"text/html; charset=utf-8",pages[path],cache="no-cache"); return
+        self.send_bytes(404,"text/plain; charset=utf-8",b"Not found")
 
 
-if __name__ == "__main__":
-    ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+if __name__=="__main__": ThreadingHTTPServer(("0.0.0.0",8080),Handler).serve_forever()
