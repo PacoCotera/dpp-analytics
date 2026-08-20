@@ -83,3 +83,22 @@
   const picker=document.getElementById('dayPicker');
   if(picker)new MutationObserver(()=>setTimeout(refresh,20)).observe(picker,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 })();
+
+/* Load the Today showcase layer after the structural operating pass. */
+(() => {
+  if(!document.body.classList.contains('today-shell'))return;
+  if(!document.querySelector('link[data-today-showcase]')){
+    const link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href='/assets/today-showcase.css';
+    link.dataset.todayShowcase='1';
+    document.head.appendChild(link);
+  }
+  if(!document.querySelector('script[data-today-showcase]')){
+    const script=document.createElement('script');
+    script.src='/assets/today-showcase.js';
+    script.defer=true;
+    script.dataset.todayShowcase='1';
+    document.body.appendChild(script);
+  }
+})();
