@@ -36,6 +36,13 @@ enhance = (static / 'finance-enhance.js').read_text()
 enhance_tag = '<script>\n' + enhance + '\n</script>'
 if '</body>' in text and 'maximum COGS + off-Amazon cost' not in text:
     finance.write_text(text.replace('</body>', enhance_tag + '\n</body>', 1))
+
+today = static / 'today.html'
+text = today.read_text()
+today_enhance = (static / 'today-clarity.js').read_text()
+today_tag = '<script>\n' + today_enhance + '\n</script>'
+if '</body>' in text and 'Today clarity pass: compact recent-day selector' not in text:
+    today.write_text(text.replace('</body>', today_tag + '\n</body>', 1))
 PY
 EXPOSE 8080
 CMD ["python", "server.py"]
