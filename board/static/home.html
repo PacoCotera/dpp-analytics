@@ -16,35 +16,54 @@ body.home-page .top-meta strong{font-size:14px}
 body.home-page .primary-nav{margin:8px 0 12px;padding-bottom:5px;gap:3px}
 body.home-page .primary-nav a{min-height:34px;padding:0 11px;font-size:11.5px}
 body.home-page .home-main{margin-top:0}
-body.home-page .home-read{grid-template-columns:1fr!important;padding:12px 2px!important;border-top:0!important}
-body.home-page .home-read h2{font-size:clamp(31px,3.3vw,48px)!important;margin:3px 0 5px!important}
-body.home-page .home-read p{font-size:14px!important;line-height:1.4!important}
+body.home-page .home-read{grid-template-columns:1fr!important;padding:10px 2px 12px!important;border-top:0!important;border-bottom:0!important}
+body.home-page .home-read h2{font-size:clamp(30px,3vw,44px)!important;margin:3px 0 4px!important}
+body.home-page .home-read p{font-size:13.5px!important;line-height:1.4!important}
 body.home-page .home-read .story-side{display:none!important}
-body.home-page .home-signals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line);margin-top:0}
-body.home-page .home-signal{padding:11px 16px 12px 0;min-width:0}
-body.home-page .home-signal+.home-signal{border-left:1px solid var(--line);padding-left:16px}
-body.home-page .home-signal-label{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
-body.home-page .home-signal-value{font-size:28px;font-weight:830;letter-spacing:-.045em;line-height:1.05;margin:3px 0 2px;font-variant-numeric:tabular-nums}
-body.home-page .home-signal-note{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.home-page .home-dashboard{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,340px);gap:18px;align-items:start;margin-top:2px}
+body.home-page .home-canvas{min-width:0}
+body.home-page .home-rail{display:grid;gap:10px;align-content:start}
+body.home-page .signal-card{display:block;background:rgba(255,253,249,.76);border:1px solid var(--line);border-radius:16px;padding:15px 16px;min-width:0}
+body.home-page .signal-card:hover{background:#fffdf9;border-color:#c9bfb1}
+body.home-page .signal-card.primary{padding:18px 18px 16px;background:#fffdf9}
+body.home-page .signal-label{font-size:10px;font-weight:820;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+body.home-page .signal-value{font-size:28px;font-weight:840;line-height:1;letter-spacing:-.045em;margin:5px 0 4px;font-variant-numeric:tabular-nums}
+body.home-page .signal-card.primary .signal-value{font-size:46px;margin:7px 0 6px}
+body.home-page .signal-note{font-size:11px;line-height:1.35;color:var(--muted)}
+body.home-page .signal-divider{height:1px;background:var(--line);margin:13px 0 11px}
+body.home-page .signal-subread{display:flex;justify-content:space-between;gap:12px;align-items:end}
+body.home-page .signal-subread strong{font-size:22px;letter-spacing:-.035em}
+body.home-page .signal-subread span{display:block;font-size:10.5px;color:var(--muted);margin-top:2px}
+body.home-page .signal-subread .signal-submeta{text-align:right;font-size:10.5px;color:var(--muted);line-height:1.35}
 body.home-page .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#34a15f;margin-right:5px;box-shadow:0 0 0 3px rgba(52,161,95,.11)}
-body.home-page .restock-strip{display:none;grid-template-columns:120px minmax(0,1fr) auto;gap:16px;align-items:center;border-bottom:1px solid var(--line);padding:10px 0;margin-top:0}
-body.home-page .restock-strip.show{display:grid}
-body.home-page .restock-label{font-size:11px;font-weight:840;letter-spacing:.08em;text-transform:uppercase;color:var(--warn)}
-body.home-page .restock-strip .list{min-width:0}
-body.home-page .restock-strip .list-row{padding:3px 0;border:0;grid-template-columns:minmax(0,1fr) auto}
-body.home-page .restock-strip .row-title{font-size:13px}
-body.home-page .restock-strip .row-sub{font-size:10.5px;margin-top:1px}
-body.home-page .restock-strip .row-value strong{font-size:15px}
-body.home-page .restock-strip .row-value small{font-size:10px;margin-top:1px}
-body.home-page .restock-strip .product-sku{font-size:9px;margin-bottom:2px}
-body.home-page .restock-link{font-size:11px;font-weight:760;color:var(--accent-ink);white-space:nowrap}
-body.home-page .rhythm-section{margin-top:16px!important}
-body.home-page .spark-card{padding:12px 0 5px!important;background:transparent!important;border:0!important;border-top:1px solid var(--line)!important;border-bottom:1px solid var(--line)!important;border-radius:0!important}
-body.home-page .spark-card .section-head{margin-bottom:3px!important}
-body.home-page .spark{width:100%;height:280px!important;display:block}
+body.home-page .restock-card{display:none}
+body.home-page .restock-card.show{display:block}
+body.home-page .restock-product{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+body.home-page .restock-product .product-sku{font-size:9px;margin-bottom:2px}
+body.home-page .restock-product .row-title{font-size:13px}
+body.home-page .restock-product .row-sub{font-size:10.5px;margin-top:1px}
+body.home-page .restock-cover{text-align:right}
+body.home-page .restock-cover strong{display:block;font-size:20px}
+body.home-page .restock-cover span{font-size:10px;color:var(--muted)}
+body.home-page .rhythm-section{margin-top:0!important}
+body.home-page .spark-card{padding:13px 14px 8px!important;background:rgba(255,253,249,.56)!important;border:1px solid var(--line)!important;border-radius:16px!important}
+body.home-page .spark-card .section-head{margin:0 2px 4px!important}
+body.home-page .spark{width:100%;height:330px!important;display:block}
+body.home-page .movers-section{margin-top:14px!important}
+body.home-page .change-list{padding:0 14px!important}
 body.home-page .change-list .list-row{padding:11px 0}
 body.home-page .change-tag{margin-top:4px}
 body.home-page .change-list .list-row:nth-child(n+4){display:none!important}
+@media(max-width:980px){
+ body.home-page .home-dashboard{grid-template-columns:minmax(0,1fr) 280px;gap:14px}
+ body.home-page .signal-card.primary .signal-value{font-size:40px}
+ body.home-page .spark{height:290px!important}
+}
+@media(max-width:720px){
+ body.home-page .home-dashboard{grid-template-columns:1fr}
+ body.home-page .home-rail{order:-1;grid-template-columns:1fr}
+ body.home-page .spark{height:220px!important}
+}
 @media(max-width:640px){
  body.home-page .app{padding-top:10px}
  body.home-page .topbar{min-height:40px;align-items:center}
@@ -53,23 +72,21 @@ body.home-page .change-list .list-row:nth-child(n+4){display:none!important}
  body.home-page .brand-sub{font-size:9.5px}
  body.home-page .primary-nav{margin:7px -14px 10px;padding:5px 14px 6px}
  body.home-page .primary-nav a{min-height:42px;padding:0 12px;font-size:12px}
- body.home-page .home-read{padding:9px 0 10px!important}
+ body.home-page .home-read{padding:8px 0 9px!important}
  body.home-page .home-read .kicker{font-size:10px}
- body.home-page .home-read h2{font-size:30px!important}
- body.home-page .home-read p{font-size:13px!important}
- body.home-page .home-signals{grid-template-columns:1fr 1fr}
- body.home-page .home-signal{padding:9px 8px 9px 0}
- body.home-page .home-signal:nth-child(even){padding-left:10px;border-left:1px solid var(--line)}
- body.home-page .home-signal:nth-child(n+3){border-top:1px solid var(--line)}
- body.home-page .home-signal:nth-child(3){border-left:0;padding-left:0}
- body.home-page .home-signal-value{font-size:24px}
- body.home-page .home-signal-note{font-size:10.5px}
- body.home-page .restock-strip.show{grid-template-columns:1fr auto;gap:8px 12px;padding:9px 0}
- body.home-page .restock-label{grid-column:1/-1}
- body.home-page .restock-strip .list-row{grid-template-columns:minmax(0,1fr) auto}
- body.home-page .spark{height:190px!important}
- body.home-page .rhythm-section{margin-top:13px!important}
+ body.home-page .home-read h2{font-size:29px!important}
+ body.home-page .home-read p{font-size:12.5px!important}
+ body.home-page .home-dashboard{gap:12px}
+ body.home-page .home-rail{gap:8px}
+ body.home-page .signal-card{padding:12px 13px;border-radius:14px}
+ body.home-page .signal-card.primary{padding:14px}
+ body.home-page .signal-card.primary .signal-value{font-size:38px}
+ body.home-page .signal-subread strong{font-size:20px}
+ body.home-page .spark-card{padding:10px 8px 5px!important}
+ body.home-page .spark{height:205px!important}
  body.home-page .spark-card .section-sub{display:none}
+ body.home-page .movers-section{margin-top:12px!important}
+ body.home-page .change-list{padding:0 8px!important}
 }
 </style>
 </head>
@@ -89,27 +106,41 @@ body.home-page .change-list .list-row:nth-child(n+4){display:none!important}
   <div class="story-side"><div class="story-number" id="storyNumber">—</div><div class="story-caption" id="storyCaption">28 days vs prior 28</div></div>
 </section>
 
-<section class="home-signals" aria-label="Current operating signals">
-  <a class="home-signal" href="/today"><div class="home-signal-label"><span class="live-dot"></span>Today · live</div><div class="home-signal-value" id="todaySales">$—</div><div class="home-signal-note" id="todayMeta">Waiting for orders</div></a>
-  <a class="home-signal" href="/sales"><div class="home-signal-label">Last 28 days</div><div class="home-signal-value" id="sales28">$—</div><div class="home-signal-note" id="sales28Meta">Reconciled sales</div></a>
-  <a class="home-signal" href="/trajectory"><div class="home-signal-label">Momentum</div><div class="home-signal-value" id="momentum">—</div><div class="home-signal-note">28 days vs prior 28</div></a>
-  <a class="home-signal" href="/inventory"><div class="home-signal-label">Restock</div><div class="home-signal-value" id="actions">—</div><div class="home-signal-note" id="actionMeta">Inventory decisions</div></a>
-</section>
+<div class="home-dashboard">
+  <div class="home-canvas">
+    <section class="section rhythm-section">
+      <div class="card spark-card"><div class="section-head"><div><div class="section-title">Business rhythm</div><div class="section-sub">90 days of daily sales with the seven-day signal.</div></div><a class="section-link" href="/sales">Open Sales →</a></div><svg class="spark" id="spark" viewBox="0 0 960 190"></svg></div>
+    </section>
 
-<section class="restock-strip" id="restockSection">
-  <div class="restock-label">Restock now</div>
-  <div class="list" id="attention"><div class="row-title">Checking inventory…</div></div>
-  <a class="restock-link" href="/inventory">Open Inventory →</a>
-</section>
+    <section class="section movers-section">
+      <div class="section-head"><div><div class="section-title">What changed</div><div class="section-sub">The three products creating the most movement over the last four weeks.</div></div><a class="section-link" href="/catalog">Open Catalog →</a></div>
+      <div class="card change-list"><div class="list" id="movers"><div class="empty"><strong>Reading product momentum</strong>One moment.</div></div></div>
+    </section>
+  </div>
 
-<section class="section rhythm-section">
-  <div class="card spark-card"><div class="section-head"><div><div class="section-title">Business rhythm</div><div class="section-sub">90 days of daily sales with the seven-day signal.</div></div><a class="section-link" href="/sales">Open Sales →</a></div><svg class="spark" id="spark" viewBox="0 0 960 190"></svg></div>
-</section>
+  <aside class="home-rail" aria-label="Current operating signals">
+    <a class="signal-card primary" href="/trajectory">
+      <div class="signal-label">Momentum · 28 days</div>
+      <div class="signal-value" id="momentum">—</div>
+      <div class="signal-note">Versus the prior 28 days</div>
+      <div class="signal-divider"></div>
+      <div class="signal-subread"><div><strong id="sales28">$—</strong><span>Last 28 days</span></div><div class="signal-submeta" id="sales28Meta">Reconciled sales</div></div>
+    </a>
 
-<section class="section">
-  <div class="section-head"><div><div class="section-title">What changed</div><div class="section-sub">The three products creating the most movement over the last four weeks.</div></div><a class="section-link" href="/catalog">Open Catalog →</a></div>
-  <div class="card card-pad change-list"><div class="list" id="movers"><div class="empty"><strong>Reading product momentum</strong>One moment.</div></div></div>
-</section>
+    <a class="signal-card" href="/today">
+      <div class="signal-label"><span class="live-dot"></span>Today · live</div>
+      <div class="signal-value" id="todaySales">$—</div>
+      <div class="signal-note" id="todayMeta">Waiting for orders</div>
+    </a>
+
+    <a class="signal-card restock-card" id="restockSection" href="/inventory">
+      <div class="signal-label">Restock</div>
+      <div class="signal-value" id="actions">—</div>
+      <div class="signal-note" id="actionMeta">Inventory decisions</div>
+      <div class="restock-product" id="attention"></div>
+    </a>
+  </aside>
+</div>
 </main>
 
 <footer class="footer"><span>MXN · today provisional / historical reconciled</span><span>Dirty Pawz Press Analytics</span></footer>
@@ -120,7 +151,7 @@ const fmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
 const money=v=>'$'+fmt.format(Math.round(Number(v||0)));
 const pct=v=>v==null?'—':(Number(v)>0?'+':'')+Number(v).toFixed(1)+'%';
 const cls=v=>Number(v)>0?'good':Number(v)<0?'bad':'';
-const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function businessRead(delta){delta=Number(delta||0);if(delta>=8)return {title:'Momentum is strong.',copy:'The last four weeks are clearly ahead of the prior four.'};if(delta>=2)return {title:'The business is edging up.',copy:'Recent sales are modestly ahead of the prior four-week period.'};if(delta>-2)return {title:'The business is steady.',copy:'Recent sales are essentially flat versus the prior four weeks.'};if(delta>-8)return {title:'The business has softened a little.',copy:'Recent sales are below the prior four weeks, but not dramatically.'};return {title:'Momentum has cooled.',copy:'Recent sales are meaningfully below the prior four weeks and deserve a closer look.'}}
 function render(d){
  document.getElementById('clock').textContent=d.local_time||'--:--';
@@ -130,14 +161,20 @@ function render(d){
  document.getElementById('todayMeta').textContent=`${fmt.format(t.orders_today||0)} orders · ${fmt.format(t.units_today||0)} units`;
  document.getElementById('sales28').textContent=money(r.sales_t28);
  document.getElementById('sales28Meta').textContent=`${fmt.format(r.orders_t28||0)} orders · through ${String(r.business_date||'').slice(5)}`;
- const m=document.getElementById('momentum');m.textContent=pct(r.delta28_pct);m.className='home-signal-value '+cls(r.delta28_pct);
+ const m=document.getElementById('momentum');m.textContent=pct(r.delta28_pct);m.className='signal-value '+cls(r.delta28_pct);
  document.getElementById('actions').textContent=fmt.format(is.needs_action||0);
  document.getElementById('actionMeta').textContent=`${is.stockouts||0} stockout · ${is.produce||0} produce · ${is.plan||0} plan`;
  const br=businessRead(r.delta28_pct);document.getElementById('storyTitle').textContent=br.title;document.getElementById('storyCopy').textContent=br.copy;document.getElementById('storyNumber').textContent=pct(r.delta28_pct);document.getElementById('storyCaption').textContent='28 days vs prior 28';
  DPPCharts.homeRhythm('#spark',d.series);
  const att=(d.inventory||[]).filter(x=>['STOCKOUT','PRODUCE','PLAN'].includes(String(x.action||'').toUpperCase()));
  const restock=document.getElementById('restockSection');
- if(att.length){restock.classList.add('show');document.getElementById('attention').innerHTML=att.slice(0,2).map(x=>`<a class="list-row" href="/product?sku=${encodeURIComponent(x.sku)}"><div><div class="product-sku">${esc(x.sku)} · <span class="chip warn">${esc(x.action)}</span></div><div class="row-title">${esc(x.product||x.sku)}</div><div class="row-sub">${fmt.format(x.available||0)} on hand · ${fmt.format(x.inbound||0)} inbound</div></div><div class="row-value"><strong>${x.days_cover==null?'—':Number(x.days_cover).toFixed(0)}</strong><small>days cover</small></div></a>`).join('')}else{restock.classList.remove('show')}
+ if(att.length){
+   restock.classList.add('show');
+   const x=att[0];
+   document.getElementById('attention').innerHTML=`<div><div class="product-sku">${esc(x.sku)} · ${esc(x.action)}</div><div class="row-title">${esc(x.product||x.sku)}</div><div class="row-sub">${fmt.format(x.available||0)} on hand · ${fmt.format(x.inbound||0)} inbound</div></div><div class="restock-cover"><strong>${x.days_cover==null?'—':Number(x.days_cover).toFixed(0)}</strong><span>days cover</span></div>`;
+ } else {
+   restock.classList.remove('show');
+ }
  const movers=(d.movers||[]).slice(0,3);document.getElementById('movers').innerHTML=movers.map(x=>{const c=cls(x.delta28_pct);const tag=x.state||'STABLE';const img=x.image_url?`<img class="product-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">`:'';return `<a class="list-row" href="/product?sku=${encodeURIComponent(x.sku)}"><div class="product-line">${img}<div style="min-width:0"><div class="product-sku">${esc(x.sku)}</div><div class="product-name">${esc(x.product||x.sku)}</div><div class="change-tag"><span class="chip ${c}">${esc(tag)}</span></div></div></div><div class="row-value"><strong>${money(x.sales_t28)}</strong><small class="${c}">${pct(x.delta28_pct)} vs prior 28</small></div></a>`}).join('')||`<div class="empty"><strong>No mover data yet.</strong>Product trends will appear here as history builds.</div>`;
 }
 function load(){fetch('/api/home',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(render).catch(e=>{document.getElementById('storyTitle').textContent='The operating feed is unavailable.';document.getElementById('storyCopy').textContent=e.message})}load();setInterval(load,60000);
