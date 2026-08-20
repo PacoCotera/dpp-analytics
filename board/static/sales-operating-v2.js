@@ -1,6 +1,7 @@
-/* Sales operating layout v3
+/* Sales operating layout v4
    One analytical canvas + a compact signal rail.
-   The chart explores 12M monthly, 90D weekly and 28D daily without changing screens. */
+   The chart explores 12M monthly, 90D weekly and 28D daily without changing screens.
+   Short windows keep benchmark math in hover, but avoid short visible trendlines. */
 (() => {
   'use strict';
 
@@ -17,7 +18,9 @@
   };
   const pct=value=>value==null?'—':`${Number(value)>0?'+':Number(value)<0?'−':''}${Math.abs(Number(value)).toFixed(0)}%`;
   const parseDate=value=>value?new Date(`${String(value).slice(0,10)}T12:00:00Z`):null;
-  const esc=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const HISTORICAL_BAR='#b78b4d';
+  const CURRENT_BAR='#e58b1f';
 
   let DATA=null;
   let RANGE='12m';
@@ -172,30 +175,25 @@
     grouped.forEach((d,i)=>{
       d.complete=d.days>=7;
       const history=grouped.slice(0,i+1).filter(x=>x.complete).slice(-4);
-      d.signal=d.complete&&history.length===4?d3.mean(history,x=>x.value):null;
+      d.benchmark=d.complete&&history.length===4?d3.mean(history,x=>x.value):null;
       d.previous=i>0?grouped[i-1]:null;
     });
     const current=grouped[grouped.length-1];
-    setChartCopy('Weekly sales',`90 days · weekly sales · 4-week average${current&&!current.complete?' · current week partial':''}`);
-    const ctx=shell('Ninety days of weekly sales with four-week average');if(!ctx)return;
-    const x=d3.scaleBand().domain(grouped.map(d=>+d.week)).range([0,ctx.innerW]).padding(.24);
-    const y=d3.scaleLinear().domain([0,d3.max(grouped,d=>Math.max(d.value,d.signal||0))||1]).nice(4).range([ctx.innerH,0]);
+    setChartCopy('Weekly sales',`90 days · weekly sales${current&&!current.complete?' · current week partial':''}`);
+    const ctx=shell('Ninety days of weekly sales');if(!ctx)return;
+    const x=d3.scaleBand().domain(grouped.map(d=>+d.week)).range([0,ctx.innerW]).padding(.30);
+    const y=d3.scaleLinear().domain([0,d3.max(grouped,d=>d.value)||1]).nice(4).range([ctx.innerH,0]);
     drawGrid(ctx,y);
 
-    const defs=ctx.svg.append('defs'),pid='sales-week-wtd';
-    const pattern=defs.append('pattern').attr('id',pid).attr('width',8).attr('height',8).attr('patternUnits','userSpaceOnUse').attr('patternTransform','rotate(45)');
-    pattern.append('rect').attr('width',8).attr('height',8).attr('fill','#ead7b9').attr('opacity',.46);
-    pattern.append('line').attr('x1',0).attr('y1',0).attr('x2',0).attr('y2',8).attr('stroke','#e58b1f').attr('stroke-width',1.5).attr('opacity',.48);
+    const bars=ctx.plot.selectAll('.dpp-bar').data(grouped).join('rect')
+      .attr('class','dpp-bar')
+      .attr('x',d=>x(+d.week)).attr('width',x.bandwidth())
+      .attr('y',d=>y(d.value)).attr('height',d=>Math.max(1,ctx.innerH-y(d.value)))
+      .attr('rx',4)
+      .attr('fill',d=>d===current&&!d.complete?CURRENT_BAR:HISTORICAL_BAR);
 
-    const bars=ctx.plot.selectAll('.dpp-bar').data(grouped).join('rect').attr('class','dpp-bar').attr('x',d=>x(+d.week)).attr('width',x.bandwidth()).attr('y',d=>y(d.value)).attr('height',d=>Math.max(1,ctx.innerH-y(d.value))).attr('rx',3).attr('fill',d=>d===current&&!d.complete?`url(#${pid})`:'#c49a61').attr('opacity',d=>d===current&&!d.complete?1:.88);
-    if(current&&!current.complete)ctx.plot.append('text').attr('x',x(+current.week)+x.bandwidth()/2).attr('y',Math.max(12,y(current.value)-8)).attr('text-anchor','middle').attr('fill','#e58b1f').attr('font-size',10).attr('font-weight',800).text('WTD');
-
-    const signal=grouped.filter(d=>d.signal!=null);
-    if(signal.length>1){
-      const line=d3.line().x(d=>x(+d.week)+x.bandwidth()/2).y(d=>y(d.signal)).curve(d3.curveMonotoneX);
-      ctx.plot.append('path').datum(signal).attr('d',line).attr('class','dpp-line-halo');
-      ctx.plot.append('path').datum(signal).attr('d',line).attr('class','dpp-line');
-      if(!ctx.compact){const last=signal[signal.length-1];ctx.plot.append('text').attr('x',x(+last.week)+x.bandwidth()/2+8).attr('y',Math.max(12,y(last.signal)-9)).attr('class','dpp-muted').attr('font-weight',750).text('4W avg');}
+    if(current&&!current.complete){
+      ctx.plot.append('text').attr('x',x(+current.week)+x.bandwidth()/2).attr('y',Math.max(12,y(current.value)-8)).attr('text-anchor','middle').attr('fill',CURRENT_BAR).attr('font-size',10).attr('font-weight',800).text('WTD');
     }
 
     const ticks=grouped.filter((d,i)=>i===0||i===grouped.length-1||i%3===0).map(d=>+d.week);
@@ -205,7 +203,7 @@
       const tipRows=[{label:'Sales',value:money(d.value)}];
       if(d.complete){
         if(d.previous?.complete&&d.previous.value>0)tipRows.push({label:'LW',value:pct(100*(d.value-d.previous.value)/d.previous.value)});
-        if(d.signal>0)tipRows.push({label:'4W',value:pct(100*(d.value-d.signal)/d.signal)});
+        if(d.benchmark>0)tipRows.push({label:'4W',value:pct(100*(d.value-d.benchmark)/d.benchmark)});
       }else if(d===current)tipRows.push({label:'WTD',value:'partial'});
       showTip(ctx.host,ctx.tip,this,`Week of ${d3.utcFormat('%b %-d')(d.week)}`,tipRows,`${nf.format(d.orders)} orders · ${nf.format(d.units)} units`);
     }).on('pointerleave blur',()=>hideTip(ctx.tip));
@@ -213,26 +211,26 @@
 
   function drawDaily(rows){
     const data=(rows||[]).slice(-28).map(row=>({date:parseDate(row.business_date),value:Number(row.sales||0),orders:Number(row.orders||0),units:Number(row.units||0)})).filter(d=>d.date).sort((a,b)=>d3.ascending(a.date,b.date));
-    data.forEach((d,i)=>{d.signal=i>=6?d3.mean(data.slice(i-6,i+1),x=>x.value):null;d.previous=i>0?data[i-1]:null;});
-    setChartCopy('Daily sales','28 days · daily sales · 7-day average');
-    const ctx=shell('Twenty-eight days of daily sales with seven-day average');if(!ctx)return;
-    const x=d3.scaleBand().domain(data.map(d=>+d.date)).range([0,ctx.innerW]).padding(.28);
-    const y=d3.scaleLinear().domain([0,d3.max(data,d=>Math.max(d.value,d.signal||0))||1]).nice(4).range([ctx.innerH,0]);
+    data.forEach((d,i)=>{d.benchmark=i>=6?d3.mean(data.slice(i-6,i+1),x=>x.value):null;d.previous=i>0?data[i-1]:null;});
+    setChartCopy('Daily sales','28 days · daily sales');
+    const ctx=shell('Twenty-eight days of daily sales');if(!ctx)return;
+    const x=d3.scaleBand().domain(data.map(d=>+d.date)).range([0,ctx.innerW]).padding(.30);
+    const y=d3.scaleLinear().domain([0,d3.max(data,d=>d.value)||1]).nice(4).range([ctx.innerH,0]);
     drawGrid(ctx,y);
-    const bars=ctx.plot.selectAll('.dpp-bar').data(data).join('rect').attr('class','dpp-bar').attr('x',d=>x(+d.date)).attr('width',x.bandwidth()).attr('y',d=>y(d.value)).attr('height',d=>Math.max(1,ctx.innerH-y(d.value))).attr('rx',2).attr('fill','#c49a61').attr('opacity',.8);
-    const signal=data.filter(d=>d.signal!=null);
-    if(signal.length>1){
-      const line=d3.line().x(d=>x(+d.date)+x.bandwidth()/2).y(d=>y(d.signal)).curve(d3.curveMonotoneX);
-      ctx.plot.append('path').datum(signal).attr('d',line).attr('class','dpp-line-halo');
-      ctx.plot.append('path').datum(signal).attr('d',line).attr('class','dpp-line');
-      if(!ctx.compact){const last=signal[signal.length-1];ctx.plot.append('text').attr('x',x(+last.date)+x.bandwidth()/2+8).attr('y',Math.max(12,y(last.signal)-9)).attr('class','dpp-muted').attr('font-weight',750).text('7D avg');}
-    }
+
+    const bars=ctx.plot.selectAll('.dpp-bar').data(data).join('rect')
+      .attr('class','dpp-bar')
+      .attr('x',d=>x(+d.date)).attr('width',x.bandwidth())
+      .attr('y',d=>y(d.value)).attr('height',d=>Math.max(1,ctx.innerH-y(d.value)))
+      .attr('rx',4).attr('fill',HISTORICAL_BAR);
+
     const ticks=data.filter((d,i)=>i===0||i===data.length-1||i%7===0).map(d=>+d.date);
     ctx.plot.append('g').attr('class','dpp-axis').attr('transform',`translate(0,${ctx.innerH})`).call(d3.axisBottom(x).tickValues(ticks).tickSize(0).tickPadding(12).tickFormat(v=>d3.utcFormat('%b %-d')(new Date(Number(v))))).call(g=>g.select('.domain').attr('stroke','#cfc5b7'));
+
     bars.attr('tabindex',0).on('pointerenter pointermove focus',function(event,d){
       const tipRows=[{label:'Sales',value:money(d.value)}];
-      if(d.previous?.value>0)tipRows.push({label:'Prev',value:pct(100*(d.value-d.previous.value)/d.previous.value)});
-      if(d.signal>0)tipRows.push({label:'7D',value:pct(100*(d.value-d.signal)/d.signal)});
+      if(d.previous?.value>0)tipRows.push({label:'PD',value:pct(100*(d.value-d.previous.value)/d.previous.value)});
+      if(d.benchmark>0)tipRows.push({label:'7D',value:pct(100*(d.value-d.benchmark)/d.benchmark)});
       showTip(ctx.host,ctx.tip,this,d3.utcFormat('%a, %b %-d')(d.date),tipRows,`${nf.format(d.orders)} orders · ${nf.format(d.units)} units`);
     }).on('pointerleave blur',()=>hideTip(ctx.tip));
   }
