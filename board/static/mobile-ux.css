@@ -1,0 +1,112 @@
+/* Mobile-specific information design. Keep horizontal scrolling for genuinely
+   horizontal controls/charts, but do not force core operating tables off-screen. */
+@media (max-width:760px){
+  /* Sales: turn desktop tables into readable stacked rows. */
+  #skus .table-wrap,#orders .table-wrap,#all .table-wrap{overflow:visible}
+  #skus .table,#orders .table,#all .table{min-width:0;width:100%;display:block}
+  #skus thead,#orders thead,#all thead{display:none}
+  #skus tbody,#orders tbody,#all tbody{display:block;width:100%}
+
+  #skuRows tr{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:8px 14px;
+    padding:15px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  #skuRows tr:last-child{border-bottom:0}
+  #skuRows td{display:block;padding:0;border:0;min-width:0;text-align:left}
+  #skuRows td:nth-child(1){grid-column:1;grid-row:1 / span 2}
+  #skuRows td:nth-child(2){grid-column:2;grid-row:1;text-align:right;font-size:18px;align-self:center}
+  #skuRows td:nth-child(3){grid-column:2;grid-row:2;text-align:right;font-size:13px}
+  #skuRows td:nth-child(3)::before{content:'vs prior 28 · ';color:var(--muted);font-weight:500}
+  #skuRows td:nth-child(4){grid-column:1;grid-row:3;font-size:13px;color:var(--muted);padding-left:53px}
+  #skuRows td:nth-child(4)::after{content:' units / 28D'}
+  #skuRows td:nth-child(5){grid-column:2;grid-row:3;text-align:right}
+  #skuRows .product-name{white-space:normal;line-height:1.25}
+
+  #orderRows tr{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    grid-template-areas:
+      'age item sales'
+      'time item status'
+      'order order status';
+    column-gap:12px;
+    row-gap:4px;
+    padding:14px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  #orderRows tr:last-child{border-bottom:0}
+  #orderRows td{display:block;padding:0;border:0;min-width:0;text-align:left}
+  #orderRows td:nth-child(1){grid-area:age;font-size:16px;align-self:start}
+  #orderRows td:nth-child(2){grid-area:time;color:var(--muted);font-size:12px}
+  #orderRows td:nth-child(3){grid-area:order;font-size:11px;color:var(--faint)}
+  #orderRows td:nth-child(4){grid-area:item;white-space:normal;overflow:visible;font-weight:720;line-height:1.25;align-self:start}
+  #orderRows td:nth-child(5){grid-area:sales;text-align:right;font-size:17px;align-self:start}
+  #orderRows td:nth-child(6){grid-area:status;text-align:right;align-self:end;font-size:11px}
+
+  /* Inventory: compact the portfolio summary instead of two oversized panels. */
+  .card:has(#bands),.card:has(#available):has(#reserved){box-shadow:none}
+  .card:has(#bands){padding:16px 17px}
+  #bands{grid-template-columns:1fr 1fr;gap:0 16px}
+  #bands .band{
+    background:transparent;
+    border-radius:0;
+    border-top:1px solid var(--line);
+    padding:12px 0;
+    display:flex;
+    align-items:baseline;
+    gap:9px;
+    min-height:0;
+  }
+  #bands .band:nth-child(-n+2){border-top:0;padding-top:4px}
+  #bands .band strong{font-size:24px;line-height:1;min-width:24px}
+  #bands .band span{font-size:12px;line-height:1.25}
+
+  .card:has(#available):has(#reserved){padding:16px 17px}
+  .card:has(#available):has(#reserved) .list{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 16px;
+  }
+  .card:has(#available):has(#reserved) .list-row{
+    display:block;
+    padding:12px 0;
+    border-top:1px solid var(--line);
+  }
+  .card:has(#available):has(#reserved) .list-row:nth-child(-n+2){border-top:0;padding-top:4px}
+  .card:has(#available):has(#reserved) .row-title{font-size:12px;color:var(--muted);font-weight:720}
+  .card:has(#available):has(#reserved) .row-value{text-align:left;margin-top:3px;display:flex;align-items:baseline;gap:5px}
+  .card:has(#available):has(#reserved) .row-value strong{font-size:25px;color:var(--ink)}
+  .card:has(#available):has(#reserved) .row-value small{display:inline;margin:0;font-size:11px}
+
+  /* Inventory detail: mobile is a decision list, not a horizontally scrolled spreadsheet. */
+  #rows tr{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:8px 12px;
+    padding:15px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  #rows tr:last-child{border-bottom:0}
+  #rows td{display:block;padding:0;border:0;min-width:0;text-align:left}
+  #rows td:nth-child(1){grid-column:1;grid-row:1}
+  #rows td:nth-child(2){grid-column:2;grid-row:1;text-align:right;align-self:center}
+  #rows td:nth-child(3),#rows td:nth-child(4),#rows td:nth-child(7){grid-row:2;font-size:13px;color:var(--ink)}
+  #rows td:nth-child(3){grid-column:1}
+  #rows td:nth-child(4){grid-column:1;padding-left:78px}
+  #rows td:nth-child(7){grid-column:2;text-align:right;font-weight:820}
+  #rows td:nth-child(3)::before{content:'Available ';color:var(--muted);font-size:11px}
+  #rows td:nth-child(4)::before{content:'Inbound ';color:var(--muted);font-size:11px}
+  #rows td:nth-child(7)::before{content:'Cover ';color:var(--muted);font-size:11px;font-weight:500}
+  #rows td:nth-child(5),#rows td:nth-child(6),#rows td:nth-child(8){display:none}
+  #rows .product-name{white-space:normal}
+
+  /* Pills and nav are deliberately horizontal-scroll controls; make that visually obvious. */
+  .primary-nav,.tabs,.view-tabs,.filters,.periods{
+    overscroll-behavior-inline:contain;
+    scroll-snap-type:x proximity;
+  }
+  .primary-nav>a,.tabs>button,.view-tabs>button,.filters>button,.periods>button{scroll-snap-align:start}
+}
