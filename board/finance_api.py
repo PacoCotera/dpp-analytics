@@ -32,20 +32,37 @@ def finance_payload(connect, marketplace: str) -> dict:
             WITH x AS (
               SELECT transaction_type,total_amount,posted_date
               FROM core.financial_transaction
-              WHERE marketplace_id=%s AND posted_date>=%s::timestamptz-interval '28 days'
+              WHERE marketplace_id=%s AND posted_date>=%s::timestamptz-interval '56 days'
+            ), a AS (
+              SELECT
+                count(*) FILTER (WHERE posted_date>=%s::timestamptz-interval '28 days')::int AS transactions_28,
+                COALESCE(sum(total_amount) FILTER (WHERE posted_date>=%s::timestamptz-interval '28 days' AND transaction_type='Shipment'),0)::numeric(16,2) AS shipment_amount_28,
+                COALESCE(sum(total_amount) FILTER (WHERE posted_date>=%s::timestamptz-interval '56 days' AND posted_date<%s::timestamptz-interval '28 days' AND transaction_type='Shipment'),0)::numeric(16,2) AS shipment_amount_prior_28,
+                COALESCE(sum(total_amount) FILTER (WHERE posted_date>=%s::timestamptz-interval '28 days' AND transaction_type='Refund'),0)::numeric(16,2) AS refund_amount_28,
+                COALESCE(sum(total_amount) FILTER (WHERE posted_date>=%s::timestamptz-interval '28 days' AND transaction_type='ProductAdsPayment'),0)::numeric(16,2) AS ads_amount_28,
+                COALESCE(sum(total_amount) FILTER (WHERE posted_date>=%s::timestamptz-interval '28 days' AND transaction_type='ServiceFee'),0)::numeric(16,2) AS service_fee_amount_28,
+                COALESCE(sum(total_amount) FILTER (WHERE posted_date>=%s::timestamptz-interval '28 days' AND transaction_type='Adjustment'),0)::numeric(16,2) AS adjustment_amount_28,
+                COALESCE(sum(total_amount) FILTER (
+                  WHERE posted_date>=%s::timestamptz-interval '28 days'
+                    AND transaction_type NOT IN ('Transfer','DebtRecovery','AdhocDisbursement')
+                ),0)::numeric(16,2) AS operating_ledger_balance_28,
+                COALESCE(sum(total_amount) FILTER (
+                  WHERE posted_date>=%s::timestamptz-interval '56 days'
+                    AND posted_date<%s::timestamptz-interval '28 days'
+                    AND transaction_type NOT IN ('Transfer','DebtRecovery','AdhocDisbursement')
+                ),0)::numeric(16,2) AS operating_ledger_balance_prior_28,
+                max(posted_date) AS latest_posted
+              FROM x
             )
-            SELECT
-              count(*)::int AS transactions_28,
-              COALESCE(sum(total_amount) FILTER (WHERE transaction_type='Shipment'),0)::numeric(16,2) AS shipment_amount_28,
-              COALESCE(sum(total_amount) FILTER (WHERE transaction_type='Refund'),0)::numeric(16,2) AS refund_amount_28,
-              COALESCE(sum(total_amount) FILTER (WHERE transaction_type='ProductAdsPayment'),0)::numeric(16,2) AS ads_amount_28,
-              COALESCE(sum(total_amount) FILTER (WHERE transaction_type='ServiceFee'),0)::numeric(16,2) AS service_fee_amount_28,
-              COALESCE(sum(total_amount) FILTER (WHERE transaction_type='Adjustment'),0)::numeric(16,2) AS adjustment_amount_28,
-              COALESCE(sum(total_amount) FILTER (WHERE transaction_type NOT IN ('Transfer','DebtRecovery','AdhocDisbursement')),0)::numeric(16,2) AS operating_ledger_balance_28,
-              max(posted_date) AS latest_posted
-            FROM x
+            SELECT a.*,
+              CASE WHEN shipment_amount_28>0
+                   THEN round(100.0*operating_ledger_balance_28/shipment_amount_28,1) END AS amazon_contribution_rate_28,
+              CASE WHEN operating_ledger_balance_prior_28<>0
+                   THEN round(100.0*(operating_ledger_balance_28-operating_ledger_balance_prior_28)/abs(operating_ledger_balance_prior_28),1) END AS amazon_contribution_delta_pct,
+              greatest(operating_ledger_balance_28,0)::numeric(16,2) AS break_even_off_amazon_costs_28
+            FROM a
             """,
-            (marketplace, cutoff),
+            (marketplace, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff),
         )
 
         types = _all(
