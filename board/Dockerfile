@@ -49,6 +49,13 @@ today_enhance = (static / 'today-clarity.js').read_text()
 today_tag = '<script>\n' + today_enhance + '\n</script>'
 if '</body>' in text and 'Today clarity pass: compact recent-day selector' not in text:
     today.write_text(text.replace('</body>', today_tag + '\n</body>', 1))
+
+product = static / 'product.html'
+text = product.read_text()
+product_ads = (static / 'product-ads-enhance.js').read_text()
+product_ads_tag = '<script>\n' + product_ads + '\n</script>'
+if '</body>' in text and 'Paid support is part of this product' not in text:
+    product.write_text(text.replace('</body>', product_ads_tag + '\n</body>', 1))
 PY
 # Fail the image build before production replacement if imports or static assets are broken.
 RUN python -c "import server; print('board import smoke test: ok')"
