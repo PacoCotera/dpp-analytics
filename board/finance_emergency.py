@@ -8,6 +8,10 @@ later standard-cost edit cannot silently rewrite history. Amazon-side closure is
 tracked separately from seller COGS completeness; a month may therefore be
 AMAZON_CLOSED while waiting for a missing seller cost before its first
 management-close snapshot is written by the worker.
+
+Cost config is backward compatible. Scalar costs apply to all dates. A SKU may
+also carry effective-dated history so an unclosed historical month uses the cost
+that actually applied then rather than today's standard cost.
 """
 
 import calendar
@@ -40,29 +44,76 @@ def _month_end(d: date) -> date:
     return date(d.year, d.month, calendar.monthrange(d.year, d.month)[1])
 
 
-def _costs() -> dict[str, float]:
+def _parse_dateish(value) -> date | None:
+    if not value:
+        return None
+    text = str(value).strip()
+    try:
+        if len(text) == 7:
+            text += "-01"
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def _numeric(value) -> float | None:
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return None
+    return n if n >= 0 else None
+
+
+def _costs() -> dict[str, object]:
     path = Path(os.getenv("PRODUCT_COSTS_PATH", "/config/product_costs.json"))
     try:
         raw = json.loads(path.read_text())
     except Exception:
         return {}
     raw = raw.get("costs", raw) if isinstance(raw, dict) else {}
-    result: dict[str, float] = {}
-    for sku, value in raw.items():
-        if not isinstance(sku, str) or sku.startswith("_"):
-            continue
-        if isinstance(value, dict):
-            value = value.get("unit_cogs")
-        try:
-            n = float(value)
-        except (TypeError, ValueError):
-            continue
-        if n >= 0:
-            result[sku] = n
-    return result
+    return {
+        str(sku): value
+        for sku, value in raw.items()
+        if isinstance(sku, str) and not sku.startswith("_")
+    }
 
 
-def _cogs_for_month(cur, marketplace: str, month: date, costs: dict[str, float]) -> dict:
+def _unit_cost(costs: dict[str, object], sku: str, when: date) -> float | None:
+    value = costs.get(sku)
+    direct = _numeric(value)
+    if direct is not None:
+        return direct
+    if not isinstance(value, dict):
+        return None
+
+    matches: list[tuple[date, float]] = []
+    history = value.get("history")
+    if isinstance(history, list):
+        for entry in history:
+            if not isinstance(entry, dict):
+                continue
+            amount = _numeric(entry.get("unit_cogs"))
+            if amount is None:
+                continue
+            start = _parse_dateish(entry.get("effective_from") or entry.get("from")) or date.min
+            end = _parse_dateish(entry.get("effective_to") or entry.get("to"))
+            if start <= when and (end is None or when <= end):
+                matches.append((start, amount))
+    if matches:
+        return max(matches, key=lambda x: x[0])[1]
+
+    amount = _numeric(value.get("unit_cogs"))
+    if amount is None:
+        amount = _numeric(value.get("current"))
+    if amount is None:
+        return None
+    effective_from = _parse_dateish(value.get("effective_from"))
+    if effective_from and when < effective_from:
+        return None
+    return amount
+
+
+def _cogs_for_month(cur, marketplace: str, month: date, costs: dict[str, object]) -> dict:
     nxt = _next_month(month)
     rows = _all(cur, f"""
         SELECT i.seller_sku AS sku, COALESCE(sum(i.quantity_ordered),0)::bigint AS units
@@ -82,15 +133,17 @@ def _cogs_for_month(cur, marketplace: str, month: date, costs: dict[str, float])
         sku = row.get("sku")
         units = int(row.get("units") or 0)
         total += units
-        unit = costs.get(sku)
+        unit = _unit_cost(costs, sku, month)
         configured = unit is not None
         extended = round(units * unit, 2) if configured else None
         if configured:
             covered += units
             known += extended or 0
         out.append({"sku": sku, "units": units, "unit_cogs": unit, "extended_cogs": extended, "configured": configured})
+    missing = [{"sku": r["sku"], "units": r["units"]} for r in out if not r["configured"]]
     return {
         "rows": out,
+        "missing_skus": missing,
         "product_cogs": round(known, 2),
         "complete": total == covered,
         "coverage_pct": round(100.0 * covered / total, 1) if total else 100.0,
@@ -158,7 +211,7 @@ def _ads_close_for_month(cur, marketplace: str, month: date) -> dict:
     """, (marketplace, nxt, _next_month(nxt)))
 
 
-def _probe_historical_month(cur, marketplace: str, month: date, costs: dict[str, float], now_local: date) -> dict:
+def _probe_historical_month(cur, marketplace: str, month: date, costs: dict[str, object], now_local: date) -> dict:
     sales = _sales_month(cur, marketplace, month)
     fin = _order_finance_month(cur, marketplace, month)
     ads = _ads_close_for_month(cur, marketplace, month)
@@ -200,6 +253,7 @@ def _probe_historical_month(cur, marketplace: str, month: date, costs: dict[str,
         "product_cogs": cogs["product_cogs"],
         "cogs_complete": cogs["complete"],
         "cogs_coverage_pct": cogs["coverage_pct"],
+        "missing_skus": cogs["missing_skus"],
         "release_coverage_pct": round(100.0 * released_orders / core_orders, 1) if core_orders else 100.0,
         "deferred_events": deferred,
         "close_waits_for": waits,
@@ -244,6 +298,7 @@ def finance_payload(connect, marketplace: str) -> dict:
                 "core_orders": int(fin.get("core_orders") or 0),
                 "product_cogs": cogs["product_cogs"], "cogs_complete": cogs["complete"],
                 "cogs_coverage_pct": cogs["coverage_pct"],
+                "missing_skus": cogs["missing_skus"],
                 "current_month_advertising": None,
                 "current_month_advertising_status": "Pending Ads API / month close",
                 "estimated_contribution_before_current_ads": current_estimate,
@@ -271,6 +326,8 @@ def finance_payload(connect, marketplace: str) -> dict:
                     row["month"] = str(row.get("month"))
                     row["state"] = row.get("state") or "CLOSED"
                     row["cogs_source"] = "frozen_close_snapshot"
+                    basis = row.get("close_basis") if isinstance(row.get("close_basis"), dict) else {}
+                    row["cogs_coverage_pct"] = float(basis.get("cogs_coverage_pct") or 100.0)
             except Exception as exc:
                 conn.rollback()
                 errors.append(f"close_ledger:{type(exc).__name__}:{exc}")
@@ -320,7 +377,7 @@ def finance_payload(connect, marketplace: str) -> dict:
                 "latest_posted": cutoff,
                 "closed_months": len(closed),
                 "historical_months_pending": len(finalizing),
-                "cogs_policy": "OPEN months use editable standard costs; CLOSED months use immutable snapshots; restatement is explicit only.",
+                "cogs_policy": "OPEN months use editable standard/effective-dated costs; CLOSED months use immutable snapshots; restatement is explicit only.",
             }
             return {
                 "summary": summary,
