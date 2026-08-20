@@ -6,7 +6,8 @@
 <title>Dirty Pawz Press · Home</title>
 <link rel="stylesheet" href="/assets/theme.css">
 <style>
-.spark-card{padding:16px 18px}.spark{width:100%;height:130px;display:block}.spark-grid{stroke:#e3ddd3;stroke-width:1}.spark-area{fill:rgba(229,139,31,.12)}.spark-line{fill:none;stroke:#2b2824;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.attention-card{border-left:5px solid var(--warn)}.explore-card{min-height:150px;display:flex;flex-direction:column;justify-content:space-between}.explore-arrow{font-size:22px}.change-list .list-row{padding:16px 0}.change-tag{margin-top:6px}.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#34a15f;margin-right:6px;box-shadow:0 0 0 4px rgba(52,161,95,.12)}
+.spark-card{padding:16px 18px}.spark{width:100%;height:145px;display:block}.spark-grid{stroke:#e3ddd3;stroke-width:1}.spark-axis{fill:#766e64;font-size:11px}.spark-area{fill:rgba(229,139,31,.12)}.spark-line{fill:none;stroke:#2b2824;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.attention-card{border-left:5px solid var(--warn)}.explore-card{min-height:150px;display:flex;flex-direction:column;justify-content:space-between}.explore-arrow{font-size:22px}.change-list .list-row{padding:16px 0}.change-tag{margin-top:6px}.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#34a15f;margin-right:6px;box-shadow:0 0 0 4px rgba(52,161,95,.12)}
+@media(max-width:640px){.spark-axis{font-size:12px}}
 </style>
 </head>
 <body>
@@ -40,7 +41,7 @@
 </section>
 
 <section class="section grid main-aside">
-  <div class="card spark-card"><div class="section-head"><div><div class="section-title">Business rhythm</div><div class="section-sub">90 days of daily sales. Use Sales for the full analysis.</div></div><a class="section-link" href="/sales">Open Sales →</a></div><svg class="spark" id="spark" viewBox="0 0 900 130" preserveAspectRatio="none"></svg></div>
+  <div class="card spark-card"><div class="section-head"><div><div class="section-title">Business rhythm</div><div class="section-sub">90 days of daily sales. Use Sales for the full analysis.</div></div><a class="section-link" href="/sales">Open Sales →</a></div><svg class="spark" id="spark" viewBox="0 0 900 145" preserveAspectRatio="none"></svg></div>
   <div class="card card-pad attention-card"><div class="section-head"><div><div class="section-title">What needs attention</div><div class="section-sub">Only decisions worth interrupting you for.</div></div></div><div class="list" id="attention"><div class="empty"><strong>Checking inventory</strong>One moment.</div></div></div>
 </section>
 
@@ -69,7 +70,7 @@ const pct=v=>v==null?'—':(Number(v)>0?'+':'')+Number(v).toFixed(1)+'%';
 const cls=v=>Number(v)>0?'good':Number(v)<0?'bad':'';
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function businessRead(delta,actions){delta=Number(delta||0);let title,copy;if(delta>=8){title='Momentum is strong.';copy='The last four weeks are clearly ahead of the prior four.'}else if(delta>=2){title='The business is edging up.';copy='Recent sales are modestly ahead of the prior four-week period.'}else if(delta>-2){title='The business is steady.';copy='Recent sales are essentially flat versus the prior four weeks.'}else if(delta>-8){title='The business has softened a little.';copy='Recent sales are below the prior four weeks, but not dramatically.'}else{title='Momentum has cooled.';copy='Recent sales are meaningfully below the prior four weeks and deserve a closer look.'}if(actions>0)copy+=' '+actions+' inventory '+(actions===1?'item needs':'items need')+' attention.';else copy+=' Inventory is not asking for an urgent intervention.';return {title,copy}}
-function draw(rows){const svg=document.getElementById('spark');if(!rows||rows.length<2){svg.innerHTML='';return}const W=900,H=130,P=8,vals=rows.map(r=>Number(r.sales||0)),max=Math.max(...vals,1),x=i=>P+i*(W-P*2)/(rows.length-1),y=v=>H-P-(v/max)*(H-P*2);let pts=vals.map((v,i)=>x(i)+','+y(v)).join(' ');let area=`${P},${H-P} ${pts} ${W-P},${H-P}`;svg.innerHTML=`<line class="spark-grid" x1="0" y1="${H-1}" x2="${W}" y2="${H-1}"/><polygon class="spark-area" points="${area}"/><polyline class="spark-line" points="${pts}"/>`}
+function draw(rows){const svg=document.getElementById('spark');if(!rows||rows.length<2){svg.innerHTML='';return}const W=900,H=145,L=56,R=8,T=8,B=10,w=W-L-R,h=H-T-B,vals=rows.map(r=>Number(r.sales||0)),maxRaw=Math.max(...vals,1),max=Math.ceil(maxRaw/500)*500||500,x=i=>L+i*w/(rows.length-1),y=v=>T+h-(v/max)*h;let out=[];[0,.5,1].forEach(fr=>{const v=max*fr,yy=y(v);out.push(`<line class="spark-grid" x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}"/>`);out.push(`<text class="spark-axis" x="${L-7}" y="${yy+4}" text-anchor="end">${money(v)}</text>`)});const pts=vals.map((v,i)=>x(i)+','+y(v)).join(' '),area=`${L},${T+h} ${pts} ${W-R},${T+h}`;out.push(`<polygon class="spark-area" points="${area}"/><polyline class="spark-line" points="${pts}"/>`);svg.innerHTML=out.join('')}
 function render(d){
  document.getElementById('clock').textContent=d.local_time||'--:--';
  document.getElementById('fresh').textContent='Live operating data';
