@@ -79,6 +79,10 @@ finance_manager = (static / 'finance-manager-v2.js').read_text()
 finance_manager_tag = '<script>\n' + finance_manager + '\n</script>'
 if '</body>' in text and 'Sales → deductions → contribution' not in text:
     text = text.replace('</body>', finance_manager_tag + '\n</body>', 1)
+finance_cost = (static / 'finance-cost-clarity.js').read_text()
+finance_cost_tag = '<script>\n' + finance_cost + '\n</script>'
+if '</body>' in text and 'Historical months not yet management-closed' not in text:
+    text = text.replace('</body>', finance_cost_tag + '\n</body>', 1)
 finance.write_text(text)
 PY
 # Fail the image build before production replacement if imports or static assets are broken.
