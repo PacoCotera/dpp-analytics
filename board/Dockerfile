@@ -73,6 +73,10 @@ sales_layout = (static / 'sales-operating-v2.css').read_text()
 sales_layout_tag = '<style>\n' + sales_layout + '\n</style>'
 if '</head>' in text and 'Sales operating layout v2' not in text:
     text = text.replace('</head>', sales_layout_tag + '\n</head>', 1)
+sales_state_css = (static / 'sales-state-rail.css').read_text()
+sales_state_css_tag = '<style>\n' + sales_state_css + '\n</style>'
+if '</head>' in text and 'sales-current-state-rail-v1' not in text:
+    text = text.replace('</head>', sales_state_css_tag + '\n</head>', 1)
 sales_runtime = (static / 'sales-operating-v2.js').read_text()
 sales_runtime_tag = '<script>\n' + sales_runtime + '\n</script>'
 if '</body>' in text and 'Primary canvas + signal rail' not in text:
@@ -85,6 +89,10 @@ sales_chart_extensions = (static / 'sales-chart-extensions.js').read_text()
 sales_chart_extensions_tag = '<script>\n' + sales_chart_extensions + '\n</script>'
 if '</body>' in text and 'Sales chart extensions v1' not in text:
     text = text.replace('</body>', sales_chart_extensions_tag + '\n</body>', 1)
+sales_state_rail = (static / 'sales-state-rail.js').read_text()
+sales_state_rail_tag = '<script>\n' + sales_state_rail + '\n</script>'
+if '</body>' in text and 'sales-current-state-rail-v1' not in text:
+    text = text.replace('</body>', sales_state_rail_tag + '\n</body>', 1)
 sales_ads = (static / 'sales-ads-enhance.js').read_text()
 sales_ads_tag = '<script>\n' + sales_ads + '\n</script>'
 if '</body>' in text and 'Advertising context is ready to connect' not in text:
