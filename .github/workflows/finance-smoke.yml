@@ -5,28 +5,47 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   finance-smoke:
     runs-on: [self-hosted, linux, x64, dpp-analytics]
     timeout-minutes: 5
     steps:
       - name: Probe Finance API
+        id: probe
         run: |
-          set -euo pipefail
-          sleep 20
-          code="$(curl -sS -o /tmp/finance-smoke.json -w '%{http_code}' http://127.0.0.1:8088/api/finance || true)"
-          echo "HTTP ${code}"
-          cat /tmp/finance-smoke.json 2>/dev/null || true
-          echo
-          if [[ "$code" != "200" ]]; then
-            echo '--- board logs ---'
+          set +e
+          sleep 8
+          code="$(curl -sS -o /tmp/finance-smoke.json -w '%{http_code}' http://127.0.0.1:8088/api/finance)"
+          rc=$?
+          {
+            echo "# Finance API smoke"
+            echo
+            echo "Commit: \`${GITHUB_SHA}\`"
+            echo "HTTP: \`${code:-curl-error}\`"
+            echo "curl rc: \`${rc}\`"
+            echo
+            echo '```json'
+            cat /tmp/finance-smoke.json 2>/dev/null || true
+            echo
+            echo '```'
+            echo
+            echo '## Board logs'
+            echo '```text'
             sudo docker logs --tail 120 dpp-board 2>&1 || true
-            exit 1
-          fi
-          python3 - <<'PY'
-          import json
-          p=json.load(open('/tmp/finance-smoke.json'))
-          print('statement_source=', p.get('statement',{}).get('source'))
-          print('statement_sales=', p.get('statement',{}).get('sales'))
-          print('recent=', len(p.get('recent',[])))
-          PY
+            echo '```'
+          } >/tmp/finance-smoke.md
+          cat /tmp/finance-smoke.md
+          [[ "$code" == "200" ]]
+      - name: Publish diagnostic
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs=require('fs');
+            const body=fs.existsSync('/tmp/finance-smoke.md') ? fs.readFileSync('/tmp/finance-smoke.md','utf8') : '# Finance API smoke\nNo diagnostic file produced.';
+            await github.rest.issues.update({owner:context.repo.owner,repo:context.repo.repo,issue_number:10,body});
