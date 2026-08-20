@@ -152,13 +152,48 @@ def home_payload():
             LEFT JOIN core.catalog_item ci ON ci.marketplace_id=m.marketplace_id AND ci.asin=COALESCE(m.asin,s.asin)
             WHERE m.marketplace_id=%s AND m.sales_t28>0 ORDER BY m.sales_t28 DESC LIMIT 8
         """, (MARKETPLACE,))
-        series = all_rows(cur, "SELECT business_date,sales FROM mart.business_daily WHERE marketplace_id=%s AND business_date>=CURRENT_DATE-89 ORDER BY business_date", (MARKETPLACE,))
+        series = all_rows(cur, """
+            SELECT business_date,sales,orders,units,aov
+            FROM mart.business_daily
+            WHERE marketplace_id=%s AND business_date>=CURRENT_DATE-89
+            ORDER BY business_date
+        """, (MARKETPLACE,))
+        weekly_products = all_rows(cur, """
+            WITH product_week AS (
+                SELECT date_trunc('week',a.business_date)::date week_start,
+                       a.asin,
+                       COALESCE(sum(a.ordered_product_sales),0)::numeric(14,2) sales,
+                       max(a.business_date) through_date
+                FROM core.asin_sales_traffic_daily a
+                WHERE a.marketplace_id=%s AND a.business_date>=CURRENT_DATE-89
+                GROUP BY 1,2
+            ), ranked AS (
+                SELECT p.*,row_number() OVER (PARTITION BY p.week_start ORDER BY p.sales DESC,p.asin) rank
+                FROM product_week p
+                WHERE p.sales>0
+            )
+            SELECT r.week_start,r.asin,r.sales,r.through_date,
+                   COALESCE(sl.seller_sku,'') sku,
+                   COALESCE(sl.item_name,ci.title,r.asin) product,
+                   COALESCE(sl.image_url,ci.image_url) image_url
+            FROM ranked r
+            LEFT JOIN core.catalog_item ci ON ci.marketplace_id=%s AND ci.asin=r.asin
+            LEFT JOIN LATERAL (
+                SELECT l.seller_sku,l.item_name,l.image_url
+                FROM core.seller_listing l
+                WHERE l.marketplace_id=%s AND l.asin=r.asin
+                ORDER BY l.fetched_at DESC,l.seller_sku
+                LIMIT 1
+            ) sl ON true
+            WHERE r.rank<=3
+            ORDER BY r.week_start,r.rank
+        """, (MARKETPLACE, MARKETPLACE, MARKETPLACE))
         freshness = all_rows(cur, """
             SELECT job_name,latest_status,extract(epoch from age)::bigint age_seconds FROM ops.data_health
             WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1','merchant_listings_all_data','catalog_items_2022_04_01')
         """)
         local_clock = one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
-    return clean({"generated_at":datetime.utcnow().isoformat(timespec="seconds")+"Z","local_time":local_clock.get("local_time"),"today":today,"rolling":rolling,"inventory_summary":inventory_summary,"inventory":decorate_products(inventory),"movers":decorate_products(movers),"series":series,"freshness":freshness})
+    return clean({"generated_at":datetime.utcnow().isoformat(timespec="seconds")+"Z","local_time":local_clock.get("local_time"),"today":today,"rolling":rolling,"inventory_summary":inventory_summary,"inventory":decorate_products(inventory),"movers":decorate_products(movers),"series":series,"weekly_products":decorate_products(weekly_products),"freshness":freshness})
 
 
 def health_payload():
