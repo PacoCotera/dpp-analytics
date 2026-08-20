@@ -91,7 +91,7 @@ if '</body>' in text and 'Sales chart extensions v1' not in text:
     text = text.replace('</body>', sales_chart_extensions_tag + '\n</body>', 1)
 sales_state_rail = (static / 'sales-state-rail.js').read_text()
 sales_state_rail_tag = '<script>\n' + sales_state_rail + '\n</script>'
-if '</body>' in text and 'sales-current-state-rail-v1' not in text:
+if '</body>' in text and 'sales-current-state-rail-js-v1' not in text:
     text = text.replace('</body>', sales_state_rail_tag + '\n</body>', 1)
 sales_ads = (static / 'sales-ads-enhance.js').read_text()
 sales_ads_tag = '<script>\n' + sales_ads + '\n</script>'
