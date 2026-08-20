@@ -1,8 +1,9 @@
 name: Finance API Smoke
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["Deploy DPP Analytics"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -11,79 +12,60 @@ permissions:
 
 jobs:
   finance-smoke:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: [self-hosted, linux, x64, dpp-analytics]
-    timeout-minutes: 7
+    timeout-minutes: 5
     steps:
-      - name: Probe Finance API and reconcile sources
-        id: probe
+      - name: Probe deployed Finance API
         run: |
-          set +e
-          sleep 10
-          code="$(curl -sS -o /tmp/finance-smoke.json -w '%{http_code}' http://127.0.0.1:8088/api/finance)"
-          rc=$?
-
-          set -a
-          source /etc/dpp-analytics/env
-          set +a
-          psqlq() {
-            sudo docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" dpp-postgres \
-              psql -X -q -P pager=off -P footer=off -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1" 2>&1
-          }
-
+          set -euo pipefail
+          code=""
+          for i in $(seq 1 20); do
+            code="$(curl -sS -o /tmp/finance-smoke.json -w '%{http_code}' http://127.0.0.1:8088/api/finance || true)"
+            [[ "$code" == "200" ]] && break
+            sleep 2
+          done
+          DEPLOY_SHA="${{ github.event.workflow_run.head_sha }}"
+          [[ -n "$DEPLOY_SHA" ]] || DEPLOY_SHA="${GITHUB_SHA}"
           {
-            echo "# Finance API smoke + reconciliation"
+            echo '# Finance API smoke'
             echo
-            echo "Commit: \`${GITHUB_SHA}\`"
-            echo "HTTP: \`${code:-curl-error}\` · curl rc: \`${rc}\`"
+            echo "Deployed commit: \`${DEPLOY_SHA}\`"
+            echo "HTTP: \`${code:-curl-error}\`"
             echo
-            echo '## API manager fields'
+            echo '## Period model'
             echo '```text'
             python3 - <<'PY'
           import json
-          try:
-              p=json.load(open('/tmp/finance-smoke.json'))
-              s=p.get('statement',{})
-              q=p.get('summary',{})
-              for k in ('period','period_start','through_date','sales','tax_collected','advertising','amazon_operating_net','product_cogs','after_product_cogs','cash_transferred'):
-                  print(f'{k}: {s.get(k)}')
-              print('latest_posted:',q.get('latest_posted'))
-          except Exception as e:
-              print('payload parse error:',e)
+          p=json.load(open('/tmp/finance-smoke.json'))
+          c=p.get('current_month') or {}
+          a=p.get('closed_aggregate') or {}
+          closed=p.get('closed_months') or []
+          finalizing=p.get('finalizing_months') or []
+          print('current:', c.get('month'), c.get('state'))
+          print('current sales ex IVA:', c.get('net_sales_ex_vat'))
+          print('current IVA:', c.get('iva_on_sales'))
+          print('current customer spend:', c.get('shopper_product_spend'))
+          print('current released order net:', c.get('amazon_order_net'))
+          print('current COGS:', c.get('product_cogs'), 'coverage', c.get('cogs_coverage_pct'))
+          print('current contribution before ads:', c.get('estimated_contribution_before_current_ads'))
+          print('closed months:', len(closed))
+          print('finalizing months:', [(m.get('month'), m.get('close_waits_for')) for m in finalizing])
+          print('closed sales:', a.get('net_sales_ex_vat'))
+          print('closed contribution:', a.get('contribution_after_product_cogs'))
+          print('closed margin:', a.get('contribution_margin_pct'))
+          print('diagnostic:', p.get('diagnostic'))
+          print('\nclosed detail:')
+          for m in closed:
+              print(m.get('month'), 'sales=',m.get('net_sales_ex_vat'),'amazon_effect=',m.get('amazon_order_effect'),'ads=',m.get('advertising'),'cogs=',m.get('product_cogs'),'contribution=',m.get('contribution_after_product_cogs'),'margin=',m.get('contribution_margin_pct'),'release=',m.get('release_coverage_pct'))
           PY
             echo '```'
-            echo
-            echo '## 28-day comparable sources'
-            echo '```text'
-            psqlq "WITH d AS (SELECT max(posted_date) p FROM core.financial_transaction WHERE marketplace_id='A1AM78C64UM0Y8'), b AS (SELECT (p AT TIME ZONE 'America/Mexico_City')::date e, ((p AT TIME ZONE 'America/Mexico_City')::date-27) s FROM d) SELECT 'business_net_sales' metric, round(sum(sales),2) amount FROM mart.business_daily,b WHERE marketplace_id='A1AM78C64UM0Y8' AND business_date BETWEEN b.s AND b.e UNION ALL SELECT 'order_item_tax',round(COALESCE(sum(i.proceeds_tax_amount),0),2) FROM core.amazon_order o JOIN core.amazon_order_item i USING(amazon_order_id),b WHERE o.marketplace_id='A1AM78C64UM0Y8' AND (o.created_time AT TIME ZONE 'America/Mexico_City')::date BETWEEN b.s AND b.e AND o.fulfillment_status IS DISTINCT FROM 'CANCELLED' UNION ALL SELECT 'finance_ads_RELEASED',round(COALESCE(sum(total_amount),0),2) FROM core.financial_transaction,d WHERE marketplace_id='A1AM78C64UM0Y8' AND transaction_type='ProductAdsPayment' AND transaction_status='RELEASED' AND posted_date>=d.p-interval '28 days' AND posted_date<=d.p UNION ALL SELECT 'finance_transfers_RELEASED',round(COALESCE(sum(total_amount),0),2) FROM core.financial_transaction,d WHERE marketplace_id='A1AM78C64UM0Y8' AND transaction_type='Transfer' AND transaction_status='RELEASED' AND posted_date>=d.p-interval '28 days' AND posted_date<=d.p;"
-            echo '```'
-            echo
-            echo '## ProductCharges by status and path'
-            echo '```text'
-            psqlq "WITH d AS (SELECT max(posted_date) p FROM core.financial_transaction WHERE marketplace_id='A1AM78C64UM0Y8') SELECT transaction_status,transaction_type,breakdown_path,count(*) n,round(sum(amount),2) amount FROM mart.finance_leaf_breakdown,d WHERE marketplace_id='A1AM78C64UM0Y8' AND posted_date>=d.p-interval '28 days' AND posted_date<=d.p AND breakdown_type='ProductCharges' GROUP BY transaction_status,transaction_type,breakdown_path ORDER BY transaction_status,abs(sum(amount)) DESC;"
-            echo '```'
-            echo
-            echo '## Base / Tax / Promo by status and path'
-            echo '```text'
-            psqlq "WITH d AS (SELECT max(posted_date) p FROM core.financial_transaction WHERE marketplace_id='A1AM78C64UM0Y8') SELECT transaction_status,breakdown_type,breakdown_path,count(*) n,round(sum(amount),2) amount FROM mart.finance_leaf_breakdown,d WHERE marketplace_id='A1AM78C64UM0Y8' AND posted_date>=d.p-interval '28 days' AND posted_date<=d.p AND breakdown_type IN ('Base','Tax','Promo','PromoRebates','Shipping') GROUP BY transaction_status,breakdown_type,breakdown_path ORDER BY breakdown_type,transaction_status,abs(sum(amount)) DESC;"
-            echo '```'
-            echo
-            echo '## Settlement amount taxonomy'
-            echo '```text'
-            psqlq "SELECT amount_type,amount_description,count(*) n,round(sum(amount),2) amount FROM core.settlement_line WHERE marketplace_id='A1AM78C64UM0Y8' GROUP BY amount_type,amount_description ORDER BY abs(sum(amount)) DESC LIMIT 35;"
-            echo '```'
-            echo
-            echo '## Monthly operating + cash clocks'
-            echo '```text'
-            psqlq "WITH months AS (SELECT generate_series(date_trunc('month',CURRENT_DATE)-interval '9 months',date_trunc('month',CURRENT_DATE),interval '1 month')::date m), sales AS (SELECT date_trunc('month',business_date)::date m,sum(sales) net_sales FROM mart.business_daily WHERE marketplace_id='A1AM78C64UM0Y8' GROUP BY 1), tax AS (SELECT date_trunc('month',o.created_time AT TIME ZONE 'America/Mexico_City')::date m,sum(COALESCE(i.proceeds_tax_amount,0)) tax FROM core.amazon_order o JOIN core.amazon_order_item i USING(amazon_order_id) WHERE o.marketplace_id='A1AM78C64UM0Y8' AND o.fulfillment_status IS DISTINCT FROM 'CANCELLED' GROUP BY 1), fin AS (SELECT date_trunc('month',posted_date AT TIME ZONE 'America/Mexico_City')::date m,sum(total_amount) FILTER(WHERE transaction_type='ProductAdsPayment' AND transaction_status='RELEASED') ads,sum(total_amount) FILTER(WHERE transaction_type='Transfer' AND transaction_status='RELEASED') transfers,sum(total_amount) FILTER(WHERE transaction_status='RELEASED' AND transaction_type NOT IN ('Transfer','DebtRecovery','AdhocDisbursement')) op_net FROM core.financial_transaction WHERE marketplace_id='A1AM78C64UM0Y8' GROUP BY 1) SELECT to_char(months.m,'YYYY-MM') month,round(COALESCE(s.net_sales,0),2) net_sales,round(COALESCE(t.tax,0),2) iva,round(COALESCE(f.ads,0),2) ads_posted,round(COALESCE(f.op_net,0),2) released_operating_net,round(COALESCE(f.transfers,0),2) transfers FROM months LEFT JOIN sales s USING(m) LEFT JOIN tax t USING(m) LEFT JOIN fin f USING(m) ORDER BY months.m;"
-            echo '```'
-            echo
-            echo '## Board logs if API failed'
             if [[ "$code" != "200" ]]; then
+              echo
+              echo '## Board logs'
               echo '```text'
               sudo docker logs --tail 120 dpp-board 2>&1 || true
               echo '```'
-            else
-              echo 'API healthy.'
             fi
           } >/tmp/finance-smoke.md
           cat /tmp/finance-smoke.md
