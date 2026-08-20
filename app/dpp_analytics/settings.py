@@ -24,6 +24,20 @@ class Settings:
     lwa_refresh_token: str = os.getenv("SPAPI_LWA_REFRESH_TOKEN", "")
     spapi_enabled: bool = _bool("SPAPI_ENABLED")
 
+    # Amazon Ads is a separate authorization surface from SP-API. Keep its credentials
+    # and account identity independent so the warehouse can support multiple advertisers
+    # and marketplaces later. API v1 unified reporting is the forward reporting path.
+    ads_enabled: bool = _bool("AMAZON_ADS_ENABLED")
+    ads_client_id: str = os.getenv("AMAZON_ADS_CLIENT_ID", "")
+    ads_client_secret: str = os.getenv("AMAZON_ADS_CLIENT_SECRET", "")
+    ads_refresh_token: str = os.getenv("AMAZON_ADS_REFRESH_TOKEN", "")
+    ads_account_ids: tuple[str, ...] = tuple(
+        x.strip() for x in os.getenv("AMAZON_ADS_ACCOUNT_IDS", "").split(",") if x.strip()
+    )
+    ads_api_endpoint: str = os.getenv("AMAZON_ADS_API_ENDPOINT", "https://advertising-api.amazon.com").rstrip("/")
+    ads_reporting_interval_seconds: int = int(os.getenv("AMAZON_ADS_REPORTING_INTERVAL_SECONDS", "21600"))
+    ads_backfill_days: int = int(os.getenv("AMAZON_ADS_BACKFILL_DAYS", "450"))
+
     # Production is deliberately two-stage. We first prove the production credentials
     # and authorized roles with read-only calls. Historical/live ingestion is enabled
     # only after the smoke test succeeds and this explicit kill-switch is set true.
@@ -70,6 +84,10 @@ class Settings:
     @property
     def spapi_credentials_present(self) -> bool:
         return bool(self.lwa_client_id and self.lwa_client_secret and self.lwa_refresh_token)
+
+    @property
+    def ads_credentials_present(self) -> bool:
+        return bool(self.ads_client_id and self.ads_client_secret and self.ads_refresh_token)
 
 
 settings = Settings()
