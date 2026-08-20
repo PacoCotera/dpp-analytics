@@ -46,5 +46,7 @@ today_tag = '<script>\n' + today_enhance + '\n</script>'
 if '</body>' in text and 'Today clarity pass: compact recent-day selector' not in text:
     today.write_text(text.replace('</body>', today_tag + '\n</body>', 1))
 PY
+# Fail the image build before production replacement if imports or static assets are broken.
+RUN python -c "import server; print('board import smoke test: ok')"
 EXPOSE 8080
 CMD ["python", "server.py"]
