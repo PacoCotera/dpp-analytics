@@ -6,11 +6,74 @@
 <title>Dirty Pawz Press · Home</title>
 <link rel="stylesheet" href="/assets/theme.css"><link rel="stylesheet" href="/assets/chart-system.css"><script src="/assets/ui-shell.js" defer></script>
 <style>
-.spark-card{padding:16px 18px}.spark{width:100%;height:145px;display:block}.spark-grid{stroke:#e3ddd3;stroke-width:1}.spark-axis{fill:#766e64;font-size:11px}.spark-area{fill:rgba(229,139,31,.12)}.spark-line{fill:none;stroke:#2b2824;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.attention-card{border-left:5px solid var(--warn)}.explore-card{min-height:150px;display:flex;flex-direction:column;justify-content:space-between}.explore-arrow{font-size:22px}.change-list .list-row{padding:16px 0}.change-tag{margin-top:6px}.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#34a15f;margin-right:6px;box-shadow:0 0 0 4px rgba(52,161,95,.12)}
-@media(max-width:640px){.spark-axis{font-size:12px}}
+body.home-page .app{padding-top:14px}
+body.home-page .topbar{min-height:46px}
+body.home-page .mark{width:36px;height:36px;border-radius:11px;font-size:14px}
+body.home-page .brand{gap:10px}
+body.home-page .brand-title{font-size:16px}
+body.home-page .brand-sub{font-size:10px;margin-top:1px}
+body.home-page .top-meta strong{font-size:14px}
+body.home-page .primary-nav{margin:8px 0 12px;padding-bottom:5px;gap:3px}
+body.home-page .primary-nav a{min-height:34px;padding:0 11px;font-size:11.5px}
+body.home-page .home-main{margin-top:0}
+body.home-page .home-read{grid-template-columns:1fr!important;padding:12px 2px!important;border-top:0!important}
+body.home-page .home-read h2{font-size:clamp(31px,3.3vw,48px)!important;margin:3px 0 5px!important}
+body.home-page .home-read p{font-size:14px!important;line-height:1.4!important}
+body.home-page .home-read .story-side{display:none!important}
+body.home-page .home-signals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line);margin-top:0}
+body.home-page .home-signal{padding:11px 16px 12px 0;min-width:0}
+body.home-page .home-signal+.home-signal{border-left:1px solid var(--line);padding-left:16px}
+body.home-page .home-signal-label{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+body.home-page .home-signal-value{font-size:28px;font-weight:830;letter-spacing:-.045em;line-height:1.05;margin:3px 0 2px;font-variant-numeric:tabular-nums}
+body.home-page .home-signal-note{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.home-page .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#34a15f;margin-right:5px;box-shadow:0 0 0 3px rgba(52,161,95,.11)}
+body.home-page .restock-strip{display:none;grid-template-columns:120px minmax(0,1fr) auto;gap:16px;align-items:center;border-bottom:1px solid var(--line);padding:10px 0;margin-top:0}
+body.home-page .restock-strip.show{display:grid}
+body.home-page .restock-label{font-size:11px;font-weight:840;letter-spacing:.08em;text-transform:uppercase;color:var(--warn)}
+body.home-page .restock-strip .list{min-width:0}
+body.home-page .restock-strip .list-row{padding:3px 0;border:0;grid-template-columns:minmax(0,1fr) auto}
+body.home-page .restock-strip .row-title{font-size:13px}
+body.home-page .restock-strip .row-sub{font-size:10.5px;margin-top:1px}
+body.home-page .restock-strip .row-value strong{font-size:15px}
+body.home-page .restock-strip .row-value small{font-size:10px;margin-top:1px}
+body.home-page .restock-strip .product-sku{font-size:9px;margin-bottom:2px}
+body.home-page .restock-link{font-size:11px;font-weight:760;color:var(--accent-ink);white-space:nowrap}
+body.home-page .rhythm-section{margin-top:16px!important}
+body.home-page .spark-card{padding:12px 0 5px!important;background:transparent!important;border:0!important;border-top:1px solid var(--line)!important;border-bottom:1px solid var(--line)!important;border-radius:0!important}
+body.home-page .spark-card .section-head{margin-bottom:3px!important}
+body.home-page .spark{width:100%;height:280px!important;display:block}
+body.home-page .change-list .list-row{padding:11px 0}
+body.home-page .change-tag{margin-top:4px}
+body.home-page .change-list .list-row:nth-child(n+4){display:none!important}
+@media(max-width:640px){
+ body.home-page .app{padding-top:10px}
+ body.home-page .topbar{min-height:40px;align-items:center}
+ body.home-page .mark{width:34px;height:34px}
+ body.home-page .brand-title{font-size:14px;letter-spacing:.065em}
+ body.home-page .brand-sub{font-size:9.5px}
+ body.home-page .primary-nav{margin:7px -14px 10px;padding:5px 14px 6px}
+ body.home-page .primary-nav a{min-height:42px;padding:0 12px;font-size:12px}
+ body.home-page .home-read{padding:9px 0 10px!important}
+ body.home-page .home-read .kicker{font-size:10px}
+ body.home-page .home-read h2{font-size:30px!important}
+ body.home-page .home-read p{font-size:13px!important}
+ body.home-page .home-signals{grid-template-columns:1fr 1fr}
+ body.home-page .home-signal{padding:9px 8px 9px 0}
+ body.home-page .home-signal:nth-child(even){padding-left:10px;border-left:1px solid var(--line)}
+ body.home-page .home-signal:nth-child(n+3){border-top:1px solid var(--line)}
+ body.home-page .home-signal:nth-child(3){border-left:0;padding-left:0}
+ body.home-page .home-signal-value{font-size:24px}
+ body.home-page .home-signal-note{font-size:10.5px}
+ body.home-page .restock-strip.show{grid-template-columns:1fr auto;gap:8px 12px;padding:9px 0}
+ body.home-page .restock-label{grid-column:1/-1}
+ body.home-page .restock-strip .list-row{grid-template-columns:minmax(0,1fr) auto}
+ body.home-page .spark{height:190px!important}
+ body.home-page .rhythm-section{margin-top:13px!important}
+ body.home-page .spark-card .section-sub{display:none}
+}
 </style>
 </head>
-<body>
+<body class="home-page">
 <div class="app">
 <header class="topbar">
   <div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Amazon Mexico · Operating Board</div></div></div>
@@ -20,45 +83,34 @@
   <a class="today-link" href="/today">Today</a><a class="active" href="/">Home</a><a href="/sales">Sales</a><a href="/catalog">Catalog</a><a href="/inventory">Inventory</a><a href="/ads">Ads</a><a href="/finance">Finance</a><a href="/trajectory">Trajectory</a><a href="/data-health">Data</a>
 </nav>
 
-<header class="page-head">
-  <div><div class="kicker">Operating cockpit</div><h1>What matters right now.</h1><p class="page-summary">A fast read on momentum, today’s activity, and anything that needs attention. Details live one click deeper.</p></div>
-  <div class="page-actions"><a class="btn accent" href="/today?wall=1">Open wall view ↗</a></div>
-</header>
+<main class="home-main">
+<section class="story home-read" id="story">
+  <div><div class="kicker">Business read</div><h2 id="storyTitle">Reading the business…</h2><p id="storyCopy">Connecting current sales and momentum.</p></div>
+  <div class="story-side"><div class="story-number" id="storyNumber">—</div><div class="story-caption" id="storyCaption">28 days vs prior 28</div></div>
+</section>
 
-<section class="story" id="story">
-  <div><div class="kicker">Business read</div><h2 id="storyTitle">Reading the business…</h2><p id="storyCopy">Connecting current sales, momentum and inventory signals.</p><a class="story-link" href="/sales">See the sales story →</a></div>
-  <div class="story-side"><div class="story-number" id="storyNumber">$—</div><div class="story-caption" id="storyCaption">Last 28 days</div></div>
+<section class="home-signals" aria-label="Current operating signals">
+  <a class="home-signal" href="/today"><div class="home-signal-label"><span class="live-dot"></span>Today · live</div><div class="home-signal-value" id="todaySales">$—</div><div class="home-signal-note" id="todayMeta">Waiting for orders</div></a>
+  <a class="home-signal" href="/sales"><div class="home-signal-label">Last 28 days</div><div class="home-signal-value" id="sales28">$—</div><div class="home-signal-note" id="sales28Meta">Reconciled sales</div></a>
+  <a class="home-signal" href="/trajectory"><div class="home-signal-label">Momentum</div><div class="home-signal-value" id="momentum">—</div><div class="home-signal-note">28 days vs prior 28</div></a>
+  <a class="home-signal" href="/inventory"><div class="home-signal-label">Restock</div><div class="home-signal-value" id="actions">—</div><div class="home-signal-note" id="actionMeta">Inventory decisions</div></a>
+</section>
+
+<section class="restock-strip" id="restockSection">
+  <div class="restock-label">Restock now</div>
+  <div class="list" id="attention"><div class="row-title">Checking inventory…</div></div>
+  <a class="restock-link" href="/inventory">Open Inventory →</a>
+</section>
+
+<section class="section rhythm-section">
+  <div class="card spark-card"><div class="section-head"><div><div class="section-title">Business rhythm</div><div class="section-sub">90 days of daily sales with the seven-day signal.</div></div><a class="section-link" href="/sales">Open Sales →</a></div><svg class="spark" id="spark" viewBox="0 0 960 190"></svg></div>
 </section>
 
 <section class="section">
-  <div class="section-head"><div><div class="section-title">At a glance</div><div class="section-sub">Current facts, not a wall of KPIs.</div></div></div>
-  <div class="grid four">
-    <a class="card interactive metric" href="/today"><div class="metric-label"><span class="live-dot"></span>Today · live</div><div class="metric-value" id="todaySales">$—</div><div class="metric-note" id="todayMeta">Waiting for orders</div></a>
-    <a class="card interactive metric" href="/sales"><div class="metric-label">Last 28 days</div><div class="metric-value" id="sales28">$—</div><div class="metric-note" id="sales28Meta">Reconciled sales</div></a>
-    <a class="card interactive metric" href="/trajectory"><div class="metric-label">Momentum</div><div class="metric-value" id="momentum">—</div><div class="metric-note">28 days vs prior 28 days</div></a>
-    <a class="card interactive metric" href="/inventory"><div class="metric-label">Needs attention</div><div class="metric-value" id="actions">—</div><div class="metric-note" id="actionMeta">Inventory decisions</div></a>
-  </div>
-</section>
-
-<section class="section grid main-aside">
-  <div class="card spark-card"><div class="section-head"><div><div class="section-title">Business rhythm</div><div class="section-sub">90 days of daily sales. Use Sales for the full analysis.</div></div><a class="section-link" href="/sales">Open Sales →</a></div><svg class="spark" id="spark" viewBox="0 0 900 145" preserveAspectRatio="none"></svg></div>
-  <div class="card card-pad attention-card"><div class="section-head"><div><div class="section-title">What needs attention</div><div class="section-sub">Only decisions worth interrupting you for.</div></div></div><div class="list" id="attention"><div class="empty"><strong>Checking inventory</strong>One moment.</div></div></div>
-</section>
-
-<section class="section">
-  <div class="section-head"><div><div class="section-title">What changed</div><div class="section-sub">Products creating the most movement over the last four weeks.</div></div><a class="section-link" href="/catalog">Open Catalog →</a></div>
+  <div class="section-head"><div><div class="section-title">What changed</div><div class="section-sub">The three products creating the most movement over the last four weeks.</div></div><a class="section-link" href="/catalog">Open Catalog →</a></div>
   <div class="card card-pad change-list"><div class="list" id="movers"><div class="empty"><strong>Reading product momentum</strong>One moment.</div></div></div>
 </section>
-
-<section class="section">
-  <div class="section-head"><div><div class="section-title">Go deeper</div><div class="section-sub">Each workspace should answer a different management question.</div></div></div>
-  <div class="grid four">
-    <a href="/sales" class="card card-pad interactive explore-card"><div><div class="kicker">Sales</div><div class="section-title">How are we selling?</div><div class="section-sub">Month, year, recent pace, products and orders.</div></div><div class="explore-arrow">→</div></a>
-    <a href="/inventory" class="card card-pad interactive explore-card"><div><div class="kicker">Inventory</div><div class="section-title">What needs replenishment?</div><div class="section-sub">Coverage, velocity and action queue.</div></div><div class="explore-arrow">→</div></a>
-    <a href="/catalog" class="card card-pad interactive explore-card"><div><div class="kicker">Catalog</div><div class="section-title">What is moving?</div><div class="section-sub">Your products, offers and momentum.</div></div><div class="explore-arrow">→</div></a>
-    <a href="/finance" class="card card-pad interactive explore-card"><div><div class="kicker">Finance</div><div class="section-title">Where is the money going?</div><div class="section-sub">Amazon-side cash events and fees, without pretending external COGS are known.</div></div><div class="explore-arrow">→</div></a>
-  </div>
-</section>
+</main>
 
 <footer class="footer"><span>MXN · today provisional / historical reconciled</span><span>Dirty Pawz Press Analytics</span></footer>
 </div>
@@ -68,9 +120,8 @@ const fmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
 const money=v=>'$'+fmt.format(Math.round(Number(v||0)));
 const pct=v=>v==null?'—':(Number(v)>0?'+':'')+Number(v).toFixed(1)+'%';
 const cls=v=>Number(v)>0?'good':Number(v)<0?'bad':'';
-const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function businessRead(delta,actions){delta=Number(delta||0);let title,copy;if(delta>=8){title='Momentum is strong.';copy='The last four weeks are clearly ahead of the prior four.'}else if(delta>=2){title='The business is edging up.';copy='Recent sales are modestly ahead of the prior four-week period.'}else if(delta>-2){title='The business is steady.';copy='Recent sales are essentially flat versus the prior four weeks.'}else if(delta>-8){title='The business has softened a little.';copy='Recent sales are below the prior four weeks, but not dramatically.'}else{title='Momentum has cooled.';copy='Recent sales are meaningfully below the prior four weeks and deserve a closer look.'}if(actions>0)copy+=' '+actions+' inventory '+(actions===1?'item needs':'items need')+' attention.';else copy+=' Inventory is not asking for an urgent intervention.';return {title,copy}}
-function draw(rows){const svg=document.getElementById('spark');if(!rows||rows.length<2){svg.innerHTML='';return}const W=900,H=145,L=56,R=8,T=8,B=10,w=W-L-R,h=H-T-B,vals=rows.map(r=>Number(r.sales||0)),maxRaw=Math.max(...vals,1),max=Math.ceil(maxRaw/500)*500||500,x=i=>L+i*w/(rows.length-1),y=v=>T+h-(v/max)*h;let out=[];[0,.5,1].forEach(fr=>{const v=max*fr,yy=y(v);out.push(`<line class="spark-grid" x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}"/>`);out.push(`<text class="spark-axis" x="${L-7}" y="${yy+4}" text-anchor="end">${money(v)}</text>`)});const pts=vals.map((v,i)=>x(i)+','+y(v)).join(' '),area=`${L},${T+h} ${pts} ${W-R},${T+h}`;out.push(`<polygon class="spark-area" points="${area}"/><polyline class="spark-line" points="${pts}"/>`);svg.innerHTML=out.join('')}
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+function businessRead(delta){delta=Number(delta||0);if(delta>=8)return {title:'Momentum is strong.',copy:'The last four weeks are clearly ahead of the prior four.'};if(delta>=2)return {title:'The business is edging up.',copy:'Recent sales are modestly ahead of the prior four-week period.'};if(delta>-2)return {title:'The business is steady.',copy:'Recent sales are essentially flat versus the prior four weeks.'};if(delta>-8)return {title:'The business has softened a little.',copy:'Recent sales are below the prior four weeks, but not dramatically.'};return {title:'Momentum has cooled.',copy:'Recent sales are meaningfully below the prior four weeks and deserve a closer look.'}}
 function render(d){
  document.getElementById('clock').textContent=d.local_time||'--:--';
  document.getElementById('fresh').textContent='Live operating data';
@@ -79,13 +130,15 @@ function render(d){
  document.getElementById('todayMeta').textContent=`${fmt.format(t.orders_today||0)} orders · ${fmt.format(t.units_today||0)} units`;
  document.getElementById('sales28').textContent=money(r.sales_t28);
  document.getElementById('sales28Meta').textContent=`${fmt.format(r.orders_t28||0)} orders · through ${String(r.business_date||'').slice(5)}`;
- const m=document.getElementById('momentum');m.textContent=pct(r.delta28_pct);m.className='metric-value '+cls(r.delta28_pct);
+ const m=document.getElementById('momentum');m.textContent=pct(r.delta28_pct);m.className='home-signal-value '+cls(r.delta28_pct);
  document.getElementById('actions').textContent=fmt.format(is.needs_action||0);
  document.getElementById('actionMeta').textContent=`${is.stockouts||0} stockout · ${is.produce||0} produce · ${is.plan||0} plan`;
- const br=businessRead(r.delta28_pct,is.needs_action||0);document.getElementById('storyTitle').textContent=br.title;document.getElementById('storyCopy').textContent=br.copy;document.getElementById('storyNumber').textContent=money(r.sales_t28);document.getElementById('storyCaption').textContent=`Last 28 days · ${pct(r.delta28_pct)} vs prior 28`;
+ const br=businessRead(r.delta28_pct);document.getElementById('storyTitle').textContent=br.title;document.getElementById('storyCopy').textContent=br.copy;document.getElementById('storyNumber').textContent=pct(r.delta28_pct);document.getElementById('storyCaption').textContent='28 days vs prior 28';
  DPPCharts.homeRhythm('#spark',d.series);
- const att=(d.inventory||[]);document.getElementById('attention').innerHTML=att.length?att.slice(0,4).map(x=>`<a class="list-row" href="/inventory"><div><div class="product-sku">${esc(x.sku)} · <span class="chip warn">${esc(x.action)}</span></div><div class="row-title">${esc(x.product||x.sku)}</div><div class="row-sub">${fmt.format(x.available||0)} on hand · ${fmt.format(x.inbound||0)} inbound</div></div><div class="row-value"><strong>${x.days_cover==null?'—':Number(x.days_cover).toFixed(0)}</strong><small>days cover</small></div></a>`).join(''):`<div class="empty"><strong>Nothing urgent.</strong>Inventory does not currently need an intervention.</div>`;
- const movers=(d.movers||[]).slice(0,6);document.getElementById('movers').innerHTML=movers.map(x=>{const c=cls(x.delta28_pct);const tag=x.state||'STABLE';const img=x.image_url?`<img class="product-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">`:'';return `<a class="list-row" href="/product?sku=${encodeURIComponent(x.sku)}"><div class="product-line">${img}<div style="min-width:0"><div class="product-sku">${esc(x.sku)}</div><div class="product-name">${esc(x.product||x.sku)}</div><div class="change-tag"><span class="chip ${c}">${esc(tag)}</span></div></div></div><div class="row-value"><strong>${money(x.sales_t28)}</strong><small class="${c}">${pct(x.delta28_pct)} vs prior 28</small></div></a>`}).join('')||`<div class="empty"><strong>No mover data yet.</strong>Product trends will appear here as history builds.</div>`;
+ const att=(d.inventory||[]).filter(x=>['STOCKOUT','PRODUCE','PLAN'].includes(String(x.action||'').toUpperCase()));
+ const restock=document.getElementById('restockSection');
+ if(att.length){restock.classList.add('show');document.getElementById('attention').innerHTML=att.slice(0,2).map(x=>`<a class="list-row" href="/product?sku=${encodeURIComponent(x.sku)}"><div><div class="product-sku">${esc(x.sku)} · <span class="chip warn">${esc(x.action)}</span></div><div class="row-title">${esc(x.product||x.sku)}</div><div class="row-sub">${fmt.format(x.available||0)} on hand · ${fmt.format(x.inbound||0)} inbound</div></div><div class="row-value"><strong>${x.days_cover==null?'—':Number(x.days_cover).toFixed(0)}</strong><small>days cover</small></div></a>`).join('')}else{restock.classList.remove('show')}
+ const movers=(d.movers||[]).slice(0,3);document.getElementById('movers').innerHTML=movers.map(x=>{const c=cls(x.delta28_pct);const tag=x.state||'STABLE';const img=x.image_url?`<img class="product-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">`:'';return `<a class="list-row" href="/product?sku=${encodeURIComponent(x.sku)}"><div class="product-line">${img}<div style="min-width:0"><div class="product-sku">${esc(x.sku)}</div><div class="product-name">${esc(x.product||x.sku)}</div><div class="change-tag"><span class="chip ${c}">${esc(tag)}</span></div></div></div><div class="row-value"><strong>${money(x.sales_t28)}</strong><small class="${c}">${pct(x.delta28_pct)} vs prior 28</small></div></a>`}).join('')||`<div class="empty"><strong>No mover data yet.</strong>Product trends will appear here as history builds.</div>`;
 }
 function load(){fetch('/api/home',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(render).catch(e=>{document.getElementById('storyTitle').textContent='The operating feed is unavailable.';document.getElementById('storyCopy').textContent=e.message})}load();setInterval(load,60000);
 })();
