@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 
 def _one(cur, sql: str, params=()):
     cur.execute(sql, params)
@@ -157,7 +159,7 @@ def ads_payload(connect, marketplace: str) -> dict:
                 "total_business_sales": prior_total_sales,
                 "tacos": prior_tacos,
             },
-            "period_start": through.replace(day=through.day).isoformat() if False else (through.fromordinal(through.toordinal()-27)).isoformat(),
+            "period_start": (through - timedelta(days=27)).isoformat(),
             "period_end": through.isoformat(),
             "basis": "Latest 28 reportable Ads days aligned to reconciled seller sales. Attributed conversions can revise after the sale date.",
         })
