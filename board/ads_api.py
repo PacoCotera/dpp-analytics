@@ -19,6 +19,19 @@ def _pct_delta(current, prior):
     return 100 * (current - prior) / prior
 
 
+def _empty(status: str, freshness=None) -> dict:
+    return {
+        "status": status,
+        "freshness": freshness,
+        "summary": {},
+        "daily": [],
+        "campaigns": [],
+        "products": [],
+        "targets": [],
+        "search_terms": [],
+    }
+
+
 def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
     """Read-only Ads operating payload.
 
@@ -26,11 +39,16 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
     uses the independent seller sales mart aligned to the latest reportable Ads date;
     we never infer exact organic sales by subtraction because attribution can lag,
     overlap, and revise after the order date.
+
+    Target and shopper-query grains are also separate. A target is what the seller
+    bids on; a search term is what Amazon reports the shopper actually searched or
+    matched. Keeping them separate prevents query performance from rewriting target
+    history and makes negative-target / harvesting decisions auditable later.
     """
     with connect() as conn, conn.cursor() as cur:
         exists = _one(cur, "SELECT to_regclass('ads.daily_account') AS rel")
         if not exists.get("rel"):
-            return {"status": "not_initialized", "freshness": None, "summary": {}, "daily": [], "campaigns": [], "products": []}
+            return _empty("not_initialized")
 
         freshness = _one(cur, """
             SELECT max(d.business_date) AS through_date,
@@ -43,14 +61,7 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
         """, (marketplace,))
         through = freshness.get("through_date")
         if not through:
-            return {
-                "status": "awaiting_ads_data",
-                "freshness": freshness,
-                "summary": {},
-                "daily": [],
-                "campaigns": [],
-                "products": [],
-            }
+            return _empty("awaiting_ads_data", freshness)
 
         summary = _one(cur, """
             SELECT coalesce(sum(d.spend),0) AS spend,
@@ -134,6 +145,45 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
             ORDER BY spend DESC LIMIT 60
         """, (marketplace, through, through))
 
+        targets = []
+        target_view = _one(cur, "SELECT to_regclass('mart.ads_target_daily') AS rel")
+        if target_view.get("rel"):
+            targets = _all(cur, """
+                SELECT d.account_id,d.target_id,d.campaign_id,max(c.campaign_name) AS campaign_name,
+                       max(d.target_type) AS target_type,max(d.target_expression) AS target_expression,
+                       max(d.match_type) AS match_type,
+                       sum(d.spend) AS spend,sum(d.attributed_sales) AS attributed_sales,
+                       sum(d.impressions) AS impressions,sum(d.clicks) AS clicks,sum(d.purchases) AS purchases,
+                       CASE WHEN sum(d.impressions)>0 THEN sum(d.clicks)::numeric/sum(d.impressions) END AS ctr,
+                       CASE WHEN sum(d.clicks)>0 THEN sum(d.spend)/sum(d.clicks) END AS cpc,
+                       CASE WHEN sum(d.spend)>0 THEN sum(d.attributed_sales)/sum(d.spend) END AS roas,
+                       CASE WHEN sum(d.attributed_sales)>0 THEN sum(d.spend)/sum(d.attributed_sales) END AS acos
+                FROM mart.ads_target_daily d
+                LEFT JOIN ads.campaign c ON c.account_id=d.account_id AND c.campaign_id=d.campaign_id
+                WHERE d.marketplace_id=%s AND d.business_date BETWEEN %s::date - 27 AND %s::date
+                GROUP BY d.account_id,d.target_id,d.campaign_id
+                ORDER BY spend DESC LIMIT 100
+            """, (marketplace, through, through))
+
+        search_terms = []
+        search_view = _one(cur, "SELECT to_regclass('mart.ads_search_term_daily') AS rel")
+        if search_view.get("rel"):
+            search_terms = _all(cur, """
+                SELECT d.account_id,d.search_term,d.campaign_id,max(c.campaign_name) AS campaign_name,
+                       d.ad_group_id,d.target_id,max(d.match_type) AS match_type,
+                       sum(d.spend) AS spend,sum(d.attributed_sales) AS attributed_sales,
+                       sum(d.impressions) AS impressions,sum(d.clicks) AS clicks,sum(d.purchases) AS purchases,
+                       CASE WHEN sum(d.impressions)>0 THEN sum(d.clicks)::numeric/sum(d.impressions) END AS ctr,
+                       CASE WHEN sum(d.clicks)>0 THEN sum(d.spend)/sum(d.clicks) END AS cpc,
+                       CASE WHEN sum(d.spend)>0 THEN sum(d.attributed_sales)/sum(d.spend) END AS roas,
+                       CASE WHEN sum(d.attributed_sales)>0 THEN sum(d.spend)/sum(d.attributed_sales) END AS acos
+                FROM mart.ads_search_term_daily d
+                LEFT JOIN ads.campaign c ON c.account_id=d.account_id AND c.campaign_id=d.campaign_id
+                WHERE d.marketplace_id=%s AND d.business_date BETWEEN %s::date - 27 AND %s::date
+                GROUP BY d.account_id,d.search_term,d.campaign_id,d.ad_group_id,d.target_id
+                ORDER BY spend DESC LIMIT 150
+            """, (marketplace, through, through))
+
         spend = summary.get("spend") or 0
         prior_spend = prior.get("spend") or 0
         total_sales = seller_sales.get("current_sales") or 0
@@ -173,4 +223,6 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
             "daily": daily,
             "campaigns": campaigns,
             "products": products,
+            "targets": targets,
+            "search_terms": search_terms,
         }
