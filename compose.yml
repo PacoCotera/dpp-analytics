@@ -82,7 +82,8 @@ services:
 
   board:
     build:
-      context: ./board
+      context: .
+      dockerfile: board/Dockerfile
     image: dpp-analytics-board:local
     container_name: dpp-board
     restart: unless-stopped
