@@ -7,6 +7,19 @@ finished Amazon release/advertising close and all SKU costs are known, this job
 writes an immutable close version plus SKU-level COGS snapshot. Later edits to
 product_costs.json do not rewrite history. A historical correction requires an
 explicit RESTATED version.
+
+The cost config is backward compatible:
+- "SKU": 50 applies to all periods.
+- "SKU": {"unit_cogs": 50} also applies to all periods.
+- effective-dated history can be supplied when costs changed over time:
+  "SKU": {
+    "unit_cogs": 55,
+    "effective_from": "2026-08-01",
+    "history": [
+      {"effective_from": "2025-11-01", "effective_to": "2026-07-31", "unit_cogs": 50}
+    ]
+  }
+The resolver uses the cost applicable to the business month being closed.
 """
 
 import argparse
@@ -34,28 +47,77 @@ def _month_end(d: date) -> date:
     return date(d.year, d.month, calendar.monthrange(d.year, d.month)[1])
 
 
-def _load_costs() -> dict[str, float]:
+def _parse_dateish(value) -> date | None:
+    if not value:
+        return None
+    text = str(value).strip()
+    try:
+        if len(text) == 7:
+            text += "-01"
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def _numeric(value) -> float | None:
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return None
+    return amount if amount >= 0 else None
+
+
+def _load_costs() -> dict[str, object]:
     try:
         raw = json.loads(COSTS_PATH.read_text())
     except Exception:
         return {}
     raw = raw.get("costs", raw) if isinstance(raw, dict) else {}
-    result: dict[str, float] = {}
-    for sku, value in raw.items():
-        if not isinstance(sku, str) or sku.startswith("_"):
-            continue
-        if isinstance(value, dict):
-            value = value.get("unit_cogs")
-        try:
-            amount = float(value)
-        except (TypeError, ValueError):
-            continue
-        if amount >= 0:
-            result[sku] = amount
-    return result
+    return {
+        str(sku): value
+        for sku, value in raw.items()
+        if isinstance(sku, str) and not sku.startswith("_")
+    }
 
 
-def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, float]) -> dict:
+def _unit_cost(costs: dict[str, object], sku: str, when: date) -> float | None:
+    value = costs.get(sku)
+    direct = _numeric(value)
+    if direct is not None:
+        return direct
+    if not isinstance(value, dict):
+        return None
+
+    # Explicit dated history wins whenever a matching period exists.
+    matches: list[tuple[date, float]] = []
+    history = value.get("history")
+    if isinstance(history, list):
+        for entry in history:
+            if not isinstance(entry, dict):
+                continue
+            amount = _numeric(entry.get("unit_cogs"))
+            if amount is None:
+                continue
+            start = _parse_dateish(entry.get("effective_from") or entry.get("from")) or date.min
+            end = _parse_dateish(entry.get("effective_to") or entry.get("to"))
+            if start <= when and (end is None or when <= end):
+                matches.append((start, amount))
+    if matches:
+        return max(matches, key=lambda x: x[0])[1]
+
+    # Current/standard value can optionally have its own effective-from date.
+    amount = _numeric(value.get("unit_cogs"))
+    if amount is None:
+        amount = _numeric(value.get("current"))
+    if amount is None:
+        return None
+    effective_from = _parse_dateish(value.get("effective_from"))
+    if effective_from and when < effective_from:
+        return None
+    return amount
+
+
+def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, object]) -> dict:
     nxt = _next_month(month)
     after = _next_month(nxt)
 
@@ -103,10 +165,8 @@ def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, float])
     deferred_events = int(fin.get("deferred_events") or 0)
     order_net = float(fin.get("order_net") or 0)
 
-    # Until Ads API reporting is authorized, the monthly Amazon advertising
-    # charge posted during the following calendar month closes the prior
-    # advertising month. This bridge is explicit in close_basis and can later
-    # be replaced by true Ads accrual through a RESTATED version if necessary.
+    # Temporary bridge until Ads API reporting is authorized: the Amazon ad
+    # charge posted in the following calendar month closes the prior ad month.
     cur.execute(
         f"""
         SELECT COALESCE(sum(total_amount),0)::numeric(16,2) AS amount,
@@ -170,7 +230,7 @@ def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, float])
         sku = row.get("sku")
         units = int(row.get("units") or 0)
         total_units += units
-        unit_cogs = costs.get(sku)
+        unit_cogs = _unit_cost(costs, sku, month)
         configured = unit_cogs is not None
         extended = round(units * unit_cogs, 2) if configured else None
         if configured:
@@ -185,6 +245,10 @@ def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, float])
         })
 
     cogs_complete = total_units == covered_units
+    missing_skus = [
+        {"sku": r["sku"], "units": r["units"]}
+        for r in sku_rows if not r["configured"]
+    ]
     finance_released = deferred_events == 0 and (released_orders > 0 or net_sales == 0)
     now_local = datetime.now(ZoneInfo(TZ)).date()
     old_enough = now_local >= _month_end(month) + timedelta(days=CLOSE_GRACE_DAYS)
@@ -211,6 +275,7 @@ def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, float])
         "contribution_margin_pct": margin,
         "cash_transferred": round(cash, 2),
         "sku_rows": sku_rows,
+        "missing_skus": missing_skus,
         "cogs_complete": cogs_complete,
         "cogs_coverage_pct": round(100.0 * covered_units / total_units, 1) if total_units else 100.0,
         "core_orders": core_orders,
@@ -277,7 +342,7 @@ def close_ready_months() -> dict:
     with db.ingestion_run("dpp_finance", "month_close", {"marketplace": marketplace}) as run:
         with db.connect() as conn, conn.cursor() as cur:
             cur.execute(
-                f"""
+                """
                 SELECT min(business_date) AS first_sales, max(business_date) AS last_sales
                 FROM mart.business_daily
                 WHERE marketplace_id=%s AND reconciled_daily_report
@@ -314,7 +379,13 @@ def close_ready_months() -> dict:
                             waits.append("close_grace")
                     if not snap["cogs_complete"]:
                         waits.append("product_cogs")
-                    pending.append({"month": str(cursor), "amazon_closed": snap["amazon_closed"], "waits": waits})
+                    pending.append({
+                        "month": str(cursor),
+                        "amazon_closed": snap["amazon_closed"],
+                        "waits": waits,
+                        "cogs_coverage_pct": snap["cogs_coverage_pct"],
+                        "missing_skus": snap["missing_skus"],
+                    })
                 cursor = _next_month(cursor)
             conn.commit()
         run["records_read"] = len(created) + len(pending)
@@ -338,7 +409,8 @@ def restate_month(month_text: str, reason: str) -> dict:
         if not snap["amazon_closed"]:
             raise RuntimeError(f"{month:%Y-%m} no longer satisfies Amazon-close criteria")
         if not snap["cogs_complete"]:
-            raise RuntimeError(f"{month:%Y-%m} has incomplete product COGS")
+            missing = ", ".join(r["sku"] for r in snap["missing_skus"])
+            raise RuntimeError(f"{month:%Y-%m} has incomplete product COGS: {missing}")
         version = previous + 1
         _write_close(cur, marketplace, snap, version, restatement_reason=reason)
         conn.commit()
