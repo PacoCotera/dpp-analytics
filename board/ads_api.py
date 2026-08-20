@@ -19,7 +19,7 @@ def _pct_delta(current, prior):
     return 100 * (current - prior) / prior
 
 
-def ads_payload(connect, marketplace: str) -> dict:
+def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
     """Read-only Ads operating payload.
 
     Ads attributed sales remain explicitly separate from seller total sales. TACOS
@@ -164,6 +164,8 @@ def ads_payload(connect, marketplace: str) -> dict:
             "basis": "Latest 28 reportable Ads days aligned to reconciled seller sales. Attributed conversions can revise after the sale date.",
         })
 
+        if decorate_products:
+            products = decorate_products(products)
         return {
             "status": "ready",
             "freshness": freshness,
