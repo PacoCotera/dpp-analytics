@@ -35,6 +35,9 @@ PRODUCT_INDEX = (STATIC / "product.html").read_bytes()
 TRAJECTORY_INDEX = (STATIC / "trajectory.html").read_bytes()
 DATA_HEALTH_INDEX = (STATIC / "data_health.html").read_bytes()
 THEME_CSS = (STATIC / "theme.css").read_bytes()
+CHART_CSS = (STATIC / "chart-system.css").read_bytes()
+CHART_JS = (STATIC / "chart-system.js").read_bytes()
+D3_JS = (STATIC / "vendor" / "d3.v7.min.js").read_bytes()
 MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
 AMAZON_MX_DP = "https://www.amazon.com.mx/dp/"
 
@@ -171,6 +174,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed=urlsplit(self.path); path=parsed.path; query=parse_qs(parsed.query)
         if path=="/assets/theme.css": self.send_bytes(200,"text/css; charset=utf-8",THEME_CSS,cache="public, max-age=60"); return
+        if path=="/assets/chart-system.css": self.send_bytes(200,"text/css; charset=utf-8",CHART_CSS,cache="public, max-age=300"); return
+        if path=="/assets/chart-system.js": self.send_bytes(200,"text/javascript; charset=utf-8",CHART_JS,cache="public, max-age=300"); return
+        if path=="/assets/vendor/d3.v7.min.js": self.send_bytes(200,"text/javascript; charset=utf-8",D3_JS,cache="public, max-age=31536000, immutable"); return
         if path=="/health":
             try:
                 payload=health_payload(); status=200 if payload.get("status")=="ok" else 503; self.send_bytes(status,"application/json",json.dumps(payload,separators=(",",":")).encode())

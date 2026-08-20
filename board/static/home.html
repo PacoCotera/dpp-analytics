@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f4f0e8">
 <title>Dirty Pawz Press · Home</title>
-<link rel="stylesheet" href="/assets/theme.css">
+<link rel="stylesheet" href="/assets/theme.css"><link rel="stylesheet" href="/assets/chart-system.css">
 <style>
 .spark-card{padding:16px 18px}.spark{width:100%;height:145px;display:block}.spark-grid{stroke:#e3ddd3;stroke-width:1}.spark-axis{fill:#766e64;font-size:11px}.spark-area{fill:rgba(229,139,31,.12)}.spark-line{fill:none;stroke:#2b2824;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.attention-card{border-left:5px solid var(--warn)}.explore-card{min-height:150px;display:flex;flex-direction:column;justify-content:space-between}.explore-arrow{font-size:22px}.change-list .list-row{padding:16px 0}.change-tag{margin-top:6px}.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#34a15f;margin-right:6px;box-shadow:0 0 0 4px rgba(52,161,95,.12)}
 @media(max-width:640px){.spark-axis{font-size:12px}}
@@ -62,7 +62,7 @@
 
 <footer class="footer"><span>MXN · today provisional / historical reconciled</span><span>Dirty Pawz Press Analytics</span></footer>
 </div>
-<script>
+<script src="/assets/vendor/d3.v7.min.js"></script><script src="/assets/chart-system.js"></script><script>
 (function(){
 const fmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
 const money=v=>'$'+fmt.format(Math.round(Number(v||0)));
@@ -83,7 +83,7 @@ function render(d){
  document.getElementById('actions').textContent=fmt.format(is.needs_action||0);
  document.getElementById('actionMeta').textContent=`${is.stockouts||0} stockout · ${is.produce||0} produce · ${is.plan||0} plan`;
  const br=businessRead(r.delta28_pct,is.needs_action||0);document.getElementById('storyTitle').textContent=br.title;document.getElementById('storyCopy').textContent=br.copy;document.getElementById('storyNumber').textContent=money(r.sales_t28);document.getElementById('storyCaption').textContent=`Last 28 days · ${pct(r.delta28_pct)} vs prior 28`;
- draw(d.series);
+ DPPCharts.homeRhythm('#spark',d.series);
  const att=(d.inventory||[]);document.getElementById('attention').innerHTML=att.length?att.slice(0,4).map(x=>`<a class="list-row" href="/inventory"><div><div class="product-sku">${esc(x.sku)} · <span class="chip warn">${esc(x.action)}</span></div><div class="row-title">${esc(x.product||x.sku)}</div><div class="row-sub">${fmt.format(x.available||0)} on hand · ${fmt.format(x.inbound||0)} inbound</div></div><div class="row-value"><strong>${x.days_cover==null?'—':Number(x.days_cover).toFixed(0)}</strong><small>days cover</small></div></a>`).join(''):`<div class="empty"><strong>Nothing urgent.</strong>Inventory does not currently need an intervention.</div>`;
  const movers=(d.movers||[]).slice(0,6);document.getElementById('movers').innerHTML=movers.map(x=>{const c=cls(x.delta28_pct);const tag=x.state||'STABLE';const img=x.image_url?`<img class="product-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">`:'';return `<a class="list-row" href="/product?sku=${encodeURIComponent(x.sku)}"><div class="product-line">${img}<div style="min-width:0"><div class="product-sku">${esc(x.sku)}</div><div class="product-name">${esc(x.product||x.sku)}</div><div class="change-tag"><span class="chip ${c}">${esc(tag)}</span></div></div></div><div class="row-value"><strong>${money(x.sales_t28)}</strong><small class="${c}">${pct(x.delta28_pct)} vs prior 28</small></div></a>`}).join('')||`<div class="empty"><strong>No mover data yet.</strong>Product trends will appear here as history builds.</div>`;
 }

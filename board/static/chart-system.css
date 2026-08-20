@@ -1,0 +1,32 @@
+/* DPP chart system: shared visual grammar for every commercial dashboard chart. */
+.dpp-chart-host{position:relative}
+.dpp-chart{display:block;width:100%;height:auto;overflow:visible;touch-action:pan-y}
+.dpp-chart .dpp-grid line{stroke:#ddd5c9;stroke-width:1;shape-rendering:crispEdges}
+.dpp-chart .dpp-grid path{display:none}
+.dpp-chart .dpp-axis path,.dpp-chart .dpp-axis line{stroke:#cfc5b7}
+.dpp-chart .dpp-axis text{fill:#746c62;font:600 11px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.dpp-chart .dpp-zero{stroke:#514b43;stroke-width:1.35;shape-rendering:crispEdges}
+.dpp-chart .dpp-label{fill:#302c27;font:750 11px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.dpp-chart .dpp-value{fill:#302c27;font:800 11px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+.dpp-chart .dpp-muted{fill:#7b7369;font:650 10px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.dpp-chart .dpp-bar{transition:opacity .16s ease,filter .16s ease;outline:none}
+.dpp-chart .dpp-bar:hover,.dpp-chart .dpp-bar:focus{opacity:1;filter:brightness(.96)}
+.dpp-chart .dpp-line{fill:none;stroke:#26231f;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.dpp-chart .dpp-line-halo{fill:none;stroke:#f8f5ef;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+.dpp-chart .dpp-dot{fill:#26231f;stroke:#f8f5ef;stroke-width:2}
+.dpp-chart .dpp-connector{stroke:#8e8579;stroke-width:1.25;stroke-dasharray:3 3}
+.dpp-chart .dpp-legend text{fill:#665f56;font:700 10px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.dpp-chart-tooltip{position:absolute;z-index:8;min-width:150px;max-width:250px;padding:10px 12px;border:1px solid rgba(62,54,45,.18);border-radius:12px;background:rgba(30,28,25,.96);color:#fffaf1;box-shadow:0 12px 30px rgba(28,24,20,.18);font-size:11px;line-height:1.4;pointer-events:none;opacity:0;transform:translate(-50%,-100%) translateY(-10px);transition:opacity .12s ease;white-space:normal}
+.dpp-chart-tooltip.show{opacity:1}
+.dpp-chart-tooltip strong{display:block;margin-bottom:2px;font-size:12px}
+.dpp-chart-tooltip span{display:block;color:#d9d1c6}
+.chart-status{display:flex;align-items:center;gap:7px;color:#746c62;font-size:10px;font-weight:750}
+.chart-status:before{content:"";width:7px;height:7px;border-radius:50%;background:#2f7d4f}
+@media(max-width:640px){
+  .dpp-chart .dpp-axis text{font-size:11px}
+  .dpp-chart .dpp-value{font-size:11px}
+  .dpp-chart-tooltip{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .dpp-chart .dpp-bar,.dpp-chart-tooltip{transition:none}
+}
