@@ -30,9 +30,7 @@
   };
   const parseDate = s => s ? new Date(`${String(s).slice(0, 10)}T12:00:00Z`) : null;
   const weekdayLetter = d => ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getUTCDay()];
-  const pct = v => v == null ? '—' : `${Number(v) > 0 ? '+' : ''}${Number(v).toFixed(1)}%`;
 
-  /* Build the normal-mode layout once. The original Today renderer keeps owning data. */
   const stage = document.createElement('section');
   stage.className = 'today-operating-stage';
   stage.setAttribute('aria-label', 'Current business state');
@@ -75,16 +73,18 @@
     const el = document.getElementById(id); if (el) el.dataset.compactLabel = text;
   });
 
-  /* Orders are supporting evidence. Keep the ledger available, but closed by default. */
+  /* Orders are supporting evidence. Preserve the original header nodes because the base
+     Today renderer updates #winsSub on every refresh; hide them rather than deleting them. */
   const wins = document.querySelector('.wins');
   if (wins) {
     wins.classList.add('today-orders-compact');
     const stream = wins.querySelector('#stream');
+    const sourceHead = wins.querySelector('.panel-head');
+    if (sourceHead) sourceHead.style.display = 'none';
     const details = document.createElement('details');
     details.className = 'today-orders-details';
     const summary = document.createElement('summary');
     summary.innerHTML = '<span><strong>Order ledger</strong><small>Transaction detail for the selected day</small></span><b>Show ↓</b>';
-    wins.querySelector('.panel-head')?.remove();
     if (stream) details.append(summary, stream);
     wins.appendChild(details);
     details.addEventListener('toggle', () => {
@@ -111,8 +111,6 @@
     document.body.dataset.dayMode = active?.classList.contains('live') ? 'live' : 'closed';
   }
 
-  /* The base renderer replaces picker children after each API refresh. Observe only child replacement;
-     canonicalizing text does not retrigger this observer. */
   canonicalizePicker();
   const pickerObserver = new MutationObserver(() => canonicalizePicker());
   pickerObserver.observe(picker, { childList: true });
@@ -215,8 +213,6 @@
     renderRhythmRail(host, rows);
   }
 
-  /* Override the chart renderer before the first API response normally returns. The base page still
-     owns period selection and data; this function only owns visual rendering. */
   window.DPPCharts = window.DPPCharts || {};
   window.DPPCharts.dailyRhythm = drawMeasuredRhythm;
 
@@ -234,9 +230,6 @@
     ro.observe(rhythmHost);
   }
 
-  /* Make the product title stable before the first data paint. */
   const productsTitle = document.getElementById('productsTitle');
   if (productsTitle) productsTitle.textContent = 'Products sold';
-
-  /* Footer already carries the build SHA from the image build. Do not fetch or synthesize another one. */
 })();
