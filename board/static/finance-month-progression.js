@@ -72,8 +72,10 @@
       .attr('text-anchor', 'middle').text(d => shortMoney(d.contribution));
 
     const signal = d3.line().x(d => x(String(d.month).slice(0, 7)) + x.bandwidth() / 2).y(d => y(d.signal)).curve(d3.curveMonotoneX);
-    plot.append('path').datum(data).attr('class', 'dpp-line-halo').attr('d', signal);
-    plot.append('path').datum(data).attr('class', 'dpp-line').attr('d', signal);
+    plot.append('path').datum(data).attr('class', 'dpp-line-halo').attr('d', signal)
+      .attr('fill', 'none').attr('stroke', '#f8f5ef').attr('stroke-width', 7).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round');
+    plot.append('path').datum(data).attr('class', 'dpp-line').attr('d', signal)
+      .attr('fill', 'none').attr('stroke', '#26231f').attr('stroke-width', 3).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round');
     plot.selectAll('.finance-signal-dot').data(data).join('circle').attr('class', 'dpp-dot finance-signal-dot')
       .attr('cx', d => x(String(d.month).slice(0, 7)) + x.bandwidth() / 2).attr('cy', d => y(d.signal)).attr('r', 4);
 
