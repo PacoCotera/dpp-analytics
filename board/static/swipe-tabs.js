@@ -60,12 +60,24 @@
   }
 
   let start = null;
+  let suppressClickUntil = 0;
   const isMobile = () => matchMedia('(max-width: 760px)').matches;
-  const excluded = '.primary-nav,.tabs,.view-tabs,.filters,.periods,.chart-tools,.table-wrap,.order-stream,.catalog-toolbar,input,textarea,select,button,a,svg,[data-no-swipe]';
+  const explicitNoSwipe = '.primary-nav,.tabs,.view-tabs,.filters,.periods,.chart-tools,.table-wrap,.order-stream,.catalog-toolbar,input,textarea,select,button,svg,[data-no-swipe],[data-horizontal-scroll]';
+
+  function hasHorizontalScrollRegion(target) {
+    let el = target instanceof Element ? target : null;
+    while (el && el !== document.body) {
+      const style = getComputedStyle(el);
+      const overflowX = style.overflowX;
+      if ((overflowX === 'auto' || overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 3) return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
 
   document.addEventListener('pointerdown', event => {
     if (!isMobile() || event.pointerType !== 'touch') return;
-    if (event.target.closest(excluded)) return;
+    if (event.target.closest(explicitNoSwipe) || hasHorizontalScrollRegion(event.target)) return;
     start = { x: event.clientX, y: event.clientY, t: performance.now() };
   }, { passive: true });
 
@@ -79,10 +91,21 @@
     if (dt > 900 || Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
     const delta = dx < 0 ? 1 : -1;
 
+    // A swipe may begin on a normal card/link. Suppress the synthetic click that
+    // some mobile browsers emit after the gesture so navigation happens only once.
+    suppressClickUntil = performance.now() + 450;
+
     // Internal workspaces are part of the swipe sequence. Once the user reaches
-    // the first/last workspace, the next swipe continues to the adjacent
-    // primary page. Pages without internal tabs move directly page-to-page.
+    // the first/last workspace, the next swipe continues to the adjacent page.
     if (groups.length && moveTab(groups[0], delta)) return;
     movePrimary(delta);
   }, { passive: true });
+
+  document.addEventListener('click', event => {
+    if (performance.now() < suppressClickUntil) {
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClickUntil = 0;
+    }
+  }, true);
 })();
