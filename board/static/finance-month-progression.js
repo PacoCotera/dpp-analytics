@@ -1,8 +1,8 @@
 (() => {
   'use strict';
-  const MARKER = 'finance-month-progression-v2';
-  if (document.documentElement.dataset[MARKER]) return;
-  document.documentElement.dataset[MARKER] = '1';
+  const MARKER = 'data-finance-month-progression-v2';
+  if (document.documentElement.hasAttribute(MARKER)) return;
+  document.documentElement.setAttribute(MARKER, '1');
 
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const monthName = value => {
