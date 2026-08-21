@@ -45,8 +45,58 @@ def health_board_payload(connect, marketplace: str) -> dict:
             """,
             (marketplace, marketplace, marketplace, marketplace, marketplace, marketplace, marketplace),
         )
+        ads_quality = _all(
+            cur,
+            """
+            SELECT account_id, first_date, latest_date, days_seen, healthy_days,
+                   issue_days, latest_ingested_at, quality_state
+            FROM mart.ads_ingestion_quality_summary
+            WHERE marketplace_id=%s
+            ORDER BY account_id
+            """,
+            (marketplace,),
+        )
+        ads_issue_breakdown = _all(
+            cur,
+            """
+            SELECT quality_state, count(*)::int AS days
+            FROM mart.ads_ingestion_quality
+            WHERE marketplace_id=%s AND quality_state <> 'OK'
+            GROUP BY quality_state
+            ORDER BY days DESC, quality_state
+            """,
+            (marketplace,),
+        )
+        ads_summary = {
+            "accounts": len(ads_quality),
+            "healthy_accounts": sum(1 for row in ads_quality if row.get("quality_state") == "HEALTHY"),
+            "attention_accounts": sum(1 for row in ads_quality if row.get("quality_state") == "ATTENTION"),
+            "issue_days": sum(int(row.get("issue_days") or 0) for row in ads_quality),
+            "state": (
+                "AWAITING_DATA" if not ads_quality
+                else "ATTENTION" if any(row.get("quality_state") == "ATTENTION" for row in ads_quality)
+                else "HEALTHY"
+            ),
+        }
         local_clock = _one(
             cur,
             "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time",
         )
-    return {"summary": summary, "warehouse": warehouse, "jobs": jobs, "local_time": local_clock.get("local_time")}
+    return {
+        "summary": summary,
+        "warehouse": warehouse,
+        "ads": {
+            "summary": ads_summary,
+            "accounts": ads_quality,
+            "issues": ads_issue_breakdown,
+            "contract": {
+                "account_campaign": "Account rollup must reconcile to campaign reporting at account/day grain.",
+                "account_product": "Advertised-product spend and attributed sales must reconcile to account values.",
+                "currency": "Fact currency must match the advertiser-account currency.",
+                "tacos_denominator": "TACOS requires independently reconciled seller sales for the same marketplace/day.",
+                "attribution": "Attributed sales are Amazon attribution, not incremental or exact organic sales.",
+            },
+        },
+        "jobs": jobs,
+        "local_time": local_clock.get("local_time"),
+    }
