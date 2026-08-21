@@ -10,7 +10,6 @@ on:
       - 'board/.prettierrc.json'
       - '.github/workflows/frontend-quality.yml'
   push:
-    branches: [main]
     paths:
       - 'board/static/**'
       - 'board/package.json'
