@@ -81,19 +81,69 @@ async function verifyCatalogMode(page, mode) {
   await wait(page, '.analysis-row');
 }
 
+async function assertFinanceChartMarks(page, label) {
+  await wait(page, '#progression');
+  const marks = await page.locator('#progression rect, #progression path, #progression line').count();
+  if (!marks) throw new Error(`Finance ${label} rendered without chart marks`);
+}
+
+async function chooseClosedFinanceMonth(page) {
+  const monthButton = page.locator('button[data-finance-window="month"]');
+  await monthButton.click();
+  await page.locator('button[data-finance-window="month"][aria-selected="true"]').waitFor({ state: 'visible', timeout: 5000 });
+  await wait(page, '#monthPicker');
+  const options = await page.locator('#monthPicker option').evaluateAll(items => items.map(item => ({ value: item.value, text: item.textContent || '' })));
+  if (!options.length) throw new Error('Finance Month view has no accounting-month options');
+  const closedOption = options.find(option => !option.text.includes('OPEN'));
+  if (!closedOption) throw new Error('Finance Month view has no closed month available for immutable drill-down QA');
+  await page.locator('#monthPicker').selectOption(closedOption.value);
+  await assertFinanceChartMarks(page, 'closed month');
+  const closedState = (await page.locator('#progressionState').textContent() || '').trim();
+  if (!closedState || closedState.includes('OPEN')) throw new Error(`Finance closed-month drill-down has invalid state: ${closedState || 'blank'}`);
+}
+
+async function verifyFinanceWindows(page) {
+  const buttons = ['3m', 'ytd', '12m', 'lastYear', 'all'];
+  for (const windowKey of buttons) {
+    const button = page.locator(`button[data-finance-window="${windowKey}"]`);
+    await button.waitFor({ state: 'visible', timeout: 5000 });
+    await button.click();
+    await page.locator(`button[data-finance-window="${windowKey}"][aria-selected="true"]`).waitFor({ state: 'visible', timeout: 5000 });
+    await assertFinanceChartMarks(page, windowKey);
+  }
+
+  await chooseClosedFinanceMonth(page);
+
+  await page.locator('button[data-finance-window="ytd"]').click();
+  await page.locator('button[data-finance-window="ytd"][aria-selected="true"]').waitFor({ state: 'visible', timeout: 5000 });
+  const monthBar = page.locator('#progression [data-month]').first();
+  await monthBar.waitFor({ state: 'visible', timeout: 5000 });
+  await monthBar.click();
+  await page.locator('button[data-finance-window="month"][aria-selected="true"]').waitFor({ state: 'visible', timeout: 5000 });
+  await wait(page, '#monthPicker');
+  await assertFinanceChartMarks(page, 'bar drill-down');
+
+  // Return screenshots and downstream checks to the canonical default state.
+  await page.locator('button[data-finance-window="ytd"]').click();
+  await page.locator('button[data-finance-window="ytd"][aria-selected="true"]').waitFor({ state: 'visible', timeout: 5000 });
+  await assertFinanceChartMarks(page, 'YTD restore');
+}
+
 async function verifyFinanceReport(page) {
   await wait(page, '#currentLines .finance-line');
   await wait(page, '#currentBridge .bridge-step');
   await wait(page, '#ytdBridge .bridge-step');
-  // The canonical Finance progression is the #progression SVG itself. Assert
-  // stable chart output without coupling QA to a deleted legacy bar class.
-  await wait(page, '#progression');
-  const marks = await page.locator('#progression rect, #progression path, #progression line').count();
-  if (!marks) throw new Error('Finance progression SVG rendered without chart marks');
+  await assertFinanceChartMarks(page, 'progression');
+  await verifyFinanceWindows(page);
   // Desktop/tablet expose a table header, while mobile intentionally hides it
   // and presents the data rows as cards. Wait for canonical history data, not
   // the responsive header implementation.
   await wait(page, '#history .history-row:not(.head)');
+}
+
+async function verifyFinanceClosed(page) {
+  await verifyFinanceReport(page);
+  await chooseClosedFinanceMonth(page);
 }
 
 async function verifyFinanceEvidence(page) {
@@ -121,7 +171,7 @@ const scenarios = [
   ['ads-overview', '/ads', ['mobile', 'tablet', 'desktop'], p => verifyAds(p)],
   ['ads-campaigns', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'campaigns')],
   ['finance-overview', '/finance', ['mobile', 'desktop'], verifyFinanceReport],
-  ['finance-closed', '/finance', ['mobile', 'tablet', 'desktop'], verifyFinanceReport],
+  ['finance-closed', '/finance', ['mobile', 'tablet', 'desktop'], verifyFinanceClosed],
   ['finance-ledger', '/finance', ['mobile', 'desktop'], verifyFinanceEvidence],
   ['trajectory', '/trajectory', ['mobile', 'desktop']],
   ['data-health', '/data-health', ['mobile', 'desktop']],
