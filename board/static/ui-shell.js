@@ -18,9 +18,22 @@
     { href: '/ads', label: 'Ads', hint: 'Paid demand · setup pending' },
     { href: '/data-health', label: 'Data Health', hint: 'Source freshness and trust' },
   ];
+  const WORKSPACES = {
+    '/': { title: 'Home', copy: 'Business state, operating decisions and the drivers behind them.' },
+    '/sales': { title: 'Sales', copy: 'Revenue, momentum and product performance.' },
+    '/catalog': { title: 'Products', copy: 'Commercial portfolio, demand, conversion, availability and economics.' },
+    '/finance': { title: 'Finance', copy: 'Accounting periods, contribution and immutable closed history.' },
+    '/trajectory': { title: 'Trajectory', copy: 'Longer-horizon momentum and structural business strength.' },
+    '/ads': { title: 'Ads', copy: 'Paid demand, efficiency and Amazon attribution.' },
+    '/data-health': { title: 'Data Health', copy: 'Source freshness, coverage and trust.' },
+  };
+
+  function rawPath() {
+    return location.pathname.replace(/\/$/, '') || '/';
+  }
 
   function normalizedPath() {
-    const path = location.pathname.replace(/\/$/, '') || '/';
+    const path = rawPath();
     if (path === '/product') return '/catalog';
     return path;
   }
@@ -95,9 +108,28 @@
     });
   }
 
+  function buildWorkspaceIdentity(nav) {
+    const path = rawPath();
+    if (path === '/today' || path === '/inventory' || path === '/product') return;
+    const spec = WORKSPACES[path];
+    if (!spec || document.querySelector('.workspace-identity')) return;
+
+    const identity = document.createElement('header');
+    identity.className = `workspace-identity workspace-${path === '/' ? 'home' : path.slice(1).replace(/[^a-z0-9-]/gi, '-')}`;
+    identity.innerHTML = `<div><h1>${spec.title}</h1><p>${spec.copy}</p></div>`;
+    nav.insertAdjacentElement('afterend', identity);
+    document.body.classList.add('has-workspace-identity');
+
+    const legacy = document.querySelector('.page-head');
+    if (legacy) legacy.classList.add('workspace-legacy-head');
+    if (path === '/finance') document.querySelector('.finance-head')?.classList.add('workspace-legacy-head');
+  }
+
   function initializeShell() {
     const nav = document.querySelector('.primary-nav');
-    if (nav) buildNavigation(nav);
+    if (!nav) return;
+    buildNavigation(nav);
+    buildWorkspaceIdentity(nav);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeShell, { once: true });
