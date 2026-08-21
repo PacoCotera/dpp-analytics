@@ -1,4 +1,4 @@
-/* Canonical seller navigation. One shell-level owner across all workspaces. */
+/* Canonical seller navigation and workspace orientation. One shell-level owner across all workspaces. */
 .primary-nav.app-navigation{display:flex;align-items:center;justify-content:space-between;gap:10px;overflow:visible;position:relative}
 .nav-primary-set{display:flex;align-items:center;gap:5px;min-width:0}
 .primary-nav.app-navigation .nav-primary-set>a{flex:0 0 auto}
@@ -12,6 +12,19 @@
 .nav-more-menu>a:hover{background:#f3ede4!important}.nav-more-menu>a.active{background:#eee7dc!important}
 .nav-more-menu strong{display:block;font-size:12px;line-height:1.2}.nav-more-menu small{display:block;margin-top:3px;font-size:10px;line-height:1.3;color:var(--muted);font-weight:520;letter-spacing:0}
 .nav-more-menu>a.nav-mobile-only,.nav-more-menu>.nav-mobile-only{display:none!important}
+
+/* Page identity is orientation, not content. The business read below gets the visual weight. */
+.workspace-identity{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:10px 0 11px;border-bottom:1px solid var(--line)}
+.workspace-identity h1{margin:0;font-size:22px;line-height:1;letter-spacing:-.025em;font-weight:840}
+.workspace-identity p{margin:5px 0 0;max-width:760px;font-size:11.5px;line-height:1.35;color:var(--muted)}
+.has-workspace-identity .workspace-legacy-head{display:none!important}
+/* Catalog's commercial-portfolio heading becomes a section read under the Products identity. */
+.has-workspace-identity .catalog-top{padding-top:10px}
+.has-workspace-identity .catalog-title h1{font-size:15px}
+.has-workspace-identity .catalog-title p{font-size:10.5px}
+/* Home state is the actual business conclusion, so it remains prominent but begins closer to orientation. */
+.has-workspace-identity .home-state{border-top:0!important;padding-top:14px!important}
+
 @media(max-width:760px){
  .primary-nav.app-navigation{overflow:visible;padding-left:14px;padding-right:14px;gap:4px}
  .nav-primary-set{overflow:visible;min-width:0;flex:1 1 auto;gap:2px}
@@ -25,9 +38,14 @@
  .nav-more-menu{position:absolute;right:0;left:auto;top:calc(100% + 7px);width:min(300px,calc(100vw - 28px));margin:0}
  .nav-more-menu>a.nav-mobile-only,.nav-more-menu>.nav-mobile-only{display:block!important}
  .nav-more-divider{height:1px;background:var(--line);margin:5px 5px!important}
+ .workspace-identity{padding:9px 0 10px}
+ .workspace-identity h1{font-size:20px}
+ .workspace-identity p{font-size:11.5px;margin-top:4px}
+ .has-workspace-identity .catalog-top{padding-top:9px}
 }
 @media(max-width:420px){
  .primary-nav.app-navigation .nav-primary-set>a{padding:0 9px;font-size:11.5px}
  .nav-more>summary{min-width:45px;padding:0 7px}
  .nav-more>summary>span:first-child:before{font-size:11.5px}
+ .workspace-identity p{max-width:330px}
 }
