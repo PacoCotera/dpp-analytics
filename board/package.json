@@ -1,0 +1,20 @@
+{
+  "name": "dpp-operating-board",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "npm run lint:js && npm run lint:css && npm run format:check",
+    "lint:js": "eslint static/**/*.js",
+    "lint:css": "stylelint 'static/**/*.css'",
+    "format:check": "prettier --check 'static/**/*.{css,html,js}'",
+    "format": "prettier --write 'static/**/*.{css,html,js}'"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.9.1",
+    "eslint": "9.9.1",
+    "globals": "15.9.0",
+    "prettier": "3.3.3",
+    "stylelint": "16.9.0",
+    "stylelint-config-standard": "36.0.1"
+  }
+}
