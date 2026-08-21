@@ -1,6 +1,8 @@
 /* DPP chart system: shared visual grammar for every commercial dashboard chart. */
 .dpp-chart-host{position:relative}
 .dpp-chart{display:block;width:100%;height:auto;overflow:visible;touch-action:pan-y}
+.dpp-chart-scroll{overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.dpp-chart--wide{touch-action:pan-x pan-y}
 .dpp-chart .dpp-grid line{stroke:#ddd5c9;stroke-width:1;shape-rendering:crispEdges}
 .dpp-chart .dpp-grid path{display:none}
 .dpp-chart .dpp-axis path,.dpp-chart .dpp-axis line{stroke:#cfc5b7}
@@ -34,6 +36,7 @@
 @media(max-width:640px){
   .dpp-chart .dpp-axis text{font-size:11px}
   .dpp-chart .dpp-value{font-size:11px}
+  .dpp-chart-scroll .dpp-chart--wide{min-width:720px}
   .dpp-chart-tooltip{display:none}
 }
 @media(prefers-reduced-motion:reduce){
