@@ -80,9 +80,14 @@ Its diagnostic is published to GitHub issue **#10**.
 
 `.github/workflows/finance-cost-audit.yml` provides the complementary Finance product-cost audit workflow.
 
-## Frontend PR quality gate
+## Application PR quality gate
 
-`.github/workflows/frontend-quality.yml` runs ESLint and Stylelint for frontend-affecting PRs/pushes. The command is `npm run lint` from `board/`.
+The workflow file remains `.github/workflows/frontend-quality.yml` for continuity, but the workflow is named **Application quality** because it now validates both frontend source and Compose configuration.
+
+It runs for changes affecting the frontend, board image, `compose.yml`, `.env.example` or the workflow itself and has two independent jobs:
+
+- `frontend-lint` — installs the board's Node tooling and runs `npm run lint` (ESLint + Stylelint);
+- `compose-config` — runs `docker compose --env-file .env.example config --quiet` so the committed environment template and service definition cannot silently drift into an invalid configuration.
 
 Prettier remains a separate audit (`npm run format:check`) until retained global legacy styles are normalized deliberately; it is not a substitute for browser QA.
 
