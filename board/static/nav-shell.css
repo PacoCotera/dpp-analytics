@@ -11,7 +11,7 @@
 .nav-more-menu>a{display:block!important;min-height:0!important;padding:10px 11px!important;border-radius:11px!important;text-align:left!important;color:var(--ink)!important;background:transparent!important;box-shadow:none!important}
 .nav-more-menu>a:hover{background:#f3ede4!important}.nav-more-menu>a.active{background:#eee7dc!important}
 .nav-more-menu strong{display:block;font-size:12px;line-height:1.2}.nav-more-menu small{display:block;margin-top:3px;font-size:10px;line-height:1.3;color:var(--muted);font-weight:520;letter-spacing:0}
-.nav-mobile-only{display:none!important}
+.nav-more-menu>a.nav-mobile-only,.nav-more-menu>.nav-mobile-only{display:none!important}
 @media(max-width:760px){
  .primary-nav.app-navigation{overflow:visible;padding-left:14px;padding-right:14px;gap:4px}
  .nav-primary-set{overflow:visible;min-width:0;flex:1 1 auto;gap:2px}
@@ -23,7 +23,7 @@
  .nav-more>summary{min-width:48px;padding:0 9px;font-size:0}
  .nav-more>summary>span:first-child:before{content:'More';font-size:12px}.nav-more-chevron{font-size:11px}
  .nav-more-menu{position:absolute;right:0;left:auto;top:calc(100% + 7px);width:min(300px,calc(100vw - 28px));margin:0}
- .nav-more-menu .nav-mobile-only{display:block!important}
+ .nav-more-menu>a.nav-mobile-only,.nav-more-menu>.nav-mobile-only{display:block!important}
  .nav-more-divider{height:1px;background:var(--line);margin:5px 5px!important}
 }
 @media(max-width:420px){
