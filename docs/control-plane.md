@@ -50,6 +50,8 @@ The full QA output is uploaded as a workflow artifact with 30-day retention. A t
 
 Navigation-specific QA also lives under `qa/nav_qa.mjs`; catalog semantic checks are documented in `qa/README-catalog-semantics.md`.
 
+Browser-QA selectors are part of the application contract. They should target canonical page ownership and stable semantic DOM markers, not deleted enhancement layers or incidental legacy class names. When a frontend refactor intentionally changes the canonical DOM, update the corresponding QA selector in the same PR. When deleting a frontend runtime/style file, remove every source dependency on it before deleting the file; production 404s for removed assets are deployment failures.
+
 ## Deployment heartbeat
 
 GitHub issue **#1** is the production deployment heartbeat. The workflow updates the same issue after every attempt so it can be inspected without SSH access.
@@ -78,15 +80,16 @@ No credentials, tokens, environment-file contents or other secrets belong in the
 
 Its diagnostic is published to GitHub issue **#10**.
 
-`.github/workflows/finance-cost-audit.yml` provides the complementary Finance product-cost audit workflow.
+`.github/workflows/finance-cost-audit.yml` provides the complementary Finance product-cost audit workflow. It currently also publishes to issue **#10**, so the two diagnostics can overwrite one another; separating those reporting destinations is known control-plane debt and should be resolved without weakening either check.
 
 ## Application PR quality gate
 
-The workflow file remains `.github/workflows/frontend-quality.yml` for continuity, but the workflow is named **Application quality** because it validates frontend source, Compose configuration and the database migration chain.
+The workflow file remains `.github/workflows/frontend-quality.yml` for continuity, but the workflow is named **Application quality** because it validates frontend source, browser-QA syntax, Compose configuration and the database migration chain.
 
-It runs for changes affecting frontend source, the board image, Compose/environment configuration, SQL init/migrations, migration scripts or the workflow itself and has three independent jobs:
+It runs for changes affecting frontend source, the QA harness, the board image, Compose/environment configuration, SQL init/migrations, migration scripts or the workflow itself and has four independent jobs:
 
 - `frontend-lint` — installs the board's Node tooling and runs `npm run lint` (ESLint + Stylelint);
+- `qa-syntax` — runs `node --check` over the production browser/navigation QA scripts so QA harness edits cannot ship with JavaScript syntax errors;
 - `compose-config` — runs `docker compose --env-file .env.example config --quiet` so the committed environment template and service definition cannot silently drift into an invalid configuration;
 - `migration-chain` — starts a clean PostgreSQL 18 instance and applies the complete repository migration chain through `scripts/migrate.sh`.
 
