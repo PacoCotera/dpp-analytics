@@ -98,6 +98,22 @@ async function verifyCatalogMode(page, mode) {
   await page.locator('.analysis-row').first().waitFor({ timeout: 5000 });
 }
 
+async function verifyFinanceReport(page) {
+  await page.locator('#currentLines .line').first().waitFor({ timeout: 5000 });
+  await page.locator('#currentBridge .bridge-step').first().waitFor({ timeout: 5000 });
+  await page.locator('#ytdBridge .bridge-step').first().waitFor({ timeout: 5000 });
+  await page.locator('#progression .month-bar').first().waitFor({ timeout: 5000 });
+  await page.locator('#history .history-row').first().waitFor({ timeout: 5000 });
+}
+
+async function verifyFinanceEvidence(page) {
+  await verifyFinanceReport(page);
+  const evidence = page.locator('.evidence details').first();
+  await evidence.waitFor({ state: 'visible', timeout: 5000 });
+  await evidence.locator('summary').click();
+  await page.locator('#events .event-row').first().waitFor({ timeout: 5000 });
+}
+
 const scenarios = [
   { name: 'today', url: '/today', views: ['mobile', 'desktop'], action: async page => { await page.locator('#rhythm .dpp-bar').first().waitFor({ timeout: 5000 }); await page.locator('#dayPicker .day-choice').first().waitFor({ timeout: 5000 }); } },
   { name: 'today-wall', url: '/today?wall=1', views: ['desktop'] },
@@ -114,9 +130,9 @@ const scenarios = [
   { name: 'inventory', url: '/inventory', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'ads-overview', url: '/ads', views: ['mobile', 'tablet', 'desktop'], action: async page => verifyAds(page) },
   { name: 'ads-campaigns', url: '/ads', views: ['mobile', 'desktop'], action: async page => verifyAds(page, 'campaigns') },
-  { name: 'finance-overview', url: '/finance', views: ['mobile', 'desktop'] },
-  { name: 'finance-closed', url: '/finance', views: ['mobile', 'tablet', 'desktop'], action: async page => { await page.locator('button[data-view="cashView"]').click(); await page.locator('#closedChart .dpp-bar').first().waitFor({ timeout: 5000 }); await page.locator('#ytdChart .dpp-bar').first().waitFor({ timeout: 5000 }); } },
-  { name: 'finance-ledger', url: '/finance', views: ['mobile', 'desktop'], action: async page => page.locator('button[data-view="detailView"]').click() },
+  { name: 'finance-overview', url: '/finance', views: ['mobile', 'desktop'], action: verifyFinanceReport },
+  { name: 'finance-closed', url: '/finance', views: ['mobile', 'tablet', 'desktop'], action: verifyFinanceReport },
+  { name: 'finance-ledger', url: '/finance', views: ['mobile', 'desktop'], action: verifyFinanceEvidence },
   { name: 'trajectory', url: '/trajectory', views: ['mobile', 'desktop'] },
   { name: 'data-health', url: '/data-health', views: ['mobile', 'desktop'] },
 ];
