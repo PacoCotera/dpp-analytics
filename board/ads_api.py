@@ -12,7 +12,23 @@ def _all(cur, sql: str, params=()):
 
 
 def _empty(status: str, freshness=None) -> dict:
-    return {"status": status, "freshness": freshness, "summary": {}, "daily": [], "campaigns": [], "products": [], "targets": [], "search_terms": []}
+    return {
+        "status": status,
+        "freshness": freshness,
+        "quality": {
+            "state": "NO_DATA",
+            "trusted_for_operating_decisions": False,
+            "issue_days": 0,
+            "issues": [],
+            "accounts": [],
+        },
+        "summary": {},
+        "daily": [],
+        "campaigns": [],
+        "products": [],
+        "targets": [],
+        "search_terms": [],
+    }
 
 
 def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
@@ -26,9 +42,20 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
     Attribution freshness is warehouse-owned. The board must not infer maturity
     from a hard-coded number of days because Amazon attribution differs by ad
     product/account type and can evolve independently of this application.
+
+    Operating trust is also warehouse-owned. A successful Amazon report request
+    is not enough: independent campaign and advertised-product report grains must
+    reconcile, attribution semantics and currency must agree, and TACOS must have
+    its independent seller-sales denominator before the UI presents action cues
+    as decision-grade evidence.
     """
     with connect() as conn, conn.cursor() as cur:
-        ready = _one(cur, "SELECT to_regclass('mart.ads_business_t28') business_rel, to_regclass('mart.ads_product_business_t28') product_rel")
+        ready = _one(cur, """
+            SELECT to_regclass('mart.ads_business_t28') business_rel,
+                   to_regclass('mart.ads_product_business_t28') product_rel,
+                   to_regclass('mart.ads_ingestion_quality') quality_rel,
+                   to_regclass('mart.ads_ingestion_quality_summary') quality_summary_rel
+        """)
         if not ready.get("business_rel"):
             return _empty("not_initialized")
 
@@ -88,6 +115,82 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
             "freshness_note": "Attribution maturity is supplied by the warehouse reporting contract. Recent conversion metrics can revise until their applicable Amazon Ads lookback window has ended.",
         }
 
+        quality = {
+            "state": "NO_DATA",
+            "trusted_for_operating_decisions": False,
+            "issue_days": 0,
+            "issue_account_days": 0,
+            "healthy_account_days": 0,
+            "accounts_seen": 0,
+            "issues": [],
+            "accounts": [],
+            "basis": "Independent Amazon campaign and advertised-product report grains must reconcile before Ads is decision-grade. Account rollup consistency is an ingestion invariant, not independent validation.",
+        }
+        daily_quality = {}
+        if ready.get("quality_rel"):
+            q = _one(cur, """
+                SELECT count(DISTINCT account_id)::int AS accounts_seen,
+                       count(*)::int AS account_days_seen,
+                       count(*) FILTER (WHERE quality_state='OK')::int AS healthy_account_days,
+                       count(*) FILTER (WHERE quality_state<>'OK')::int AS issue_account_days,
+                       count(DISTINCT business_date) FILTER (WHERE quality_state<>'OK')::int AS issue_days,
+                       max(latest_ingested_at) AS latest_ingested_at,
+                       CASE
+                         WHEN count(*)=0 THEN 'NO_DATA'
+                         WHEN count(*) FILTER (WHERE quality_state<>'OK')=0 THEN 'HEALTHY'
+                         ELSE 'ATTENTION'
+                       END AS quality_state
+                FROM mart.ads_ingestion_quality
+                WHERE marketplace_id=%s
+                  AND business_date BETWEEN %s::date-27 AND %s::date
+            """, (marketplace, through, through))
+            issues = _all(cur, """
+                SELECT quality_state,
+                       count(*)::int AS account_days,
+                       count(DISTINCT business_date)::int AS days
+                FROM mart.ads_ingestion_quality
+                WHERE marketplace_id=%s
+                  AND business_date BETWEEN %s::date-27 AND %s::date
+                  AND quality_state<>'OK'
+                GROUP BY quality_state
+                ORDER BY days DESC, account_days DESC, quality_state
+            """, (marketplace, through, through))
+            per_day = _all(cur, """
+                SELECT business_date,
+                       count(*)::int AS accounts_seen,
+                       count(*) FILTER (WHERE quality_state<>'OK')::int AS issue_accounts,
+                       CASE WHEN count(*) FILTER (WHERE quality_state<>'OK')=0 THEN 'HEALTHY' ELSE 'ATTENTION' END AS quality_state
+                FROM mart.ads_ingestion_quality
+                WHERE marketplace_id=%s
+                  AND business_date BETWEEN %s::date-89 AND %s::date
+                GROUP BY business_date
+            """, (marketplace, through, through))
+            daily_quality = {str(row.get("business_date")): row for row in per_day}
+            accounts = []
+            if ready.get("quality_summary_rel"):
+                accounts = _all(cur, """
+                    SELECT account_id,first_date,latest_date,days_seen,healthy_days,issue_days,
+                           rollup_issue_days,independent_report_issue_days,
+                           attribution_contract_issue_days,latest_ingested_at,quality_state
+                    FROM mart.ads_ingestion_quality_summary
+                    WHERE marketplace_id=%s
+                    ORDER BY account_id
+                """, (marketplace,))
+            state = q.get("quality_state") or "NO_DATA"
+            complete_window = int(summary.get("missing_ads_days") or 0) == 0 and int(summary.get("observed_ads_days") or 0) >= int(summary.get("expected_ads_days") or 28)
+            quality.update({
+                "state": state,
+                "trusted_for_operating_decisions": state == "HEALTHY" and complete_window,
+                "issue_days": int(q.get("issue_days") or 0),
+                "issue_account_days": int(q.get("issue_account_days") or 0),
+                "healthy_account_days": int(q.get("healthy_account_days") or 0),
+                "accounts_seen": int(q.get("accounts_seen") or 0),
+                "latest_ingested_at": q.get("latest_ingested_at"),
+                "window_complete": complete_window,
+                "issues": issues,
+                "accounts": accounts,
+            })
+
         daily = _all(cur, """
             SELECT business_date, ad_spend AS spend, attributed_sales,
                    impressions, clicks, attributed_purchases AS purchases,
@@ -99,6 +202,11 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
             WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date
             ORDER BY business_date
         """, (marketplace, through, through))
+        for row in daily:
+            qrow = daily_quality.get(str(row.get("business_date")))
+            row["quality_state"] = qrow.get("quality_state") if qrow else "NO_DATA"
+            row["quality_issue_accounts"] = int(qrow.get("issue_accounts") or 0) if qrow else 0
+            row["quality_accounts_seen"] = int(qrow.get("accounts_seen") or 0) if qrow else 0
 
         campaigns = _all(cur, """
             SELECT c.campaign_id,max(c.campaign_name) campaign_name,max(c.ad_product) ad_product,
@@ -144,4 +252,14 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
 
     if decorate_products:
         products=decorate_products(products)
-    return {"status":"ready","freshness":freshness,"summary":summary,"daily":daily,"campaigns":campaigns,"products":products,"targets":targets,"search_terms":search_terms}
+    return {
+        "status":"ready",
+        "freshness":freshness,
+        "quality":quality,
+        "summary":summary,
+        "daily":daily,
+        "campaigns":campaigns,
+        "products":products,
+        "targets":targets,
+        "search_terms":search_terms,
+    }
