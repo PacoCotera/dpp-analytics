@@ -43,8 +43,8 @@ for page in static.glob('*.html'):
     if '</body>' in text and 'touch swipe navigation for tabbed workspaces' not in text: text = text.replace('</body>', swipe_tag + '\n</body>', 1)
     page.write_text(text)
 
-# Today and Product Workspace are standalone: source HTML owns DOM, styles,
-# data loop, state interpretation and charts. Do not inject post-render layers.
+# Today, Home and Product Workspace own their DOM/state composition directly.
+# Do not inject post-render layout or Ads interpretation layers into them.
 
 # Sales has one composition/runtime owner. Do not re-introduce post-render chart,
 # rail, state, or ads mutation layers here.
@@ -57,13 +57,11 @@ sales_runtime = (static / 'sales-canonical.js').read_text(); sales_runtime_tag =
 if '</body>' in text and 'Sales canonical renderer v1' not in text: text = text.replace('</body>', sales_runtime_tag + '\n</body>', 1)
 sales.write_text(text)
 
+# Home keeps one dedicated chart module; it supplies the Business Rhythm chart
+# only and does not alter page composition or fetch another business payload.
 home = static / 'home.html'; text = home.read_text()
-home_layout = (static / 'home-operating-v4.css').read_text(); home_layout_tag = '<style>\n' + home_layout + '\n</style>'
-if '</head>' in text and 'Home operating layout v4' not in text: text = text.replace('</head>', home_layout_tag + '\n</head>', 1)
 home_weekly = (static / 'home-weekly-rhythm.js').read_text(); home_weekly_tag = '<script>\n' + home_weekly + '\n</script>'; chart_tag = '<script src="/assets/chart-system.js"></script>'
-if 'Home weekly rhythm v1' not in text and chart_tag in text: text = text.replace(chart_tag, chart_tag + home_weekly_tag, 1)
-home_ads = (static / 'home-ads-enhance.js').read_text(); home_ads_tag = '<script>\n' + home_ads + '\n</script>'
-if '</body>' in text and 'Paid-support efficiency is broadly stable' not in text: text = text.replace('</body>', home_ads_tag + '\n</body>', 1)
+if 'Home weekly rhythm v5' not in text and chart_tag in text: text = text.replace(chart_tag, chart_tag + home_weekly_tag, 1)
 home.write_text(text)
 
 ads = static / 'ads.html'; text = ads.read_text(); ads_targeting = (static / 'ads-targeting-enhance.js').read_text(); ads_targeting_tag = '<script>\n' + ads_targeting + '\n</script>'
