@@ -42,10 +42,23 @@ def trajectory_payload(connect, marketplace: str) -> dict:
               CASE WHEN current_week THEN ('through '||to_char(cutoff,'Dy Mon DD')) ELSE (to_char(week_start,'Mon DD')||' – '||to_char(week_end,'Mon DD')) END date_range FROM enriched ORDER BY week_start DESC LIMIT 10
         """,(cutoff,cutoff,marketplace))
 
-        ads=_one(cur,"""SELECT business_date through_date,spend,attributed_sales,impressions,clicks,purchases,units,ctr,cpc,roas,acos,tacos,attribution_maturity,source_freshness FROM mart.ads_business_t28 WHERE marketplace_id=%s ORDER BY business_date DESC LIMIT 1""",(marketplace,))
+        ads=_one(cur,"""
+            SELECT through_date,spend,attributed_sales,impressions,clicks,
+              attributed_purchases purchases,attributed_units units,ctr,cpc,roas,acos,tacos,
+              CASE WHEN observed_ads_days>0 AND mature_ads_days=observed_ads_days THEN 'MATURE' ELSE 'PROVISIONAL' END attribution_maturity,
+              ads_ingested_at source_freshness
+            FROM mart.ads_business_t28
+            WHERE marketplace_id=%s
+            ORDER BY through_date DESC LIMIT 1
+        """,(marketplace,))
         ads["status"]="ready" if ads else "awaiting_ads_data"
         ads["interpretation"]="Amazon-attributed sales are attribution, not incremental sales. TACOS uses independently reconciled seller sales; total sales minus attributed sales is not exact organic sales."
-        ads_daily=_all(cur,"""SELECT business_date,spend,attributed_sales,roas,acos,tacos,attribution_maturity FROM mart.ads_business_daily WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date ORDER BY business_date""",(marketplace,cutoff,cutoff))
+        ads_daily=_all(cur,"""
+            SELECT business_date,ad_spend spend,attributed_sales,roas,acos,tacos,attribution_state attribution_maturity
+            FROM mart.ads_business_daily
+            WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date
+            ORDER BY business_date
+        """,(marketplace,cutoff,cutoff))
         local_clock=_one(cur,"SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
     return {"headline":headline,"horizons":horizons,"series":series,"weekly":weekly,"ads":ads,"ads_daily":ads_daily,"local_time":local_clock.get("local_time")}
