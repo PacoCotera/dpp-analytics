@@ -46,9 +46,8 @@ for page in static.glob('*.html'):
     if '</body>' in text and 'touch swipe navigation for tabbed workspaces' not in text: text = text.replace('</body>', swipe_tag + '\n</body>', 1)
     page.write_text(text)
 
-# Today, Home, Product Workspace and Finance own their DOM/state composition
-# directly. Do not inject post-render layout, accounting, or interpretation
-# layers into these canonical pages.
+# Today, Product Workspace and Finance own their DOM/state composition directly.
+# Do not inject post-render layout or accounting layers into these canonical pages.
 
 # Sales has one composition/runtime owner. Do not re-introduce post-render chart,
 # rail, state, or ads mutation layers here.
@@ -61,11 +60,14 @@ sales_runtime = (static / 'sales-canonical.js').read_text(); sales_runtime_tag =
 if '</body>' in text and 'Sales canonical renderer v1' not in text: text = text.replace('</body>', sales_runtime_tag + '\n</body>', 1)
 sales.write_text(text)
 
-# Home keeps one dedicated chart module; it supplies the Business Rhythm chart
-# only and does not alter page composition or fetch another business payload.
+# Home keeps its canonical operating composition. Dedicated modules may enrich it
+# only with canonical context: weekly rhythm owns the chart and home Ads reads the
+# shared /api/ads mart contract without re-deriving advertising semantics.
 home = static / 'home.html'; text = home.read_text()
 home_weekly = (static / 'home-weekly-rhythm.js').read_text(); home_weekly_tag = '<script>\n' + home_weekly + '\n</script>'; chart_tag = '<script src="/assets/chart-system.js"></script>'
 if 'Home weekly rhythm v5' not in text and chart_tag in text: text = text.replace(chart_tag, chart_tag + home_weekly_tag, 1)
+home_ads = (static / 'home-ads-enhance.js').read_text(); home_ads_tag = '<script>\n' + home_ads + '\n</script>'
+if '</body>' in text and 'home-paid' not in text: text = text.replace('</body>', home_ads_tag + '\n</body>', 1)
 home.write_text(text)
 
 ads = static / 'ads.html'; text = ads.read_text(); ads_targeting = (static / 'ads-targeting-enhance.js').read_text(); ads_targeting_tag = '<script>\n' + ads_targeting + '\n</script>'
