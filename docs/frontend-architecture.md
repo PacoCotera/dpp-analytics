@@ -74,6 +74,8 @@ Each workspace owns a small explicit trio where appropriate:
 
 Page modules do not own global typography, primary navigation, generic KPI/panel/table geometry or duplicated formatting utilities. Shared formatting, escaping and fetch behavior lives in `static/ui-utils.js`.
 
+The Sales workspace retains the existing `sales-canonical.js` filename for this refactor because it is already the single live renderer; filename normalization is not worth mixing into the behavioral migration.
+
 ### 6. Data/API
 
 Python endpoints own business definitions, reconciliation state and reusable server-side joins. Browser code must not independently redefine accounting, catalog hierarchy, attribution or inventory action semantics.
