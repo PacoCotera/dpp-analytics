@@ -76,11 +76,11 @@ No credentials, tokens, environment-file contents or other secrets belong in the
 
 ## Finance operational validation
 
-`.github/workflows/finance-smoke.yml` runs after a successful production deploy and can also be dispatched manually. It probes the deployed `/api/finance` payload, current/closed period state, product-cost coverage and frozen historical COGS snapshots.
+Both Finance validations run only after a successful `Deploy DPP Analytics` workflow, or when explicitly dispatched manually. This keeps deployment on the critical path and validates the Finance API that is actually live.
 
-Its diagnostic is published to GitHub issue **#10**.
+`.github/workflows/finance-smoke.yml` probes the deployed `/api/finance` payload, current/closed period state, product-cost coverage and frozen historical COGS snapshots. Its diagnostic is published to GitHub issue **#10**.
 
-`.github/workflows/finance-cost-audit.yml` provides the complementary Finance product-cost audit workflow. It currently also publishes to issue **#10**, so the two diagnostics can overwrite one another; separating those reporting destinations is known control-plane debt and should be resolved without weakening either check.
+`.github/workflows/finance-cost-audit.yml` provides the complementary historical product-cost audit and publishes to GitHub issue **#44**. The two workflows deliberately use separate persistent issues so one diagnostic can never overwrite the other.
 
 ## Application PR quality gate
 

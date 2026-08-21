@@ -1,8 +1,9 @@
 name: Finance Cost Audit
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["Deploy DPP Analytics"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -11,11 +12,10 @@ permissions:
 
 jobs:
   audit:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: [self-hosted, linux, x64, dpp-analytics]
     timeout-minutes: 7
     steps:
-      - name: Wait for current board
-        run: sleep 20
       - name: Audit missing historical COGS
         run: |
           set -euo pipefail
@@ -25,7 +25,8 @@ jobs:
           p=json.load(open('/tmp/finance-cost-audit.json'))
           print('# Finance product-cost audit')
           print()
-          print('Commit: `%s`' % __import__('os').environ.get('GITHUB_SHA',''))
+          deploy_sha=__import__('os').environ.get('DEPLOY_SHA','')
+          print('Deployed commit: `%s`' % deploy_sha)
           print()
           print('## Historical months not yet management-closed')
           print('```text')
@@ -57,6 +58,8 @@ jobs:
           print('Closed snapshots: %s' % len(p.get('closed_months') or []))
           PY
           cat /tmp/finance-cost-audit.md
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Publish audit
         if: always()
         uses: actions/github-script@v7
@@ -65,4 +68,4 @@ jobs:
           script: |
             const fs=require('fs');
             const body=fs.existsSync('/tmp/finance-cost-audit.md') ? fs.readFileSync('/tmp/finance-cost-audit.md','utf8') : '# Finance product-cost audit\nAudit did not produce output.';
-            await github.rest.issues.update({owner:context.repo.owner,repo:context.repo.repo,issue_number:10,body});
+            await github.rest.issues.update({owner:context.repo.owner,repo:context.repo.repo,issue_number:44,body});
