@@ -12,254 +12,43 @@ def _all(cur, sql: str, params=()):
 
 
 def _empty(status: str, freshness=None) -> dict:
-    return {
-        "status": status,
-        "freshness": freshness,
-        "quality": {
-            "state": "NO_DATA",
-            "trusted_for_operating_decisions": False,
-            "issue_days": 0,
-            "issues": [],
-            "accounts": [],
-        },
-        "summary": {},
-        "daily": [],
-        "campaigns": [],
-        "products": [],
-        "targets": [],
-        "search_terms": [],
-    }
+    return {"status":status,"freshness":freshness,"quality":{"state":"NO_DATA","trusted_for_operating_decisions":False,"issue_days":0,"issues":[],"accounts":[]},"summary":{},"daily":[],"campaigns":[],"products":[],"targets":[],"search_terms":[],"actions":[]}
 
 
 def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
-    """Canonical Ads operating payload.
-
-    Business/product rollups come from the shared Ads context marts so every app
-    surface uses the same multi-account aggregation, seller-sales denominator,
-    attribution maturity, and TACOS semantics. Campaign/target/search-term rows
-    remain drilldown facts because they do not have a seller-sales denominator.
-
-    Attribution freshness is warehouse-owned. The board must not infer maturity
-    from a hard-coded number of days because Amazon attribution differs by ad
-    product/account type and can evolve independently of this application.
-
-    Operating trust is also warehouse-owned. A successful Amazon report request
-    is not enough: independent campaign and advertised-product report grains must
-    reconcile, attribution semantics and currency must agree, and TACOS must have
-    its independent seller-sales denominator before the UI presents action cues
-    as decision-grade evidence.
-    """
     with connect() as conn, conn.cursor() as cur:
-        ready = _one(cur, """
-            SELECT to_regclass('mart.ads_business_t28') business_rel,
-                   to_regclass('mart.ads_product_business_t28') product_rel,
-                   to_regclass('mart.ads_ingestion_quality') quality_rel,
-                   to_regclass('mart.ads_ingestion_quality_summary') quality_summary_rel
-        """)
-        if not ready.get("business_rel"):
-            return _empty("not_initialized")
-
-        summary = _one(cur, """
-            SELECT marketplace_id, through_date, period_start,
-                   spend, attributed_sales, impressions, clicks,
-                   attributed_purchases AS purchases, attributed_units AS units,
-                   total_business_sales, ctr, cpc, roas, acos, tacos,
-                   attributed_sales_share, observed_ads_days,
-                   expected_ads_days, missing_ads_days, mature_ads_days,
-                   ads_source_generated_at AS source_generated_at,
-                   ads_ingested_at AS ingested_at,
-                   prior_spend, prior_attributed_sales, prior_total_business_sales,
-                   spend_delta_pct, attributed_sales_delta_pct, tacos_delta_points
-            FROM mart.ads_business_t28 WHERE marketplace_id=%s
-        """, (marketplace,))
-        through = summary.get("through_date")
-        if not through:
-            return _empty("awaiting_ads_data")
-
-        attribution = _one(cur, """
-            SELECT max(business_date) FILTER (WHERE attribution_mature) AS mature_through_date,
-                   max(attribution_window) FILTER (WHERE business_date=%s::date) AS attribution_window,
-                   max(attribution_method) FILTER (WHERE business_date=%s::date) AS attribution_method,
-                   max(attribution_state) FILTER (WHERE business_date=%s::date) AS latest_attribution_state
-            FROM mart.ads_business_daily
-            WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date
-        """, (through, through, through, marketplace, through, through))
-
-        summary.update({
-            "period_end": through.isoformat(),
-            "period_start": summary.get("period_start").isoformat() if summary.get("period_start") else None,
-            "basis": "Latest 28 Ads dates aligned to independently reconciled seller sales. Ads-attributed conversions can revise; attributed sales are not exact incremental sales and the residual is not exact organic sales.",
-            "attribution_window": attribution.get("attribution_window"),
-            "attribution_method": attribution.get("attribution_method"),
-            "prior": {
-                "spend": summary.get("prior_spend") or 0,
-                "attributed_sales": summary.get("prior_attributed_sales") or 0,
-                "total_business_sales": summary.get("prior_total_business_sales") or 0,
-            },
-        })
-
-        mature_through = attribution.get("mature_through_date")
-        latest_state = attribution.get("latest_attribution_state") or "provisional_attribution"
-        freshness = {
-            "through_date": through,
-            "source_generated_at": summary.get("source_generated_at"),
-            "ingested_at": summary.get("ingested_at"),
-            "period_expected_days": summary.get("expected_ads_days") or 28,
-            "period_observed_days": summary.get("observed_ads_days") or 0,
-            "period_missing_days": summary.get("missing_ads_days") or 0,
-            "mature_days": summary.get("mature_ads_days") or 0,
-            "mature_through_date": mature_through.isoformat() if mature_through else None,
-            "latest_days_state": latest_state,
-            "attribution_window": attribution.get("attribution_window"),
-            "attribution_method": attribution.get("attribution_method"),
-            "freshness_note": "Attribution maturity is supplied by the warehouse reporting contract. Recent conversion metrics can revise until their applicable Amazon Ads lookback window has ended.",
-        }
-
-        quality = {
-            "state": "NO_DATA",
-            "trusted_for_operating_decisions": False,
-            "issue_days": 0,
-            "issue_account_days": 0,
-            "healthy_account_days": 0,
-            "accounts_seen": 0,
-            "issues": [],
-            "accounts": [],
-            "basis": "Independent Amazon campaign and advertised-product report grains must reconcile before Ads is decision-grade. Account rollup consistency is an ingestion invariant, not independent validation.",
-        }
-        daily_quality = {}
-        if ready.get("quality_rel"):
-            q = _one(cur, """
-                SELECT count(DISTINCT account_id)::int AS accounts_seen,
-                       count(*)::int AS account_days_seen,
-                       count(*) FILTER (WHERE quality_state='OK')::int AS healthy_account_days,
-                       count(*) FILTER (WHERE quality_state<>'OK')::int AS issue_account_days,
-                       count(DISTINCT business_date) FILTER (WHERE quality_state<>'OK')::int AS issue_days,
-                       max(latest_ingested_at) AS latest_ingested_at,
-                       CASE
-                         WHEN count(*)=0 THEN 'NO_DATA'
-                         WHEN count(*) FILTER (WHERE quality_state<>'OK')=0 THEN 'HEALTHY'
-                         ELSE 'ATTENTION'
-                       END AS quality_state
-                FROM mart.ads_ingestion_quality
-                WHERE marketplace_id=%s
-                  AND business_date BETWEEN %s::date-27 AND %s::date
-            """, (marketplace, through, through))
-            issues = _all(cur, """
-                SELECT quality_state,
-                       count(*)::int AS account_days,
-                       count(DISTINCT business_date)::int AS days
-                FROM mart.ads_ingestion_quality
-                WHERE marketplace_id=%s
-                  AND business_date BETWEEN %s::date-27 AND %s::date
-                  AND quality_state<>'OK'
-                GROUP BY quality_state
-                ORDER BY days DESC, account_days DESC, quality_state
-            """, (marketplace, through, through))
-            per_day = _all(cur, """
-                SELECT business_date,
-                       count(*)::int AS accounts_seen,
-                       count(*) FILTER (WHERE quality_state<>'OK')::int AS issue_accounts,
-                       CASE WHEN count(*) FILTER (WHERE quality_state<>'OK')=0 THEN 'HEALTHY' ELSE 'ATTENTION' END AS quality_state
-                FROM mart.ads_ingestion_quality
-                WHERE marketplace_id=%s
-                  AND business_date BETWEEN %s::date-89 AND %s::date
-                GROUP BY business_date
-            """, (marketplace, through, through))
-            daily_quality = {str(row.get("business_date")): row for row in per_day}
-            accounts = []
-            if ready.get("quality_summary_rel"):
-                accounts = _all(cur, """
-                    SELECT account_id,first_date,latest_date,days_seen,healthy_days,issue_days,
-                           rollup_issue_days,independent_report_issue_days,
-                           attribution_contract_issue_days,latest_ingested_at,quality_state
-                    FROM mart.ads_ingestion_quality_summary
-                    WHERE marketplace_id=%s
-                    ORDER BY account_id
-                """, (marketplace,))
-            state = q.get("quality_state") or "NO_DATA"
-            complete_window = int(summary.get("missing_ads_days") or 0) == 0 and int(summary.get("observed_ads_days") or 0) >= int(summary.get("expected_ads_days") or 28)
-            quality.update({
-                "state": state,
-                "trusted_for_operating_decisions": state == "HEALTHY" and complete_window,
-                "issue_days": int(q.get("issue_days") or 0),
-                "issue_account_days": int(q.get("issue_account_days") or 0),
-                "healthy_account_days": int(q.get("healthy_account_days") or 0),
-                "accounts_seen": int(q.get("accounts_seen") or 0),
-                "latest_ingested_at": q.get("latest_ingested_at"),
-                "window_complete": complete_window,
-                "issues": issues,
-                "accounts": accounts,
-            })
-
-        daily = _all(cur, """
-            SELECT business_date, ad_spend AS spend, attributed_sales,
-                   impressions, clicks, attributed_purchases AS purchases,
-                   attributed_units AS units, total_business_sales,
-                   ctr, cpc, roas, acos, tacos, attributed_sales_share,
-                   attribution_method, attribution_window,
-                   attribution_mature, attribution_state
-            FROM mart.ads_business_daily
-            WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date
-            ORDER BY business_date
-        """, (marketplace, through, through))
-        for row in daily:
-            qrow = daily_quality.get(str(row.get("business_date")))
-            row["quality_state"] = qrow.get("quality_state") if qrow else "NO_DATA"
-            row["quality_issue_accounts"] = int(qrow.get("issue_accounts") or 0) if qrow else 0
-            row["quality_accounts_seen"] = int(qrow.get("accounts_seen") or 0) if qrow else 0
-
-        campaigns = _all(cur, """
-            SELECT c.campaign_id,max(c.campaign_name) campaign_name,max(c.ad_product) ad_product,
-                   sum(d.spend) spend,sum(d.attributed_sales) attributed_sales,sum(d.impressions) impressions,
-                   sum(d.clicks) clicks,sum(d.purchases) purchases,sum(d.units) units,
-                   CASE WHEN sum(d.impressions)>0 THEN sum(d.clicks)::numeric/sum(d.impressions) END ctr,
-                   CASE WHEN sum(d.clicks)>0 THEN sum(d.spend)/sum(d.clicks) END cpc,
-                   CASE WHEN sum(d.spend)>0 THEN sum(d.attributed_sales)/sum(d.spend) END roas,
-                   CASE WHEN sum(d.attributed_sales)>0 THEN sum(d.spend)/sum(d.attributed_sales) END acos
-            FROM ads.daily_campaign d
-            JOIN ads.campaign c ON c.account_id=d.account_id AND c.campaign_id=d.campaign_id
-            JOIN ads.account a ON a.account_id=d.account_id
-            WHERE a.marketplace_id=%s AND d.business_date BETWEEN %s::date-27 AND %s::date
-            GROUP BY c.campaign_id ORDER BY spend DESC LIMIT 40
-        """, (marketplace, through, through))
-
-        products = []
-        if ready.get("product_rel"):
-            products = _all(cur, """
-                SELECT p.sku,p.asin,
-                       coalesce(sl.item_name,ci.title,s.title,p.sku,p.asin) product,
-                       coalesce(sl.image_url,ci.image_url) image_url,
-                       p.spend,p.attributed_sales,p.impressions,p.clicks,
-                       p.attributed_purchases AS purchases,p.attributed_units AS units,
-                       p.total_business_sales,p.ctr,p.cpc,p.roas,p.acos,p.tacos,
-                       p.attributed_sales_share,p.observed_ads_days,p.mature_ads_days,
-                       p.through_date,p.period_start
-                FROM mart.ads_product_business_t28 p
-                LEFT JOIN core.sku s ON s.sku=p.sku
-                LEFT JOIN core.seller_listing sl ON sl.marketplace_id=p.marketplace_id AND sl.seller_sku=p.sku
-                LEFT JOIN core.catalog_item ci ON ci.marketplace_id=p.marketplace_id AND ci.asin=coalesce(p.asin,s.asin)
-                WHERE p.marketplace_id=%s
-                ORDER BY p.spend DESC LIMIT 60
-            """, (marketplace,))
-
-        targets=[]
-        if _one(cur,"SELECT to_regclass('mart.ads_target_daily') rel").get("rel"):
-            targets=_all(cur,"""SELECT d.account_id,d.target_id,d.campaign_id,max(c.campaign_name) campaign_name,max(d.target_type) target_type,max(d.target_expression) target_expression,max(d.match_type) match_type,sum(d.spend) spend,sum(d.attributed_sales) attributed_sales,sum(d.impressions) impressions,sum(d.clicks) clicks,sum(d.purchases) purchases,CASE WHEN sum(d.impressions)>0 THEN sum(d.clicks)::numeric/sum(d.impressions) END ctr,CASE WHEN sum(d.clicks)>0 THEN sum(d.spend)/sum(d.clicks) END cpc,CASE WHEN sum(d.spend)>0 THEN sum(d.attributed_sales)/sum(d.spend) END roas,CASE WHEN sum(d.attributed_sales)>0 THEN sum(d.spend)/sum(d.attributed_sales) END acos FROM mart.ads_target_daily d LEFT JOIN ads.campaign c ON c.account_id=d.account_id AND c.campaign_id=d.campaign_id WHERE d.marketplace_id=%s AND d.business_date BETWEEN %s::date-27 AND %s::date GROUP BY d.account_id,d.target_id,d.campaign_id ORDER BY spend DESC LIMIT 100""",(marketplace,through,through))
-
-        search_terms=[]
-        if _one(cur,"SELECT to_regclass('mart.ads_search_term_daily') rel").get("rel"):
-            search_terms=_all(cur,"""SELECT d.account_id,d.search_term,d.campaign_id,max(c.campaign_name) campaign_name,d.ad_group_id,d.target_id,max(d.match_type) match_type,sum(d.spend) spend,sum(d.attributed_sales) attributed_sales,sum(d.impressions) impressions,sum(d.clicks) clicks,sum(d.purchases) purchases,CASE WHEN sum(d.impressions)>0 THEN sum(d.clicks)::numeric/sum(d.impressions) END ctr,CASE WHEN sum(d.clicks)>0 THEN sum(d.spend)/sum(d.clicks) END cpc,CASE WHEN sum(d.spend)>0 THEN sum(d.attributed_sales)/sum(d.spend) END roas,CASE WHEN sum(d.attributed_sales)>0 THEN sum(d.spend)/sum(d.attributed_sales) END acos FROM mart.ads_search_term_daily d LEFT JOIN ads.campaign c ON c.account_id=d.account_id AND c.campaign_id=d.campaign_id WHERE d.marketplace_id=%s AND d.business_date BETWEEN %s::date-27 AND %s::date GROUP BY d.account_id,d.search_term,d.campaign_id,d.ad_group_id,d.target_id ORDER BY spend DESC LIMIT 150""",(marketplace,through,through))
-
-    if decorate_products:
-        products=decorate_products(products)
-    return {
-        "status":"ready",
-        "freshness":freshness,
-        "quality":quality,
-        "summary":summary,
-        "daily":daily,
-        "campaigns":campaigns,
-        "products":products,
-        "targets":targets,
-        "search_terms":search_terms,
-    }
+        ready=_one(cur,"SELECT to_regclass('mart.ads_business_t28') business_rel,to_regclass('mart.ads_product_business_t28') product_rel,to_regclass('mart.ads_ingestion_quality') quality_rel,to_regclass('mart.ads_ingestion_quality_summary') quality_summary_rel")
+        if not ready.get('business_rel'): return _empty('not_initialized')
+        summary=_one(cur,"""SELECT marketplace_id,through_date,period_start,spend,attributed_sales,impressions,clicks,attributed_purchases AS purchases,attributed_units AS units,total_business_sales,ctr,cpc,roas,acos,tacos,attributed_sales_share,observed_ads_days,expected_ads_days,missing_ads_days,mature_ads_days,ads_source_generated_at AS source_generated_at,ads_ingested_at AS ingested_at,prior_spend,prior_attributed_sales,prior_total_business_sales,spend_delta_pct,attributed_sales_delta_pct,tacos_delta_points FROM mart.ads_business_t28 WHERE marketplace_id=%s""",(marketplace,))
+        through=summary.get('through_date')
+        if not through:return _empty('awaiting_ads_data')
+        attribution=_one(cur,"""SELECT max(business_date) FILTER(WHERE attribution_mature) mature_through_date,max(attribution_window) FILTER(WHERE business_date=%s::date) attribution_window,max(attribution_method) FILTER(WHERE business_date=%s::date) attribution_method,max(attribution_state) FILTER(WHERE business_date=%s::date) latest_attribution_state FROM mart.ads_business_daily WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date""",(through,through,through,marketplace,through,through))
+        summary.update({'period_end':through.isoformat(),'period_start':summary.get('period_start').isoformat() if summary.get('period_start') else None,'basis':'Latest 28 Ads dates aligned to independently reconciled seller sales. Ads-attributed conversions can revise; attributed sales are not exact incremental sales and the residual is not exact organic sales.','attribution_window':attribution.get('attribution_window'),'attribution_method':attribution.get('attribution_method'),'prior':{'spend':summary.get('prior_spend') or 0,'attributed_sales':summary.get('prior_attributed_sales') or 0,'total_business_sales':summary.get('prior_total_business_sales') or 0}})
+        mature=attribution.get('mature_through_date');latest=attribution.get('latest_attribution_state') or 'provisional_attribution'
+        freshness={'through_date':through,'source_generated_at':summary.get('source_generated_at'),'ingested_at':summary.get('ingested_at'),'period_expected_days':summary.get('expected_ads_days') or 28,'period_observed_days':summary.get('observed_ads_days') or 0,'period_missing_days':summary.get('missing_ads_days') or 0,'mature_days':summary.get('mature_ads_days') or 0,'mature_through_date':mature.isoformat() if mature else None,'latest_days_state':latest,'attribution_window':attribution.get('attribution_window'),'attribution_method':attribution.get('attribution_method'),'freshness_note':'Attribution maturity is supplied by the warehouse reporting contract. Recent conversion metrics can revise until their applicable Amazon Ads lookback window has ended.'}
+        quality={'state':'NO_DATA','trusted_for_operating_decisions':False,'issue_days':0,'issue_account_days':0,'healthy_account_days':0,'accounts_seen':0,'issues':[],'accounts':[],'basis':'Independent Amazon campaign and advertised-product report grains must reconcile before Ads is decision-grade. Account rollup consistency is an ingestion invariant, not independent validation.'};daily_quality={}
+        if ready.get('quality_rel'):
+            q=_one(cur,"""SELECT count(DISTINCT account_id)::int accounts_seen,count(*) FILTER(WHERE quality_state='OK')::int healthy_account_days,count(*) FILTER(WHERE quality_state<>'OK')::int issue_account_days,count(DISTINCT business_date) FILTER(WHERE quality_state<>'OK')::int issue_days,max(latest_ingested_at) latest_ingested_at,CASE WHEN count(*)=0 THEN 'NO_DATA' WHEN count(*) FILTER(WHERE quality_state<>'OK')=0 THEN 'HEALTHY' ELSE 'ATTENTION' END quality_state FROM mart.ads_ingestion_quality WHERE marketplace_id=%s AND business_date BETWEEN %s::date-27 AND %s::date""",(marketplace,through,through))
+            issues=_all(cur,"""SELECT quality_state,count(*)::int account_days,count(DISTINCT business_date)::int days FROM mart.ads_ingestion_quality WHERE marketplace_id=%s AND business_date BETWEEN %s::date-27 AND %s::date AND quality_state<>'OK' GROUP BY quality_state ORDER BY days DESC,account_days DESC,quality_state""",(marketplace,through,through))
+            per_day=_all(cur,"""SELECT business_date,count(*)::int accounts_seen,count(*) FILTER(WHERE quality_state<>'OK')::int issue_accounts,CASE WHEN count(*) FILTER(WHERE quality_state<>'OK')=0 THEN 'HEALTHY' ELSE 'ATTENTION' END quality_state FROM mart.ads_ingestion_quality WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date GROUP BY business_date""",(marketplace,through,through));daily_quality={str(r.get('business_date')):r for r in per_day}
+            accounts=_all(cur,"SELECT account_id,first_date,latest_date,days_seen,healthy_days,issue_days,rollup_issue_days,independent_report_issue_days,attribution_contract_issue_days,latest_ingested_at,quality_state FROM mart.ads_ingestion_quality_summary WHERE marketplace_id=%s ORDER BY account_id",(marketplace,)) if ready.get('quality_summary_rel') else []
+            state=q.get('quality_state') or 'NO_DATA';complete=int(summary.get('missing_ads_days') or 0)==0 and int(summary.get('observed_ads_days') or 0)>=int(summary.get('expected_ads_days') or 28)
+            quality.update({'state':state,'trusted_for_operating_decisions':state=='HEALTHY' and complete,'issue_days':int(q.get('issue_days') or 0),'issue_account_days':int(q.get('issue_account_days') or 0),'healthy_account_days':int(q.get('healthy_account_days') or 0),'accounts_seen':int(q.get('accounts_seen') or 0),'latest_ingested_at':q.get('latest_ingested_at'),'window_complete':complete,'issues':issues,'accounts':accounts})
+        daily=_all(cur,"SELECT business_date,ad_spend AS spend,attributed_sales,impressions,clicks,attributed_purchases AS purchases,attributed_units AS units,total_business_sales,ctr,cpc,roas,acos,tacos,attributed_sales_share,attribution_method,attribution_window,attribution_mature,attribution_state FROM mart.ads_business_daily WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date ORDER BY business_date",(marketplace,through,through))
+        for r in daily:
+            qr=daily_quality.get(str(r.get('business_date')));r['quality_state']=qr.get('quality_state') if qr else 'NO_DATA';r['quality_issue_accounts']=int(qr.get('issue_accounts') or 0) if qr else 0;r['quality_accounts_seen']=int(qr.get('accounts_seen') or 0) if qr else 0
+        campaigns=_all(cur,"""SELECT c.campaign_id,max(c.campaign_name) campaign_name,max(c.ad_product) ad_product,sum(d.spend) spend,sum(d.attributed_sales) attributed_sales,sum(d.impressions) impressions,sum(d.clicks) clicks,sum(d.purchases) purchases,sum(d.units) units,CASE WHEN sum(d.impressions)>0 THEN sum(d.clicks)::numeric/sum(d.impressions) END ctr,CASE WHEN sum(d.clicks)>0 THEN sum(d.spend)/sum(d.clicks) END cpc,CASE WHEN sum(d.spend)>0 THEN sum(d.attributed_sales)/sum(d.spend) END roas,CASE WHEN sum(d.attributed_sales)>0 THEN sum(d.spend)/sum(d.attributed_sales) END acos FROM ads.daily_campaign d JOIN ads.campaign c ON c.account_id=d.account_id AND c.campaign_id=d.campaign_id JOIN ads.account a ON a.account_id=d.account_id WHERE a.marketplace_id=%s AND d.business_date BETWEEN %s::date-27 AND %s::date GROUP BY c.campaign_id ORDER BY spend DESC LIMIT 40""",(marketplace,through,through))
+        products=_all(cur,"""SELECT p.sku,p.asin,coalesce(sl.item_name,ci.title,s.title,p.sku,p.asin) product,coalesce(sl.image_url,ci.image_url) image_url,p.spend,p.attributed_sales,p.impressions,p.clicks,p.attributed_purchases AS purchases,p.attributed_units AS units,p.total_business_sales,p.ctr,p.cpc,p.roas,p.acos,p.tacos,p.attributed_sales_share,p.observed_ads_days,p.mature_ads_days,p.through_date,p.period_start FROM mart.ads_product_business_t28 p LEFT JOIN core.sku s ON s.sku=p.sku LEFT JOIN core.seller_listing sl ON sl.marketplace_id=p.marketplace_id AND sl.seller_sku=p.sku LEFT JOIN core.catalog_item ci ON ci.marketplace_id=p.marketplace_id AND ci.asin=coalesce(p.asin,s.asin) WHERE p.marketplace_id=%s ORDER BY p.spend DESC LIMIT 60""",(marketplace,)) if ready.get('product_rel') else []
+        targets=_all(cur,"""SELECT d.account_id,d.target_id,d.campaign_id,max(c.campaign_name) campaign_name,max(d.target_type) target_type,max(d.target_expression) target_expression,max(d.match_type) match_type,sum(d.spend) spend,sum(d.attributed_sales) attributed_sales,sum(d.impressions) impressions,sum(d.clicks) clicks,sum(d.purchases) purchases,CASE WHEN sum(d.impressions)>0 THEN sum(d.clicks)::numeric/sum(d.impressions) END ctr,CASE WHEN sum(d.clicks)>0 THEN sum(d.spend)/sum(d.clicks) END cpc,CASE WHEN sum(d.spend)>0 THEN sum(d.attributed_sales)/sum(d.spend) END roas,CASE WHEN sum(d.attributed_sales)>0 THEN sum(d.spend)/sum(d.attributed_sales) END acos FROM mart.ads_target_daily d LEFT JOIN ads.campaign c ON c.account_id=d.account_id AND c.campaign_id=d.campaign_id WHERE d.marketplace_id=%s AND d.business_date BETWEEN %s::date-27 AND %s::date GROUP BY d.account_id,d.target_id,d.campaign_id ORDER BY spend DESC LIMIT 100""",(marketplace,through,through)) if _one(cur,"SELECT to_regclass('mart.ads_target_daily') rel").get('rel') else []
+        search_terms=_all(cur,"""SELECT d.account_id,d.search_term,d.campaign_id,max(c.campaign_name) campaign_name,d.ad_group_id,d.target_id,max(d.match_type) match_type,sum(d.spend) spend,sum(d.attributed_sales) attributed_sales,sum(d.impressions) impressions,sum(d.clicks) clicks,sum(d.purchases) purchases,CASE WHEN sum(d.impressions)>0 THEN sum(d.clicks)::numeric/sum(d.impressions) END ctr,CASE WHEN sum(d.clicks)>0 THEN sum(d.spend)/sum(d.clicks) END cpc,CASE WHEN sum(d.spend)>0 THEN sum(d.attributed_sales)/sum(d.spend) END roas,CASE WHEN sum(d.attributed_sales)>0 THEN sum(d.spend)/sum(d.attributed_sales) END acos FROM mart.ads_search_term_daily d LEFT JOIN ads.campaign c ON c.account_id=d.account_id AND c.campaign_id=d.campaign_id WHERE d.marketplace_id=%s AND d.business_date BETWEEN %s::date-27 AND %s::date GROUP BY d.account_id,d.search_term,d.campaign_id,d.ad_group_id,d.target_id ORDER BY spend DESC LIMIT 150""",(marketplace,through,through)) if _one(cur,"SELECT to_regclass('mart.ads_search_term_daily') rel").get('rel') else []
+    if decorate_products:products=decorate_products(products)
+    trusted=bool(quality.get('trusted_for_operating_decisions'));actions=[]
+    if trusted:
+        for r in search_terms:
+            if float(r.get('purchases') or 0)>=2 and float(r.get('roas') or 0)>=2:actions.append({'kind':'HARVEST_SEARCH_TERM','priority':1,'label':'Harvest candidate','title':r.get('search_term') or 'Search term','context':r.get('campaign_name') or r.get('campaign_id'),'spend':r.get('spend'),'attributed_sales':r.get('attributed_sales'),'purchases':r.get('purchases'),'roas':r.get('roas'),'reason':'Repeated attributed purchases with at least 2× ROAS. Review for dedicated targeting; do not auto-change bids.'})
+        for r in targets:
+            if float(r.get('spend') or 0)>0 and int(r.get('purchases') or 0)==0 and int(r.get('clicks') or 0)>=8:actions.append({'kind':'INSPECT_TARGET_SPEND','priority':2,'label':'Inspect spend','title':r.get('target_expression') or r.get('target_id') or 'Target','context':r.get('campaign_name') or r.get('campaign_id'),'spend':r.get('spend'),'attributed_sales':r.get('attributed_sales'),'purchases':r.get('purchases'),'roas':r.get('roas'),'reason':'Material click learning without an attributed purchase. Inspect relevance and economics before changing targeting.'})
+        for r in products:
+            if float(r.get('spend') or 0)>0 and float(r.get('tacos') or 0)>=0.20 and float(r.get('roas') or 0)<2:actions.append({'kind':'REVIEW_PRODUCT_SUPPORT','priority':3,'label':'Review product support','title':r.get('product') or r.get('sku') or r.get('asin'),'context':r.get('sku') or r.get('asin'),'spend':r.get('spend'),'attributed_sales':r.get('attributed_sales'),'purchases':r.get('purchases'),'roas':r.get('roas'),'tacos':r.get('tacos'),'sku':r.get('sku'),'reason':'Paid support is consuming at least 20% of total product sales while attributed ROAS is below 2×. Review economics and campaign intent.'})
+    actions=sorted(actions,key=lambda x:(x['priority'],-float(x.get('spend') or 0)))[:8]
+    return {'status':'ready','freshness':freshness,'quality':quality,'summary':summary,'daily':daily,'campaigns':campaigns,'products':products,'targets':targets,'search_terms':search_terms,'actions':actions}
