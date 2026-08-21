@@ -139,8 +139,9 @@ New and migrated files should be readable and formatted when touched even before
 10. Shared shell owns navigation, tab accessibility and mobile swipe behavior: **done**.
 11. Superseded Finance, Sales overrides, Home, Today, Ads and generic refinement layers: **removed**.
 12. Legacy unused `index.html`: **removed**; `/`, `/home` and `/index.html` are served by canonical `home.html`.
-13. Production visual regression review at desktop/mobile widths: **required before accepting the refactor**.
-14. Optional analytical/product redesigns such as chart-form changes: **separate from this structural refactor**.
+13. Full frontend lint on the consolidated source tree: **required and green before review/deploy**.
+14. Production visual regression review at desktop/mobile widths: **required before accepting the refactor**.
+15. Optional analytical/product redesigns such as chart-form changes: **separate from this structural refactor**.
 
 ## Quality gate
 
