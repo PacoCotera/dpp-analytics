@@ -22,6 +22,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Initialize deployment diagnostics
+        run: |
+          set -euo pipefail
+          sudo rm -rf /tmp/dpp-production-visual-qa
+          sudo rm -f \
+            /tmp/dpp-production-visual-qa-run.txt \
+            /tmp/dpp-finance-close.json \
+            /tmp/dpp-spapi-probe.json \
+            /tmp/grafana-health.json \
+            /tmp/board-health.json \
+            /tmp/board-home.json \
+            /tmp/board-sales.json \
+            /tmp/board-inventory.json \
+            /tmp/dpp-heartbeat.md
+
       - name: Bootstrap host
         run: |
           set -euo pipefail
