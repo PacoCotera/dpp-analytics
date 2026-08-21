@@ -43,12 +43,8 @@ for page in static.glob('*.html'):
     if '</body>' in text and "href = '/ads'" not in text: text = text.replace('</body>', nav_tag + '\n</body>', 1)
     page.write_text(text)
 
-# Today is standalone: its source HTML owns its DOM, styles, data loop and chart.
-# Do not inject post-render Today compatibility/runtime layers here.
-
-product = static / 'product.html'
-text = product.read_text(); product_ads = (static / 'product-ads-enhance.js').read_text(); product_ads_tag = '<script>\n' + product_ads + '\n</script>'
-if '</body>' in text and 'Paid support is part of this product' not in text: product.write_text(text.replace('</body>', product_ads_tag + '\n</body>', 1))
+# Today and Product Workspace are standalone: source HTML owns DOM, styles,
+# data loop, state interpretation and charts. Do not inject post-render layers.
 
 # Sales has one composition/runtime owner. Do not re-introduce post-render chart,
 # rail, state, or ads mutation layers here.
