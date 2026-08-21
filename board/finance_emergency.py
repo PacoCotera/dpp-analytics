@@ -4,10 +4,9 @@ from __future__ import annotations
 
 OPEN month uses the editable standard-cost file for a provisional estimate.
 Historical CLOSED months come only from core.finance_month_close snapshots, so a
-later standard-cost edit cannot silently rewrite history. Amazon-side closure is
-tracked separately from seller COGS completeness; a month may therefore be
-AMAZON_CLOSED while waiting for a missing seller cost before its first
-management-close snapshot is written by the worker.
+later standard-cost edit cannot silently rewrite history. Historical period state
+comes from mart.finance_month_state, which separates Amazon-side closure from
+seller-owned COGS readiness and immutable management close state.
 
 Cost config is backward compatible. Scalar costs apply to all dates. A SKU may
 also carry effective-dated history so an unclosed historical month uses the cost
@@ -211,36 +210,76 @@ def _ads_close_for_month(cur, marketplace: str, month: date) -> dict:
     """, (marketplace, nxt, _next_month(nxt)))
 
 
+def _canonical_month_state(cur, marketplace: str, month: date) -> dict:
+    return _one(cur, """
+        SELECT month,is_current_month,core_orders,released_orders,deferred_events,
+               order_release_complete,advertising_close_state,candidate_advertising_amount,
+               candidate_advertising_source,ads_calendar_complete,ads_attribution_mature,
+               ads_api_restatement_available,amazon_closed,management_close_version,
+               management_close_state,management_closed_at,accounting_state
+        FROM mart.finance_month_state
+        WHERE marketplace_id=%s AND month=%s::date
+    """, (marketplace, month))
+
+
 def _probe_historical_month(cur, marketplace: str, month: date, costs: dict[str, object], now_local: date) -> dict:
     sales = _sales_month(cur, marketplace, month)
     fin = _order_finance_month(cur, marketplace, month)
-    ads = _ads_close_for_month(cur, marketplace, month)
     cogs = _cogs_for_month(cur, marketplace, month, costs)
+    state_row = _canonical_month_state(cur, marketplace, month)
     net_sales = float(sales.get("net_sales") or 0)
     order_net = float(fin.get("order_net") or 0)
-    deferred = int(fin.get("deferred_events") or 0)
-    released_orders = int(fin.get("released_orders") or 0)
-    core_orders = int(fin.get("core_orders") or 0)
-    finance_released = deferred == 0 and (released_orders > 0 or net_sales == 0)
-    old_enough = now_local >= _month_end(month) + timedelta(days=CLOSE_GRACE_DAYS)
-    ads_final = int(ads.get("events") or 0) > 0
-    amazon_closed = finance_released and old_enough and ads_final
-    state = "AMAZON_CLOSED" if amazon_closed else "FINALIZING"
-    waits = []
-    if not finance_released:
-        waits.append("Amazon order releases")
-    if not ads_final:
-        waits.append("monthly advertising close")
-    if not old_enough:
-        waits.append("close grace period")
-    if amazon_closed and not cogs["complete"]:
-        waits.append("seller product cost")
-    if amazon_closed and cogs["complete"]:
-        state = "READY_TO_CLOSE"
+    deferred = int(state_row.get("deferred_events") if state_row else fin.get("deferred_events") or 0)
+    released_orders = int(state_row.get("released_orders") if state_row else fin.get("released_orders") or 0)
+    core_orders = int(state_row.get("core_orders") if state_row else fin.get("core_orders") or 0)
+
+    if state_row:
+        accounting_state = str(state_row.get("accounting_state") or "AMAZON_CLOSING")
+        amazon_closed = bool(state_row.get("amazon_closed"))
+        advertising_state = state_row.get("advertising_close_state")
+        advertising = state_row.get("candidate_advertising_amount")
+        advertising_source = state_row.get("candidate_advertising_source")
+        order_release_complete = bool(state_row.get("order_release_complete"))
+        waits = []
+        if not order_release_complete:
+            waits.append("Amazon order releases")
+        if advertising_state not in ("ADS_API_ACCRUAL_READY", "PRODUCT_ADS_PAYMENT_BRIDGE_READY"):
+            waits.append("monthly advertising close")
+        if not amazon_closed and order_release_complete and advertising_state in ("ADS_API_ACCRUAL_READY", "PRODUCT_ADS_PAYMENT_BRIDGE_READY"):
+            waits.append("close grace period")
+        if accounting_state == "AMAZON_CLOSED_COGS_PENDING" and not cogs["complete"]:
+            waits.append("seller product cost")
+    else:
+        ads = _ads_close_for_month(cur, marketplace, month)
+        finance_released = deferred == 0 and (released_orders > 0 or net_sales == 0)
+        old_enough = now_local >= _month_end(month) + timedelta(days=CLOSE_GRACE_DAYS)
+        ads_final = int(ads.get("events") or 0) > 0
+        amazon_closed = finance_released and old_enough and ads_final
+        accounting_state = "AMAZON_CLOSED_COGS_PENDING" if amazon_closed else "AMAZON_CLOSING"
+        advertising_state = "PRODUCT_ADS_PAYMENT_BRIDGE_READY" if ads_final else "PENDING"
+        advertising = float(ads.get("advertising") or 0) if ads_final else None
+        advertising_source = "PRODUCT_ADS_PAYMENT_BRIDGE" if ads_final else None
+        order_release_complete = finance_released
+        waits = []
+        if not finance_released:
+            waits.append("Amazon order releases")
+        if not ads_final:
+            waits.append("monthly advertising close")
+        if not old_enough:
+            waits.append("close grace period")
+        if amazon_closed and not cogs["complete"]:
+            waits.append("seller product cost")
+
+    management_close_ready = accounting_state == "AMAZON_CLOSED_COGS_PENDING" and cogs["complete"]
+    if management_close_ready and not waits:
+        waits.append("management-close snapshot")
     return {
         "month": str(month),
-        "state": state,
-        "amazon_state": "CLOSED" if amazon_closed else "FINALIZING",
+        "state": accounting_state,
+        "accounting_state": accounting_state,
+        "amazon_state": "CLOSED" if amazon_closed else "CLOSING",
+        "amazon_closed": amazon_closed,
+        "management_close_ready": management_close_ready,
         "net_sales_ex_vat": round(net_sales, 2),
         "iva_on_sales": round(net_sales * VAT_RATE, 2),
         "shopper_product_spend": round(net_sales * (1 + VAT_RATE), 2),
@@ -248,15 +287,19 @@ def _probe_historical_month(cur, marketplace: str, month: date, costs: dict[str,
         "units": int(sales.get("units") or 0),
         "amazon_order_net": round(order_net, 2),
         "amazon_order_effect": round(order_net - net_sales, 2),
-        "advertising": float(ads.get("advertising") or 0) if ads_final else None,
-        "advertising_final": ads_final,
+        "advertising": float(advertising) if advertising is not None else None,
+        "advertising_close_state": advertising_state,
+        "advertising_source": advertising_source,
+        "advertising_final": advertising_state in ("ADS_API_ACCRUAL_READY", "PRODUCT_ADS_PAYMENT_BRIDGE_READY"),
         "product_cogs": cogs["product_cogs"],
         "cogs_complete": cogs["complete"],
         "cogs_coverage_pct": cogs["coverage_pct"],
         "missing_skus": cogs["missing_skus"],
         "release_coverage_pct": round(100.0 * released_orders / core_orders, 1) if core_orders else 100.0,
+        "order_release_complete": order_release_complete,
         "deferred_events": deferred,
         "close_waits_for": waits,
+        "ads_api_restatement_available": bool(state_row.get("ads_api_restatement_available")) if state_row else False,
     }
 
 
@@ -283,7 +326,7 @@ def finance_payload(connect, marketplace: str) -> dict:
             other_postings = float(postings.get("other_postings") or 0)
             current_estimate = round(order_net + other_postings - cogs["product_cogs"], 2) if cogs["complete"] else None
             current = {
-                "month": str(current_month), "state": "OPEN", "partial": True,
+                "month": str(current_month), "state": "OPEN", "accounting_state": "OPEN", "partial": True,
                 "through_date": sales.get("through_date") or last_sales_date,
                 "net_sales_ex_vat": round(net_sales, 2),
                 "iva_on_sales": round(net_sales * VAT_RATE, 2),
@@ -325,6 +368,7 @@ def finance_payload(connect, marketplace: str) -> dict:
                 for row in closed:
                     row["month"] = str(row.get("month"))
                     row["state"] = row.get("state") or "CLOSED"
+                    row["accounting_state"] = row["state"]
                     row["cogs_source"] = "frozen_close_snapshot"
                     basis = row.get("close_basis") if isinstance(row.get("close_basis"), dict) else {}
                     row["cogs_coverage_pct"] = float(basis.get("cogs_coverage_pct") or 100.0)
@@ -387,7 +431,11 @@ def finance_payload(connect, marketplace: str) -> dict:
                 "latest_posted": cutoff,
                 "closed_months": len(closed),
                 "historical_months_pending": len(finalizing),
+                "amazon_closed_cogs_pending": sum(1 for m in finalizing if m.get("accounting_state") == "AMAZON_CLOSED_COGS_PENDING"),
+                "amazon_closing": sum(1 for m in finalizing if m.get("accounting_state") == "AMAZON_CLOSING"),
+                "management_close_ready": sum(1 for m in finalizing if m.get("management_close_ready")),
                 "cogs_policy": "OPEN months use editable standard/effective-dated costs; CLOSED months use immutable snapshots; restatement is explicit only.",
+                "accounting_state_source": "mart.finance_month_state",
             }
             return {
                 "summary": summary,
