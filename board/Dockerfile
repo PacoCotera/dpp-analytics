@@ -45,8 +45,9 @@ for page in static.glob('*.html'):
     if '</body>' in text and 'touch swipe navigation for tabbed workspaces' not in text: text = text.replace('</body>', swipe_tag + '\n</body>', 1)
     page.write_text(text)
 
-# Today, Home and Product Workspace own their DOM/state composition directly.
-# Do not inject post-render layout or Ads interpretation layers into them.
+# Today, Home, Product Workspace and Finance own their DOM/state composition
+# directly. Do not inject post-render layout, accounting, or interpretation
+# layers into these canonical pages.
 
 # Sales has one composition/runtime owner. Do not re-introduce post-render chart,
 # rail, state, or ads mutation layers here.
@@ -68,17 +69,6 @@ home.write_text(text)
 
 ads = static / 'ads.html'; text = ads.read_text(); ads_targeting = (static / 'ads-targeting-enhance.js').read_text(); ads_targeting_tag = '<script>\n' + ads_targeting + '\n</script>'
 if '</body>' in text and 'ads-targeting-search-term-workspaces-v1' not in text: ads.write_text(text.replace('</body>', ads_targeting_tag + '\n</body>', 1))
-
-finance = static / 'finance.html'; text = finance.read_text()
-finance_ads = (static / 'finance-ads-reconcile.js').read_text(); finance_ads_tag = '<script>\n' + finance_ads + '\n</script>'
-if '</body>' in text and 'Advertising has two accounting clocks.' not in text: text = text.replace('</body>', finance_ads_tag + '\n</body>', 1)
-finance_manager = (static / 'finance-manager-v2.js').read_text(); finance_manager_tag = '<script>\n' + finance_manager + '\n</script>'
-if '</body>' in text and 'Sales → deductions → contribution' not in text: text = text.replace('</body>', finance_manager_tag + '\n</body>', 1)
-finance_progression = (static / 'finance-month-progression.js').read_text(); finance_progression_tag = '<script>\n' + finance_progression + '\n</script>'
-if '</body>' in text and 'finance-month-progression-v1' not in text: text = text.replace('</body>', finance_progression_tag + '\n</body>', 1)
-finance_cost = (static / 'finance-cost-clarity.js').read_text(); finance_cost_tag = '<script>\n' + finance_cost + '\n</script>'
-if '</body>' in text and 'Historical months not yet management-closed' not in text: text = text.replace('</body>', finance_cost_tag + '\n</body>', 1)
-finance.write_text(text)
 PY
 RUN python -c "import server; print('board import smoke test: ok')"
 EXPOSE 8080
