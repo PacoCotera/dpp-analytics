@@ -1,6 +1,11 @@
 import { byId, escapeHtml, fetchJson, integer } from './ui-utils.js';
 
 const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const viewState = {
+  payload: null,
+  window: 'ytd',
+  selectedMonth: null,
+};
 
 function financeMoney(value) {
   if (value === null || value === undefined) return '—';
@@ -20,10 +25,22 @@ function percentage0(value) {
   return value === null || value === undefined ? '—' : `${Number(value).toFixed(0)}%`;
 }
 
+function monthDate(value) {
+  return new Date(`${String(value).slice(0, 10)}T12:00:00`);
+}
+
+function monthKey(value) {
+  return String(value || '').slice(0, 7);
+}
+
 function monthLabel(value) {
   if (!value) return '—';
-  const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
-  return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  return monthDate(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+}
+
+function monthLongLabel(value) {
+  if (!value) return '—';
+  return monthDate(value).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
 function normalizeState(value) {
@@ -64,7 +81,7 @@ function bridgeStep(label, value, kind = '') {
 }
 
 function chartMonthParts(value) {
-  const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
+  const date = monthDate(value);
   return {
     month: date.toLocaleDateString('en-US', { month: 'short' }),
     year: String(date.getFullYear()),
@@ -103,15 +120,116 @@ function niceChartStep(range, targetTicks = 5) {
   return factor * magnitude;
 }
 
+function setChartGeometry(svg, width, height = 300) {
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.style.minWidth = width > 900 ? `${width}px` : '';
+}
+
+function currentContributionRow(current) {
+  const estimate = current.estimated_contribution_before_current_ads;
+  const sales = Number(current.net_sales_ex_vat || 0);
+  const amazonEffect = Number(current.amazon_order_effect || 0);
+  const productCogs = Math.abs(Number(current.product_cogs || 0));
+  const other = estimate == null
+    ? null
+    : Number(estimate) - (sales + amazonEffect - productCogs);
+  const adsRaw = current.current_month_advertising;
+  const adsPending = adsRaw === null || adsRaw === undefined;
+  const advertising = adsPending ? null : -Math.abs(Number(adsRaw || 0));
+  const contribution = estimate == null
+    ? null
+    : adsPending
+      ? Number(estimate)
+      : Number(estimate) + advertising;
+
+  return {
+    month: current.month,
+    net_sales_ex_vat: sales,
+    amazon_order_effect: amazonEffect,
+    other_finance_effect: other,
+    advertising,
+    product_cogs: productCogs,
+    contribution_after_product_cogs: contribution,
+    state: current.accounting_state || current.state || 'OPEN',
+    _current: true,
+    _adsPending: adsPending,
+  };
+}
+
+function closedContributionRow(item) {
+  const sales = Number(item.net_sales_ex_vat || 0);
+  const amazonEffect = Number(item.amazon_order_effect || 0);
+  const advertising = Number(item.advertising || 0);
+  const productCogs = Math.abs(Number(item.product_cogs || 0));
+  const contribution = Number(item.contribution_after_product_cogs || 0);
+  const explained = sales + amazonEffect + advertising - productCogs;
+
+  return {
+    ...item,
+    net_sales_ex_vat: sales,
+    amazon_order_effect: amazonEffect,
+    other_finance_effect: contribution - explained,
+    advertising,
+    product_cogs: productCogs,
+    contribution_after_product_cogs: contribution,
+    _current: false,
+    _adsPending: false,
+  };
+}
+
+function accountingRows(payload) {
+  const closed = (payload.closed_months || [])
+    .map(closedContributionRow)
+    .sort((a, b) => String(a.month).localeCompare(String(b.month)));
+  const current = currentContributionRow(payload.current_month || {});
+  return current.month ? [...closed, current] : closed;
+}
+
+function monthOrdinal(value) {
+  const date = monthDate(value);
+  return date.getFullYear() * 12 + date.getMonth();
+}
+
+function rowsForWindow(rows, windowKey, currentMonth) {
+  const current = monthDate(currentMonth);
+  const currentOrdinal = monthOrdinal(currentMonth);
+
+  if (windowKey === '3m') {
+    return rows.filter(row => {
+      const ordinal = monthOrdinal(row.month);
+      return ordinal >= currentOrdinal - 2 && ordinal <= currentOrdinal;
+    });
+  }
+
+  if (windowKey === 'ytd') {
+    return rows.filter(row => monthDate(row.month).getFullYear() === current.getFullYear());
+  }
+
+  if (windowKey === '12m') {
+    return rows.filter(row => {
+      const ordinal = monthOrdinal(row.month);
+      return ordinal >= currentOrdinal - 11 && ordinal <= currentOrdinal;
+    });
+  }
+
+  if (windowKey === 'lastYear') {
+    const year = current.getFullYear() - 1;
+    return rows.filter(row => monthDate(row.month).getFullYear() === year);
+  }
+
+  return rows;
+}
+
 function renderProgressionChart(svg, rows) {
-  const width = 900;
   const height = 300;
   const margin = { left: 72, right: 20, top: 26, bottom: 62 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
   const usableRows = rows.filter(
     row => row.month && row.contribution_after_product_cogs !== null && row.contribution_after_product_cogs !== undefined,
   );
+  const width = Math.max(900, margin.left + margin.right + (usableRows.length + 1) * 72);
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+  setChartGeometry(svg, width, height);
 
   let cumulative = 0;
   const points = usableRows.map(row => {
@@ -123,7 +241,7 @@ function renderProgressionChart(svg, rows) {
   });
 
   if (!points.length) {
-    svg.innerHTML = '<text class="finance-chart-axis" x="450" y="150" text-anchor="middle">No contribution history available.</text>';
+    svg.innerHTML = `<text class="finance-chart-axis" x="${width / 2}" y="150" text-anchor="middle">No contribution history available for this window.</text>`;
     return;
   }
 
@@ -140,6 +258,7 @@ function renderProgressionChart(svg, rows) {
   const slotWidth = innerWidth / slotCount;
   const barWidth = Math.min(44, Math.max(24, slotWidth * 0.55));
   const hasOpen = points.some(point => point._current);
+  const hasAdsPending = points.some(point => point._current && point._adsPending);
   let output = '';
 
   for (let tick = domainMin; tick <= domainMax + step * 0.25; tick += step) {
@@ -159,8 +278,13 @@ function renderProgressionChart(svg, rows) {
     const openClass = point._current ? ' is-open' : '';
     const directionClass = positive ? '' : ' is-negative';
     const month = chartMonthParts(point.month);
+    const titleSuffix = point._current && point._adsPending ? '; advertising pending' : '';
 
-    output += `<g><rect class="finance-chart-bar finance-chart-bar--contribution${directionClass}${openClass}" x="${center - barWidth / 2}" y="${topY}" width="${barWidth}" height="${barHeight}" rx="4"></rect><title>${escapeHtml(monthLabel(point.month))}: ${escapeHtml(compactSignedMoney(point.delta))}; running ${escapeHtml(financeMoney(point.end))}</title></g>`;
+    output += `<g class="finance-chart-month-hit" data-month="${escapeHtml(point.month)}" tabindex="0" role="button" aria-label="Inspect ${escapeHtml(monthLongLabel(point.month))}">
+      <rect class="finance-chart-bar dpp-bar finance-chart-bar--contribution${directionClass}${openClass}" x="${center - barWidth / 2}" y="${topY}" width="${barWidth}" height="${barHeight}" rx="4"></rect>
+      <title>${escapeHtml(monthLabel(point.month))}: ${escapeHtml(compactSignedMoney(point.delta))}; running ${escapeHtml(financeMoney(point.end))}${escapeHtml(titleSuffix)}</title>
+      <rect class="finance-chart-hit-area" x="${center - slotWidth / 2}" y="${margin.top}" width="${slotWidth}" height="${innerHeight + 50}" fill="transparent"></rect>
+    </g>`;
 
     const rawDeltaY = positive ? topY - 7 : topY + barHeight + 13;
     const deltaY = Math.max(margin.top + 10, Math.min(height - 66, rawDeltaY));
@@ -182,14 +306,117 @@ function renderProgressionChart(svg, rows) {
   const cumulativeY = y(cumulative);
   const totalTop = Math.min(zeroY, cumulativeY);
   const totalHeight = Math.max(2, Math.abs(cumulativeY - zeroY));
-  output += `<g><rect class="finance-chart-bar finance-chart-bar--sales" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>Running contribution: ${escapeHtml(financeMoney(cumulative))}${hasOpen ? ' including provisional open month' : ''}</title></g>`;
+  output += `<g><rect class="finance-chart-bar finance-chart-bar--sales" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>Window contribution: ${escapeHtml(financeMoney(cumulative))}${hasOpen ? ' including provisional open month' : ''}${hasAdsPending ? '; advertising pending' : ''}</title></g>`;
   const rawTotalValueY = cumulative < 0 ? cumulativeY - 8 : cumulativeY + 14;
   const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
   output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(cumulative)}</text>`;
   if (hasOpen) {
     output += `<text class="dpp-muted" x="${totalCenter}" y="${height - 48}" text-anchor="middle">PROVISIONAL</text>`;
   }
-  output += `<text class="finance-chart-month" x="${totalCenter}" y="${height - 29}" text-anchor="middle"><tspan x="${totalCenter}">Running</tspan><tspan class="dpp-muted" x="${totalCenter}" dy="13">total</tspan></text>`;
+  output += `<text class="finance-chart-month" x="${totalCenter}" y="${height - 29}" text-anchor="middle"><tspan x="${totalCenter}">Window</tspan><tspan class="dpp-muted" x="${totalCenter}" dy="13">total</tspan></text>`;
+
+  svg.innerHTML = output;
+}
+
+function renderMonthWaterfall(svg, row) {
+  const width = 900;
+  const height = 300;
+  const margin = { left: 72, right: 20, top: 26, bottom: 62 };
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+  setChartGeometry(svg, width, height);
+
+  if (!row || row.contribution_after_product_cogs === null || row.contribution_after_product_cogs === undefined) {
+    svg.innerHTML = '<text class="finance-chart-axis" x="450" y="150" text-anchor="middle">No contribution detail is available for this month.</text>';
+    return;
+  }
+
+  const open = Boolean(row._current);
+  const steps = [
+    { label: 'Sales', detail: 'Sales ex IVA', delta: Number(row.net_sales_ex_vat || 0), kind: 'sales' },
+    { label: 'Amazon', detail: 'Amazon effect', delta: Number(row.amazon_order_effect || 0) },
+    { label: 'Other', detail: open ? 'Other postings / timing' : 'Other finance postings', delta: Number(row.other_finance_effect || 0) },
+    {
+      label: 'Ads',
+      detail: row._adsPending ? 'Advertising pending' : 'Advertising',
+      delta: row._adsPending ? 0 : Number(row.advertising || 0),
+      pending: row._adsPending,
+    },
+    { label: 'COGS', detail: 'Product COGS', delta: -Math.abs(Number(row.product_cogs || 0)) },
+  ];
+
+  let running = 0;
+  const points = steps.map(stepItem => {
+    const start = running;
+    const end = stepItem.pending ? running : running + stepItem.delta;
+    running = end;
+    return { ...stepItem, start, end };
+  });
+  const contribution = Number(row.contribution_after_product_cogs || 0);
+  const values = [0, contribution, ...points.flatMap(point => [point.start, point.end])];
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const rawRange = Math.max(1, rawMax - rawMin);
+  const step = niceChartStep(rawRange, 5);
+  const domainMin = Math.floor((rawMin - rawRange * 0.08) / step) * step;
+  const domainMax = Math.ceil((rawMax + rawRange * 0.08) / step) * step;
+  const domainRange = Math.max(step, domainMax - domainMin);
+  const y = value => margin.top + ((domainMax - Number(value || 0)) / domainRange) * innerHeight;
+  const slotCount = points.length + 1;
+  const slotWidth = innerWidth / slotCount;
+  const barWidth = Math.min(54, Math.max(34, slotWidth * 0.5));
+  let output = '';
+
+  for (let tick = domainMin; tick <= domainMax + step * 0.25; tick += step) {
+    const yy = y(tick);
+    const zero = Math.abs(tick) < step * 0.001;
+    output += `<line class="${zero ? 'dpp-zero' : 'finance-chart-grid'}" x1="${margin.left}" x2="${width - margin.right}" y1="${yy}" y2="${yy}"></line>`;
+    output += `<text class="finance-chart-axis" x="${margin.left - 10}" y="${yy + 4}" text-anchor="end">${chartAxisMoney(tick)}</text>`;
+  }
+
+  points.forEach((point, index) => {
+    const center = margin.left + slotWidth * (index + 0.5);
+    const startY = y(point.start);
+    const endY = y(point.end);
+    const topY = Math.min(startY, endY);
+    const barHeight = Math.max(2, Math.abs(endY - startY));
+    const positive = point.delta >= 0;
+    const directionClass = positive ? '' : ' is-negative';
+    const openClass = open ? ' is-open' : '';
+    const salesClass = point.kind === 'sales' ? ' finance-chart-bar--sales' : '';
+    const barClass = salesClass || ` finance-chart-bar--contribution${directionClass}`;
+
+    if (point.pending) {
+      output += `<line class="dpp-connector" x1="${center - barWidth / 2}" x2="${center + barWidth / 2}" y1="${startY}" y2="${startY}"></line>`;
+      output += `<text class="dpp-muted" x="${center}" y="${Math.max(margin.top + 11, startY - 8)}" text-anchor="middle">PENDING</text>`;
+    } else {
+      output += `<g><rect class="finance-chart-bar dpp-bar${barClass}${openClass}" x="${center - barWidth / 2}" y="${topY}" width="${barWidth}" height="${barHeight}" rx="4"></rect><title>${escapeHtml(point.detail)}: ${escapeHtml(compactSignedMoney(point.delta))}</title></g>`;
+      const rawValueY = positive ? topY - 7 : topY + barHeight + 13;
+      const valueY = Math.max(margin.top + 10, Math.min(height - 66, rawValueY));
+      output += `<text class="finance-chart-month" x="${center}" y="${valueY}" text-anchor="middle">${compactSignedMoney(point.delta)}</text>`;
+    }
+
+    const nextCenter = index < points.length - 1
+      ? margin.left + slotWidth * (index + 1.5)
+      : margin.left + slotWidth * (points.length + 0.5);
+    output += `<line class="dpp-connector" x1="${center + barWidth / 2}" x2="${nextCenter - barWidth / 2}" y1="${endY}" y2="${endY}"></line>`;
+    output += `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(point.label)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(point.detail === point.label ? '' : point.detail)}</tspan></text>`;
+  });
+
+  const totalCenter = margin.left + slotWidth * (points.length + 0.5);
+  const zeroY = y(0);
+  const contributionY = y(contribution);
+  const totalTop = Math.min(zeroY, contributionY);
+  const totalHeight = Math.max(2, Math.abs(contributionY - zeroY));
+  const totalOpenClass = open ? ' is-open' : '';
+  output += `<g><rect class="finance-chart-bar finance-chart-bar--sales${totalOpenClass}" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>${row._adsPending ? 'Contribution before current-month advertising' : 'Contribution'}: ${escapeHtml(financeMoney(contribution))}</title></g>`;
+  const rawTotalValueY = contribution < 0 ? contributionY - 8 : contributionY + 14;
+  const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
+  output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(contribution)}</text>`;
+  if (open) {
+    output += `<text class="dpp-muted" x="${totalCenter}" y="${height - 48}" text-anchor="middle">OPEN</text>`;
+  }
+  output += `<text class="finance-chart-month" x="${totalCenter}" y="${height - 29}" text-anchor="middle"><tspan x="${totalCenter}">${row._adsPending ? 'Pre-ads' : 'Contribution'}</tspan><tspan class="dpp-muted" x="${totalCenter}" dy="13">${row._adsPending ? 'provisional' : 'result'}</tspan></text>`;
 
   svg.innerHTML = output;
 }
@@ -219,18 +446,9 @@ function renderCurrentMonth(current, closed) {
 }
 
 function renderCurrentBridge(current) {
-  const estimate = current.estimated_contribution_before_current_ads;
-  const other = estimate == null
-    ? null
-    : Number(estimate) - (
-        Number(current.net_sales_ex_vat || 0) +
-        Number(current.amazon_order_effect || 0) -
-        Number(current.product_cogs || 0)
-      );
+  const row = currentContributionRow(current);
   const ads = current.current_month_advertising;
-  const contribution = ads == null
-    ? estimate
-    : Number(estimate || 0) - Math.abs(Number(ads || 0));
+  const contribution = row.contribution_after_product_cogs;
 
   byId('currentLines').innerHTML = [
     financeLine(
@@ -241,7 +459,7 @@ function renderCurrentBridge(current) {
     financeLine(
       'Other Amazon postings / timing',
       'Released service fees, adjustments and reimbursements posted this month.',
-      other,
+      row.other_finance_effect,
     ),
     financeLine(
       'Product COGS',
@@ -268,12 +486,10 @@ function renderCurrentBridge(current) {
   byId('currentBridge').innerHTML = [
     bridgeStep('Sales ex IVA', current.net_sales_ex_vat),
     bridgeStep('Amazon effect', current.amazon_order_effect),
-    bridgeStep('Other postings', other),
+    bridgeStep('Other postings', row.other_finance_effect),
     bridgeStep('Product COGS', -Math.abs(Number(current.product_cogs || 0))),
     bridgeStep(ads == null ? 'Contribution pre-ads' : 'Contribution', contribution, 'warn'),
   ].join('');
-
-  return contribution;
 }
 
 function renderYtd(ytd) {
@@ -359,7 +575,127 @@ function renderEvents(events) {
     : '<p>No recent accounting events.</p>';
 }
 
+function populateMonthPicker(rows, currentMonth) {
+  const select = byId('monthPicker');
+  const options = rows
+    .slice()
+    .sort((a, b) => String(b.month).localeCompare(String(a.month)))
+    .map(row => {
+      const marker = row._current ? 'OPEN' : stateLabel(row.state || 'CLOSED');
+      return `<option value="${escapeHtml(row.month)}">${escapeHtml(monthLongLabel(row.month))} · ${escapeHtml(marker)}</option>`;
+    })
+    .join('');
+  select.innerHTML = options;
+
+  if (!viewState.selectedMonth || !rows.some(row => monthKey(row.month) === monthKey(viewState.selectedMonth))) {
+    viewState.selectedMonth = currentMonth;
+  }
+  select.value = rows.find(row => monthKey(row.month) === monthKey(viewState.selectedMonth))?.month || currentMonth;
+}
+
+function windowDescription(windowKey, rows, currentRow) {
+  if (!rows.length) return 'No accounting months are available for this window.';
+  const first = rows[0];
+  const last = rows.at(-1);
+  const containsOpen = rows.some(row => row._current);
+  const adsPending = rows.some(row => row._current && row._adsPending);
+  const suffix = containsOpen
+    ? ` The OPEN month is provisional${adsPending ? ' and currently excludes pending advertising' : ''}.`
+    : ' All displayed months are management-closed.';
+  const range = first && last ? `${monthLongLabel(first.month)} to ${monthLongLabel(last.month)}.` : '';
+
+  if (windowKey === '3m') return `Three accounting months, reset to $0 at the start of the window. ${range}${suffix}`;
+  if (windowKey === 'ytd') return `Calendar YTD, reset to $0 on January 1. ${range}${suffix}`;
+  if (windowKey === '12m') return `Rolling 12 accounting months, reset to $0 at the start of the window. ${range}${suffix}`;
+  if (windowKey === 'lastYear') return `Previous calendar year using available operating history. ${range}${suffix}`;
+  if (windowKey === 'all') return `Full operating history from the first available accounting month. ${range}${suffix}`;
+  return currentRow?._current
+    ? `${monthLongLabel(currentRow.month)} detail. OPEN values are provisional${currentRow._adsPending ? '; advertising is still pending' : ''}.`
+    : `${monthLongLabel(currentRow?.month)} detail from the immutable management-close snapshot.`;
+}
+
+function updateWindowControls() {
+  document.querySelectorAll('[data-finance-window]').forEach(button => {
+    const selected = button.dataset.financeWindow === viewState.window;
+    button.setAttribute('aria-selected', String(selected));
+    button.classList.toggle('active', selected);
+  });
+  byId('monthPickerWrap').hidden = viewState.window !== 'month';
+}
+
+function renderWindow() {
+  const payload = viewState.payload;
+  if (!payload) return;
+  const rows = accountingRows(payload);
+  const currentMonth = payload.current_month?.month;
+  populateMonthPicker(rows, currentMonth);
+  updateWindowControls();
+
+  const svg = byId('progression');
+  const title = byId('progressionTitle');
+  const sub = byId('progressionSub');
+  const state = byId('progressionState');
+  const legend = byId('progressionLegend');
+
+  if (viewState.window === 'month') {
+    const selected = rows.find(row => monthKey(row.month) === monthKey(viewState.selectedMonth)) || rows.at(-1);
+    viewState.selectedMonth = selected?.month || currentMonth;
+    byId('monthPicker').value = viewState.selectedMonth;
+    title.textContent = `${monthLongLabel(selected?.month)} contribution bridge`;
+    sub.textContent = windowDescription('month', [selected].filter(Boolean), selected);
+    state.textContent = selected?._current
+      ? selected._adsPending ? 'OPEN · ADS PENDING' : 'OPEN · PROVISIONAL'
+      : stateLabel(selected?.state || 'CLOSED');
+    legend.innerHTML = [
+      '<span class="legend-key"><i class="legend-swatch"></i>Sales</span>',
+      '<span class="legend-key"><strong class="pos">+</strong>Addition</span>',
+      '<span class="legend-key"><strong class="neg">−</strong>Deduction</span>',
+      selected?._current ? '<span class="legend-key"><i class="legend-swatch open"></i>OPEN · provisional</span>' : '',
+      '<span class="legend-key"><i class="legend-swatch"></i>Contribution</span>',
+    ].join('');
+    svg.setAttribute('aria-label', `Contribution bridge for ${monthLongLabel(selected?.month)}`);
+    renderMonthWaterfall(svg, selected);
+    return;
+  }
+
+  const windowRows = rowsForWindow(rows, viewState.window, currentMonth);
+  const labels = {
+    '3m': '3-month contribution trajectory',
+    ytd: `${monthDate(currentMonth).getFullYear()} YTD contribution trajectory`,
+    '12m': 'Rolling 12-month contribution trajectory',
+    lastYear: `${monthDate(currentMonth).getFullYear() - 1} contribution trajectory`,
+    all: 'Full-history contribution trajectory',
+  };
+  const stateLabels = {
+    '3m': '3 ACCOUNTING MONTHS',
+    ytd: 'CALENDAR YTD',
+    '12m': 'ROLLING 12 MONTHS',
+    lastYear: 'PREVIOUS YEAR',
+    all: 'FULL HISTORY',
+  };
+
+  title.textContent = labels[viewState.window] || 'Contribution trajectory';
+  sub.textContent = `${windowDescription(viewState.window, windowRows)} Click any month to inspect its contribution bridge.`;
+  state.textContent = stateLabels[viewState.window] || 'RUNNING RESULT';
+  legend.innerHTML = [
+    '<span class="legend-key"><strong class="pos">+</strong>Positive month</span>',
+    '<span class="legend-key"><strong class="neg">−</strong>Negative month</span>',
+    windowRows.some(row => row._current) ? '<span class="legend-key"><i class="legend-swatch open"></i>OPEN · provisional</span>' : '',
+    '<span class="legend-key"><i class="legend-swatch"></i>Window total</span>',
+  ].join('');
+  svg.setAttribute('aria-label', `${title.textContent}; cumulative contribution by accounting month`);
+  renderProgressionChart(svg, windowRows);
+}
+
+function inspectMonth(month) {
+  if (!month) return;
+  viewState.window = 'month';
+  viewState.selectedMonth = month;
+  renderWindow();
+}
+
 function render(payload) {
+  viewState.payload = payload;
   const current = payload.current_month || {};
   const ytd = payload.ytd_closed_aggregate || {};
   const closed = (payload.closed_months || [])
@@ -371,19 +707,12 @@ function render(payload) {
   byId('throughLabel').textContent = `Sales through ${String(payload.sales_through || current.through_date || '').slice(0, 10)} · finance through ${String(payload.finance_cutoff || '').slice(0, 10)}`;
 
   renderCurrentMonth(current, closed);
-  const currentContribution = renderCurrentBridge(current);
+  renderCurrentBridge(current);
   renderYtd(ytd);
-  renderProgressionChart(byId('progression'), [
-    ...closed,
-    {
-      month: current.month,
-      contribution_after_product_cogs: currentContribution,
-      _current: true,
-    },
-  ]);
   renderPendingMonths(payload);
   renderHistory(closed);
   renderEvents(payload.recent);
+  renderWindow();
 }
 
 function bindInteractions() {
@@ -393,6 +722,34 @@ function bindInteractions() {
     const expanded = history.classList.toggle('expanded');
     toggle.setAttribute('aria-expanded', String(expanded));
     toggle.textContent = expanded ? 'Show recent closes only' : 'Show full closed history';
+  });
+
+  document.querySelectorAll('[data-finance-window]').forEach(button => {
+    button.addEventListener('click', () => {
+      viewState.window = button.dataset.financeWindow;
+      if (viewState.window === 'month' && !viewState.selectedMonth) {
+        viewState.selectedMonth = viewState.payload?.current_month?.month || null;
+      }
+      renderWindow();
+    });
+  });
+
+  byId('monthPicker').addEventListener('change', event => {
+    viewState.window = 'month';
+    viewState.selectedMonth = event.target.value;
+    renderWindow();
+  });
+
+  const chart = byId('progression');
+  chart.addEventListener('click', event => {
+    const target = event.target.closest('[data-month]');
+    if (target) inspectMonth(target.dataset.month);
+  });
+  chart.addEventListener('keydown', event => {
+    const target = event.target.closest('[data-month]');
+    if (!target || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    inspectMonth(target.dataset.month);
   });
 }
 

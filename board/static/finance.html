@@ -95,17 +95,30 @@
 
           <article class="finance-read wide">
             <div class="finance-read__head">
-              <div><div class="finance-read__title">Cumulative contribution by month</div><div class="finance-read__sub">Each month adds to or subtracts from the running contribution balance. Closed months are frozen; the open month remains provisional.</div></div>
-              <div class="finance-read__state">Running result</div>
-            </div>
-            <div class="chart-wrap dpp-chart-scroll">
-              <svg id="progression" class="progress-svg dpp-chart dpp-chart--wide" viewBox="0 0 900 300" role="img" aria-label="Cumulative contribution waterfall by accounting month"></svg>
-              <div class="chart-legend">
-                <span class="legend-key"><strong class="pos">+</strong>Positive month</span>
-                <span class="legend-key"><strong class="neg">−</strong>Negative month</span>
-                <span class="legend-key"><i class="legend-swatch open"></i>Open month · provisional</span>
-                <span class="legend-key"><i class="legend-swatch"></i>Running total</span>
+              <div>
+                <div id="progressionTitle" class="finance-read__title">Contribution trajectory</div>
+                <div id="progressionSub" class="finance-read__sub">Choose an accounting window to inspect cumulative contribution or drill into one month.</div>
               </div>
+              <div id="progressionState" class="finance-read__state">CALENDAR YTD</div>
+            </div>
+
+            <div class="subnav dpp-chart-scroll" aria-label="Finance chart time window">
+              <div class="segmented-control" role="tablist" aria-label="Contribution window">
+                <button class="segmented-control__item" type="button" role="tab" data-finance-window="month" aria-selected="false">Month</button>
+                <button class="segmented-control__item" type="button" role="tab" data-finance-window="3m" aria-selected="false">3M</button>
+                <button class="segmented-control__item active" type="button" role="tab" data-finance-window="ytd" aria-selected="true">YTD</button>
+                <button class="segmented-control__item" type="button" role="tab" data-finance-window="12m" aria-selected="false">12M</button>
+                <button class="segmented-control__item" type="button" role="tab" data-finance-window="lastYear" aria-selected="false">Last year</button>
+                <button class="segmented-control__item" type="button" role="tab" data-finance-window="all" aria-selected="false">All</button>
+              </div>
+            </div>
+            <div id="monthPickerWrap" class="finance-read__sub" hidden>
+              <label>Accounting month <select id="monthPicker" aria-label="Accounting month"></select></label>
+            </div>
+
+            <div class="chart-wrap dpp-chart-scroll">
+              <svg id="progression" class="progress-svg dpp-chart dpp-chart--wide" viewBox="0 0 900 300" role="img" aria-label="Contribution analysis by accounting month"></svg>
+              <div id="progressionLegend" class="chart-legend"></div>
             </div>
           </article>
         </section>
