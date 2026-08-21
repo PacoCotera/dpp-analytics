@@ -80,6 +80,38 @@ def _next_due(source: str, job_name: str, interval: int) -> float:
     return time.monotonic() + delay
 
 
+def _catalog_metadata_backfill_needed() -> bool:
+    """Run Catalog immediately after schema evolution when source metadata is absent.
+
+    The normal Catalog cadence is intentionally slow because catalog metadata is
+    stable. A new metadata column must not therefore wait almost a day for its
+    first population after deployment.
+    """
+    try:
+        with db.connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT count(*)::int AS total,
+                       count(*) FILTER (WHERE attributes IS NOT NULL OR relationships IS NOT NULL)::int AS enriched
+                FROM core.catalog_item
+                WHERE marketplace_id=%s
+                """,
+                (settings.marketplace_id,),
+            )
+            row = cur.fetchone() or {}
+        total = int(row.get("total") or 0)
+        enriched = int(row.get("enriched") or 0)
+        needed = total > 0 and enriched < total
+        if needed:
+            log.info("Catalog variation metadata backfill required enriched=%s total=%s", enriched, total)
+        return needed
+    except Exception:
+        # During a rolling migration an older schema may be visible for a moment.
+        # Do not make worker startup depend on the optional enrichment check.
+        log.exception("could not inspect Catalog variation metadata; using normal schedule")
+        return False
+
+
 def main() -> None:
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
@@ -151,7 +183,10 @@ def main() -> None:
     next_inventory = _next_due("amazon_spapi", "fba_inventory_v1", settings.inventory_interval_seconds)
     next_finances = _next_due("amazon_spapi", "finances_v2024", settings.finances_interval_seconds)
     next_finance_close = _next_due("dpp_finance", "month_close", FINANCE_CLOSE_INTERVAL_SECONDS)
-    next_catalog = _next_due("amazon_spapi", "catalog_items_2022_04_01", settings.catalog_interval_seconds) if settings.catalog_enabled and catalog_role_ready else float("inf")
+    if settings.catalog_enabled and catalog_role_ready:
+        next_catalog = 0.0 if _catalog_metadata_backfill_needed() else _next_due("amazon_spapi", "catalog_items_2022_04_01", settings.catalog_interval_seconds)
+    else:
+        next_catalog = float("inf")
     next_product_roles_probe = time.monotonic() + settings.production_probe_interval_seconds if settings.catalog_enabled else float("inf")
     next_data_kiosk = _next_due("amazon_data_kiosk", "sales_traffic_2024_04_24", settings.data_kiosk_interval_seconds)
     next_ads = _next_due("amazon_ads", "sponsored_products_reporting_v3", settings.ads_reporting_interval_seconds) if settings.ads_enabled and settings.ads_credentials_present else float("inf")
