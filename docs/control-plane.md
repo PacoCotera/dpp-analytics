@@ -82,12 +82,15 @@ Its diagnostic is published to GitHub issue **#10**.
 
 ## Application PR quality gate
 
-The workflow file remains `.github/workflows/frontend-quality.yml` for continuity, but the workflow is named **Application quality** because it now validates both frontend source and Compose configuration.
+The workflow file remains `.github/workflows/frontend-quality.yml` for continuity, but the workflow is named **Application quality** because it validates frontend source, Compose configuration and the database migration chain.
 
-It runs for changes affecting the frontend, board image, `compose.yml`, `.env.example` or the workflow itself and has two independent jobs:
+It runs for changes affecting frontend source, the board image, Compose/environment configuration, SQL init/migrations, migration scripts or the workflow itself and has three independent jobs:
 
 - `frontend-lint` — installs the board's Node tooling and runs `npm run lint` (ESLint + Stylelint);
-- `compose-config` — runs `docker compose --env-file .env.example config --quiet` so the committed environment template and service definition cannot silently drift into an invalid configuration.
+- `compose-config` — runs `docker compose --env-file .env.example config --quiet` so the committed environment template and service definition cannot silently drift into an invalid configuration;
+- `migration-chain` — starts a clean PostgreSQL 18 instance and applies the complete repository migration chain through `scripts/migrate.sh`.
+
+The clean migration-chain job is specifically intended to catch migration ordering, dependency and `CREATE OR REPLACE VIEW` compatibility problems before the self-hosted production runner sees them. When replacing an existing PostgreSQL view that has dependents, preserve the existing column names/order/types and append genuinely new columns at the end unless the migration deliberately rebuilds the dependency graph.
 
 Prettier remains a separate audit (`npm run format:check`) until retained global legacy styles are normalized deliberately; it is not a substitute for browser QA.
 

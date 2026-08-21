@@ -11,6 +11,10 @@ on:
       - 'board/Dockerfile'
       - 'compose.yml'
       - '.env.example'
+      - 'sql/init/**'
+      - 'sql/migrations/**'
+      - 'scripts/migrate.sh'
+      - 'scripts/init-host-config.sh'
       - '.github/workflows/frontend-quality.yml'
   push:
     paths:
@@ -22,6 +26,10 @@ on:
       - 'board/Dockerfile'
       - 'compose.yml'
       - '.env.example'
+      - 'sql/init/**'
+      - 'sql/migrations/**'
+      - 'scripts/migrate.sh'
+      - 'scripts/init-host-config.sh'
       - '.github/workflows/frontend-quality.yml'
 
 permissions:
@@ -58,3 +66,30 @@ jobs:
 
       - name: Validate Compose with example environment
         run: docker compose --env-file .env.example config --quiet
+
+  migration-chain:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start clean PostgreSQL
+        run: |
+          set -euo pipefail
+          docker compose --env-file .env.example up -d postgres
+          for i in $(seq 1 30); do
+            if docker inspect --format='{{json .State.Health.Status}}' dpp-postgres 2>/dev/null | grep -q healthy; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs --tail 100 dpp-postgres
+          exit 1
+
+      - name: Apply full migration chain
+        run: bash scripts/migrate.sh .env.example
+
+      - name: Tear down migration database
+        if: always()
+        run: docker compose --env-file .env.example down -v --remove-orphans
