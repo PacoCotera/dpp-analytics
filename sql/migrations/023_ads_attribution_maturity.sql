@@ -1,6 +1,10 @@
 -- Attribution maturity must be driven by the reporting contract, not a hard-coded
 -- seven-day assumption in business/product marts. Sponsored Products seller
 -- reporting currently uses a 7-day click window; future ad products/accounts may not.
+--
+-- IMPORTANT: PostgreSQL CREATE OR REPLACE VIEW requires all existing columns to
+-- retain their names/order. New maturity metadata is therefore appended after the
+-- established view contract rather than inserted between existing columns.
 
 CREATE OR REPLACE FUNCTION ads.attribution_window_days(window_text text)
 RETURNS integer
@@ -49,9 +53,16 @@ WITH ads_day AS (
     GROUP BY marketplace_id
 )
 SELECT
-    ad.marketplace_id, ad.business_date, ad.advertiser_accounts,
-    ad.impressions, ad.clicks, ad.ad_spend, ad.attributed_sales,
-    ad.attributed_purchases, ad.attributed_units,
+    -- Existing contract from 016_ads_business_context.sql. Do not reorder.
+    ad.marketplace_id,
+    ad.business_date,
+    ad.advertiser_accounts,
+    ad.impressions,
+    ad.clicks,
+    ad.ad_spend,
+    ad.attributed_sales,
+    ad.attributed_purchases,
+    ad.attributed_units,
     b.sales::numeric(16,4) AS total_business_sales,
     b.orders::bigint AS total_business_orders,
     b.units::bigint AS total_business_units,
@@ -61,10 +72,11 @@ SELECT
     CASE WHEN ad.attributed_sales > 0 THEN ad.ad_spend / ad.attributed_sales END AS acos,
     CASE WHEN b.sales > 0 THEN ad.ad_spend / b.sales END AS tacos,
     CASE WHEN b.sales > 0 THEN ad.attributed_sales / b.sales END AS attributed_sales_share,
-    ad.attribution_method, ad.attribution_window, ad.attribution_window_days,
-    ad.ads_source_generated_at, ad.ads_ingested_at, l.ads_through_date,
-    CASE WHEN ad.attribution_window_known
-         THEN l.ads_through_date - ad.attribution_window_days END AS mature_through_date,
+    ad.attribution_method,
+    ad.attribution_window,
+    ad.ads_source_generated_at,
+    ad.ads_ingested_at,
+    l.ads_through_date,
     CASE WHEN ad.attribution_window_known
          THEN ad.business_date <= l.ads_through_date - ad.attribution_window_days
          ELSE false END AS attribution_mature,
@@ -72,7 +84,11 @@ SELECT
       WHEN NOT ad.attribution_window_known THEN 'UNKNOWN'
       WHEN ad.business_date <= l.ads_through_date - ad.attribution_window_days THEN 'MATURE'
       ELSE 'PROVISIONAL'
-    END AS attribution_state
+    END AS attribution_state,
+    -- New metadata is append-only to preserve CREATE OR REPLACE compatibility.
+    ad.attribution_window_days,
+    CASE WHEN ad.attribution_window_known
+         THEN l.ads_through_date - ad.attribution_window_days END AS mature_through_date
 FROM ads_day ad
 JOIN latest l USING (marketplace_id)
 LEFT JOIN mart.business_daily b
@@ -86,7 +102,8 @@ COMMENT ON VIEW mart.ads_business_daily IS
 CREATE OR REPLACE VIEW mart.ads_product_business_daily AS
 WITH ads_product AS (
     SELECT
-        a.marketplace_id, p.business_date,
+        a.marketplace_id,
+        p.business_date,
         nullif(p.advertised_sku,'') AS sku,
         nullif(p.advertised_asin,'') AS asin,
         count(DISTINCT p.account_id)::int AS advertiser_accounts,
@@ -120,19 +137,33 @@ WITH ads_product AS (
     GROUP BY marketplace_id,business_date,seller_sku
 )
 SELECT
-    p.marketplace_id,p.business_date,p.sku,p.asin,p.advertiser_accounts,p.campaigns,
-    p.impressions,p.clicks,p.ad_spend,p.attributed_sales,p.attributed_purchases,p.attributed_units,
-    s.total_business_sales,s.total_business_orders,s.total_business_units,
+    -- Existing contract from 017_ads_product_business_context.sql. Do not reorder.
+    p.marketplace_id,
+    p.business_date,
+    p.sku,
+    p.asin,
+    p.advertiser_accounts,
+    p.campaigns,
+    p.impressions,
+    p.clicks,
+    p.ad_spend,
+    p.attributed_sales,
+    p.attributed_purchases,
+    p.attributed_units,
+    s.total_business_sales,
+    s.total_business_orders,
+    s.total_business_units,
     CASE WHEN p.impressions>0 THEN p.clicks::numeric/p.impressions END AS ctr,
     CASE WHEN p.clicks>0 THEN p.ad_spend/p.clicks END AS cpc,
     CASE WHEN p.ad_spend>0 THEN p.attributed_sales/p.ad_spend END AS roas,
     CASE WHEN p.attributed_sales>0 THEN p.ad_spend/p.attributed_sales END AS acos,
     CASE WHEN s.total_business_sales>0 THEN p.ad_spend/s.total_business_sales END AS tacos,
     CASE WHEN s.total_business_sales>0 THEN p.attributed_sales/s.total_business_sales END AS attributed_sales_share,
-    p.attribution_method,p.attribution_window,p.attribution_window_days,
-    p.ads_source_generated_at,p.ads_ingested_at,l.ads_through_date,
-    CASE WHEN p.attribution_window_known
-         THEN l.ads_through_date-p.attribution_window_days END AS mature_through_date,
+    p.attribution_method,
+    p.attribution_window,
+    p.ads_source_generated_at,
+    p.ads_ingested_at,
+    l.ads_through_date,
     CASE WHEN p.attribution_window_known
          THEN p.business_date<=l.ads_through_date-p.attribution_window_days
          ELSE false END AS attribution_mature,
@@ -140,7 +171,11 @@ SELECT
       WHEN NOT p.attribution_window_known THEN 'UNKNOWN'
       WHEN p.business_date<=l.ads_through_date-p.attribution_window_days THEN 'MATURE'
       ELSE 'PROVISIONAL'
-    END AS attribution_state
+    END AS attribution_state,
+    -- New metadata is append-only to preserve CREATE OR REPLACE compatibility.
+    p.attribution_window_days,
+    CASE WHEN p.attribution_window_known
+         THEN l.ads_through_date-p.attribution_window_days END AS mature_through_date
 FROM ads_product p
 JOIN latest l USING (marketplace_id)
 LEFT JOIN seller_product s
