@@ -90,7 +90,10 @@ async function verifyFinanceReport(page) {
   await wait(page, '#progression');
   const marks = await page.locator('#progression rect, #progression path, #progression line').count();
   if (!marks) throw new Error('Finance progression SVG rendered without chart marks');
-  await wait(page, '#history .history-row');
+  // Desktop/tablet expose a table header, while mobile intentionally hides it
+  // and presents the data rows as cards. Wait for canonical history data, not
+  // the responsive header implementation.
+  await wait(page, '#history .history-row:not(.head)');
 }
 
 async function verifyFinanceEvidence(page) {
