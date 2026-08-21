@@ -48,13 +48,6 @@ for page in static.glob('*.html'):
 
 # Today, Product Workspace and Finance own their DOM/state composition directly.
 # Do not inject post-render layout or accounting layers into these canonical pages.
-# Finance keeps a dedicated source-owned typography module because the financial
-# report requires denser page identity and a larger reading floor than generic UI.
-finance = static / 'finance.html'; text = finance.read_text()
-finance_density = (static / 'finance-report-density.css').read_text(); finance_density_tag = '<style>\n' + finance_density + '\n</style>'
-if '</head>' in text and 'Finance report density and reading hierarchy' not in text:
-    text = text.replace('</head>', finance_density_tag + '\n</head>', 1)
-finance.write_text(text)
 
 # Sales has one composition/runtime owner. Do not re-introduce post-render chart,
 # rail, state, or ads mutation layers here.
