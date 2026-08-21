@@ -5,8 +5,45 @@ from .settings import settings
 from .spapi import SpApiClient
 
 
+def _marketplace_group(groups: list[dict] | None) -> dict:
+    for group in groups or []:
+        if group.get("marketplaceId") == settings.marketplace_id:
+            return group
+    return (groups or [{}])[0] if groups else {}
+
+
+def _variation_evidence(catalog: dict) -> dict[str, object]:
+    relation_group = _marketplace_group(catalog.get("relationships"))
+    relationships = relation_group.get("relationships") or []
+    variation = next((r for r in relationships if str(r.get("type") or "").upper() == "VARIATION"), {})
+    theme = variation.get("variationTheme") or {}
+    attribute_names = [str(x) for x in (theme.get("attributes") or []) if x]
+    attrs = catalog.get("attributes") or {}
+    values: dict[str, list[str]] = {}
+    for name in attribute_names:
+        raw = attrs.get(name)
+        if not isinstance(raw, list):
+            continue
+        found = []
+        for item in raw:
+            if isinstance(item, dict):
+                value = item.get("value")
+                if value not in (None, ""):
+                    found.append(str(value))
+        if found:
+            values[name] = sorted(set(found))[:8]
+    return {
+        "relationship_count": len(relationships),
+        "parent_asins": variation.get("parentAsins") or [],
+        "child_asins_count": len(variation.get("childAsins") or []),
+        "variation_theme": theme.get("theme"),
+        "variation_attributes": attribute_names,
+        "variation_values": values,
+    }
+
+
 def probe() -> dict[str, object]:
-    """Smoke-test Product Listing and Pricing independently against one owned ASIN."""
+    """Smoke-test Catalog/Listing semantics and Pricing against one owned ASIN."""
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT asin FROM core.sku WHERE asin IS NOT NULL AND asin <> '' ORDER BY updated_at DESC LIMIT 1"
@@ -24,13 +61,15 @@ def probe() -> dict[str, object]:
                 f"/catalog/2022-04-01/items/{asin}",
                 params={
                     "marketplaceIds": settings.marketplace_id,
-                    "includedData": "images,summaries",
+                    "includedData": "attributes,images,productTypes,relationships,summaries",
                 },
             )
             result["product_listing"] = {
                 "status": "ok",
                 "has_images": bool(catalog.get("images")),
                 "has_summary": bool(catalog.get("summaries")),
+                "has_attributes": bool(catalog.get("attributes")),
+                **_variation_evidence(catalog),
             }
         except Exception as exc:
             result["product_listing"] = {"status": "error", "error": str(exc)[:500]}
