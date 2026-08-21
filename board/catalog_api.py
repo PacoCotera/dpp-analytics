@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from itertools import combinations
 from pathlib import Path
 from statistics import median
 
@@ -43,33 +44,160 @@ def _product_costs() -> dict[str, float]:
     return out
 
 
-def _product_variations() -> dict[str, dict]:
-    """Optional seller-owned product taxonomy.
+_DEFAULT_DIMENSION_MAP = {
+    "color": "design",
+    "color_name": "design",
+    "style": "ruling",
+    "style_name": "ruling",
+}
 
-    This file is intentionally separate from Amazon identity. Amazon tells us the
-    parent/child relationship; the seller taxonomy tells us what each variation
-    *means* commercially (for example design=Naturaleza, ruling=Dotted).
-    Host deployments may point PRODUCT_VARIATIONS_PATH at an untracked local file.
+
+def _product_taxonomy() -> dict:
+    """Optional seller-owned taxonomy layered over Amazon's variation evidence.
+
+    Amazon supplies parent/child identity plus raw variation dimensions/values.
+    The local file can rename dimensions, normalize values, override one SKU's
+    attributes, and provide a commercial family name without putting seller
+    configuration in Git.
+
+    Supported shape:
+      {
+        "dimension_map": {"color": "design", "style": "ruling"},
+        "value_map": {"ruling": {"Punteado": "Dotted"}},
+        "products": {
+          "SKU": {"family_name": "...", "attributes": {"design": "..."}}
+        }
+      }
     """
     path = Path(os.getenv("PRODUCT_VARIATIONS_PATH", Path(__file__).with_name("product_variations.json")))
     try:
         raw = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
-        return {}
-    values = raw.get("products", {}) if isinstance(raw, dict) else {}
-    if not isinstance(values, dict):
-        return {}
-    out: dict[str, dict] = {}
-    for sku, value in values.items():
-        if not isinstance(value, dict):
+        raw = {}
+    if not isinstance(raw, dict):
+        raw = {}
+
+    dimension_map = dict(_DEFAULT_DIMENSION_MAP)
+    configured_map = raw.get("dimension_map", {})
+    if isinstance(configured_map, dict):
+        for source, target in configured_map.items():
+            source_key = str(source).strip().lower()
+            target_key = str(target).strip().lower()
+            if source_key and target_key:
+                dimension_map[source_key] = target_key
+
+    value_map: dict[str, dict[str, str]] = {}
+    configured_values = raw.get("value_map", {})
+    if isinstance(configured_values, dict):
+        for dimension, values in configured_values.items():
+            if not isinstance(values, dict):
+                continue
+            dimension_key = str(dimension).strip().lower()
+            if not dimension_key:
+                continue
+            value_map[dimension_key] = {
+                str(source).strip(): str(target).strip()
+                for source, target in values.items()
+                if str(source).strip() and str(target).strip()
+            }
+
+    products = {}
+    configured_products = raw.get("products", {})
+    if isinstance(configured_products, dict):
+        for sku, value in configured_products.items():
+            if not isinstance(value, dict):
+                continue
+            attrs = value.get("attributes", {})
+            attrs = {
+                str(k).strip().lower(): str(v).strip()
+                for k, v in attrs.items()
+                if str(k).strip() and str(v).strip()
+            } if isinstance(attrs, dict) else {}
+            products[str(sku)] = {
+                "family_name": str(value.get("family_name") or "").strip() or None,
+                "attributes": attrs,
+            }
+
+    return {
+        "products": products,
+        "dimension_map": dimension_map,
+        "value_map": value_map,
+        "source_path": str(path),
+    }
+
+
+def _attribute_value(attributes: dict, attribute: str):
+    if not isinstance(attributes, dict):
+        return None
+    candidates = [attribute, attribute.lower(), attribute.upper()]
+    low = attribute.lower()
+    if low.endswith("_name"):
+        candidates.append(low[:-5])
+    for key in candidates:
+        if key not in attributes:
             continue
-        attrs = value.get("attributes", {})
-        attrs = {str(k).strip(): str(v).strip() for k, v in attrs.items() if str(k).strip() and str(v).strip()} if isinstance(attrs, dict) else {}
-        out[str(sku)] = {
-            "family_name": str(value.get("family_name") or "").strip() or None,
-            "attributes": attrs,
-        }
+        value = attributes.get(key)
+        values = value if isinstance(value, list) else [value]
+        for item in values:
+            if isinstance(item, dict):
+                for field in ("value", "displayValue", "name"):
+                    raw = item.get(field)
+                    if raw not in (None, ""):
+                        return str(raw).strip()
+            elif item not in (None, ""):
+                return str(item).strip()
+    return None
+
+
+def _normalize_dimension(source: str, dimension_map: dict[str, str]) -> str:
+    key = str(source or "").strip().lower()
+    if not key:
+        return ""
+    return dimension_map.get(key, key.removesuffix("_name"))
+
+
+def _amazon_variation_attributes(row: dict, taxonomy: dict) -> dict[str, str]:
+    names = row.get("amazon_variation_attribute_names") or []
+    if isinstance(names, str):
+        names = [names]
+    attributes = row.get("catalog_attributes") or {}
+    if isinstance(attributes, str):
+        try:
+            attributes = json.loads(attributes)
+        except json.JSONDecodeError:
+            attributes = {}
+    out = {}
+    for source_name in names if isinstance(names, (list, tuple)) else []:
+        value = _attribute_value(attributes, str(source_name))
+        if not value:
+            continue
+        dimension = _normalize_dimension(str(source_name), taxonomy["dimension_map"])
+        if dimension:
+            value = taxonomy["value_map"].get(dimension, {}).get(value, value)
+            out[dimension] = value
     return out
+
+
+def _variation_taxonomy_for_row(row: dict, taxonomy: dict) -> tuple[dict[str, str], str]:
+    amazon = _amazon_variation_attributes(row, taxonomy)
+    local = taxonomy["products"].get(str(row.get("sku") or ""), {}).get("attributes") or {}
+    normalized_local = {}
+    for source, value in local.items():
+        dimension = _normalize_dimension(source, taxonomy["dimension_map"])
+        if not dimension:
+            continue
+        normalized_local[dimension] = taxonomy["value_map"].get(dimension, {}).get(value, value)
+    merged = dict(amazon)
+    merged.update(normalized_local)
+    if amazon and normalized_local:
+        source = "AMAZON_CATALOG+SELLER_OVERRIDE"
+    elif normalized_local:
+        source = "SELLER_OVERRIDE"
+    elif amazon:
+        source = "AMAZON_CATALOG"
+    else:
+        source = "UNAVAILABLE"
+    return merged, source
 
 
 def _is_active(row: dict) -> bool:
@@ -121,12 +249,6 @@ def _commercial_state(row: dict, traffic_median: float, conversion_median: float
 
 
 def _family_state(family: dict, traffic_median: float, conversion_median: float) -> tuple[str, str]:
-    """Diagnose the commercial family from rolled-up child facts.
-
-    A structural parent is never itself evaluated. Child exceptions remain
-    available separately so a single weak variation does not masquerade as the
-    parent's own traffic/conversion problem.
-    """
     members = family.get("members") or []
     if not members:
         return "STRUCTURAL_PARENT", "Variation family container · no sellable child facts available"
@@ -147,10 +269,43 @@ def _family_state(family: dict, traffic_median: float, conversion_median: float)
     if sessions > 0 and sessions <= max(12.0, traffic_median * 0.65) and cvr is not None and conversion_median > 0 and cvr > conversion_median * 1.25 and units > 0:
         return "CONVERTS_NEEDS_TRAFFIC", "Family conversion is strong; rolled-up traffic is light relative to the portfolio"
     if units > 0:
-        return "HEALTHY", f"Selling across {sum(1 for m in active if float(m.get('units_t28') or 0) > 0)} variation{'s' if len(active) != 1 else ''} · {stock} units available/inbound"
+        selling = sum(1 for m in active if float(m.get("units_t28") or 0) > 0)
+        return "HEALTHY", f"Selling across {selling} variation{'s' if selling != 1 else ''} · {stock} units available/inbound"
     if sessions > 0:
         return "WATCH", "Family is receiving traffic but has no recent units"
     return "DORMANT", "Active family with no meaningful recent demand signal"
+
+
+def _rollup_bucket(bucket: dict, row: dict):
+    bucket["sales_t28"] += float(row.get("sales_t28") or 0)
+    bucket["units_t28"] += int(row.get("units_t28") or 0)
+    bucket["orders_t28"] += int(row.get("orders_t28") or 0)
+    bucket["sessions_t28"] += int(row.get("sessions_t28") or 0)
+    bucket["available"] += int(row.get("available") or 0)
+    bucket["inbound"] += int(row.get("inbound") or 0)
+    bucket["sku_count"] += 1
+    bucket["active_sku_count"] += int(_is_active(row))
+    bucket["family_asins"].add(str(row.get("family_asin") or row.get("asin") or ""))
+    if row.get("estimated_cogs_t28") is not None:
+        bucket["estimated_cogs_t28"] += float(row["estimated_cogs_t28"])
+        bucket["known_cogs_units"] += int(row.get("units_t28") or 0)
+
+
+def _new_dimension_bucket(**identity):
+    return {
+        **identity,
+        "sales_t28": 0.0, "units_t28": 0, "orders_t28": 0, "sessions_t28": 0,
+        "available": 0, "inbound": 0, "estimated_cogs_t28": 0.0,
+        "known_cogs_units": 0, "sku_count": 0, "family_asins": set(), "active_sku_count": 0,
+    }
+
+
+def _finish_bucket(bucket: dict) -> dict:
+    bucket["family_count"] = len({x for x in bucket.pop("family_asins") if x})
+    bucket["conversion_t28_pct"] = round(100.0 * bucket["units_t28"] / bucket["sessions_t28"], 2) if bucket["sessions_t28"] else None
+    bucket["estimated_cogs_t28"] = round(bucket["estimated_cogs_t28"], 2) if bucket["known_cogs_units"] else None
+    bucket["sales_t28"] = round(bucket["sales_t28"], 2)
+    return bucket
 
 
 def _dimension_rollups(rows: list[dict]) -> dict[str, list[dict]]:
@@ -162,36 +317,44 @@ def _dimension_rollups(rows: list[dict]) -> dict[str, list[dict]]:
         if not isinstance(attrs, dict):
             continue
         for dimension, value in attrs.items():
-            bucket = grouped.setdefault(str(dimension), {}).setdefault(str(value), {
-                "dimension": str(dimension), "value": str(value), "sales_t28": 0.0,
-                "units_t28": 0, "orders_t28": 0, "sessions_t28": 0, "available": 0,
-                "inbound": 0, "estimated_cogs_t28": 0.0, "known_cogs_units": 0,
-                "sku_count": 0, "family_asins": set(), "active_sku_count": 0,
-            })
-            bucket["sales_t28"] += float(row.get("sales_t28") or 0)
-            bucket["units_t28"] += int(row.get("units_t28") or 0)
-            bucket["orders_t28"] += int(row.get("orders_t28") or 0)
-            bucket["sessions_t28"] += int(row.get("sessions_t28") or 0)
-            bucket["available"] += int(row.get("available") or 0)
-            bucket["inbound"] += int(row.get("inbound") or 0)
-            bucket["sku_count"] += 1
-            bucket["active_sku_count"] += int(_is_active(row))
-            bucket["family_asins"].add(str(row.get("family_asin") or row.get("asin") or ""))
-            if row.get("estimated_cogs_t28") is not None:
-                bucket["estimated_cogs_t28"] += float(row["estimated_cogs_t28"])
-                bucket["known_cogs_units"] += int(row.get("units_t28") or 0)
+            bucket = grouped.setdefault(str(dimension), {}).setdefault(
+                str(value),
+                _new_dimension_bucket(dimension=str(dimension), value=str(value)),
+            )
+            _rollup_bucket(bucket, row)
 
     result: dict[str, list[dict]] = {}
     for dimension, values in grouped.items():
-        out = []
-        for bucket in values.values():
-            bucket["family_count"] = len({x for x in bucket.pop("family_asins") if x})
-            bucket["conversion_t28_pct"] = round(100.0 * bucket["units_t28"] / bucket["sessions_t28"], 2) if bucket["sessions_t28"] else None
-            bucket["estimated_cogs_t28"] = round(bucket["estimated_cogs_t28"], 2) if bucket["known_cogs_units"] else None
-            bucket["sales_t28"] = round(bucket["sales_t28"], 2)
-            out.append(bucket)
-        result[dimension] = sorted(out, key=lambda x: (-x["sales_t28"], x["value"]))
+        result[dimension] = sorted(
+            (_finish_bucket(bucket) for bucket in values.values()),
+            key=lambda x: (-x["sales_t28"], x["value"]),
+        )
     return result
+
+
+def _dimension_pair_rollups(rows: list[dict]) -> list[dict]:
+    grouped: dict[tuple[str, str, str, str], dict] = {}
+    for row in rows:
+        if not _is_offer(row):
+            continue
+        attrs = row.get("variation_attributes") or {}
+        if not isinstance(attrs, dict) or len(attrs) < 2:
+            continue
+        for left, right in combinations(sorted(attrs), 2):
+            key = (left, str(attrs[left]), right, str(attrs[right]))
+            bucket = grouped.setdefault(
+                key,
+                _new_dimension_bucket(
+                    dimensions=[left, right],
+                    values={left: str(attrs[left]), right: str(attrs[right])},
+                    label=f"{attrs[left]} · {attrs[right]}",
+                ),
+            )
+            _rollup_bucket(bucket, row)
+    return sorted(
+        (_finish_bucket(bucket) for bucket in grouped.values()),
+        key=lambda x: (-x["sales_t28"], x["label"]),
+    )
 
 
 def _family_rollup(rows: list[dict], traffic_median: float, conversion_median: float) -> list[dict]:
@@ -238,7 +401,10 @@ def _family_rollup(rows: list[dict], traffic_median: float, conversion_median: f
             family["variation_dimensions"].setdefault(str(dimension), set()).add(str(value))
 
     out = []
-    priority = {"INVENTORY_RISK": 0, "TRAFFIC_NOT_CONVERTING": 1, "CONVERTS_NEEDS_TRAFFIC": 2, "WATCH": 3, "DORMANT": 4, "INACTIVE": 5, "HEALTHY": 6, "STRUCTURAL_PARENT": 7}
+    priority = {
+        "INVENTORY_RISK": 0, "TRAFFIC_NOT_CONVERTING": 1, "CONVERTS_NEEDS_TRAFFIC": 2,
+        "WATCH": 3, "DORMANT": 4, "INACTIVE": 5, "HEALTHY": 6, "STRUCTURAL_PARENT": 7,
+    }
     for family in families.values():
         sellable = family["members"]
         candidates = sellable or ([family["parent"]] if family.get("parent") else family["aliases"])
@@ -254,10 +420,18 @@ def _family_rollup(rows: list[dict], traffic_median: float, conversion_median: f
         family["ad_tacos_t28"] = family["ad_spend_t28"] / family["sales_t28"] if family["sales_t28"] > 0 and family["ad_spend_t28"] > 0 else None
         family["ad_roas_t28"] = family["ad_attributed_sales_t28"] / family["ad_spend_t28"] if family["ad_spend_t28"] > 0 else None
         family["ad_attribution_state"] = "PROVISIONAL" if family["ad_observed_days"] > family["ad_mature_days"] else ("MATURE" if family["ad_observed_days"] else "UNAVAILABLE")
-        family["child_states"] = sorted({m.get("commercial_state") for m in sellable if m.get("commercial_state")}, key=lambda x: priority.get(x, 99))
-        family["child_exception_count"] = sum(1 for m in sellable if m.get("commercial_state") in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "DECLINING"})
+        family["child_states"] = sorted(
+            {m.get("commercial_state") for m in sellable if m.get("commercial_state")},
+            key=lambda x: priority.get(x, 99),
+        )
+        family["child_exception_count"] = sum(
+            1 for m in sellable
+            if m.get("commercial_state") in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "DECLINING"}
+        )
         family["primary_state"], family["commercial_explanation"] = _family_state(family, traffic_median, conversion_median)
-        family["needs_attention"] = family["primary_state"] in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "WATCH"} or family["child_exception_count"] > 0
+        family["needs_attention"] = family["primary_state"] in {
+            "INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "WATCH"
+        } or family["child_exception_count"] > 0
         family["variation_dimensions"] = {k: sorted(v) for k, v in family["variation_dimensions"].items()}
         family["members"] = sorted(family["members"], key=lambda r: (-float(r.get("sales_t28") or 0), str(r.get("sku") or "")))
         family["aliases"] = sorted(family["aliases"], key=lambda r: str(r.get("sku") or ""))
@@ -286,6 +460,8 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
                    p.sales_t28, p.units_t28, p.orders_t28, p.sessions_t28, p.page_views_t28,
                    p.conversion_t28_pct, p.sales_delta28_pct, p.sessions_delta28_pct, p.conversion_delta28_pp,
                    p.traffic_through_date, p.catalog_enriched,
+                   ci.attributes AS catalog_attributes, ci.variation_theme AS amazon_variation_theme,
+                   ci.variation_attributes AS amazon_variation_attribute_names,
                    a.spend AS ad_spend_t28, a.attributed_sales AS ad_attributed_sales_t28,
                    a.impressions AS ad_impressions_t28, a.clicks AS ad_clicks_t28,
                    a.attributed_purchases AS ad_attributed_purchases_t28, a.attributed_units AS ad_attributed_units_t28,
@@ -295,6 +471,8 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
                    a.observed_ads_days AS ad_observed_days, a.mature_ads_days AS ad_mature_days,
                    a.through_date AS ads_through_date, a.ads_source_generated_at, a.ads_ingested_at
             FROM mart.catalog_portfolio_product p
+            LEFT JOIN core.catalog_item ci
+              ON ci.marketplace_id=p.marketplace_id AND ci.asin=p.asin
             LEFT JOIN mart.ads_product_business_t28 a
               ON a.marketplace_id=p.marketplace_id AND p.is_offer_owner
              AND (a.sku=p.seller_sku OR (a.sku IS NULL AND a.asin=p.asin))
@@ -305,7 +483,7 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
 
     rows = decorate_products(rows)
     costs = _product_costs()
-    variations = _product_variations()
+    taxonomy = _product_taxonomy()
     active_offers = [r for r in rows if _is_offer(r) and _is_active(r)]
     traffic_values = [float(r.get("sessions_t28") or 0) for r in active_offers if float(r.get("sessions_t28") or 0) > 0]
     conversion_values = [float(r["conversion_t28_pct"]) for r in active_offers if r.get("conversion_t28_pct") is not None]
@@ -315,41 +493,64 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
     for row in rows:
         sku = str(row.get("sku") or "")
         unit_cogs = costs.get(sku)
-        taxonomy = variations.get(sku, {})
-        row["family_name"] = taxonomy.get("family_name")
-        row["variation_attributes"] = taxonomy.get("attributes") or {}
+        local_taxonomy = taxonomy["products"].get(sku, {})
+        row["family_name"] = local_taxonomy.get("family_name")
+        row["variation_attributes"], row["variation_attribute_source"] = _variation_taxonomy_for_row(row, taxonomy)
         row["unit_cogs"] = unit_cogs
         row["estimated_cogs_t28"] = round(unit_cogs * int(row.get("units_t28") or 0), 2) if unit_cogs is not None and _is_offer(row) else None
         observed, mature = int(row.get("ad_observed_days") or 0), int(row.get("ad_mature_days") or 0)
         row["ad_attribution_state"] = "PROVISIONAL" if observed > mature else ("MATURE" if observed else "UNAVAILABLE")
         state, explanation = _commercial_state(row, traffic_median, conversion_median)
         row["commercial_state"], row["commercial_explanation"] = state, explanation
+        row.pop("catalog_attributes", None)
 
     families = _family_rollup(rows, traffic_median, conversion_median)
     dimensions = _dimension_rollups(rows)
+    dimension_pairs = _dimension_pair_rollups(rows)
     active = [r for r in rows if _is_offer(r) and _is_active(r)]
-    attention = [r for r in active if r.get("commercial_state") in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "DECLINING"}]
+    attention = [
+        r for r in active
+        if r.get("commercial_state") in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "DECLINING"}
+    ]
     drivers = sorted(active, key=lambda r: float(r.get("sales_t28") or 0), reverse=True)
+
     summary.update({
-        "selling_now": sum(1 for r in active if float(r.get("units_t28") or 0) > 0), "attention_count": len(attention),
-        "traffic_median_t28": round(traffic_median, 1), "conversion_median_t28_pct": round(conversion_median, 2),
+        "selling_now": sum(1 for r in active if float(r.get("units_t28") or 0) > 0),
+        "attention_count": len(attention),
+        "traffic_median_t28": round(traffic_median, 1),
+        "conversion_median_t28_pct": round(conversion_median, 2),
         "sales_t28": round(sum(float(r.get("sales_t28") or 0) for r in active), 2),
-        "sessions_t28": sum(int(r.get("sessions_t28") or 0) for r in active), "units_t28": sum(int(r.get("units_t28") or 0) for r in active),
+        "sessions_t28": sum(int(r.get("sessions_t28") or 0) for r in active),
+        "units_t28": sum(int(r.get("units_t28") or 0) for r in active),
         "ad_spend_t28": round(sum(float(r.get("ad_spend_t28") or 0) for r in active), 2),
         "ad_attributed_sales_t28": round(sum(float(r.get("ad_attributed_sales_t28") or 0) for r in active), 2),
         "ads_through_date": max((r.get("ads_through_date") for r in active if r.get("ads_through_date")), default=None),
         "variation_dimensions": sorted(dimensions),
+        "dimension_pair_count": len(dimension_pairs),
+        "amazon_dimension_coverage": sum(1 for r in active if r.get("variation_attribute_source") in {"AMAZON_CATALOG", "AMAZON_CATALOG+SELLER_OVERRIDE"}),
     })
     summary["conversion_t28_pct"] = round(100.0 * summary["units_t28"] / summary["sessions_t28"], 2) if summary["sessions_t28"] else None
     summary["ad_tacos_t28"] = summary["ad_spend_t28"] / summary["sales_t28"] if summary["sales_t28"] > 0 and summary["ad_spend_t28"] > 0 else None
     summary["ad_roas_t28"] = summary["ad_attributed_sales_t28"] / summary["ad_spend_t28"] if summary["ad_spend_t28"] > 0 else None
 
-    return {"summary": summary, "families": families, "products": rows, "dimensions": dimensions,
-        "attention": sorted(attention, key=lambda r: (-float(r.get("sales_t28") or 0), r.get("sku") or "")), "drivers": drivers[:5],
-        "diagnostic_basis": {"period": "28D", "traffic_grain": "child ASIN from Data Kiosk; one canonical seller SKU owns each customer-facing offer",
+    return {
+        "summary": summary,
+        "families": families,
+        "products": rows,
+        "dimensions": dimensions,
+        "dimension_pairs": dimension_pairs,
+        "attention": sorted(attention, key=lambda r: (-float(r.get("sales_t28") or 0), r.get("sku") or "")),
+        "drivers": drivers[:5],
+        "diagnostic_basis": {
+            "period": "28D",
+            "traffic_grain": "child ASIN from Data Kiosk; one canonical seller SKU owns each customer-facing offer",
             "family_grain": "structural parent is a non-sellable container; family metrics are recomputed from sellable child facts",
-            "variation_grain": "seller-defined multidimensional attributes from product_variations.json; aggregates recompute additive facts and conversion from total units / total sessions",
-            "traffic_median_t28": round(traffic_median, 1), "conversion_median_t28_pct": round(conversion_median, 2),
+            "variation_grain": "Amazon Catalog variation dimensions/values by child ASIN, normalized to seller-facing dimensions; optional host-side product_variations.json overrides names/values without replacing Amazon identity",
+            "dimension_semantics": "dimension rollups recompute additive facts and conversion from total units / total sessions; pair rollups support design × ruling analysis without averaging conversion percentages",
+            "traffic_median_t28": round(traffic_median, 1),
+            "conversion_median_t28_pct": round(conversion_median, 2),
             "ads_basis": "Amazon-attributed Ads performance; TACOS uses independent total seller sales. Attributed sales are not incremental sales and the residual is not exact organic sales.",
-            "notes": "Commercial states are diagnostic signals, not causal claims. Structural parents and seller-SKU aliases are excluded from sellable demand metrics."},
-        "local_time": local_clock.get("local_time")}
+            "notes": "Commercial states and dimensional comparisons are diagnostic signals, not causal claims. Structural parents and seller-SKU aliases are excluded from sellable demand metrics.",
+        },
+        "local_time": local_clock.get("local_time"),
+    }
