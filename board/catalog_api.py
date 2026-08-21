@@ -87,23 +87,7 @@ def _family_rollup(rows: list[dict]) -> list[dict]:
     families: dict[str, dict] = {}
     for row in rows:
         key = str(row.get("family_asin") or row.get("asin") or row.get("sku"))
-        family = families.setdefault(
-            key,
-            {
-                "family_asin": key,
-                "members": [],
-                "sales_t28": 0.0,
-                "units_t28": 0,
-                "orders_t28": 0,
-                "sessions_t28": 0,
-                "available": 0,
-                "inbound": 0,
-                "estimated_cogs_t28": 0.0,
-                "cogs_known_units": 0,
-                "sellable_count": 0,
-                "active_sellable_count": 0,
-            },
-        )
+        family = families.setdefault(key, {"family_asin": key, "members": [], "sales_t28": 0.0, "units_t28": 0, "orders_t28": 0, "sessions_t28": 0, "available": 0, "inbound": 0, "estimated_cogs_t28": 0.0, "cogs_known_units": 0, "sellable_count": 0, "active_sellable_count": 0})
         family["members"].append(row)
         if row.get("product_role") == "STRUCTURAL_PARENT":
             family["parent"] = row
@@ -122,82 +106,47 @@ def _family_rollup(rows: list[dict]) -> list[dict]:
             family["cogs_known_units"] += int(row.get("units_t28") or 0)
 
     out = []
-    priority = {
-        "INVENTORY_RISK": 0,
-        "TRAFFIC_NOT_CONVERTING": 1,
-        "CONVERTS_NEEDS_TRAFFIC": 2,
-        "DECLINING": 3,
-        "ACCELERATING": 4,
-        "WATCH": 5,
-        "DORMANT": 6,
-        "INACTIVE": 7,
-        "HEALTHY": 8,
-        "STRUCTURAL_PARENT": 9,
-    }
+    priority = {"INVENTORY_RISK": 0, "TRAFFIC_NOT_CONVERTING": 1, "CONVERTS_NEEDS_TRAFFIC": 2, "DECLINING": 3, "ACCELERATING": 4, "WATCH": 5, "DORMANT": 6, "INACTIVE": 7, "HEALTHY": 8, "STRUCTURAL_PARENT": 9}
     for family in families.values():
         sellable = [m for m in family["members"] if m.get("product_role") != "STRUCTURAL_PARENT"]
         lead = max(sellable or family["members"], key=lambda r: float(r.get("sales_t28") or 0))
         parent = family.get("parent")
         family["name"] = (parent or lead).get("product") or lead.get("sku")
         family["image_url"] = lead.get("image_url")
-        family["conversion_t28_pct"] = (
-            round(100.0 * family["units_t28"] / family["sessions_t28"], 2)
-            if family["sessions_t28"] > 0
-            else None
-        )
-        family["states"] = sorted(
-            {m.get("commercial_state") for m in sellable if m.get("commercial_state")},
-            key=lambda x: priority.get(x, 99),
-        )
+        family["conversion_t28_pct"] = round(100.0 * family["units_t28"] / family["sessions_t28"], 2) if family["sessions_t28"] > 0 else None
+        family["states"] = sorted({m.get("commercial_state") for m in sellable if m.get("commercial_state")}, key=lambda x: priority.get(x, 99))
         family["primary_state"] = family["states"][0] if family["states"] else "STRUCTURAL_PARENT"
         family["needs_attention"] = any(priority.get(s, 99) <= 3 for s in family["states"])
-        family["members"] = sorted(
-            family["members"],
-            key=lambda r: (
-                r.get("product_role") == "STRUCTURAL_PARENT",
-                -float(r.get("sales_t28") or 0),
-                str(r.get("sku") or ""),
-            ),
-        )
+        family["members"] = sorted(family["members"], key=lambda r: (r.get("product_role") == "STRUCTURAL_PARENT", -float(r.get("sales_t28") or 0), str(r.get("sku") or "")))
         out.append(family)
     return sorted(out, key=lambda f: (not f["needs_attention"], -f["sales_t28"], f["name"] or ""))
 
 
 def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
     with connect() as conn, conn.cursor() as cur:
-        summary = _one(
-            cur,
-            """
+        summary = _one(cur, """
             SELECT
               count(*)::int AS listing_records,
               count(*) FILTER (WHERE product_role <> 'STRUCTURAL_PARENT')::int AS sellable_offers,
               count(*) FILTER (WHERE product_role = 'STRUCTURAL_PARENT')::int AS structural_parents,
-              count(*) FILTER (
-                WHERE product_role <> 'STRUCTURAL_PARENT'
-                  AND lower(COALESCE(status,'')) <> 'inactive'
-              )::int AS active_sellable,
-              count(*) FILTER (
-                WHERE product_role <> 'STRUCTURAL_PARENT'
-                  AND lower(COALESCE(status,'')) = 'inactive'
-              )::int AS inactive_sellable,
+              count(*) FILTER (WHERE product_role <> 'STRUCTURAL_PARENT' AND lower(COALESCE(status,'')) <> 'inactive')::int AS active_sellable,
+              count(*) FILTER (WHERE product_role <> 'STRUCTURAL_PARENT' AND lower(COALESCE(status,'')) = 'inactive')::int AS inactive_sellable,
               count(DISTINCT family_asin)::int AS families,
               max(fetched_at) AS listings_fetched_at,
               max(traffic_through_date) AS traffic_through_date
-            FROM mart.catalog_portfolio_product
-            WHERE marketplace_id=%s
-            """,
-            (marketplace,),
-        )
-        rows = _all(
-            cur,
-            """
-            SELECT *
+            FROM mart.catalog_portfolio_product WHERE marketplace_id=%s
+        """, (marketplace,))
+        rows = _all(cur, """
+            SELECT marketplace_id, seller_sku AS sku, asin, parent_asin, family_asin, product_role,
+                   title AS product, image_url, price AS listing_price, status, fulfillment_channel,
+                   open_date, fetched_at, available, inbound, days_cover_on_hand, days_cover_with_inbound,
+                   inventory_action, sales_t28, units_t28, orders_t28, sessions_t28, page_views_t28,
+                   conversion_t28_pct, sales_delta28_pct, sessions_delta28_pct, conversion_delta28_pp,
+                   traffic_through_date, catalog_enriched
             FROM mart.catalog_portfolio_product
             WHERE marketplace_id=%s
             ORDER BY sales_t28 DESC, seller_sku
-            """,
-            (marketplace,),
-        )
+        """, (marketplace,))
         local_clock = _one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
     rows = decorate_products(rows)
@@ -209,10 +158,7 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
     conversion_median = median(conversion_values) if conversion_values else 0.0
 
     for row in rows:
-        sku = str(row.get("sku") or row.get("seller_sku") or "")
-        # The SQL view exposes seller_sku; normalize the public API to sku.
-        row["sku"] = sku
-        row.pop("seller_sku", None)
+        sku = str(row.get("sku") or "")
         unit_cogs = costs.get(sku)
         row["unit_cogs"] = unit_cogs
         row["estimated_cogs_t28"] = round(unit_cogs * int(row.get("units_t28") or 0), 2) if unit_cogs is not None else None
@@ -224,22 +170,16 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
     active = [r for r in rows if r.get("product_role") != "STRUCTURAL_PARENT" and _is_active(r)]
     attention = [r for r in active if r.get("commercial_state") in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "DECLINING"}]
     drivers = sorted(active, key=lambda r: float(r.get("sales_t28") or 0), reverse=True)
-    summary.update(
-        {
-            "selling_now": sum(1 for r in active if float(r.get("units_t28") or 0) > 0),
-            "attention_count": len(attention),
-            "traffic_median_t28": round(traffic_median, 1),
-            "conversion_median_t28_pct": round(conversion_median, 2),
-            "sales_t28": round(sum(float(r.get("sales_t28") or 0) for r in active), 2),
-            "sessions_t28": sum(int(r.get("sessions_t28") or 0) for r in active),
-            "units_t28": sum(int(r.get("units_t28") or 0) for r in active),
-        }
-    )
-    summary["conversion_t28_pct"] = (
-        round(100.0 * summary["units_t28"] / summary["sessions_t28"], 2)
-        if summary["sessions_t28"]
-        else None
-    )
+    summary.update({
+        "selling_now": sum(1 for r in active if float(r.get("units_t28") or 0) > 0),
+        "attention_count": len(attention),
+        "traffic_median_t28": round(traffic_median, 1),
+        "conversion_median_t28_pct": round(conversion_median, 2),
+        "sales_t28": round(sum(float(r.get("sales_t28") or 0) for r in active), 2),
+        "sessions_t28": sum(int(r.get("sessions_t28") or 0) for r in active),
+        "units_t28": sum(int(r.get("units_t28") or 0) for r in active),
+    })
+    summary["conversion_t28_pct"] = round(100.0 * summary["units_t28"] / summary["sessions_t28"], 2) if summary["sessions_t28"] else None
 
     return {
         "summary": summary,
@@ -249,7 +189,7 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         "drivers": drivers[:5],
         "diagnostic_basis": {
             "period": "28D",
-            "traffic_grain": "seller_sku / child ASIN as provided by Data Kiosk",
+            "traffic_grain": "seller SKU / child ASIN as provided by Data Kiosk",
             "traffic_median_t28": round(traffic_median, 1),
             "conversion_median_t28_pct": round(conversion_median, 2),
             "notes": "Commercial states are diagnostic signals, not causal claims. Structural parents are excluded from sellable metrics.",
