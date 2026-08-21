@@ -110,7 +110,7 @@
   text-align: left;
 }
 
-.sales-signal .metric-label {
+.sales-signal-label {
   color: #777067;
   font-size: 9.5px;
   font-weight: 760;
@@ -118,7 +118,7 @@
   text-transform: uppercase;
 }
 
-.sales-signal .metric-value {
+.sales-signal-value {
   margin: 5px 0 3px;
   font-size: 24px;
   font-weight: 850;
@@ -142,13 +142,13 @@
   font-weight: 850;
 }
 
-.sales-signal .metric-note {
+.sales-signal-note {
   color: var(--muted);
   font-size: 10px;
   line-height: 1.3;
 }
 
-.sales-signal .metric-note strong {
+.sales-signal-note strong {
   font-weight: 830;
 }
 
@@ -159,12 +159,12 @@
   background: #fffdf9;
 }
 
-.sales-state-rail > .sales-signal.primary .metric-label {
+.sales-state-rail > .sales-signal.primary .sales-signal-label {
   font-size: 9px;
   letter-spacing: 0.1em;
 }
 
-.sales-state-rail > .sales-signal.primary .metric-value {
+.sales-state-rail > .sales-signal.primary .sales-signal-value {
   margin: 7px 0 4px;
   font-size: 38px;
 }
@@ -179,7 +179,7 @@
   font-size: 13px;
 }
 
-.sales-state-rail > .sales-signal.primary .metric-note {
+.sales-state-rail > .sales-signal.primary .sales-signal-note {
   color: #7a736b;
   font-size: 10px;
   line-height: 1.25;
@@ -248,14 +248,14 @@
   background: transparent;
 }
 
-.sales-momentum-card .sales-momentum-row .metric-label {
+.sales-momentum-card .sales-signal-label {
   grid-area: label;
   align-self: end;
   font-size: 9px;
   letter-spacing: 0.07em;
 }
 
-.sales-momentum-card .sales-momentum-row .metric-value {
+.sales-momentum-card .sales-signal-value {
   grid-area: value;
   align-self: end;
   margin: 0;
@@ -280,7 +280,7 @@
   font-weight: 820;
 }
 
-.sales-momentum-card .sales-momentum-row .metric-note {
+.sales-momentum-card .sales-signal-note {
   grid-area: note;
   margin: 0;
   color: #7b746b;
@@ -371,12 +371,12 @@
   padding-top: 12px;
 }
 
-.sales-utility-ytd .metric-label {
+.sales-utility-ytd .sales-signal-label {
   grid-area: label;
   font-size: 9px;
 }
 
-.sales-utility-ytd .metric-value {
+.sales-utility-ytd .sales-signal-value {
   grid-area: value;
   margin: 0;
   font-size: 20px;
@@ -519,7 +519,7 @@
     gap: 14px;
   }
 
-  .sales-state-rail > .sales-signal.primary .metric-value {
+  .sales-state-rail > .sales-signal.primary .sales-signal-value {
     font-size: 34px;
   }
 
@@ -635,7 +635,7 @@
     padding: 13px;
   }
 
-  .sales-state-rail > .sales-signal.primary .metric-value {
+  .sales-state-rail > .sales-signal.primary .sales-signal-value {
     font-size: 34px;
   }
 
