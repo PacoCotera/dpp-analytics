@@ -6,8 +6,12 @@
     { href: '/', label: 'Home' },
     { href: '/sales', label: 'Sales' },
     { href: '/catalog', label: 'Products' },
-    { href: '/inventory', label: 'Inventory' },
-    { href: '/finance', label: 'Finance' },
+    { href: '/inventory', label: 'Inventory', mobileSecondary: true },
+    { href: '/finance', label: 'Finance', mobileSecondary: true },
+  ];
+  const MOBILE_MORE = [
+    { href: '/inventory', label: 'Inventory', hint: 'Stock, cover and replenishment' },
+    { href: '/finance', label: 'Finance', hint: 'Accounting periods and contribution' },
   ];
   const MORE = [
     { href: '/trajectory', label: 'Trajectory', hint: 'Longer-horizon momentum' },
@@ -25,9 +29,23 @@
     return normalizedPath() === href;
   }
 
+  function appendMenuItem(menu, item, extraClass = '') {
+    const a = document.createElement('a');
+    a.href = item.href;
+    a.setAttribute('role', 'menuitem');
+    if (extraClass) a.classList.add(extraClass);
+    if (isCurrent(item.href)) {
+      a.classList.add('active');
+      a.setAttribute('aria-current', 'page');
+    }
+    a.innerHTML = `<strong>${item.label}</strong><small>${item.hint}</small>`;
+    menu.appendChild(a);
+  }
+
   function buildNavigation(nav) {
     const current = normalizedPath();
-    const moreActive = MORE.some(item => current === item.href);
+    const desktopMoreActive = MORE.some(item => current === item.href);
+    const mobileMoreActive = [...MOBILE_MORE, ...MORE].some(item => current === item.href);
     nav.innerHTML = '';
     nav.classList.add('app-navigation');
     nav.setAttribute('aria-label', 'Primary navigation');
@@ -39,6 +57,7 @@
       a.href = item.href;
       a.textContent = item.label;
       if (item.className) a.classList.add(item.className);
+      if (item.mobileSecondary) a.classList.add('nav-mobile-secondary');
       if (isCurrent(item.href)) {
         a.classList.add('active');
         a.setAttribute('aria-current', 'page');
@@ -47,27 +66,21 @@
     }
 
     const more = document.createElement('details');
-    more.className = `nav-more${moreActive ? ' active' : ''}`;
+    more.className = `nav-more${desktopMoreActive ? ' active' : ''}${mobileMoreActive ? ' mobile-active' : ''}`;
     more.setAttribute('data-no-swipe', '');
     const summary = document.createElement('summary');
     summary.innerHTML = `<span>More</span><span class="nav-more-chevron" aria-hidden="true">⌄</span>`;
-    summary.setAttribute('aria-label', moreActive ? 'More navigation, current section inside' : 'More navigation');
+    summary.setAttribute('aria-label', mobileMoreActive ? 'More navigation, current section inside' : 'More navigation');
     more.appendChild(summary);
 
     const menu = document.createElement('div');
     menu.className = 'nav-more-menu';
     menu.setAttribute('role', 'menu');
-    for (const item of MORE) {
-      const a = document.createElement('a');
-      a.href = item.href;
-      a.setAttribute('role', 'menuitem');
-      if (isCurrent(item.href)) {
-        a.classList.add('active');
-        a.setAttribute('aria-current', 'page');
-      }
-      a.innerHTML = `<strong>${item.label}</strong><small>${item.hint}</small>`;
-      menu.appendChild(a);
-    }
+    for (const item of MOBILE_MORE) appendMenuItem(menu, item, 'nav-mobile-only');
+    const divider = document.createElement('div');
+    divider.className = 'nav-more-divider nav-mobile-only';
+    menu.appendChild(divider);
+    for (const item of MORE) appendMenuItem(menu, item);
     more.appendChild(menu);
     nav.append(primary, more);
 
@@ -82,22 +95,11 @@
     });
   }
 
-  function revealActiveNavigation() {
-    const nav = document.querySelector('.primary-nav');
-    const set = nav?.querySelector('.nav-primary-set');
-    const active = set?.querySelector('.active');
-    if (!nav || !set || !active || window.innerWidth > 760) return;
-    const left = active.offsetLeft - (set.clientWidth - active.offsetWidth) / 2;
-    set.scrollTo({ left: Math.max(0, left), behavior: 'auto' });
-  }
-
   function initializeShell() {
     const nav = document.querySelector('.primary-nav');
     if (nav) buildNavigation(nav);
-    requestAnimationFrame(revealActiveNavigation);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeShell, { once: true });
   else initializeShell();
-  window.addEventListener('resize', revealActiveNavigation, { passive: true });
 })();
