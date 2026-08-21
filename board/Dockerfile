@@ -7,6 +7,7 @@ COPY board/server.py .
 COPY board/sales_api.py .
 COPY board/today_api.py .
 COPY board/product_api.py .
+COPY board/ads_context.py .
 # finance_emergency.py is the current immutable-close implementation. Copy it
 # once under the module name imported by server.py; do not copy an older module
 # and overwrite it in the next layer.
