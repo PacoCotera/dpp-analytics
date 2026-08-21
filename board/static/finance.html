@@ -1,48 +1,137 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f4f0e8"><title>Dirty Pawz Press · Finance</title><link rel="stylesheet" href="/assets/theme.css"><script src="/assets/ui-shell.js" defer></script><style>
-.finance-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end;padding:8px 0 10px;border-bottom:1px solid var(--line)}.finance-head .kicker{font-size:9.5px}.finance-head h1{font-size:28px;line-height:1;letter-spacing:-.035em;margin:2px 0 0}.finance-head p{max-width:680px;margin:5px 0 0;color:var(--muted);font-size:12.5px;line-height:1.35}.period-meta{text-align:right;font-size:12.5px;line-height:1.35;color:var(--muted);white-space:nowrap}.period-meta strong{display:block;color:var(--ink);font-size:14px}.status{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:850;letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink)}.status:before{content:"";width:7px;height:7px;border-radius:50%;background:#d99a28}.status.closed:before,.status.restated:before{background:var(--good)}.status.pending:before{background:#c97927}.status.closing:before{background:#b58b52}
-.report-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,.45fr);gap:22px;margin-top:10px}.report{min-width:0}.section-label{font-size:11.5px;line-height:1.1;text-transform:uppercase;letter-spacing:.09em;font-weight:850;color:var(--accent-ink);margin:14px 0 6px}.money-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--line)}.money-cell{padding:12px 18px 13px 0}.money-cell+.money-cell{border-left:1px solid var(--line);padding-left:18px}.eyebrow{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:830}.big-money{font-size:34px;font-weight:870;letter-spacing:-.045em;margin-top:5px}.cell-note{font-size:12.5px;line-height:1.38;color:var(--muted);margin-top:4px}
-.line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}.line:first-child{border-top:0}.line-name{font-size:15px;font-weight:760}.line-note{font-size:12.5px;color:var(--muted);line-height:1.38;margin-top:3px;max-width:690px}.line-value{font-size:20px;font-weight:840;letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums}.line.total{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);padding:12px 0}.line.total .line-name,.line.total .line-value{font-size:22px}.pending-value{font-size:12.5px!important;color:var(--accent-ink)}.neg{color:var(--bad)}.pos{color:var(--good)}
-.status-rail{border-left:1px solid var(--line);padding-left:18px;min-width:0}.status-rail h2{font-size:16px;margin:0 0 4px}.status-rail>p{font-size:12.5px;line-height:1.4;color:var(--muted);margin:0 0 8px}.rail-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:9px 0;border-top:1px solid var(--line);align-items:baseline}.rail-row span{font-size:12.5px;color:var(--muted)}.rail-row strong{font-size:15px}.rail-row.cash strong{font-size:24px;letter-spacing:-.035em}.state-explainer{border-top:1px solid var(--line);padding-top:9px;margin-top:2px}.state-explainer summary{font-size:12.5px;font-weight:780;cursor:pointer}.state-guide{margin-top:7px}.state-row{padding:8px 0;border-top:1px solid var(--line)}.state-pill{font-size:10px;font-weight:850;letter-spacing:.05em;text-transform:uppercase}.state-row p{font-size:11.5px;line-height:1.4;color:var(--muted);margin:3px 0 0}
-.reads{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}.read{border-top:2px solid var(--ink);padding-top:10px;min-width:0}.read.wide{grid-column:1/-1}.read-head{display:flex;justify-content:space-between;gap:18px;align-items:start}.read-title{font-size:19px;font-weight:830}.read-sub{font-size:12.5px;color:var(--muted);line-height:1.38;margin-top:2px}.read-state{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:820;white-space:nowrap}.bridge{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:11px}.bridge-step{border-radius:11px;background:#f0ebe2;padding:10px 9px;min-width:0}.bridge-step span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:820}.bridge-step strong{display:block;font-size:19px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bridge-step.final{background:#e6ede4}.bridge-step.warn{background:#f3e8d4}
-.chart-wrap{margin-top:10px}.progress-svg{display:block;width:100%;height:auto;min-height:250px}.chart-legend{display:flex;gap:16px;align-items:center;margin-top:4px;font-size:11.5px;color:var(--muted)}.legend-key{display:inline-flex;gap:6px;align-items:center}.legend-swatch{width:10px;height:10px;border-radius:3px;background:#b58b52}.legend-swatch.contrib{background:#6f8269}.legend-swatch.open{background:transparent;border:1px dashed #6f8269}
-.pending-months{margin-top:10px;border-top:1px solid var(--line)}.pending-row{display:grid;grid-template-columns:95px 180px minmax(180px,1fr) 105px 105px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.pending-row strong{font-size:14px}.pending-row small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.35}.pending-badge{display:inline-flex;font-size:10px;font-weight:850;letter-spacing:.05em;text-transform:uppercase;padding:5px 7px;border-radius:999px;background:#f3e8d4;color:#73501d}.pending-badge.ready{background:#e6ede4;color:#405a43}.pending-metric{text-align:right}.pending-metric span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:820}.pending-metric strong{font-size:15px}
-.history{margin-top:12px;border-top:1px solid var(--line)}.history-row{display:grid;grid-template-columns:85px repeat(6,minmax(88px,1fr));gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:12.5px}.history-row.head{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:820}.history-row>div:not(:first-child){text-align:right}.history-row strong{font-size:14px}.history-row small{display:block;color:var(--muted);font-size:10.5px;margin-top:2px}.history-scroller{overflow-x:auto}.history-toggle{display:none}.history-state{display:inline-flex;font-size:10px;font-weight:850;letter-spacing:.04em;text-transform:uppercase;padding:4px 6px;border:1px solid var(--line);border-radius:999px}.evidence{margin-top:24px}.evidence details{border-top:1px solid var(--line);padding:12px 0}.evidence summary{cursor:pointer;font-size:14px;font-weight:780}.event-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;padding:10px 0;border-top:1px solid var(--line)}.event-row:first-child{border-top:0}.event-row strong{font-size:14px}.event-row small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}.event-row .amount{font-weight:820}
-@media(max-width:980px){.report-grid{grid-template-columns:1fr}.status-rail{border-left:0;border-top:1px solid var(--line);padding:12px 0 0}.reads{grid-template-columns:1fr}.read.wide{grid-column:auto}.pending-row{grid-template-columns:90px 170px minmax(160px,1fr) 100px 100px}}
-@media(max-width:640px){.finance-head{display:block;padding:6px 0 8px}.finance-head h1{font-size:26px}.finance-head p{font-size:12.5px}.period-meta{text-align:left;margin-top:7px;white-space:normal}.report-grid{gap:8px;margin-top:8px}.money-strip{grid-template-columns:1fr 1fr}.money-cell{padding:11px 10px 11px 0}.money-cell+.money-cell{padding-left:10px}.money-cell:nth-child(3){grid-column:1/-1;border-left:0;border-top:1px solid var(--line);padding-left:0}.eyebrow{font-size:10px}.big-money{font-size:28px}.cell-note{font-size:12px}.line-name{font-size:15px}.line-note{font-size:12px}.line-value{font-size:18px}.line.total .line-name,.line.total .line-value{font-size:20px}.status-rail{padding-top:10px}.rail-row.cash strong{font-size:22px}.bridge{grid-template-columns:1fr 1fr}.bridge-step.final,.bridge-step.warn:last-child{grid-column:1/-1}.reads{margin-top:20px}.read-title{font-size:18px}.read-sub{font-size:12px}.read-state{display:none}.progress-svg{min-height:220px}.pending-months{display:grid;gap:8px;border-top:0}.pending-row{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;padding:12px 13px;border:1px solid var(--line);border-radius:14px;background:rgba(255,253,249,.7)}.pending-row>div:nth-child(1),.pending-row>div:nth-child(2),.pending-row>div:nth-child(3){grid-column:1/-1}.pending-metric{text-align:left}.history-scroller{overflow:visible}.history{display:grid;gap:8px;border-top:0}.history-row.head{display:none}.history-row{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;padding:12px 13px;border:1px solid var(--line);border-radius:14px;background:rgba(255,253,249,.7)}.history-row>div:not(:first-child){text-align:left}.history-row>div:first-child{grid-column:1/-1;font-size:15px;font-weight:820;border-bottom:1px solid var(--line);padding-bottom:5px}.history-row>div:not(:first-child):before{content:attr(data-label);display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:820;margin-bottom:2px}.history:not(.expanded) .history-row:nth-of-type(n+5){display:none}.history-toggle{display:flex;width:100%;min-height:44px;align-items:center;justify-content:center;margin-top:9px;border:1px solid var(--line);border-radius:12px;background:rgba(255,253,249,.7);font:inherit;font-size:13px;font-weight:780;color:var(--ink);cursor:pointer}}
-</style></head><body><div class="app">
-<header class="topbar"><div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Finance · Amazon Mexico</div></div></div><div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading finance</span></div></header>
-<nav class="primary-nav"><a class="today-link" href="/today">Today</a><a href="/">Home</a><a href="/sales">Sales</a><a href="/catalog">Products</a><a href="/inventory">Inventory</a><a class="active" href="/finance">Finance</a></nav>
-<main>
-<section class="finance-head"><div><div class="kicker">Management finance</div><h1>Financial report</h1><p>Current period economics with immutable closed history. Cash timing and accounting closure remain separate.</p></div><div class="period-meta"><strong id="periodLabel">Current month</strong><span id="throughLabel">Loading period basis</span><div id="status" class="status"><span>OPEN</span></div></div></section>
-<div class="report-grid"><section class="report">
-  <div class="section-label">Customer money</div><div class="money-strip">
-    <div class="money-cell"><div class="eyebrow">Sales before IVA</div><div id="sales" class="big-money">—</div><div class="cell-note">Business revenue before 16% IVA.</div></div>
-    <div class="money-cell"><div class="eyebrow">IVA in customer price</div><div id="iva" class="big-money">—</div><div class="cell-note">Customer tax, not revenue we keep.</div></div>
-    <div class="money-cell"><div class="eyebrow">Customers paid</div><div id="gross" class="big-money">—</div><div class="cell-note">Product spend including IVA.</div></div>
-  </div>
-  <div class="section-label">Current month bridge</div><div id="currentLines"></div>
-</section><aside class="status-rail">
-  <h2>Current accounting state</h2><p id="statusCopy">OPEN is provisional. Amazon closure and seller COGS readiness are tracked independently.</p>
-  <div class="rail-row"><span>Order releases</span><strong id="releaseCoverage">—</strong></div><div class="rail-row"><span>Seller COGS coverage</span><strong id="cogsCoverage">—</strong></div><div class="rail-row cash"><span>Amazon cash transferred this month</span><strong id="cash">—</strong></div><div class="rail-row"><span>Management-closed months</span><strong id="closedCount">—</strong></div><div class="rail-row"><span>Restated latest versions</span><strong id="restatedCount">—</strong></div>
-  <details class="state-explainer"><summary>How accounting states work</summary><div class="state-guide"><div class="state-row"><span class="state-pill">OPEN</span><p>Current month. Amazon and seller economics remain provisional.</p></div><div class="state-row"><span class="state-pill">AMAZON CLOSING</span><p>Historical month still waiting for releases, advertising close or grace.</p></div><div class="state-row"><span class="state-pill">AMAZON CLOSED · COGS PENDING</span><p>Amazon-side accounting is final; management close waits only for frozen seller COGS.</p></div><div class="state-row"><span class="state-pill">CLOSED / RESTATED</span><p>Immutable management version. Corrections require an explicit restatement.</p></div></div></details>
-</aside></div>
-<section class="reads">
-  <article class="read"><div class="read-head"><div><div class="read-title">Current month contribution</div><div class="read-sub">Live OPEN-month estimate. Standard product costs can still change this period.</div></div><div class="read-state">OPEN · provisional</div></div><div id="currentBridge" class="bridge"></div></article>
-  <article class="read"><div class="read-head"><div><div class="read-title">Closed YTD contribution</div><div id="ytdSub" class="read-sub">Immutable closed-month economics.</div></div><div class="read-state">MANAGEMENT CLOSED</div></div><div id="ytdBridge" class="bridge"></div></article>
-  <article class="read wide"><div class="read-head"><div><div class="read-title">Month-to-month progression</div><div class="read-sub">Sales and contribution by accounting month. Closed months are immutable; the open month remains provisional.</div></div><div class="read-state">Closed history + current</div></div><div class="chart-wrap"><svg id="progression" class="progress-svg" viewBox="0 0 900 260" role="img" aria-label="Monthly sales and contribution chart"></svg><div class="chart-legend"><span class="legend-key"><i class="legend-swatch"></i>Sales ex IVA</span><span class="legend-key"><i class="legend-swatch contrib"></i>Contribution</span><span class="legend-key"><i class="legend-swatch open"></i>Open month</span></div></div></article>
-</section>
-<section class="read wide" id="pendingSection"><div class="read-head"><div><div class="read-title">Months awaiting management close</div><div class="read-sub">Amazon-side finalization and seller-owned COGS are separate. Missing product cost never makes Amazon accounting look open.</div></div><div class="read-state" id="pendingCount">—</div></div><div id="pendingMonths" class="pending-months"></div></section>
-<section class="read wide"><div class="read-head"><div><div class="read-title">Immutable month report</div><div class="read-sub">Latest close version per month. RESTATED is an explicit later version, never a silent rewrite.</div></div></div><div class="history-scroller"><div id="history" class="history"></div></div><button id="historyToggle" class="history-toggle" type="button" aria-expanded="false">Show full closed history</button></section>
-<section class="evidence"><details><summary>Amazon accounting evidence</summary><div id="events"></div></details></section>
-</main><footer class="footer"><span>Finances v2024 · RELEASED only · immutable management closes · frozen seller COGS</span><span>Dirty Pawz Press Analytics</span></footer></div>
-<script>
-(()=>{'use strict';const nf=new Intl.NumberFormat('en-US',{maximumFractionDigits:0}),money=v=>v==null?'—':(Number(v)<0?'−$':'$')+nf.format(Math.abs(Math.round(Number(v)))),cls=v=>Number(v||0)<0?'neg':Number(v||0)>0?'pos':'',pct=v=>v==null?'—':Number(v).toFixed(0)+'%';const month=s=>{if(!s)return'—';const d=new Date(String(s).slice(0,10)+'T12:00:00');return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})};const norm=s=>{s=String(s||'OPEN').toUpperCase();if(s==='FINALIZING')return'AMAZON_CLOSING';if(s==='AMAZON_CLOSED')return'AMAZON_CLOSED_COGS_PENDING';if(s==='READY_TO_CLOSE')return'AMAZON_CLOSED_COGS_READY';return s},stateLabel=s=>norm(s).replaceAll('_',' '),stateClass=s=>{s=norm(s);return s==='CLOSED'?'closed':s==='RESTATED'?'restated':s.includes('COGS_PENDING')?'pending':s.includes('CLOSING')?'closing':''};
-function line(name,note,value,extra=''){return `<div class="line ${extra}"><div><div class="line-name">${name}</div><div class="line-note">${note}</div></div><div class="line-value ${typeof value==='string'?'pending-value':cls(value)}">${typeof value==='string'?value:money(value)}</div></div>`}function step(label,value,kind=''){return `<div class="bridge-step ${kind}"><span>${label}</span><strong class="${cls(value)}">${typeof value==='string'?value:money(value)}</strong></div>`}
-function chart(svg,rows){const W=900,H=260,m={l:62,r:18,t:20,b:42},iw=W-m.l-m.r,ih=H-m.t-m.b,max=Math.max(1,...rows.flatMap(r=>[Number(r.net_sales_ex_vat||0),Math.abs(Number(r.contribution_after_product_cogs||0))])),top=Math.ceil(max/5000)*5000||5000,ticks=[0,.25,.5,.75,1].map(x=>top*x),bw=iw/Math.max(rows.length,1),barW=Math.min(24,Math.max(8,bw*.24)),y=v=>m.t+ih-(Number(v||0)/top)*ih;let out='';ticks.forEach(t=>{const yy=y(t);out+=`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="#ded6ca"/><text x="${m.l-10}" y="${yy+4}" text-anchor="end" font-size="11" fill="#746c62">${t>=1000?'$'+(t/1000).toFixed(t%1000?1:0)+'k':'$'+t}</text>`});rows.forEach((r,i)=>{const cx=m.l+bw*(i+.5),sales=Number(r.net_sales_ex_vat||0),con=Number(r.contribution_after_product_cogs||0),sy=y(sales),cy=y(Math.abs(con)),open=r._current,fillSales=open?'none':'#b58b52',fillCon=open?'none':con<0?'#9c665f':'#6f8269',dash=open?' stroke-dasharray="5 4"':'';out+=`<rect x="${cx-barW-2}" y="${sy}" width="${barW}" height="${Math.max(1,m.t+ih-sy)}" rx="3" fill="${fillSales}" stroke="#b58b52"${open?dash:''}/><rect x="${cx+2}" y="${cy}" width="${barW}" height="${Math.max(1,m.t+ih-cy)}" rx="3" fill="${fillCon}" stroke="${con<0?'#9c665f':'#6f8269'}"${open?dash:''}/><text x="${cx}" y="${H-15}" text-anchor="middle" font-size="11" font-weight="700" fill="#665f57">${month(r.month)}</text>`});svg.innerHTML=out}
-function render(d){const c=d.current_month||{},ytd=d.ytd_closed_aggregate||{},closed=(d.closed_months||[]).slice().sort((a,b)=>String(a.month).localeCompare(String(b.month))),state=c.accounting_state||c.state||'OPEN';document.getElementById('clock').textContent=d.local_time||'--:--';document.getElementById('asof').textContent='Finance through '+String(d.finance_cutoff||'').slice(0,10);document.getElementById('periodLabel').textContent=month(c.month)+' so far';document.getElementById('throughLabel').textContent='Sales through '+String(d.sales_through||c.through_date||'').slice(0,10)+' · finance through '+String(d.finance_cutoff||'').slice(0,10);const st=document.getElementById('status');st.className='status '+stateClass(state);st.querySelector('span').textContent=stateLabel(state);document.getElementById('sales').textContent=money(c.net_sales_ex_vat);document.getElementById('iva').textContent=money(c.iva_on_sales);document.getElementById('gross').textContent=money(c.shopper_product_spend);document.getElementById('cash').textContent=money(c.cash_transferred);document.getElementById('cogsCoverage').textContent=pct(c.cogs_coverage_pct);const rel=Number(c.core_orders||0)?100*Number(c.released_orders||0)/Number(c.core_orders):100;document.getElementById('releaseCoverage').textContent=pct(rel);document.getElementById('closedCount').textContent=closed.length;document.getElementById('restatedCount').textContent=closed.filter(x=>String(x.state||'').toUpperCase()==='RESTATED').length;
-const estimate=c.estimated_contribution_before_current_ads,other=estimate==null?null:Number(estimate)-(Number(c.net_sales_ex_vat||0)+Number(c.amazon_order_effect||0)-Number(c.product_cogs||0)),ads=c.current_month_advertising;document.getElementById('currentLines').innerHTML=line('Amazon order economics released so far','Released shipment/refund finance against orders from this month.',c.amazon_order_net)+line('Other Amazon postings / timing','Released service fees, adjustments and reimbursements posted this month.',other)+line('Product COGS','Editable standard/effective-dated direct cost for this OPEN month.',-Math.abs(Number(c.product_cogs||0)))+line('Current-month advertising',ads==null?'Advertising accrual is not yet available for this accounting month.':'Campaign spend accrued by advertising date.',ads==null?'Pending':-Math.abs(Number(ads)))+line(ads==null?'Contribution before current-month advertising':'Estimated contribution so far',c.cogs_complete?'Useful live estimate, not a closed result.':'Incomplete until seller product-cost coverage is complete.',ads==null?estimate:Number(estimate||0)-Math.abs(Number(ads||0)),'total');document.getElementById('currentBridge').innerHTML=step('Sales ex IVA',c.net_sales_ex_vat)+step('Amazon effect',c.amazon_order_effect)+step('Other postings',other)+step('Product COGS',-Math.abs(Number(c.product_cogs||0)))+step(ads==null?'Contribution pre-ads':'Contribution',ads==null?estimate:Number(estimate||0)-Math.abs(Number(ads||0)),'warn');if(Number(ytd.months||0)){document.getElementById('ytdSub').textContent=`${ytd.months} closed months through ${month(ytd.through_month)}.`;document.getElementById('ytdBridge').innerHTML=step('Sales ex IVA',ytd.net_sales_ex_vat)+step('Amazon effect',ytd.amazon_order_effect)+step('Advertising',ytd.advertising)+step('Product COGS',-Math.abs(Number(ytd.product_cogs||0)))+step('Contribution',ytd.contribution_after_product_cogs,'final')}else document.getElementById('ytdBridge').innerHTML='<div class="bridge-step final"><span>Closed YTD</span><strong>Not available</strong></div>';chart(document.getElementById('progression'),[...closed,{month:c.month,net_sales_ex_vat:c.net_sales_ex_vat,contribution_after_product_cogs:ads==null?estimate:Number(estimate||0)-Math.abs(Number(ads||0)),_current:true}]);
-const pending=(d.finalizing_months||[]).slice().sort((a,b)=>String(b.month).localeCompare(String(a.month))),ps=document.getElementById('pendingSection');if(!pending.length)ps.style.display='none';else{document.getElementById('pendingCount').textContent=`${pending.length} month${pending.length===1?'':'s'}`;document.getElementById('pendingMonths').innerHTML=pending.map(x=>{const ns=norm(x.accounting_state||x.state),ready=ns.includes('COGS_READY'),waits=(x.close_waits_for||[]).join(' · ')||'Ready for management-close snapshot',missing=(x.missing_skus||[]).map(v=>v.sku).filter(Boolean);return `<div class="pending-row"><div><strong>${month(x.month)}</strong><small>${money(x.net_sales_ex_vat)} sales ex IVA</small></div><div><span class="pending-badge ${ready?'ready':''}">${stateLabel(ns)}</span><small>${x.amazon_state==='CLOSED'?'Amazon-side final':'Amazon-side closing'}</small></div><div><strong>${waits}</strong><small>${missing.length?'Missing COGS: '+missing.join(', '):x.cogs_complete?'Seller COGS complete':'Seller COGS incomplete'}</small></div><div class="pending-metric"><span>Order release</span><strong>${pct(x.release_coverage_pct)}</strong></div><div class="pending-metric"><span>COGS coverage</span><strong>${pct(x.cogs_coverage_pct)}</strong></div></div>`}).join('')}
-const rows=closed.slice().sort((a,b)=>String(b.month).localeCompare(String(a.month)));document.getElementById('history').innerHTML='<div class="history-row head"><div>Month</div><div>Sales</div><div>Amazon effect</div><div>Advertising</div><div>Product cost</div><div>Contribution</div><div>State</div></div>'+rows.map(x=>`<div class="history-row"><div>${month(x.month)}</div><div data-label="Sales"><strong>${money(x.net_sales_ex_vat)}</strong><small>ex IVA</small></div><div data-label="Amazon effect"><strong class="${cls(x.amazon_order_effect)}">${money(x.amazon_order_effect)}</strong></div><div data-label="Advertising"><strong class="${cls(x.advertising)}">${money(x.advertising)}</strong></div><div data-label="Product cost"><strong class="neg">${money(-Math.abs(Number(x.product_cogs||0)))}</strong></div><div data-label="Contribution"><strong class="${cls(x.contribution_after_product_cogs)}">${money(x.contribution_after_product_cogs)}</strong><small>${x.contribution_margin_pct==null?'—':Number(x.contribution_margin_pct).toFixed(1)+'%'}</small></div><div data-label="State"><span class="history-state">${stateLabel(x.state||'CLOSED')}</span><small>v${x.version||1}</small></div></div>`).join('');document.getElementById('events').innerHTML=(d.recent||[]).slice(0,20).map(x=>`<div class="event-row"><div><strong>${x.transaction_type||'Accounting event'}</strong><small>${x.local_time||''} · ${x.transaction_status||'—'} · ${(x.description||'No description from Amazon').replace(/[<>]/g,'')}</small></div><div class="amount ${cls(x.amount)}">${money(x.amount)}</div></div>`).join('')||'<p>No recent accounting events.</p>'}
-const history=document.getElementById('history'),toggle=document.getElementById('historyToggle');toggle.addEventListener('click',()=>{const expanded=history.classList.toggle('expanded');toggle.setAttribute('aria-expanded',String(expanded));toggle.textContent=expanded?'Show recent closes only':'Show full closed history'});fetch('/api/finance',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(new Error('HTTP '+r.status))).then(render).catch(e=>{document.getElementById('periodLabel').textContent='Finance unavailable';document.getElementById('throughLabel').textContent=e.message})})();
-</script></body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#f4f0e8">
+    <title>Dirty Pawz Press · Finance</title>
+    <link rel="stylesheet" href="/assets/theme.css">
+    <link rel="stylesheet" href="/assets/mobile-ux.css">
+    <link rel="stylesheet" href="/assets/design-refine.css">
+    <link rel="stylesheet" href="/assets/nav-shell.css">
+    <link rel="stylesheet" href="/assets/layout-system.css">
+    <link rel="stylesheet" href="/assets/finance.css">
+    <script src="/assets/ui-shell.js" defer></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark">DP</div>
+          <div class="brand-copy">
+            <div class="brand-title">DIRTY PAWZ PRESS</div>
+            <div class="brand-sub">Finance · Amazon Mexico</div>
+          </div>
+        </div>
+        <div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading finance</span></div>
+      </header>
+
+      <nav class="primary-nav"></nav>
+
+      <main>
+        <section class="finance-head">
+          <div>
+            <div class="kicker">Management finance</div>
+            <h1>Financial report</h1>
+            <p>Current period economics with immutable closed history. Cash timing and accounting closure remain separate.</p>
+          </div>
+          <div class="period-meta">
+            <strong id="periodLabel">Current month</strong>
+            <span id="throughLabel">Loading period basis</span>
+            <div id="status" class="finance-status"><span>OPEN</span></div>
+          </div>
+        </section>
+
+        <div class="report-grid">
+          <section class="report">
+            <div class="section-label">Customer money</div>
+            <div class="money-strip">
+              <div class="money-cell"><div class="eyebrow">Sales before IVA</div><div id="sales" class="big-money">—</div><div class="cell-note">Business revenue before 16% IVA.</div></div>
+              <div class="money-cell"><div class="eyebrow">IVA in customer price</div><div id="iva" class="big-money">—</div><div class="cell-note">Customer tax, not revenue we keep.</div></div>
+              <div class="money-cell"><div class="eyebrow">Customers paid</div><div id="gross" class="big-money">—</div><div class="cell-note">Product spend including IVA.</div></div>
+            </div>
+
+            <div class="section-label">Current month bridge</div>
+            <div id="currentLines"></div>
+          </section>
+
+          <aside class="status-rail">
+            <h2>Current accounting state</h2>
+            <p id="statusCopy">OPEN is provisional. Amazon closure and seller COGS readiness are tracked independently.</p>
+            <div class="rail-row"><span>Order releases</span><strong id="releaseCoverage">—</strong></div>
+            <div class="rail-row"><span>Seller COGS coverage</span><strong id="cogsCoverage">—</strong></div>
+            <div class="rail-row cash"><span>Amazon cash transferred this month</span><strong id="cash">—</strong></div>
+            <div class="rail-row"><span>Management-closed months</span><strong id="closedCount">—</strong></div>
+            <div class="rail-row"><span>Restated latest versions</span><strong id="restatedCount">—</strong></div>
+            <details class="state-explainer">
+              <summary>How accounting states work</summary>
+              <div class="state-guide">
+                <div class="state-row"><span class="state-pill">OPEN</span><p>Current month. Amazon and seller economics remain provisional.</p></div>
+                <div class="state-row"><span class="state-pill">AMAZON CLOSING</span><p>Historical month still waiting for releases, advertising close or grace.</p></div>
+                <div class="state-row"><span class="state-pill">AMAZON CLOSED · COGS PENDING</span><p>Amazon-side accounting is final; management close waits only for frozen seller COGS.</p></div>
+                <div class="state-row"><span class="state-pill">CLOSED / RESTATED</span><p>Immutable management version. Corrections require an explicit restatement.</p></div>
+              </div>
+            </details>
+          </aside>
+        </div>
+
+        <section class="finance-reads">
+          <article class="finance-read">
+            <div class="finance-read__head">
+              <div><div class="finance-read__title">Current month contribution</div><div class="finance-read__sub">Live OPEN-month estimate. Standard product costs can still change this period.</div></div>
+              <div class="finance-read__state">OPEN · provisional</div>
+            </div>
+            <div id="currentBridge" class="bridge"></div>
+          </article>
+
+          <article class="finance-read">
+            <div class="finance-read__head">
+              <div><div class="finance-read__title">Closed YTD contribution</div><div id="ytdSub" class="finance-read__sub">Immutable closed-month economics.</div></div>
+              <div class="finance-read__state">MANAGEMENT CLOSED</div>
+            </div>
+            <div id="ytdBridge" class="bridge"></div>
+          </article>
+
+          <article class="finance-read wide">
+            <div class="finance-read__head">
+              <div><div class="finance-read__title">Month-to-month progression</div><div class="finance-read__sub">Sales and contribution by accounting month. Closed months are immutable; the open month remains provisional.</div></div>
+              <div class="finance-read__state">Closed history + current</div>
+            </div>
+            <div class="chart-wrap">
+              <svg id="progression" class="progress-svg" viewBox="0 0 900 260" role="img" aria-label="Monthly sales and contribution chart"></svg>
+              <div class="chart-legend">
+                <span class="legend-key"><i class="legend-swatch"></i>Sales ex IVA</span>
+                <span class="legend-key"><i class="legend-swatch contrib"></i>Contribution</span>
+                <span class="legend-key"><i class="legend-swatch open"></i>Open month</span>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="finance-read wide" id="pendingSection">
+          <div class="finance-read__head">
+            <div><div class="finance-read__title">Months awaiting management close</div><div class="finance-read__sub">Amazon-side finalization and seller-owned COGS are separate. Missing product cost never makes Amazon accounting look open.</div></div>
+            <div class="finance-read__state" id="pendingCount">—</div>
+          </div>
+          <div id="pendingMonths" class="pending-months"></div>
+        </section>
+
+        <section class="finance-read wide">
+          <div class="finance-read__head">
+            <div><div class="finance-read__title">Immutable month report</div><div class="finance-read__sub">Latest close version per month. RESTATED is an explicit later version, never a silent rewrite.</div></div>
+          </div>
+          <div class="history-scroller"><div id="history" class="history"></div></div>
+          <button id="historyToggle" class="history-toggle" type="button" aria-expanded="false">Show full closed history</button>
+        </section>
+
+        <section class="finance-evidence">
+          <details><summary>Amazon accounting evidence</summary><div id="events"></div></details>
+        </section>
+      </main>
+
+      <footer class="footer"><span>Finances v2024 · RELEASED only · immutable management closes · frozen seller COGS</span><span>Dirty Pawz Press Analytics</span></footer>
+    </div>
+
+    <script type="module" src="/assets/finance.js"></script>
+  </body>
+</html>

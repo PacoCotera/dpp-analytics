@@ -1,0 +1,208 @@
+.health-control {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.health-ring {
+  --angle: 0deg;
+  position: relative;
+  display: grid;
+  width: 104px;
+  height: 104px;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(var(--good) 0deg, var(--good) var(--angle), #e6dfd4 var(--angle), #e6dfd4 360deg);
+}
+
+.health-ring::after {
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: var(--surface);
+  content: '';
+}
+
+.health-ring strong {
+  position: relative;
+  z-index: 1;
+  font-size: 27px;
+  letter-spacing: -0.04em;
+}
+
+.health-title {
+  margin: 0 0 6px;
+  font-size: 30px;
+  font-weight: 840;
+  letter-spacing: -0.04em;
+}
+
+.health-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.trust-note {
+  margin-top: 12px;
+  border-left: 5px solid var(--good);
+}
+
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.source {
+  padding: 15px;
+  border-radius: 17px;
+  background: #f7f3ec;
+}
+
+.source strong {
+  display: block;
+  font-size: 24px;
+}
+
+.source span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.health-job {
+  display: grid;
+  grid-template-columns: 160px minmax(150px, 0.7fr) 95px 100px minmax(150px, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 13px 0;
+  border-top: 1px solid #e8e1d7;
+}
+
+.health-job:first-child {
+  border-top: 0;
+}
+
+.health-job__name {
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.health-job__source {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.health-status {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.health-status.success,
+.health-status.running {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.health-status.error {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.health-status.interrupted {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.health-job__age {
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.health-job__rows {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.health-job__error {
+  overflow: hidden;
+  color: var(--bad);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .source-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .health-job {
+    grid-template-columns: 1fr 90px 80px;
+  }
+
+  .health-job__source,
+  .health-job__rows {
+    display: none;
+  }
+
+  .health-job__error {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .health-control {
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .health-ring {
+    width: 80px;
+    height: 80px;
+  }
+
+  .health-ring strong {
+    font-size: 22px;
+  }
+
+  .health-title {
+    font-size: 25px;
+  }
+
+  .health-copy {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .source-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .source strong {
+    font-size: 22px;
+  }
+
+  .health-job {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .health-job__age {
+    display: none;
+  }
+
+  .health-job__error {
+    grid-column: 1 / -1;
+  }
+}

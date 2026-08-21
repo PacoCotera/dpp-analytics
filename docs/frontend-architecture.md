@@ -1,12 +1,12 @@
 # Operating Board Frontend Architecture
 
+This document defines frontend ownership and architectural constraints. For the route → API → HTML/CSS/JS map and operational change recipes, use [`maintenance.md`](maintenance.md). For source-of-truth and reconciliation rules, use [`data-model.md`](data-model.md).
+
 ## Decision
 
-Use native HTML, CSS Grid/Flexbox and ES modules for the current consolidation. Do not add React, Bootstrap or Tailwind during this refactor.
+Use native HTML, CSS Grid/Flexbox and ES modules for the current application. Do not add React, Bootstrap or Tailwind merely to solve layout consistency.
 
-The existing failure is not lack of a component framework. It is unclear ownership: inline page CSS/JS, multiple global override layers, post-render mutation scripts and Docker-time HTML rewriting. Adding React before removing those layers would create two frontend systems and make the transition harder to reason about.
-
-React/Vite can be reconsidered after the consolidation if the remaining stateful workspaces still show meaningful duplication that a component runtime would remove.
+The original maintainability problem was unclear ownership: inline page CSS/JS, multiple global override layers, post-render mutation scripts and Docker-time HTML rewriting. Those layers have now been removed from the served workspaces. Adding React before that cleanup would have created two frontend systems; after the cleanup, React can be judged on actual remaining application complexity instead.
 
 ## Layers
 
@@ -23,15 +23,14 @@ Owns only global visual tokens and typography:
 
 ### 2. Application shell
 
-Owns only application-wide orientation:
+`static/ui-shell.js` and `static/nav-shell.css` own application-wide orientation and navigation behavior:
 
-- brand
-- primary navigation
+- brand and primary navigation
 - active destination state
 - More menu
 - workspace identity
-- freshness/snapshot context
-- footer/build SHA
+- mobile page/workspace swipes
+- tab keyboard accessibility
 
 A page must not implement a second primary navigation system.
 
@@ -50,13 +49,11 @@ A page must not implement a second primary navigation system.
 - `.data-table-shell`
 - `.status-strip`
 
-These primitives are intentionally data-agnostic.
-
-Variable-length content such as action queues must not share geometry with fixed KPI rails. KPI rails remain stable while action lists grow or disappear vertically.
+These primitives are intentionally data-agnostic. Variable-length content such as action queues must not share geometry with fixed KPI rails. KPI rails remain stable while action lists grow or disappear vertically.
 
 ### 4. Visualization system
 
-The chart system owns:
+`static/chart-system.css` and `static/chart-system.js` own reusable chart behavior:
 
 - axes and tick typography
 - semantic colors
@@ -67,51 +64,110 @@ The chart system owns:
 - empty/loading states
 - supported chart forms
 
-Pages choose the correct analytical chart but should not restyle chart primitives independently.
+Pages choose the correct analytical chart but should not independently recreate generic chart primitives.
 
 ### 5. Page composition
 
-Page modules own:
+Each workspace owns a small explicit trio where appropriate:
 
-- business question and information architecture
-- API request
-- transformation of API payload into the page view model
-- page-specific rendering and interactions
+- HTML: semantic composition
+- CSS: page-specific presentation
+- JavaScript: API request, view-model transformation, rendering and interaction
 
-Page modules do not own global typography, primary navigation, generic KPI/panel/table geometry or duplicated formatting utilities.
+Page modules do not own global typography, primary navigation, generic KPI/panel/table geometry or duplicated formatting utilities. Shared formatting, escaping and fetch behavior lives in `static/ui-utils.js`.
+
+The Sales workspace retains the existing `sales-canonical.js` filename because it is already the single live renderer; the historical filename does not imply another Sales runtime.
 
 ### 6. Data/API
 
-Python endpoints own business definitions, reconciliation state and reusable server-side joins. Browser code should not independently redefine accounting, catalog hierarchy, attribution or inventory action semantics.
+Python endpoints own business definitions, reconciliation state and reusable server-side joins. Browser code must not independently redefine accounting, catalog hierarchy, attribution or inventory action semantics.
 
 ## Grid system
 
-Use CSS Grid directly rather than a third-party grid framework. The application needs a small number of explicit responsive compositions, not a 12-column marketing-site abstraction. Native Grid gives us fewer dependencies, predictable min/max behavior and better control over analytical tables and variable-height panels.
+Use CSS Grid directly rather than a third-party grid framework. The product needs a small number of explicit responsive analytical compositions, not a generic 12-column marketing-site abstraction. Native Grid provides fewer dependencies, predictable min/max behavior and better control over tables, charts and variable-height decision panels.
 
 ## React decision gate
 
-Revisit React/Vite only after the legacy ownership layers are removed. Adopt it only if at least two of these remain true:
+React/Vite is no longer blocked by cleanup debt, but it is also not currently justified by layout needs alone. Adopt it only if at least two of these become materially true:
 
 1. multiple pages duplicate complex stateful component logic;
-2. DOM mutation/event lifecycle remains a recurring source of bugs;
+2. DOM/event lifecycle remains a recurring source of bugs;
 3. shared components require substantial imperative synchronization;
 4. route-level code splitting or richer client navigation becomes useful;
 5. TypeScript component contracts materially improve data/view reliability.
 
-If adopted, React replaces the existing page runtime rather than being injected into legacy pages as isolated islands.
+If adopted, React should replace the existing page runtime coherently rather than appear as isolated islands inside otherwise imperative pages.
 
-## Migration sequence
+## Source ownership pattern
 
-1. Add lint/format tooling and shared utilities.
-2. Serve source-controlled frontend assets directly and remove Docker HTML mutation.
-3. Migrate Home, Sales and Inventory to shared page/layout primitives.
-4. Migrate Products and Product Workspace.
-5. Migrate Finance and replace grouped-bar pseudo-waterfall with a true waterfall.
-6. Migrate Trajectory and remove editorial over-explanation.
-7. Rebuild Data Health as a control-tower composition using the same shell/primitives.
-8. Migrate Ads when that product workstream resumes.
-9. Delete superseded CSS/JS layers.
-10. Turn lint/format into a required deployment gate.
+A workspace should be boring to inspect:
+
+- one HTML file owns semantic composition;
+- one page stylesheet owns page-specific presentation;
+- one page runtime module owns data loading, view-model transformation and interaction;
+- shared shell, layout, chart and formatting modules are imported explicitly;
+- Docker does not inject CSS, JavaScript or page behavior;
+- a second override stylesheet or post-render enhancer is a code smell, not an extension point.
+
+The served workspaces now follow this model: Home, Today, Sales, Catalog, Product Workspace, Inventory, Finance, Trajectory, Ads and Data Health.
+
+## Build boundary
+
+Frontend dependencies are source-controlled. The Docker build no longer rewrites pages to inject stylesheets, scripts, tabs or enhancement layers. Its only HTML mutation is the visible deployment SHA in the footer.
+
+This makes local/source behavior and deployed behavior materially easier to compare: what is reviewed in Git is what the browser loads in production.
+
+## Retained global styles
+
+`mobile-ux.css` and `design-refine.css` remain shared compatibility/foundation sheets from earlier iterations. They are not page-specific extension points.
+
+When touching these files:
+
+- keep only genuinely cross-page behavior there;
+- move page-specific selectors to the owning page stylesheet;
+- do not create another global “refine”, “override”, “v2” or “enhance” layer;
+- delete superseded rules once ownership has moved.
+
+The target is fewer owners, not more layers with clearer names.
+
+## Lint and formatting policy
+
+Lint and formatting serve different purposes and run separately.
+
+`npm run lint` is the blocking code-quality gate. ESLint scans the complete application JavaScript tree and Stylelint scans the complete CSS tree. Stylelint intentionally does not enforce cosmetic conventions that conflict with the existing DOM/CSS vocabulary, such as camelCase legacy IDs, one-line declaration formatting, color-function spelling or media-range spelling. Those are formatting/migration concerns, not runtime defects.
+
+`npm run format:check` reports Prettier drift. It remains available as the mechanical formatting audit while the shared legacy foundation sheets are progressively normalized. Once those remaining global sheets are formatted deliberately, formatting can become a required deployment gate without a large whitespace-only churn commit.
+
+New and migrated files should be readable and formatted when touched even before the repository-wide formatting gate becomes mandatory.
+
+## Consolidation status
+
+1. Lint/format tooling and shared utilities: **done**.
+2. Source-controlled frontend dependencies; no Docker frontend injection: **done**.
+3. Home, Sales and Inventory shared ownership model: **done**.
+4. Catalog and Product Workspace: **done**.
+5. Finance structural migration while preserving accounting semantics: **done**.
+6. Trajectory structural migration: **done**.
+7. Data Health control-tower composition: **done**.
+8. Today extraction, responsive runtime and wall mode: **done**.
+9. Ads consolidation, including Targets/Search Terms and elimination of duplicate `/api/ads` fetch/injected DOM: **done**.
+10. Shared shell owns navigation, tab accessibility and mobile swipe behavior: **done**.
+11. Superseded Finance frontend layers, Sales overrides, Home, Today, Ads and generic refinement layers: **removed**.
+12. Legacy unused `index.html`: **removed**; `/`, `/home` and `/index.html` are served by canonical `home.html`.
+13. Full frontend lint on the consolidated source tree: **required and green before review/deploy**.
+14. Production visual regression review at desktop/mobile widths: **required before accepting the refactor**.
+15. Optional analytical/product redesigns such as chart-form changes: **separate from this structural refactor**.
+
+## Documentation boundary
+
+Frontend architecture changes are incomplete unless documentation remains navigable without reverse-engineering the source tree.
+
+In the same PR:
+
+- update this file when shared ownership/framework rules change;
+- update `maintenance.md` when a route or owning file changes;
+- update `data-model.md` when the authoritative data definition changes;
+- update the root README if the product surface or repository map changes.
 
 ## Quality gate
 

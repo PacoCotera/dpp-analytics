@@ -1,21 +1,112 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f4f0e8"><title>Dirty Pawz Press · Inventory</title><link rel="stylesheet" href="/assets/theme.css"><script src="/assets/ui-shell.js" defer></script><style>
-.inventory-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:center;padding:11px 0 13px;border-bottom:1px solid var(--line)}.inventory-head h1{font-size:31px;line-height:1;letter-spacing:-.035em;margin:0 0 6px}.inventory-head p{font-size:12.5px;line-height:1.4;color:var(--muted);margin:0;max-width:720px}.inventory-kpis{display:grid;grid-template-columns:repeat(4,minmax(82px,1fr));align-items:stretch}.inv-kpi{padding:0 17px;border-left:1px solid var(--line);min-width:92px}.inv-kpi:first-child{border-left:0}.inv-kpi strong{display:block;font-size:27px;line-height:1;font-weight:870;letter-spacing:-.045em}.inv-kpi span{display:block;font-size:10px;font-weight:760;margin-top:4px}.inv-kpi small{display:block;font-size:9.5px;color:var(--muted);margin-top:2px;line-height:1.25}.how-btn{height:36px;border:1px solid var(--line);background:rgba(255,253,249,.72);border-radius:999px;padding:0 13px;font-size:11px;font-weight:780;cursor:pointer;margin-left:10px;white-space:nowrap}.how{display:none;margin:9px 0 0}.how.show{display:block}
-.section{margin-top:19px}.section-head{display:flex;justify-content:space-between;gap:16px;align-items:baseline;margin-bottom:8px}.section-title{font-size:18px;font-weight:840;letter-spacing:-.02em}.section-sub{font-size:11.5px;color:var(--muted);line-height:1.35}.section-link{font-size:11px;font-weight:760;color:var(--accent-ink);white-space:nowrap}
-.decision-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,.9fr);gap:12px}.action-queue{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.action-card{padding:14px 15px;border-radius:16px;border:1px solid var(--line);background:rgba(255,253,249,.7);min-height:113px;display:flex;flex-direction:column;justify-content:space-between}.action-card.urgent{border-color:#e3a69f;background:#fff7f5}.action-card.plan{border-color:#e1c68a;background:#fffaf0}.action-top{display:flex;justify-content:space-between;gap:10px}.action-name{font-size:14px;font-weight:790;line-height:1.22}.action-sku{font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px}.action-bottom{display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px}.cover-big{font-size:30px;font-weight:860;letter-spacing:-.04em}.cover-big span{font-size:10px;color:var(--muted);font-weight:650;letter-spacing:0}.stock-line{text-align:right;font-size:10.5px;color:var(--muted);line-height:1.42}.action{display:inline-flex;min-height:26px;align-items:center;padding:0 8px;border-radius:999px;font-size:9.5px;font-weight:850}.action.STOCKOUT,.action.PRODUCE{background:var(--bad-soft);color:var(--bad)}.action.PLAN{background:var(--warn-soft);color:var(--warn)}.action.OK{background:var(--good-soft);color:var(--good)}.action.HOLD{background:#eee8df;color:var(--muted)}
-.coverage{border:1px solid var(--line);border-radius:16px;background:rgba(255,253,249,.58);padding:13px 14px}.coverage h3{font-size:16px;margin:0}.coverage p{font-size:10.5px;color:var(--muted);margin:2px 0 9px}.bands{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.band{padding:10px 11px;border-radius:12px;background:#f5f0e8}.band strong{font-size:23px;line-height:1;display:block}.band span{font-size:9.5px;color:var(--muted);display:block;margin-top:5px}
-.inventory-tools{display:grid;grid-template-columns:minmax(260px,1fr) auto auto;gap:10px;align-items:center}.search{height:40px;border:1px solid #d4ccc0;border-radius:999px;background:#fffdf9;padding:0 14px;font-size:14px;min-width:0}.filters{display:flex;gap:7px}.filter{height:38px;border:1px solid #d5cdc1;background:#f8f4ed;border-radius:999px;padding:0 12px;font-size:10.5px;font-weight:800;cursor:pointer;white-space:nowrap}.filter.active{background:var(--ink);color:white;border-color:var(--ink)}.export-link{font-size:10.5px;font-weight:760;color:var(--accent-ink);white-space:nowrap}
-.inventory-shell{margin-top:9px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:rgba(255,253,249,.58)}.inventory-table{width:100%;border-collapse:collapse;table-layout:fixed}.inventory-table col.product{width:36%}.inventory-table col.actionc{width:9%}.inventory-table col.numc{width:8%}.inventory-table col.coverc{width:11%}.inventory-table th{padding:9px 10px;border-bottom:1px solid var(--line);font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left}.inventory-table th.num,.inventory-table td.num{text-align:right}.inventory-table td{padding:9px 10px;border-bottom:1px solid var(--line);font-size:12px;vertical-align:middle}.inventory-table tr:last-child td{border-bottom:0}.stock-product{display:flex;align-items:center;gap:9px;min-width:0}.stock-product img{width:36px;height:42px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 auto}.product-sku{font-size:9px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}.product-name{font-size:12.5px;font-weight:760;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cover{font-weight:840}.cover.attn{color:#a85e00}.cover.good{color:var(--good)}.status-dot{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:720;white-space:nowrap}.status-dot:before{content:"";width:7px;height:7px;border-radius:50%;background:#8b857d}.status-dot.attn{color:#9a5b00}.status-dot.attn:before{background:#c57900}.status-dot.good{color:var(--good)}.status-dot.good:before{background:var(--good)}.inventory-cards{display:none}.inventory-foot{display:flex;justify-content:space-between;gap:16px;margin:8px 2px 0;font-size:9.5px;color:var(--muted)}
-@media(max-width:980px){.inventory-head{grid-template-columns:1fr}.inventory-kpis{justify-self:stretch}.decision-grid{grid-template-columns:1fr}.inventory-tools{grid-template-columns:1fr auto}.export-link{display:none}.inventory-table col.product{width:31%}.inventory-table th,.inventory-table td{padding-left:7px;padding-right:7px}.bands{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:640px){.inventory-head{padding:8px 0 10px;gap:10px}.inventory-head h1{font-size:27px;margin-bottom:4px}.inventory-head p{font-size:12px}.inventory-kpis{grid-template-columns:repeat(2,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.inv-kpi{padding:10px 10px;border-left:0}.inv-kpi:nth-child(even){border-left:1px solid var(--line)}.inv-kpi:nth-child(n+3){border-top:1px solid var(--line)}.inv-kpi strong{font-size:24px}.how-btn{grid-column:1/-1;margin:0;height:42px}.section{margin-top:16px}.section-head{display:block;margin-bottom:7px}.section-link{display:inline-block;margin-top:3px}.action-queue{grid-template-columns:1fr}.action-card{min-height:105px}.decision-grid{gap:9px}.bands{grid-template-columns:repeat(2,1fr)}.inventory-tools{display:flex;flex-wrap:wrap;gap:7px}.search{width:100%;flex:1 0 100%;font-size:16px}.filters{display:grid;grid-template-columns:repeat(2,1fr);width:100%}.filter{min-height:42px}.inventory-shell{border:0;background:transparent;overflow:visible}.inventory-table{display:none}.inventory-cards{display:grid;gap:8px}.inv-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,253,249,.7)}.inv-card .stock-product{grid-column:1/-1;padding-bottom:8px;border-bottom:1px solid var(--line)}.inv-card .stock-product img{width:42px;height:48px}.inv-card .product-name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.inv-card .action{justify-self:end}.inv-card-metrics{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.inv-card-metric{padding:8px;background:#f5f0e8;border-radius:10px}.inv-card-metric strong{display:block;font-size:16px}.inv-card-metric span{display:block;font-size:9px;color:var(--muted);margin-top:2px}.inventory-foot{display:block;line-height:1.4}.inventory-foot span:last-child{display:none}}
-</style></head><body><div class="app">
-<header class="topbar"><div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Inventory · Amazon Mexico</div></div></div><div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading inventory</span></div></header>
-<nav class="primary-nav"><a class="today-link" href="/today">Today</a><a href="/">Home</a><a href="/sales">Sales</a><a href="/catalog">Products</a><a class="active" href="/inventory">Inventory</a><a href="/finance">Finance</a><a href="#" aria-haspopup="menu">More</a></nav>
-<main>
-<section class="inventory-head"><div><h1>Inventory</h1><p>Velocity turns stock counts into decisions. Start with the action queue, then use coverage and SKU detail when you need to understand why.</p></div><div style="display:flex;align-items:center"><div class="inventory-kpis"><div class="inv-kpi"><strong id="coverPortfolio">—</strong><span>Days of cover</span><small>portfolio · 28D velocity</small></div><div class="inv-kpi"><strong id="available">—</strong><span>Available</span><small>units</small></div><div class="inv-kpi"><strong id="reserved">—</strong><span>Reserved</span><small>units</small></div><div class="inv-kpi"><strong id="inbound">—</strong><span>Inbound</span><small>units</small></div></div><button class="how-btn" id="howBtn">How actions work</button></div></section>
-<div class="notice how" id="how"><strong>Action logic:</strong> STOCKOUT means zero available with recent sales. PRODUCE means less than 14 days of cover including inbound. PLAN means 14–27 days. OK means 28+ days. HOLD means no recent selling velocity, so producing more needs judgment rather than an automatic signal.</div>
-<section class="section"><div class="section-head"><div><div class="section-title">Action queue</div><div class="section-sub">Only SKUs that deserve a production or replenishment decision.</div></div><a class="section-link" href="#all">Browse reference inventory ↓</a></div><div class="decision-grid"><div class="action-queue" id="queue"><div class="empty"><strong>Checking stock</strong></div></div><div class="coverage"><h3>Coverage map</h3><p>Active SKUs by days of cover using recent 28-day velocity.</p><div class="bands" id="bands"></div></div></div></section>
-<section class="section" id="all"><div class="section-head"><div><div class="section-title">All inventory</div><div class="section-sub">Search or filter; tap a product to connect stock with sales and traffic.</div></div></div><div class="inventory-tools"><input id="search" class="search" type="search" placeholder="Search product or SKU…"><div class="filters"><button class="filter active" data-filter="all">All</button><button class="filter" data-filter="attention">Needs action</button><button class="filter" data-filter="ok">Healthy</button><button class="filter" data-filter="hold">No velocity</button></div><span class="export-link">Reference view</span></div><div class="inventory-shell"><table class="inventory-table"><colgroup><col class="product"><col class="actionc"><col class="numc"><col class="numc"><col class="numc"><col class="numc"><col class="coverc"><col class="coverc"></colgroup><thead><tr><th>Product</th><th>Action</th><th class="num">Available</th><th class="num">Inbound</th><th class="num">Reserved</th><th class="num">28D units</th><th class="num">Days cover</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table><div id="inventoryCards" class="inventory-cards"></div></div><div class="inventory-foot"><span>Velocity = recent 28-day units sold. Days of cover = (Available + inbound) / velocity.</span><span id="snapshotFoot">Snapshot —</span></div></section>
-</main><footer class="footer"><span>Coverage uses last-28-day selling velocity · not a demand forecast</span><span>Dirty Pawz Press Analytics</span></footer></div><script>
-(()=>{const fmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let DATA=[],filter='all';const actionClass=a=>`action ${esc(a||'HOLD')}`;const statusInfo=a=>['STOCKOUT','PRODUCE','PLAN'].includes(a)?['Needs action','attn']:a==='OK'?['Healthy','good']:['No velocity',''];function filtered(){const q=document.getElementById('search').value.trim().toLowerCase();return DATA.filter(x=>{if(q&&!`${x.product||''} ${x.sku||''}`.toLowerCase().includes(q))return false;if(filter==='attention'&&!['STOCKOUT','PRODUCE','PLAN'].includes(x.action))return false;if(filter==='ok'&&x.action!=='OK')return false;if(filter==='hold'&&x.action!=='HOLD')return false;return true})}function renderRows(){const rows=filtered();document.getElementById('rows').innerHTML=rows.map(x=>{const img=x.image_url?`<img src="${esc(x.image_url)}" alt="" loading="lazy">`:'';const c=x.days_cover_with_inbound==null?'—':Number(x.days_cover_with_inbound).toFixed(0);const [status,kind]=statusInfo(x.action);return `<tr><td><a class="stock-product" href="/product?sku=${encodeURIComponent(x.sku)}">${img}<div style="min-width:0"><div class="product-sku">${esc(x.sku)}</div><div class="product-name">${esc(x.product||x.sku)}</div></div></a></td><td><span class="${actionClass(x.action)}">${esc(x.action||'HOLD')}</span></td><td class="num">${fmt.format(x.available||0)}</td><td class="num">${fmt.format(x.inbound||0)}</td><td class="num">${fmt.format(x.reserved||0)}</td><td class="num">${fmt.format(x.units_t28||0)}</td><td class="num cover ${kind}">${c}</td><td><span class="status-dot ${kind}">${status}</span></td></tr>`}).join('')||'<tr><td colspan="8"><div class="empty"><strong>No matching SKUs.</strong>Try another filter.</div></td></tr>';document.getElementById('inventoryCards').innerHTML=rows.map(x=>{const img=x.image_url?`<img src="${esc(x.image_url)}" alt="" loading="lazy">`:'';const c=x.days_cover_with_inbound==null?'—':Number(x.days_cover_with_inbound).toFixed(0);return `<a class="inv-card" href="/product?sku=${encodeURIComponent(x.sku)}"><div class="stock-product">${img}<div style="min-width:0"><div class="product-sku">${esc(x.sku)}</div><div class="product-name">${esc(x.product||x.sku)}</div></div></div><span class="${actionClass(x.action)}">${esc(x.action||'HOLD')}</span><div class="inv-card-metrics"><div class="inv-card-metric"><strong>${fmt.format(x.available||0)}</strong><span>Available</span></div><div class="inv-card-metric"><strong>${fmt.format(x.units_t28||0)}</strong><span>28D units</span></div><div class="inv-card-metric"><strong>${c}</strong><span>Days cover</span></div></div></a>`}).join('')||'<div class="empty"><strong>No matching SKUs.</strong></div>'}function render(d){const s=d.summary||{};DATA=d.rows||[];document.getElementById('clock').textContent=d.local_time||'--:--';const snap=String(s.latest_snapshot||'').slice(0,16).replace('T',' ');document.getElementById('asof').textContent='Snapshot '+snap;document.getElementById('snapshotFoot').textContent='Snapshot '+snap;document.getElementById('coverPortfolio').textContent=s.portfolio_days_cover==null?'—':Number(s.portfolio_days_cover).toFixed(0);['available','inbound','reserved'].forEach(k=>document.getElementById(k).textContent=fmt.format(s[k]||0));const q=DATA.filter(x=>['STOCKOUT','PRODUCE','PLAN'].includes(x.action));document.getElementById('queue').innerHTML=q.length?q.map(x=>`<a class="action-card ${['STOCKOUT','PRODUCE'].includes(x.action)?'urgent':'plan'}" href="/product?sku=${encodeURIComponent(x.sku)}"><div class="action-top"><div><div class="action-sku">${esc(x.sku)}</div><div class="action-name">${esc(x.product||x.sku)}</div></div><span class="${actionClass(x.action)}">${esc(x.action)}</span></div><div class="action-bottom"><div class="cover-big">${x.days_cover_with_inbound==null?'—':Number(x.days_cover_with_inbound).toFixed(0)} <span>days cover</span></div><div class="stock-line">${x.available||0} available<br>${x.inbound||0} inbound · ${x.units_t28||0} sold / 28D</div></div></a>`).join(''):'<div class="empty" style="grid-column:1/-1"><strong>Nothing urgent.</strong>No active selling SKU currently needs a stock intervention.</div>';document.getElementById('bands').innerHTML=(d.bands||[]).map(b=>`<div class="band"><strong>${b.sku_count||0}</strong><span>${esc(b.band)}</span></div>`).join('');renderRows()}document.getElementById('howBtn').onclick=()=>document.getElementById('how').classList.toggle('show');document.getElementById('search').addEventListener('input',renderRows);document.querySelectorAll('.filter').forEach(b=>b.onclick=()=>{document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;renderRows()});fetch('/api/inventory',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(render).catch(e=>{document.getElementById('asof').textContent='Inventory unavailable · '+e.message})})();
-</script></body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#f4f0e8">
+    <title>Dirty Pawz Press · Inventory</title>
+    <link rel="stylesheet" href="/assets/theme.css">
+    <link rel="stylesheet" href="/assets/mobile-ux.css">
+    <link rel="stylesheet" href="/assets/design-refine.css">
+    <link rel="stylesheet" href="/assets/nav-shell.css">
+    <link rel="stylesheet" href="/assets/layout-system.css">
+    <link rel="stylesheet" href="/assets/inventory.css">
+    <script src="/assets/ui-shell.js" defer></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark">DP</div>
+          <div class="brand-copy">
+            <div class="brand-title">DIRTY PAWZ PRESS</div>
+            <div class="brand-sub">Inventory · Amazon Mexico</div>
+          </div>
+        </div>
+        <div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading inventory</span></div>
+      </header>
+
+      <nav class="primary-nav"></nav>
+
+      <main>
+        <section class="page-header inventory-page-header">
+          <div>
+            <div class="kicker">Inventory manager</div>
+            <h1 class="page-header__title">Inventory</h1>
+            <p class="page-header__description">Velocity turns stock counts into decisions. Start with the action queue, then use coverage and SKU detail when you need to understand why.</p>
+          </div>
+          <div class="page-header__aside inventory-header-actions">
+            <div class="kpi-rail" aria-label="Inventory key metrics">
+              <div class="kpi"><strong class="kpi__value" id="coverPortfolio">—</strong><span class="kpi__label">Days of cover</span><small class="kpi__note">portfolio · 28D velocity</small></div>
+              <div class="kpi"><strong class="kpi__value" id="available">—</strong><span class="kpi__label">Available</span><small class="kpi__note">units</small></div>
+              <div class="kpi"><strong class="kpi__value" id="reserved">—</strong><span class="kpi__label">Reserved</span><small class="kpi__note">units</small></div>
+              <div class="kpi"><strong class="kpi__value" id="inbound">—</strong><span class="kpi__label">Inbound</span><small class="kpi__note">units</small></div>
+            </div>
+            <button class="how-btn" id="howBtn" type="button">How actions work</button>
+          </div>
+        </section>
+
+        <div class="notice how" id="how">
+          <strong>Action logic:</strong> STOCKOUT means zero available with recent sales. PRODUCE means less than 14 days of cover including inbound. PLAN means 14–27 days. OK means 28+ days. HOLD means no recent selling velocity, so producing more needs judgment rather than an automatic signal.
+        </div>
+
+        <section class="page-section">
+          <div class="section-header">
+            <div>
+              <h2 class="section-header__title">Action queue</h2>
+              <div class="section-header__description">Only SKUs that deserve a production or replenishment decision.</div>
+            </div>
+            <a class="section-header__action" href="#all">Browse reference inventory ↓</a>
+          </div>
+          <div class="dashboard-grid inventory-decision-grid">
+            <div class="action-list" id="queue"><div class="empty"><strong>Checking stock</strong></div></div>
+            <aside class="panel coverage">
+              <h3>Coverage map</h3>
+              <p>Active SKUs by days of cover using recent 28-day velocity.</p>
+              <div class="bands" id="bands"></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page-section" id="all">
+          <div class="section-header">
+            <div>
+              <h2 class="section-header__title">All inventory</h2>
+              <div class="section-header__description">Search or filter; tap a product to connect stock with sales and traffic.</div>
+            </div>
+          </div>
+
+          <div class="inventory-tools">
+            <input id="search" class="search" type="search" placeholder="Search product or SKU…">
+            <div class="filters" role="group" aria-label="Inventory status filter">
+              <button class="filter active" type="button" data-filter="all">All</button>
+              <button class="filter" type="button" data-filter="attention">Needs action</button>
+              <button class="filter" type="button" data-filter="ok">Healthy</button>
+              <button class="filter" type="button" data-filter="hold">No velocity</button>
+            </div>
+            <span class="export-link">Reference view</span>
+          </div>
+
+          <div class="data-table-shell data-table-shell--cards-on-mobile inventory-shell">
+            <div class="data-table-scroll">
+              <table class="data-table inventory-table">
+                <colgroup>
+                  <col class="product"><col class="actionc"><col class="numc"><col class="numc"><col class="numc"><col class="numc"><col class="coverc"><col class="coverc">
+                </colgroup>
+                <thead>
+                  <tr><th>Product</th><th>Action</th><th class="num">Available</th><th class="num">Inbound</th><th class="num">Reserved</th><th class="num">28D units</th><th class="num">Days cover</th><th>Status</th></tr>
+                </thead>
+                <tbody id="rows"></tbody>
+              </table>
+            </div>
+            <div id="inventoryCards" class="inventory-cards"></div>
+          </div>
+          <div class="inventory-foot"><span>Velocity = recent 28-day units sold. Days of cover = (Available + inbound) / velocity.</span><span id="snapshotFoot">Snapshot —</span></div>
+        </section>
+      </main>
+
+      <footer class="footer"><span>Coverage uses last-28-day selling velocity · not a demand forecast</span><span>Dirty Pawz Press Analytics</span></footer>
+    </div>
+    <script type="module" src="/assets/inventory.js"></script>
+  </body>
+</html>

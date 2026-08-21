@@ -48,8 +48,10 @@ export function byId(id) {
 
 export async function fetchJson(url, options = {}) {
   const response = await fetch(url, { cache: 'no-store', ...options });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
+  if (response.ok) return response.json();
+
+  const body = await response.json().catch(() => ({}));
+  throw new Error(body.error || `HTTP ${response.status}`);
 }
 
 export function setText(id, value) {

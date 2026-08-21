@@ -1,14 +1,78 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f4f0e8"><title>Dirty Pawz Press · Data Health</title><link rel="stylesheet" href="/assets/theme.css"><script src="/assets/ui-shell.js" defer></script><style>
-.health-hero{display:grid;grid-template-columns:104px minmax(0,1fr);gap:18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:var(--shadow)}.health-ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--good) 0deg,var(--good) var(--angle),#e6dfd4 var(--angle),#e6dfd4 360deg);position:relative}.health-ring:after{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--surface)}.health-ring strong{position:relative;z-index:1;font-size:27px;letter-spacing:-.04em}.health-title{font-size:30px;font-weight:840;letter-spacing:-.04em;margin-bottom:6px}.health-copy{font-size:14px;line-height:1.5;color:var(--muted)}.source-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.source{padding:15px;border-radius:17px;background:#f7f3ec}.source strong{font-size:24px;display:block}.source span{font-size:11px;color:var(--muted)}.job{display:grid;grid-template-columns:160px minmax(150px,.7fr) 95px 100px minmax(150px,1fr);gap:12px;align-items:center;padding:13px 0;border-top:1px solid #e8e1d7}.job:first-child{border-top:0}.job-name{font-size:13px;font-weight:760}.job-source{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}.status{display:inline-flex;min-height:27px;align-items:center;padding:0 8px;border-radius:999px;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.04em}.status.success,.status.running{background:var(--good-soft);color:var(--good)}.status.error{background:var(--bad-soft);color:var(--bad)}.status.interrupted{background:var(--warn-soft);color:var(--warn)}.job-age{font-size:12px;font-weight:760}.job-rows{font-size:11px;color:var(--muted)}.job-error{font-size:11px;color:var(--bad);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.details-toggle{cursor:pointer}.trust-note{border-left:5px solid var(--good)}@media(max-width:900px){.source-grid{grid-template-columns:repeat(2,1fr)}.job{grid-template-columns:1fr 90px 80px}.job .job-source,.job .job-rows{display:none}.job-error{grid-column:1/-1}}@media(max-width:640px){.health-hero{grid-template-columns:80px minmax(0,1fr);padding:17px}.health-ring{width:80px;height:80px}.health-ring strong{font-size:22px}.health-title{font-size:25px}.source-grid{grid-template-columns:1fr 1fr}.source strong{font-size:22px}.job{grid-template-columns:minmax(0,1fr) auto}.job-age{display:none}.job-error{grid-column:1/-1}}
-</style></head><body><div class="app">
-<header class="topbar"><div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Data Health</div></div></div><div class="top-meta"><strong id="clock">--:--</strong><span>System trust</span></div></header>
-<nav class="primary-nav"><a class="today-link" href="/today">Today</a><a href="/">Home</a><a href="/sales">Sales</a><a href="/catalog">Catalog</a><a href="/inventory">Inventory</a><a href="/ads">Ads</a><a href="/finance">Finance</a><a href="/trajectory">Trajectory</a><a class="active" href="/data-health">Data</a></nav>
-<header class="page-head"><div><div class="kicker">Trust layer</div><h1>Can I trust what I’m seeing?</h1><p class="page-summary">This page translates ingestion plumbing into a simple answer: which data is healthy, what is stale, and whether a business decision should wait.</p></div></header>
-<section class="health-hero"><div class="health-ring" id="ring" style="--angle:0deg"><strong id="score">—</strong></div><div><div class="health-title" id="healthTitle">Checking the data pipeline…</div><div class="health-copy" id="healthCopy">Reviewing each source and the warehouse coverage behind the operating product.</div></div></section>
-<div class="notice trust-note" id="trustNote" style="margin-top:12px">Loading trust assessment.</div>
-<section class="section"><div class="section-head"><div><div class="section-title">Warehouse coverage</div><div class="section-sub">Useful scale checks, not vanity metrics.</div></div></div><div class="source-grid"><div class="source"><strong id="orders">—</strong><span>orders captured</span></div><div class="source"><strong id="finance">—</strong><span>finance transactions</span></div><div class="source"><strong id="listings">—</strong><span>seller listings</span></div><div class="source"><strong id="snapshots">—</strong><span>inventory snapshots</span></div></div></section>
-<section class="section"><div class="section-head"><div><div class="section-title">Source freshness</div><div class="section-sub">Expand this only when something looks wrong elsewhere.</div></div><button class="btn details-toggle" id="toggle">Show all jobs</button></div><div class="card card-pad"><div class="list" id="jobs"></div></div></section>
-<footer class="footer"><span>Data health is operational metadata · no customer PII</span><span>Dirty Pawz Press Analytics</span></footer></div><script>
-(function(){const fmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let ALL=[],expanded=false;function age(sec){sec=Number(sec||0);if(sec<60)return Math.round(sec)+'s';if(sec<3600)return Math.round(sec/60)+'m';if(sec<86400)return (sec/3600).toFixed(sec<10800?1:0)+'h';return (sec/86400).toFixed(sec<259200?1:0)+'d'}function statusClass(s){return ['success','running','error','interrupted'].includes(s)?s:''}function renderJobs(){let rows=expanded?ALL:ALL.filter(x=>x.latest_status==='error'||x.latest_status==='interrupted'||Number(x.age_seconds||0)>86400).slice(0,8);if(!rows.length&&!expanded){document.getElementById('jobs').innerHTML='<div class="empty"><strong>No problem jobs.</strong>Nothing in the source list currently needs your attention.</div>';return}document.getElementById('jobs').innerHTML=rows.map(x=>`<div class="job"><div><div class="job-name">${esc(x.job_name||'')}</div><div class="job-source">${esc(x.source||'')}</div></div><div><span class="status ${statusClass(x.latest_status)}">${esc(x.latest_status||'unknown')}</span></div><div class="job-age">${age(x.age_seconds)}</div><div class="job-rows">${x.records_written==null?'—':fmt.format(x.records_written)} written</div><div class="job-error" title="${esc(x.error_message||'')}">${esc(x.error_message||'')}</div></div>`).join('')}function render(d){ALL=d.jobs||[];const s=d.summary||{},w=d.warehouse||{},total=Number(s.jobs||0),healthy=Number(s.healthy||0),ratio=total?healthy/total:0,score=Math.round(ratio*100),errs=Number(s.errors||0),stale=Number(s.stale||0);document.getElementById('clock').textContent=d.local_time||'--:--';document.getElementById('score').textContent=score+'%';document.getElementById('ring').style.setProperty('--angle',(ratio*360)+'deg');let title,copy,note;if(errs===0&&stale===0){title='The decision data is healthy.';copy=`${healthy} of ${total} tracked jobs are successful or running, with no stale feeds.`;note='Business pages are safe to use for their intended decisions. Today remains provisional by design; historical Sales uses reconciled Data Kiosk data.'}else if(errs===0){title='The system is healthy, with some stale sources.';copy=`No job is failing, but ${stale} source${stale===1?' is':'s are'} older than 24 hours.`;note='Most decisions remain usable, but check the stale job list before acting on a domain that depends on it.'}else{title=`${errs} data job${errs===1?' needs':'s need'} attention.`;copy=`${healthy} of ${total} tracked jobs are healthy. Review the problem jobs below before relying on the affected domain.`;note='Do not treat every pipeline error as a business emergency. Check whether the failed source actually feeds the decision you are making.'}document.getElementById('healthTitle').textContent=title;document.getElementById('healthCopy').textContent=copy;document.getElementById('trustNote').textContent=note;['orders','financial_transactions','seller_listings','inventory_snapshots'].forEach((k,i)=>document.getElementById(['orders','finance','listings','snapshots'][i]).textContent=fmt.format(w[k]||0));renderJobs()}document.getElementById('toggle').onclick=()=>{expanded=!expanded;document.getElementById('toggle').textContent=expanded?'Show problems only':'Show all jobs';renderJobs()};fetch('/api/data-health',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(render).catch(e=>{document.getElementById('healthTitle').textContent='Data health unavailable';document.getElementById('healthCopy').textContent=e.message})})();
-</script></body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#f4f0e8">
+    <title>Dirty Pawz Press · Data Health</title>
+    <link rel="stylesheet" href="/assets/theme.css">
+    <link rel="stylesheet" href="/assets/mobile-ux.css">
+    <link rel="stylesheet" href="/assets/design-refine.css">
+    <link rel="stylesheet" href="/assets/nav-shell.css">
+    <link rel="stylesheet" href="/assets/layout-system.css">
+    <link rel="stylesheet" href="/assets/data-health.css">
+    <script src="/assets/ui-shell.js" defer></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark">DP</div>
+          <div class="brand-copy">
+            <div class="brand-title">DIRTY PAWZ PRESS</div>
+            <div class="brand-sub">Data Health</div>
+          </div>
+        </div>
+        <div class="top-meta"><strong id="clock">--:--</strong><span>System trust</span></div>
+      </header>
+
+      <nav class="primary-nav"></nav>
+
+      <main>
+        <section class="page-header">
+          <div>
+            <div class="kicker">Trust layer</div>
+            <h1 class="page-header__title">Can I trust what I’m seeing?</h1>
+            <p class="page-header__description">This page translates ingestion plumbing into a simple answer: which data is healthy, what is stale, and whether a business decision should wait.</p>
+          </div>
+        </section>
+
+        <section class="page-section">
+          <div class="panel">
+            <div class="panel__body health-control">
+              <div class="health-ring" id="ring"><strong id="score">—</strong></div>
+              <div>
+                <h2 class="health-title" id="healthTitle">Checking the data pipeline…</h2>
+                <p class="health-copy" id="healthCopy">Reviewing each source and the warehouse coverage behind the operating product.</p>
+              </div>
+            </div>
+          </div>
+          <div class="notice trust-note" id="trustNote">Loading trust assessment.</div>
+        </section>
+
+        <section class="page-section">
+          <div class="section-header">
+            <div><h2 class="section-header__title">Warehouse coverage</h2><div class="section-header__description">Useful scale checks, not vanity metrics.</div></div>
+          </div>
+          <div class="source-grid">
+            <div class="source"><strong id="orders">—</strong><span>orders captured</span></div>
+            <div class="source"><strong id="finance">—</strong><span>finance transactions</span></div>
+            <div class="source"><strong id="listings">—</strong><span>seller listings</span></div>
+            <div class="source"><strong id="snapshots">—</strong><span>inventory snapshots</span></div>
+          </div>
+        </section>
+
+        <section class="page-section">
+          <div class="section-header">
+            <div><h2 class="section-header__title">Source freshness</h2><div class="section-header__description">Problems first. Expand the full job list only when you need pipeline detail.</div></div>
+            <button class="btn" id="toggle" type="button" aria-pressed="false">Show all jobs</button>
+          </div>
+          <div class="panel"><div class="panel__body"><div id="jobs"></div></div></div>
+        </section>
+      </main>
+
+      <footer class="footer"><span>Data health is operational metadata · no customer PII</span><span>Dirty Pawz Press Analytics</span></footer>
+    </div>
+    <script type="module" src="/assets/data-health.js"></script>
+  </body>
+</html>

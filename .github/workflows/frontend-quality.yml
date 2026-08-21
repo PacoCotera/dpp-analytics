@@ -1,0 +1,60 @@
+name: Application quality
+
+on:
+  pull_request:
+    paths:
+      - 'board/static/**'
+      - 'board/package.json'
+      - 'board/eslint.config.js'
+      - 'board/.stylelintrc.json'
+      - 'board/.prettierrc.json'
+      - 'board/Dockerfile'
+      - 'compose.yml'
+      - '.env.example'
+      - '.github/workflows/frontend-quality.yml'
+  push:
+    paths:
+      - 'board/static/**'
+      - 'board/package.json'
+      - 'board/eslint.config.js'
+      - 'board/.stylelintrc.json'
+      - 'board/.prettierrc.json'
+      - 'board/Dockerfile'
+      - 'compose.yml'
+      - '.env.example'
+      - '.github/workflows/frontend-quality.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: board
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend tooling
+        run: npm install --no-package-lock --ignore-scripts
+
+      - name: Lint frontend
+        run: npm run lint
+
+  compose-config:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Compose with example environment
+        run: docker compose --env-file .env.example config --quiet
