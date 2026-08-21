@@ -35,9 +35,10 @@
     const currentImpressions = monthRows.reduce((sum, row) => sum + Number(row.impressions || 0), 0);
     const adsThrough = String(ads.freshness?.through_date || '').slice(0,10);
 
-    // Replace the deliberately pending placeholder only when the Ads warehouse
-    // actually contains rows for the OPEN business month. This is an accrual by
-    // advertising date, not Amazon's later ProductAdsPayment posting.
+    // OPEN month only: use Ads spend by advertising date as a provisional accrual.
+    // Finance close remains accounting-period based. ProductAdsPayment belongs to
+    // the following-month bridge for the prior month and must never be compared
+    // against an arbitrary rolling 28-day Ads window.
     if (monthRows.length) {
       const pending = document.querySelector('#statementView .open-line.pending');
       if (pending) {
@@ -46,7 +47,7 @@
         const value = pending.querySelector('.value');
         pending.classList.remove('pending');
         if (name) name.textContent = 'Advertising accrued this month';
-        if (note) note.innerHTML = `Campaign spend by advertising date through ${esc(adsThrough)}. Attribution can continue to revise after that date.`;
+        if (note) note.innerHTML = `Campaign spend by advertising date through ${esc(adsThrough)}. OPEN and provisional; attribution can continue to revise.`;
         if (value) {
           value.textContent = money(-Math.abs(currentSpend));
           value.classList.add('neg');
@@ -61,30 +62,25 @@
         const value = total.querySelector('.value');
         const afterAds = beforeAds - currentSpend;
         if (name) name.textContent = 'Estimated contribution so far';
-        if (note) note.innerHTML = `Includes ${money(currentSpend)} of Ads spend accrued through ${esc(adsThrough)}. Still provisional until Amazon order releases and month close.`;
+        if (note) note.innerHTML = `Includes ${money(currentSpend)} of Ads spend accrued through ${esc(adsThrough)}. Still provisional until Amazon order releases, advertising close and close grace complete.`;
         if (value) {
           value.textContent = money(afterAds);
           value.classList.remove('neg','pos');
-          value.classList.add(afterAds < 0 ? 'neg' : afterAds > 0 ? 'pos' : '');
+          if (afterAds < 0) value.classList.add('neg');
+          else if (afterAds > 0) value.classList.add('pos');
         }
       }
     }
 
     const host = document.querySelector('.accounting-note');
     if (!host || document.getElementById('adsReconcile')) return;
-    const ledger = Math.abs(Number(finance.summary?.ads_amount_28 || 0));
-    const reported = Number(ads.summary?.spend || 0);
-    const difference = reported - ledger;
-    const material = Math.abs(difference) > Math.max(100, reported * .08);
     const node = document.createElement('div');
     node.id = 'adsReconcile';
     node.className = 'ads-reconcile';
-    node.innerHTML = `<div class="ads-reconcile-head"><strong>Advertising has two accounting clocks.</strong><a href="/ads">Open Ads →</a></div><div>Ads reporting measures campaign spend by advertising date; ProductAdsPayment is Amazon's finance-posted charge. They should converge over time, not match day by day.</div><div class="ads-reconcile-values"><span>Latest 28 Ads days · <b>${money(reported)}</b></span><span>Finance ledger · <b>${money(ledger)}</b></span><span>Difference · <b>${money(difference)}</b>${material ? ' · timing/reconciliation worth watching' : ''}</span><span>TACOS · <b>${pct(ads.summary?.tacos)}</b></span></div>${monthRows.length ? `<div class="ads-reconcile-values"><span>${esc(currentMonth)} accrued Ads · <b>${money(currentSpend)}</b></span><span>Attributed sales · <b>${money(currentAttributed)}</b></span><span>Clicks · <b>${new Intl.NumberFormat('en-US').format(currentClicks)}</b></span><span>Impressions · <b>${new Intl.NumberFormat('en-US').format(currentImpressions)}</b></span></div>` : ''}<div>Ads through ${esc(adsThrough)}; finance through ${esc(String(finance.summary?.latest_posted || '').slice(0,10))}.</div>`;
+    node.innerHTML = `<div class="ads-reconcile-head"><strong>Advertising follows the accounting month here.</strong><a href="/ads">Open Ads →</a></div><div>For the OPEN month, campaign spend is a provisional accrual by advertising date. Historical close uses the monthly reconciliation contract: mature Ads API accrual when available, otherwise the following calendar month's RELEASED ProductAdsPayment bridge. Rolling 28-day Ads and finance postings are intentionally not reconciled because their clocks do not align.</div>${monthRows.length ? `<div class="ads-reconcile-values"><span>${esc(currentMonth)} accrued Ads · <b>${money(currentSpend)}</b></span><span>Attributed sales · <b>${money(currentAttributed)}</b></span><span>TACOS · <b>${pct(ads.summary?.tacos)}</b></span><span>Ads through · <b>${esc(adsThrough)}</b></span></div><div class="ads-live-note">Attributed sales are Amazon attribution, not incremental sales. Total sales minus attributed sales is not exact organic sales.</div>` : `<div class="ads-live-note">No Ads rows are available for the OPEN month yet. Finance will keep advertising provisional rather than substitute a rolling-window estimate.</div>`}`;
     host.appendChild(node);
   }
 
-  // finance-manager-v2 renders asynchronously after page load. Retry briefly so
-  // this enhancement never races the base Finance view.
   let tries = 0;
   const timer = setInterval(() => {
     tries += 1;
