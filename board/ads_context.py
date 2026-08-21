@@ -21,8 +21,7 @@ def _quality_for_period(cur, marketplace: str, start, end) -> dict:
           SELECT quality_state, count(*)::int AS n
           FROM scoped WHERE quality_state<>'OK' GROUP BY quality_state
         )
-        SELECT
-          count(*)::int AS account_days,
+        SELECT count(*)::int AS account_days,
           count(*) FILTER (WHERE quality_state='OK')::int AS healthy_account_days,
           count(*) FILTER (WHERE quality_state<>'OK')::int AS issue_account_days,
           count(DISTINCT account_id)::int AS accounts,
@@ -30,41 +29,33 @@ def _quality_for_period(cur, marketplace: str, start, end) -> dict:
           max(latest_ingested_at) AS latest_ingested_at,
           COALESCE((SELECT jsonb_object_agg(quality_state,n) FROM issue_counts),'{}'::jsonb) AS issues
         FROM scoped
-        """,
-        (marketplace, start, end),
-    )
+        """, (marketplace, start, end))
     row = cur.fetchone() or {}
     account_days = int(row.get("account_days") or 0)
     issue_days = int(row.get("issue_account_days") or 0)
     state = "NO_DATA" if not account_days else ("HEALTHY" if not issue_days else "ATTENTION")
     return {
-        "state": state,
-        "trusted": state == "HEALTHY",
-        "account_days": account_days,
+        "state": state, "trusted": state == "HEALTHY", "account_days": account_days,
         "healthy_account_days": int(row.get("healthy_account_days") or 0),
-        "issue_days": issue_days,
-        "accounts": int(row.get("accounts") or 0),
-        "days": int(row.get("days") or 0),
-        "latest_ingested_at": row.get("latest_ingested_at"),
+        "issue_days": issue_days, "accounts": int(row.get("accounts") or 0),
+        "days": int(row.get("days") or 0), "latest_ingested_at": row.get("latest_ingested_at"),
         "issues": row.get("issues") or {},
     }
 
 
-def _finalize_context(row: dict, expected_days: int | None = None, quality: dict | None = None) -> dict:
+def _finalize_context(row: dict, expected_days: int | None = None, quality: dict | None = None, *, require_complete: bool = True) -> dict:
     if not row or not row.get("through_date"):
-        return {
-            "status": "awaiting_ads_data",
-            "trusted_for_operating_decisions": False,
-            "quality": quality or {"state": "NO_DATA", "trusted": False},
-            "interpretation": dict(_INTERPRETATION),
-        }
+        return {"status": "awaiting_ads_data", "trusted_for_operating_decisions": False,
+                "quality": quality or {"state": "NO_DATA", "trusted": False},
+                "interpretation": dict(_INTERPRETATION)}
     observed = int(row.get("observed_ads_days") or 0)
     mature = int(row.get("mature_ads_days") or 0)
     expected = int(row.get("expected_ads_days") or expected_days or observed or 0)
     row["coverage_state"] = "COMPLETE" if expected and observed >= expected else "PARTIAL"
     row["attribution_state"] = "MATURE" if mature >= observed and observed else "PROVISIONAL"
     row["quality"] = quality or {"state": "UNKNOWN", "trusted": False}
-    row["trusted_for_operating_decisions"] = bool(row["quality"].get("trusted") and row["coverage_state"] == "COMPLETE")
+    coverage_ok = row["coverage_state"] == "COMPLETE" if require_complete else observed > 0
+    row["trusted_for_operating_decisions"] = bool(row["quality"].get("trusted") and coverage_ok)
     row["status"] = "ready" if row["trusted_for_operating_decisions"] else "attention"
     row["interpretation"] = dict(_INTERPRETATION)
     return row
@@ -73,35 +64,36 @@ def _finalize_context(row: dict, expected_days: int | None = None, quality: dict
 def business_t28(cur, marketplace: str) -> dict:
     """Canonical rolling Ads context. Finance must use its monthly accounting mart."""
     cur.execute(
-        """
-        SELECT marketplace_id,through_date,period_start,spend,attributed_sales,
+        """SELECT marketplace_id,through_date,period_start,spend,attributed_sales,
           impressions,clicks,attributed_purchases,attributed_units,total_business_sales,
           ctr,cpc,roas,acos,tacos,attributed_sales_share,observed_ads_days,
           expected_ads_days,missing_ads_days,mature_ads_days,ads_source_generated_at,
           ads_ingested_at,prior_spend,prior_attributed_sales,prior_total_business_sales,
           spend_delta_pct,attributed_sales_delta_pct,tacos_delta_points
-        FROM mart.ads_business_t28 WHERE marketplace_id=%s
-        """, (marketplace,))
+        FROM mart.ads_business_t28 WHERE marketplace_id=%s""", (marketplace,))
     row = cur.fetchone() or {}
     quality = _quality_for_period(cur, marketplace, row.get("period_start"), row.get("through_date"))
     return _finalize_context(row, expected_days=28, quality=quality)
 
 
 def product_t28(cur, marketplace: str, sku: str) -> dict:
-    """Canonical 28-day Ads context for one sellable SKU."""
+    """Canonical 28-day Ads context for one sellable SKU.
+
+    Product advertising is legitimately sparse: a SKU need not be advertised on
+    every day in the business window. Trust therefore follows account/report
+    reconciliation for the period, not a false requirement for 28 product rows.
+    """
     cur.execute(
-        """
-        SELECT marketplace_id,sku,asin,through_date,period_start,spend,attributed_sales,
+        """SELECT marketplace_id,sku,asin,through_date,period_start,spend,attributed_sales,
           impressions,clicks,attributed_purchases,attributed_units,total_business_sales,
           total_business_orders,total_business_units,ctr,cpc,roas,acos,tacos,
           attributed_sales_share,observed_ads_days,mature_ads_days,
           ads_source_generated_at,ads_ingested_at
         FROM mart.ads_product_business_t28
-        WHERE marketplace_id=%s AND sku=%s ORDER BY through_date DESC LIMIT 1
-        """, (marketplace, sku))
+        WHERE marketplace_id=%s AND sku=%s ORDER BY through_date DESC LIMIT 1""", (marketplace, sku))
     row = cur.fetchone() or {}
     quality = _quality_for_period(cur, marketplace, row.get("period_start"), row.get("through_date"))
-    return _finalize_context(row, expected_days=28, quality=quality)
+    return _finalize_context(row, expected_days=28, quality=quality, require_complete=False)
 
 
 def business_daily(cur, marketplace: str, days: int = 90) -> list[dict]:
