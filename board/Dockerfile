@@ -16,6 +16,7 @@ COPY board/health_api.py .
 COPY board/ads_api.py .
 COPY board/product_labels.json .
 COPY board/product_costs.json .
+COPY board/product_variations.json .
 COPY board/static ./static
 COPY .git/refs/heads/main .build_main_ref
 RUN DEPLOY_SHA="$DEPLOY_SHA" python - <<'PY'
