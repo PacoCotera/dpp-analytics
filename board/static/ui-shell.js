@@ -15,7 +15,7 @@
   ];
   const MORE = [
     { href: '/trajectory', label: 'Trajectory', hint: 'Longer-horizon momentum' },
-    { href: '/ads', label: 'Ads', hint: 'Paid demand · setup pending' },
+    { href: '/ads', label: 'Ads', hint: 'Paid demand and Amazon attribution' },
     { href: '/data-health', label: 'Data Health', hint: 'Source freshness and trust' },
   ];
   const WORKSPACES = {
@@ -43,16 +43,16 @@
   }
 
   function appendMenuItem(menu, item, extraClass = '') {
-    const a = document.createElement('a');
-    a.href = item.href;
-    a.setAttribute('role', 'menuitem');
-    if (extraClass) a.classList.add(extraClass);
+    const anchor = document.createElement('a');
+    anchor.href = item.href;
+    anchor.setAttribute('role', 'menuitem');
+    if (extraClass) anchor.classList.add(extraClass);
     if (isCurrent(item.href)) {
-      a.classList.add('active');
-      a.setAttribute('aria-current', 'page');
+      anchor.classList.add('active');
+      anchor.setAttribute('aria-current', 'page');
     }
-    a.innerHTML = `<strong>${item.label}</strong><small>${item.hint}</small>`;
-    menu.appendChild(a);
+    anchor.innerHTML = `<strong>${item.label}</strong><small>${item.hint}</small>`;
+    menu.appendChild(anchor);
   }
 
   function buildNavigation(nav) {
@@ -66,23 +66,23 @@
     const primary = document.createElement('div');
     primary.className = 'nav-primary-set';
     for (const item of PRIMARY) {
-      const a = document.createElement('a');
-      a.href = item.href;
-      a.textContent = item.label;
-      if (item.className) a.classList.add(item.className);
-      if (item.mobileSecondary) a.classList.add('nav-mobile-secondary');
+      const anchor = document.createElement('a');
+      anchor.href = item.href;
+      anchor.textContent = item.label;
+      if (item.className) anchor.classList.add(item.className);
+      if (item.mobileSecondary) anchor.classList.add('nav-mobile-secondary');
       if (isCurrent(item.href)) {
-        a.classList.add('active');
-        a.setAttribute('aria-current', 'page');
+        anchor.classList.add('active');
+        anchor.setAttribute('aria-current', 'page');
       }
-      primary.appendChild(a);
+      primary.appendChild(anchor);
     }
 
     const more = document.createElement('details');
     more.className = `nav-more${desktopMoreActive ? ' active' : ''}${mobileMoreActive ? ' mobile-active' : ''}`;
     more.setAttribute('data-no-swipe', '');
     const summary = document.createElement('summary');
-    summary.innerHTML = `<span>More</span><span class="nav-more-chevron" aria-hidden="true">⌄</span>`;
+    summary.innerHTML = '<span>More</span><span class="nav-more-chevron" aria-hidden="true">⌄</span>';
     summary.setAttribute('aria-label', mobileMoreActive ? 'More navigation, current section inside' : 'More navigation');
     more.appendChild(summary);
 
@@ -130,11 +130,160 @@
     }
   }
 
+  function workspaceGroups() {
+    return [...document.querySelectorAll('.tabs, .view-tabs, .subnav')]
+      .map(tablist => ({
+        tablist,
+        tabs: [...tablist.querySelectorAll('button[data-view], button[data-ads-view]')],
+      }))
+      .filter(group => group.tabs.length > 1);
+  }
+
+  function primaryLinks() {
+    return [...document.querySelectorAll('.primary-nav a:not(.disabled)')]
+      .filter(link => link.href && new URL(link.href, location.href).origin === location.origin);
+  }
+
+  function activeIndex(group) {
+    const index = group.tabs.findIndex(tab => tab.classList.contains('active'));
+    return index < 0 ? 0 : index;
+  }
+
+  function targetId(tab) {
+    return tab.dataset.view || tab.dataset.adsView || '';
+  }
+
+  function syncTabA11y(group) {
+    const active = activeIndex(group);
+    group.tabs.forEach((tab, index) => {
+      const target = targetId(tab);
+      tab.setAttribute('aria-selected', index === active ? 'true' : 'false');
+      tab.setAttribute('tabindex', index === active ? '0' : '-1');
+      if (!target) return;
+      tab.setAttribute('aria-controls', target);
+      const panel = document.getElementById(target);
+      if (!panel) return;
+      if (!tab.id) tab.id = `tab-${target}`;
+      panel.setAttribute('role', 'tabpanel');
+      panel.setAttribute('aria-labelledby', tab.id);
+    });
+  }
+
+  function moveTab(group, delta) {
+    const next = activeIndex(group) + delta;
+    if (next < 0 || next >= group.tabs.length) return false;
+    group.tabs[next].click();
+    syncTabA11y(group);
+    group.tabs[next].focus({ preventScroll: true });
+    group.tabs[next].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    document.body.classList.add('tab-swiped');
+    window.setTimeout(() => document.body.classList.remove('tab-swiped'), 180);
+    return true;
+  }
+
+  function currentPrimaryIndex(links) {
+    const explicit = links.findIndex(link => link.classList.contains('active'));
+    if (explicit >= 0) return explicit;
+    const here = location.pathname.replace(/\/$/, '') || '/';
+    return links.findIndex(link => {
+      const path = new URL(link.href, location.href).pathname.replace(/\/$/, '') || '/';
+      return path === here;
+    });
+  }
+
+  function movePrimary(delta) {
+    const links = primaryLinks();
+    const next = currentPrimaryIndex(links) + delta;
+    if (next < 0 || next >= links.length) return false;
+    document.body.classList.add('page-swiped');
+    window.setTimeout(() => location.assign(links[next].href), 70);
+    return true;
+  }
+
+  function hasHorizontalScrollRegion(target) {
+    let element = target instanceof Element ? target : null;
+    while (element && element !== document.body) {
+      const style = getComputedStyle(element);
+      if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && element.scrollWidth > element.clientWidth + 3) {
+        return true;
+      }
+      element = element.parentElement;
+    }
+    return false;
+  }
+
+  function initializeSwipeNavigation() {
+    const groups = workspaceGroups();
+    for (const group of groups) {
+      group.tablist.setAttribute('role', group.tablist.getAttribute('role') || 'tablist');
+      group.tabs.forEach(tab => {
+        tab.setAttribute('role', tab.getAttribute('role') || 'tab');
+        tab.addEventListener('click', () => window.setTimeout(() => syncTabA11y(group), 0));
+        tab.addEventListener('keydown', event => {
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            moveTab(group, 1);
+          } else if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            moveTab(group, -1);
+          } else if (event.key === 'Home') {
+            event.preventDefault();
+            group.tabs[0].click();
+            syncTabA11y(group);
+            group.tabs[0].focus();
+          } else if (event.key === 'End') {
+            event.preventDefault();
+            group.tabs.at(-1).click();
+            syncTabA11y(group);
+            group.tabs.at(-1).focus();
+          }
+        });
+      });
+      syncTabA11y(group);
+    }
+
+    let start = null;
+    let suppressClickUntil = 0;
+    const isMobile = () => matchMedia('(max-width: 760px)').matches;
+    const explicitNoSwipe = '.primary-nav,.tabs,.view-tabs,.subnav,.filters,.periods,.chart-tools,.table-wrap,.order-stream,.catalog-toolbar,input,textarea,select,button,svg,[data-no-swipe],[data-horizontal-scroll]';
+
+    document.addEventListener('pointerdown', event => {
+      if (!isMobile() || event.pointerType !== 'touch') return;
+      if (event.target.closest(explicitNoSwipe) || hasHorizontalScrollRegion(event.target)) return;
+      start = { x: event.clientX, y: event.clientY, t: performance.now() };
+    }, { passive: true });
+
+    document.addEventListener('pointerup', event => {
+      if (!start || !isMobile() || event.pointerType !== 'touch') {
+        start = null;
+        return;
+      }
+      const dx = event.clientX - start.x;
+      const dy = event.clientY - start.y;
+      const elapsed = performance.now() - start.t;
+      start = null;
+      if (elapsed > 900 || Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+
+      const delta = dx < 0 ? 1 : -1;
+      suppressClickUntil = performance.now() + 450;
+      if (groups.length && moveTab(groups[0], delta)) return;
+      movePrimary(delta);
+    }, { passive: true });
+
+    document.addEventListener('click', event => {
+      if (performance.now() >= suppressClickUntil) return;
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClickUntil = 0;
+    }, true);
+  }
+
   function initializeShell() {
     const nav = document.querySelector('.primary-nav');
     if (!nav) return;
     buildNavigation(nav);
     buildWorkspaceIdentity(nav);
+    initializeSwipeNavigation();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeShell, { once: true });
