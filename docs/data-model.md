@@ -17,7 +17,7 @@ The Python ingestion worker lives in `app/dpp_analytics/`. Source enablement and
 
 | Source | Primary purpose | Default cadence / behavior |
 | --- | --- | --- |
-| Orders API v2026-01-01 | Near-real-time orders/items and intraday operating pulse | `ORDERS_INTERVAL_SECONDS`, default 600s |
+| Orders API v2026-01-01 | Near-real-time orders/items and intraday operating pulse | `ORDERS_INTERVAL_SECONDS`, default 180s |
 | FBA Inventory API v1 | Fulfillable/inbound/reserved/unfulfillable inventory snapshots | `INVENTORY_INTERVAL_SECONDS`, default 1800s |
 | Reports API merchant listings | Full seller listing/inventory breadth | `LISTINGS_REPORT_INTERVAL_SECONDS`, default 21600s |
 | Catalog Items API | Product/catalog enrichment for known ASINs | `CATALOG_INTERVAL_SECONDS`, default 86400s |
