@@ -82,20 +82,20 @@ async function verifyCatalogMode(page, mode) {
 }
 
 async function verifyFinanceReport(page) {
-  await wait(page, '#currentLines .line');
+  await wait(page, '#currentLines .finance-line');
   await wait(page, '#currentBridge .bridge-step');
   await wait(page, '#ytdBridge .bridge-step');
-  // Canonical Finance progression is an SVG chart. Assert the renderer contract,
-  // not the deleted legacy .month-bar implementation detail.
-  await wait(page, '#progression svg');
-  const marks = await page.locator('#progression svg rect, #progression svg path, #progression svg line').count();
+  // The canonical Finance progression is the #progression SVG itself. Assert
+  // stable chart output without coupling QA to a deleted legacy bar class.
+  await wait(page, '#progression');
+  const marks = await page.locator('#progression rect, #progression path, #progression line').count();
   if (!marks) throw new Error('Finance progression SVG rendered without chart marks');
   await wait(page, '#history .history-row');
 }
 
 async function verifyFinanceEvidence(page) {
   await verifyFinanceReport(page);
-  const evidence = page.locator('.evidence details').first();
+  const evidence = page.locator('.finance-evidence details').first();
   await evidence.waitFor({ state: 'visible', timeout: 5000 });
   await evidence.locator('summary').click();
   await wait(page, '#events .event-row');
