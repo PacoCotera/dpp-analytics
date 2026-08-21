@@ -11,6 +11,7 @@ on:
       - 'board/Dockerfile'
       - 'compose.yml'
       - '.env.example'
+      - 'qa/**'
       - 'sql/init/**'
       - 'sql/migrations/**'
       - 'scripts/migrate.sh'
@@ -26,6 +27,7 @@ on:
       - 'board/Dockerfile'
       - 'compose.yml'
       - '.env.example'
+      - 'qa/**'
       - 'sql/init/**'
       - 'sql/migrations/**'
       - 'scripts/migrate.sh'
@@ -56,6 +58,23 @@ jobs:
 
       - name: Lint frontend
         run: npm run lint
+
+  qa-syntax:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate browser QA scripts
+        run: |
+          node --check qa/visual_qa.mjs
+          node --check qa/nav_qa.mjs
 
   compose-config:
     runs-on: ubuntu-latest
