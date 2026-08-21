@@ -34,8 +34,8 @@ if not re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha):
 build_sha = raw_sha[:8] if re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha) else 'dev'
 footer_stamp = f'Dirty Pawz Press Analytics · main {build_sha}'
 
-# Transitional compatibility only: add source-controlled asset references while
-# pages migrate to declaring them directly. Never inline CSS/JS contents here.
+# Transitional compatibility only for pages not yet migrated to explicit source
+# dependencies. Never inline CSS/JS contents here.
 shared_styles = (
     'mobile-ux.css',
     'design-refine.css',
@@ -56,7 +56,7 @@ for page in static.glob('*.html'):
         text = text.replace('</body>', '<script src="/assets/swipe-tabs.js"></script>\n</body>', 1)
     page.write_text(text)
 
-# Today, Product Workspace and Finance own their DOM/state composition directly.
+# Today, Home, Product Workspace and Finance own their DOM/state composition directly.
 # Do not inject post-render layout or accounting layers into these canonical pages.
 
 # Sales has one composition/runtime owner. These remain explicit transitional
@@ -69,16 +69,6 @@ for name in ('sales-operating-v2.css', 'sales-state-rail.css'):
 if '/assets/sales-canonical.js' not in text:
     text = text.replace('</body>', '<script src="/assets/sales-canonical.js"></script>\n</body>', 1)
 sales.write_text(text)
-
-# Home chart/Ads context are source modules, not embedded generated code.
-home = static / 'home.html'
-text = home.read_text()
-chart_tag = '<script src="/assets/chart-system.js"></script>'
-if '/assets/home-weekly-rhythm.js' not in text and chart_tag in text:
-    text = text.replace(chart_tag, chart_tag + '<script src="/assets/home-weekly-rhythm.js"></script>', 1)
-if '/assets/home-ads-enhance.js' not in text:
-    text = text.replace('</body>', '<script src="/assets/home-ads-enhance.js"></script>\n</body>', 1)
-home.write_text(text)
 
 ads = static / 'ads.html'
 text = ads.read_text()
