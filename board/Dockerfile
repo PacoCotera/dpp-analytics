@@ -34,38 +34,10 @@ if not re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha):
 build_sha = raw_sha[:8] if re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha) else 'dev'
 footer_stamp = f'Dirty Pawz Press Analytics · main {build_sha}'
 
-# Transitional compatibility only for pages not yet migrated to explicit source
-# dependencies. Never inline CSS/JS contents here. Migrated pages declare their
-# own assets in source and therefore pass through this loop unchanged apart from
-# the build stamp (and the temporary global swipe-tabs compatibility layer).
-shared_styles = (
-    'mobile-ux.css',
-    'design-refine.css',
-    'nav-shell.css',
-    'layout-system.css',
-)
+# Frontend dependencies are source-controlled. The image build only adds a
+# visible deployment stamp; it no longer injects CSS, JavaScript or page logic.
 for page in static.glob('*.html'):
-    text = page.read_text().replace('Dirty Pawz Press Analytics', footer_stamp)
-    if '</head>' in text:
-        tags = ''.join(
-            f'<link rel="stylesheet" href="/assets/{name}">'
-            for name in shared_styles
-            if f'/assets/{name}' not in text
-        )
-        if tags:
-            text = text.replace('</head>', tags + '\n</head>', 1)
-    if '</body>' in text and '/assets/swipe-tabs.js' not in text:
-        text = text.replace('</body>', '<script src="/assets/swipe-tabs.js"></script>\n</body>', 1)
-    page.write_text(text)
-
-# Today, Home, Sales, Inventory, Product Workspace and Finance own their
-# DOM/state composition directly. Do not inject post-render layout, accounting
-# or page-specific runtime layers into these canonical pages.
-
-ads = static / 'ads.html'
-text = ads.read_text()
-if '/assets/ads-targeting-enhance.js' not in text:
-    ads.write_text(text.replace('</body>', '<script src="/assets/ads-targeting-enhance.js"></script>\n</body>', 1))
+    page.write_text(page.read_text().replace('Dirty Pawz Press Analytics', footer_stamp))
 PY
 RUN python -c "import server; print('board import smoke test: ok')"
 EXPOSE 8080
