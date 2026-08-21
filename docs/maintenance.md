@@ -142,17 +142,25 @@ Start in `chart-system.js`/`chart-system.css`. Page runtimes should provide data
 
 ## Quality gates
 
-### Frontend PR gate
+### Application PR gate
 
-From `board/`:
+`.github/workflows/frontend-quality.yml` is intentionally broader than its historical filename now. The workflow is named **Application quality** and has two jobs:
+
+- `frontend-lint` — ESLint + Stylelint through `npm run lint` in `board/`;
+- `compose-config` — `docker compose --env-file .env.example config --quiet` to catch invalid Compose/interpolation changes.
+
+For local frontend work:
 
 ```bash
+cd board
 npm install --no-package-lock --ignore-scripts
 npm run lint
 npm run format:check
 ```
 
 `npm run lint` is blocking. `format:check` is currently an audit while older global foundation styles are normalized; new/touched files should still be kept readable.
+
+When changing `compose.yml` or `.env.example`, validate them together. The template is meant to be executable input to `docker compose config`, not prose that can drift away from the service definition.
 
 ### Production deployment gate
 
