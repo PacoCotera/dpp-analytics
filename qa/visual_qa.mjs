@@ -103,7 +103,7 @@ async function verifyFinanceReport(page) {
   await page.locator('#currentBridge .bridge-step').first().waitFor({ timeout: 5000 });
   await page.locator('#ytdBridge .bridge-step').first().waitFor({ timeout: 5000 });
   await page.locator('#progression .month-bar:visible').first().waitFor({ timeout: 5000 });
-  await page.locator('#history .history-row').first().waitFor({ timeout: 5000 });
+  await page.locator('#history .history-row:visible').first().waitFor({ timeout: 5000 });
 }
 
 async function verifyFinanceEvidence(page) {
