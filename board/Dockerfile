@@ -34,13 +34,13 @@ footer_stamp = f'Dirty Pawz Press Analytics · main {build_sha}'
 mobile_css = (static / 'mobile-ux.css').read_text(); mobile_tag = '<style>\n' + mobile_css + '\n</style>'
 refine_css = (static / 'design-refine.css').read_text(); refine_tag = '<style>\n' + refine_css + '\n</style>'
 swipe = (static / 'swipe-tabs.js').read_text(); swipe_tag = '<script>\n' + swipe + '\n</script>'
-nav = (static / 'nav-enhance.js').read_text(); nav_tag = '<script>\n' + nav + '\n</script>'
+nav_css_tag = '<link rel="stylesheet" href="/assets/nav-shell.css">'
 for page in static.glob('*.html'):
     text = page.read_text().replace('Dirty Pawz Press Analytics', footer_stamp)
     if '</head>' in text and 'Mobile-specific information design' not in text: text = text.replace('</head>', mobile_tag + '\n</head>', 1)
     if '</head>' in text and 'Summary reads are editorial hierarchy' not in text: text = text.replace('</head>', refine_tag + '\n</head>', 1)
+    if '</head>' in text and '/assets/nav-shell.css' not in text: text = text.replace('</head>', nav_css_tag + '\n</head>', 1)
     if '</body>' in text and 'touch swipe navigation for tabbed workspaces' not in text: text = text.replace('</body>', swipe_tag + '\n</body>', 1)
-    if '</body>' in text and "href = '/ads'" not in text: text = text.replace('</body>', nav_tag + '\n</body>', 1)
     page.write_text(text)
 
 # Today and Product Workspace are standalone: source HTML owns DOM, styles,
