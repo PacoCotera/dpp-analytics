@@ -28,7 +28,10 @@ for(const c of cases){
     if(JSON.stringify(visiblePrimary)!==JSON.stringify(c.visiblePrimary))throw new Error(`visible primary ${JSON.stringify(visiblePrimary)}`);
     if(c.active){const active=(await page.locator('.nav-primary-set>a.active:visible').textContent())?.trim();if(active!==c.active)throw new Error(`active ${active} != ${c.active}`)}
     const more=page.locator('.nav-more');
-    if(c.moreActive && !(await more.evaluate(el=>el.classList.contains(mobile?'mobile-active':'active'))))throw new Error('More not marked active for viewport');
+    if(c.moreActive){
+      const activeClass=mobile?'mobile-active':'active';
+      if(!(await more.evaluate((el,cls)=>el.classList.contains(cls),activeClass)))throw new Error('More not marked active for viewport');
+    }
     await more.locator('summary').click();
     const moreLabels=(await more.locator('.nav-more-menu>a:visible strong').allTextContents()).map(x=>x.trim());
     if(JSON.stringify(moreLabels)!==JSON.stringify(c.visibleMore))throw new Error(`visible more nav ${JSON.stringify(moreLabels)}`);
