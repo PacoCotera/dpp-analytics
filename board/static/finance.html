@@ -102,7 +102,7 @@
               <div id="progressionState" class="finance-read__state">CALENDAR YTD</div>
             </div>
 
-            <div class="subnav dpp-chart-scroll" aria-label="Finance chart time window">
+            <div class="subnav dpp-chart-scroll" aria-label="Finance chart controls">
               <div class="segmented-control" role="tablist" aria-label="Contribution window">
                 <button class="segmented-control__item" type="button" role="tab" data-finance-window="month" aria-selected="false">Month</button>
                 <button class="segmented-control__item" type="button" role="tab" data-finance-window="3m" aria-selected="false">3M</button>
@@ -110,6 +110,9 @@
                 <button class="segmented-control__item" type="button" role="tab" data-finance-window="12m" aria-selected="false">12M</button>
                 <button class="segmented-control__item" type="button" role="tab" data-finance-window="lastYear" aria-selected="false">Last year</button>
                 <button class="segmented-control__item" type="button" role="tab" data-finance-window="all" aria-selected="false">All</button>
+              </div>
+              <div id="cogsToggleWrap" class="segmented-control" aria-label="Contribution cost treatment">
+                <button id="cogsToggle" class="segmented-control__item active" type="button" aria-pressed="true">COGS included</button>
               </div>
             </div>
             <div id="monthPickerWrap" class="finance-read__sub" hidden>
@@ -133,10 +136,10 @@
 
         <section class="finance-read wide">
           <div class="finance-read__head">
-            <div><div class="finance-read__title">Immutable month report</div><div class="finance-read__sub">Latest close version per month. RESTATED is an explicit later version, never a silent rewrite.</div></div>
+            <div><div class="finance-read__title">Immutable month report</div><div class="finance-read__sub">Current OPEN month appears first as provisional. Closed rows below are the latest immutable close version; RESTATED is always explicit.</div></div>
           </div>
           <div class="history-scroller"><div id="history" class="history"></div></div>
-          <button id="historyToggle" class="history-toggle" type="button" aria-expanded="false">Show full closed history</button>
+          <button id="historyToggle" class="history-toggle" type="button" aria-expanded="false">Show full month history</button>
         </section>
 
         <section class="finance-evidence">
