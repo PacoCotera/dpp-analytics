@@ -40,5 +40,5 @@ jobs:
       - name: Install frontend tooling
         run: npm install --no-package-lock --ignore-scripts
 
-      - name: Lint and verify formatting
+      - name: Lint frontend
         run: npm run lint
