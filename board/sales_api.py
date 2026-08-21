@@ -20,6 +20,10 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
     Today remains the near-real-time Orders API view. Advertising uses the
     canonical operating mart on its own reportable cutoff, so stale/provisional
     attribution is never presented as live sales. No customer PII is selected.
+
+    Advertising is optional context. A failure in its mart contract must not take
+    down the core Sales workspace, so the Ads read is isolated behind a database
+    savepoint and degrades explicitly while the reconciled Sales facts remain live.
     """
     with connect() as conn, conn.cursor() as cur:
         cutoff = _one(cur, "SELECT max(business_date) AS business_date FROM mart.business_daily WHERE marketplace_id=%s AND reconciled_daily_report", (marketplace,)).get("business_date")
@@ -67,8 +71,20 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
         series = _all(cur, "SELECT business_date,sales,orders,units FROM mart.business_daily WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date ORDER BY business_date", (marketplace,cutoff,cutoff))
         skus = _all(cur, """SELECT m.seller_sku sku,COALESCE(m.asin,s.asin) asin,COALESCE(sl.item_name,ci.title,s.title,m.seller_sku) product,COALESCE(sl.image_url,ci.image_url) image_url,m.sales_t28,m.units_t28,m.delta28_pct,m.state FROM mart.catalog_movers_t28 m LEFT JOIN core.sku s ON s.sku=m.seller_sku LEFT JOIN core.seller_listing sl ON sl.marketplace_id=m.marketplace_id AND sl.seller_sku=m.seller_sku LEFT JOIN core.catalog_item ci ON ci.marketplace_id=m.marketplace_id AND ci.asin=COALESCE(m.asin,s.asin) WHERE m.marketplace_id=%s AND m.sales_t28>0 ORDER BY m.sales_t28 DESC LIMIT 20""", (marketplace,))
         orders = _all(cur, """WITH items AS (SELECT i.amazon_order_id,string_agg(DISTINCT COALESCE(i.seller_sku,i.title,'item'),', ' ORDER BY COALESCE(i.seller_sku,i.title,'item')) items,COALESCE(sum(i.proceeds_total_amount),sum(i.proceeds_item_amount),sum(i.unit_price_amount*i.quantity_ordered),0)::numeric(14,2) item_sales FROM core.amazon_order_item i GROUP BY i.amazon_order_id) SELECT to_char(o.created_time AT TIME ZONE mp.timezone,'MM-DD HH24:MI') local_time,extract(epoch FROM (CURRENT_TIMESTAMP-o.created_time))::bigint age_seconds,right(o.amazon_order_id,9) order_short,COALESCE(i.items,'') items,COALESCE(o.grand_total_amount,i.item_sales,0)::numeric(14,2) sales,COALESCE(o.fulfillment_status,'') status FROM core.amazon_order o JOIN core.marketplace mp USING (marketplace_id) LEFT JOIN items i USING (amazon_order_id) WHERE o.marketplace_id=%s ORDER BY o.created_time DESC LIMIT 30""", (marketplace,))
+        local_clock = _one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
-        ads = business_t28(cur, marketplace)
+        try:
+            # Isolate optional Ads context from the core Sales transaction. A bad
+            # Ads mart/permission/data contract rolls back only this savepoint.
+            with conn.transaction():
+                ads = business_t28(cur, marketplace)
+        except Exception as exc:
+            ads = {
+                "status": "unavailable",
+                "reason": "ads_context_error",
+                "detail": str(exc)[:240],
+            }
+
         # Compatibility aliases for the current Sales renderer while canonical names
         # remain available to all new consumers.
         if ads.get("status") == "ready":
@@ -78,6 +94,5 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
                 "total_sales_aligned": ads.get("total_business_sales"), "spend_delta28_pct": ads.get("spend_delta_pct"),
                 "tacos_delta_points": ads.get("tacos_delta_points"),
             })
-        local_clock = _one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
     return {"today":today,"headline":headline,"months":months,"months_full":months_full,"series":series,"skus":decorate_products(skus),"orders":orders,"ads":ads,"local_time":local_clock.get("local_time")}
