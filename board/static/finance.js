@@ -63,47 +63,133 @@ function bridgeStep(label, value, kind = '') {
   return `<div class="bridge-step ${kind}"><span>${escapeHtml(label)}</span><strong class="${stringValue ? '' : valueClass(value)}">${stringValue ? escapeHtml(value) : financeMoney(value)}</strong></div>`;
 }
 
+function chartMonthParts(value) {
+  const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
+  return {
+    month: date.toLocaleDateString('en-US', { month: 'short' }),
+    year: String(date.getFullYear()),
+  };
+}
+
+function compactSignedMoney(value) {
+  const numeric = Number(value || 0);
+  const sign = numeric < 0 ? '−' : numeric > 0 ? '+' : '';
+  const absolute = Math.abs(numeric);
+  if (absolute >= 1000) {
+    const decimals = absolute >= 10000 ? 0 : 1;
+    const formatted = (absolute / 1000).toFixed(decimals).replace(/\.0$/, '');
+    return `${sign}$${formatted}k`;
+  }
+  return `${sign}$${number0.format(Math.round(absolute))}`;
+}
+
+function chartAxisMoney(value) {
+  const numeric = Number(value || 0);
+  if (numeric === 0) return '$0';
+  const sign = numeric < 0 ? '−' : '';
+  const absolute = Math.abs(numeric);
+  if (absolute >= 1000) {
+    const formatted = (absolute / 1000).toFixed(absolute % 1000 ? 1 : 0).replace(/\.0$/, '');
+    return `${sign}$${formatted}k`;
+  }
+  return `${sign}$${number0.format(Math.round(absolute))}`;
+}
+
+function niceChartStep(range, targetTicks = 5) {
+  const raw = Math.max(1, Number(range || 0)) / targetTicks;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const normalized = raw / magnitude;
+  const factor = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return factor * magnitude;
+}
+
 function renderProgressionChart(svg, rows) {
   const width = 900;
-  const height = 260;
-  const margin = { left: 62, right: 18, top: 20, bottom: 42 };
+  const height = 300;
+  const margin = { left: 72, right: 20, top: 26, bottom: 62 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
-  const max = Math.max(
-    1,
-    ...rows.flatMap(row => [
-      Number(row.net_sales_ex_vat || 0),
-      Math.abs(Number(row.contribution_after_product_cogs || 0)),
-    ]),
+  const usableRows = rows.filter(
+    row => row.month && row.contribution_after_product_cogs !== null && row.contribution_after_product_cogs !== undefined,
   );
-  const top = Math.ceil(max / 5000) * 5000 || 5000;
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map(value => top * value);
-  const bandwidth = innerWidth / Math.max(rows.length, 1);
-  const barWidth = Math.min(24, Math.max(8, bandwidth * 0.24));
-  const y = value => margin.top + innerHeight - (Number(value || 0) / top) * innerHeight;
-  const baseline = margin.top + innerHeight;
+
+  let cumulative = 0;
+  const points = usableRows.map(row => {
+    const delta = Number(row.contribution_after_product_cogs || 0);
+    const start = cumulative;
+    const end = cumulative + delta;
+    cumulative = end;
+    return { ...row, delta, start, end };
+  });
+
+  if (!points.length) {
+    svg.innerHTML = '<text class="finance-chart-axis" x="450" y="150" text-anchor="middle">No contribution history available.</text>';
+    return;
+  }
+
+  const values = [0, ...points.flatMap(point => [point.start, point.end])];
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const rawRange = Math.max(1, rawMax - rawMin);
+  const step = niceChartStep(rawRange, 5);
+  const domainMin = Math.floor((rawMin - rawRange * 0.08) / step) * step;
+  const domainMax = Math.ceil((rawMax + rawRange * 0.08) / step) * step;
+  const domainRange = Math.max(step, domainMax - domainMin);
+  const y = value => margin.top + ((domainMax - Number(value || 0)) / domainRange) * innerHeight;
+  const slotCount = points.length + 1;
+  const slotWidth = innerWidth / slotCount;
+  const barWidth = Math.min(44, Math.max(24, slotWidth * 0.55));
+  const hasOpen = points.some(point => point._current);
   let output = '';
 
-  ticks.forEach(tick => {
+  for (let tick = domainMin; tick <= domainMax + step * 0.25; tick += step) {
     const yy = y(tick);
-    const label = tick >= 1000 ? `$${(tick / 1000).toFixed(tick % 1000 ? 1 : 0)}k` : `$${tick}`;
-    output += `<line class="finance-chart-grid" x1="${margin.left}" x2="${width - margin.right}" y1="${yy}" y2="${yy}"></line>`;
-    output += `<text class="finance-chart-axis" x="${margin.left - 10}" y="${yy + 4}" text-anchor="end">${label}</text>`;
+    const zero = Math.abs(tick) < step * 0.001;
+    output += `<line class="${zero ? 'dpp-zero' : 'finance-chart-grid'}" x1="${margin.left}" x2="${width - margin.right}" y1="${yy}" y2="${yy}"></line>`;
+    output += `<text class="finance-chart-axis" x="${margin.left - 10}" y="${yy + 4}" text-anchor="end">${chartAxisMoney(tick)}</text>`;
+  }
+
+  points.forEach((point, index) => {
+    const center = margin.left + slotWidth * (index + 0.5);
+    const startY = y(point.start);
+    const endY = y(point.end);
+    const topY = Math.min(startY, endY);
+    const barHeight = Math.max(2, Math.abs(endY - startY));
+    const positive = point.delta >= 0;
+    const openClass = point._current ? ' is-open' : '';
+    const directionClass = positive ? '' : ' is-negative';
+    const month = chartMonthParts(point.month);
+
+    output += `<g><rect class="finance-chart-bar finance-chart-bar--contribution${directionClass}${openClass}" x="${center - barWidth / 2}" y="${topY}" width="${barWidth}" height="${barHeight}" rx="4"></rect><title>${escapeHtml(monthLabel(point.month))}: ${escapeHtml(compactSignedMoney(point.delta))}; running ${escapeHtml(financeMoney(point.end))}</title></g>`;
+
+    const rawDeltaY = positive ? topY - 7 : topY + barHeight + 13;
+    const deltaY = Math.max(margin.top + 10, Math.min(height - 66, rawDeltaY));
+    output += `<text class="finance-chart-month" x="${center}" y="${deltaY}" text-anchor="middle">${compactSignedMoney(point.delta)}</text>`;
+
+    const nextCenter = index < points.length - 1
+      ? margin.left + slotWidth * (index + 1.5)
+      : margin.left + slotWidth * (points.length + 0.5);
+    output += `<line class="dpp-connector" x1="${center + barWidth / 2}" x2="${nextCenter - barWidth / 2}" y1="${endY}" y2="${endY}"></line>`;
+
+    if (point._current) {
+      output += `<text class="dpp-muted" x="${center}" y="${height - 48}" text-anchor="middle">OPEN</text>`;
+    }
+    output += `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(month.month)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(month.year)}</tspan></text>`;
   });
 
-  rows.forEach((row, index) => {
-    const center = margin.left + bandwidth * (index + 0.5);
-    const sales = Number(row.net_sales_ex_vat || 0);
-    const contribution = Number(row.contribution_after_product_cogs || 0);
-    const salesY = y(sales);
-    const contributionY = y(Math.abs(contribution));
-    const openClass = row._current ? ' is-open' : '';
-    const contributionClass = contribution < 0 ? ' is-negative' : '';
-
-    output += `<rect class="finance-chart-bar finance-chart-bar--sales${openClass}" x="${center - barWidth - 2}" y="${salesY}" width="${barWidth}" height="${Math.max(1, baseline - salesY)}" rx="3"></rect>`;
-    output += `<rect class="finance-chart-bar finance-chart-bar--contribution${contributionClass}${openClass}" x="${center + 2}" y="${contributionY}" width="${barWidth}" height="${Math.max(1, baseline - contributionY)}" rx="3"></rect>`;
-    output += `<text class="finance-chart-month" x="${center}" y="${height - 15}" text-anchor="middle">${monthLabel(row.month)}</text>`;
-  });
+  const totalCenter = margin.left + slotWidth * (points.length + 0.5);
+  const zeroY = y(0);
+  const cumulativeY = y(cumulative);
+  const totalTop = Math.min(zeroY, cumulativeY);
+  const totalHeight = Math.max(2, Math.abs(cumulativeY - zeroY));
+  output += `<g><rect class="finance-chart-bar finance-chart-bar--sales" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>Running contribution: ${escapeHtml(financeMoney(cumulative))}${hasOpen ? ' including provisional open month' : ''}</title></g>`;
+  const rawTotalValueY = cumulative < 0 ? cumulativeY - 8 : cumulativeY + 14;
+  const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
+  output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(cumulative)}</text>`;
+  if (hasOpen) {
+    output += `<text class="dpp-muted" x="${totalCenter}" y="${height - 48}" text-anchor="middle">PROVISIONAL</text>`;
+  }
+  output += `<text class="finance-chart-month" x="${totalCenter}" y="${height - 29}" text-anchor="middle"><tspan x="${totalCenter}">Running</tspan><tspan class="dpp-muted" x="${totalCenter}" dy="13">total</tspan></text>`;
 
   svg.innerHTML = output;
 }
@@ -291,7 +377,6 @@ function render(payload) {
     ...closed,
     {
       month: current.month,
-      net_sales_ex_vat: current.net_sales_ex_vat,
       contribution_after_product_cogs: currentContribution,
       _current: true,
     },

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/assets/design-refine.css">
     <link rel="stylesheet" href="/assets/nav-shell.css">
     <link rel="stylesheet" href="/assets/layout-system.css">
+    <link rel="stylesheet" href="/assets/chart-system.css">
     <link rel="stylesheet" href="/assets/finance.css">
     <script src="/assets/ui-shell.js" defer></script>
   </head>
@@ -94,15 +95,16 @@
 
           <article class="finance-read wide">
             <div class="finance-read__head">
-              <div><div class="finance-read__title">Month-to-month progression</div><div class="finance-read__sub">Sales and contribution by accounting month. Closed months are immutable; the open month remains provisional.</div></div>
-              <div class="finance-read__state">Closed history + current</div>
+              <div><div class="finance-read__title">Cumulative contribution by month</div><div class="finance-read__sub">Each month adds to or subtracts from the running contribution balance. Closed months are frozen; the open month remains provisional.</div></div>
+              <div class="finance-read__state">Running result</div>
             </div>
             <div class="chart-wrap">
-              <svg id="progression" class="progress-svg" viewBox="0 0 900 260" role="img" aria-label="Monthly sales and contribution chart"></svg>
+              <svg id="progression" class="progress-svg dpp-chart" viewBox="0 0 900 300" role="img" aria-label="Cumulative contribution waterfall by accounting month"></svg>
               <div class="chart-legend">
-                <span class="legend-key"><i class="legend-swatch"></i>Sales ex IVA</span>
-                <span class="legend-key"><i class="legend-swatch contrib"></i>Contribution</span>
-                <span class="legend-key"><i class="legend-swatch open"></i>Open month</span>
+                <span class="legend-key"><strong class="pos">+</strong>Positive month</span>
+                <span class="legend-key"><strong class="neg">−</strong>Negative month</span>
+                <span class="legend-key"><i class="legend-swatch open"></i>Open month · provisional</span>
+                <span class="legend-key"><i class="legend-swatch"></i>Running total</span>
               </div>
             </div>
           </article>
