@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
+from statistics import median
+
 
 def _one(cur, sql: str, params=()):
     cur.execute(sql, params)
@@ -11,67 +16,243 @@ def _all(cur, sql: str, params=()):
     return list(cur.fetchall())
 
 
+def _number(value):
+    if isinstance(value, dict):
+        value = value.get("unit_cogs", value.get("current"))
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return None
+    return n if n >= 0 else None
+
+
+def _product_costs() -> dict[str, float]:
+    path = Path(os.getenv("PRODUCT_COSTS_PATH", Path(__file__).with_name("product_costs.json")))
+    try:
+        raw = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    values = raw.get("costs", {}) if isinstance(raw, dict) else {}
+    if not isinstance(values, dict):
+        return {}
+    out = {}
+    for sku, value in values.items():
+        amount = _number(value)
+        if amount is not None:
+            out[str(sku)] = amount
+    return out
+
+
+def _is_active(row: dict) -> bool:
+    return str(row.get("status") or "").strip().lower() != "inactive"
+
+
+def _commercial_state(row: dict, traffic_median: float, conversion_median: float) -> tuple[str, str]:
+    if row.get("product_role") == "STRUCTURAL_PARENT":
+        return "STRUCTURAL_PARENT", "Variation container · not independently sellable"
+    if not _is_active(row):
+        return "INACTIVE", "Listing is inactive"
+
+    sales = float(row.get("sales_t28") or 0)
+    units = float(row.get("units_t28") or 0)
+    sessions = float(row.get("sessions_t28") or 0)
+    cvr = row.get("conversion_t28_pct")
+    cvr = float(cvr) if cvr is not None else None
+    delta = row.get("sales_delta28_pct")
+    delta = float(delta) if delta is not None else None
+    action = str(row.get("inventory_action") or "")
+    cover = row.get("days_cover_with_inbound")
+    cover = float(cover) if cover is not None else None
+
+    if action == "STOCKOUT" or (action == "PRODUCE" and units > 0):
+        return "INVENTORY_RISK", f"Demand is active · {cover:.0f} days cover" if cover is not None else "Demand is active · stock is constrained"
+    if sessions >= max(20.0, traffic_median * 1.15) and cvr is not None and conversion_median > 0 and cvr < conversion_median * 0.72:
+        return "TRAFFIC_NOT_CONVERTING", "Traffic is healthy relative to the portfolio, conversion is weak"
+    if sessions > 0 and sessions <= max(12.0, traffic_median * 0.65) and cvr is not None and conversion_median > 0 and cvr > conversion_median * 1.25 and units > 0:
+        return "CONVERTS_NEEDS_TRAFFIC", "Conversion is strong; traffic is light relative to the portfolio"
+    if sales <= 0 and sessions <= max(5.0, traffic_median * 0.25):
+        return "DORMANT", "Active listing with little recent traffic or demand"
+    if delta is not None and delta >= 20:
+        return "ACCELERATING", "28-day sales are materially above the prior 28 days"
+    if delta is not None and delta <= -20:
+        return "DECLINING", "28-day sales are materially below the prior 28 days"
+    if units > 0:
+        return "HEALTHY", "Selling with no major funnel or availability exception"
+    if sessions > 0:
+        return "WATCH", "Receiving traffic but no recent units"
+    return "DORMANT", "No meaningful recent demand signal"
+
+
+def _family_rollup(rows: list[dict]) -> list[dict]:
+    families: dict[str, dict] = {}
+    for row in rows:
+        key = str(row.get("family_asin") or row.get("asin") or row.get("sku"))
+        family = families.setdefault(
+            key,
+            {
+                "family_asin": key,
+                "members": [],
+                "sales_t28": 0.0,
+                "units_t28": 0,
+                "orders_t28": 0,
+                "sessions_t28": 0,
+                "available": 0,
+                "inbound": 0,
+                "estimated_cogs_t28": 0.0,
+                "cogs_known_units": 0,
+                "sellable_count": 0,
+                "active_sellable_count": 0,
+            },
+        )
+        family["members"].append(row)
+        if row.get("product_role") == "STRUCTURAL_PARENT":
+            family["parent"] = row
+            continue
+        family["sellable_count"] += 1
+        if _is_active(row):
+            family["active_sellable_count"] += 1
+        family["sales_t28"] += float(row.get("sales_t28") or 0)
+        family["units_t28"] += int(row.get("units_t28") or 0)
+        family["orders_t28"] += int(row.get("orders_t28") or 0)
+        family["sessions_t28"] += int(row.get("sessions_t28") or 0)
+        family["available"] += int(row.get("available") or 0)
+        family["inbound"] += int(row.get("inbound") or 0)
+        if row.get("estimated_cogs_t28") is not None:
+            family["estimated_cogs_t28"] += float(row["estimated_cogs_t28"])
+            family["cogs_known_units"] += int(row.get("units_t28") or 0)
+
+    out = []
+    priority = {
+        "INVENTORY_RISK": 0,
+        "TRAFFIC_NOT_CONVERTING": 1,
+        "CONVERTS_NEEDS_TRAFFIC": 2,
+        "DECLINING": 3,
+        "ACCELERATING": 4,
+        "WATCH": 5,
+        "DORMANT": 6,
+        "INACTIVE": 7,
+        "HEALTHY": 8,
+        "STRUCTURAL_PARENT": 9,
+    }
+    for family in families.values():
+        sellable = [m for m in family["members"] if m.get("product_role") != "STRUCTURAL_PARENT"]
+        lead = max(sellable or family["members"], key=lambda r: float(r.get("sales_t28") or 0))
+        parent = family.get("parent")
+        family["name"] = (parent or lead).get("product") or lead.get("sku")
+        family["image_url"] = lead.get("image_url")
+        family["conversion_t28_pct"] = (
+            round(100.0 * family["units_t28"] / family["sessions_t28"], 2)
+            if family["sessions_t28"] > 0
+            else None
+        )
+        family["states"] = sorted(
+            {m.get("commercial_state") for m in sellable if m.get("commercial_state")},
+            key=lambda x: priority.get(x, 99),
+        )
+        family["primary_state"] = family["states"][0] if family["states"] else "STRUCTURAL_PARENT"
+        family["needs_attention"] = any(priority.get(s, 99) <= 3 for s in family["states"])
+        family["members"] = sorted(
+            family["members"],
+            key=lambda r: (
+                r.get("product_role") == "STRUCTURAL_PARENT",
+                -float(r.get("sales_t28") or 0),
+                str(r.get("sku") or ""),
+            ),
+        )
+        out.append(family)
+    return sorted(out, key=lambda f: (not f["needs_attention"], -f["sales_t28"], f["name"] or ""))
+
+
 def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
     with connect() as conn, conn.cursor() as cur:
         summary = _one(
             cur,
             """
             SELECT
-              count(*)::int AS listings,
-              count(*) FILTER (WHERE lower(COALESCE(sc.status,'')) <> 'inactive')::int AS active,
-              count(*) FILTER (WHERE lower(COALESCE(sc.status,'')) = 'inactive')::int AS inactive,
-              count(*) FILTER (WHERE position('AMAZON' in upper(COALESCE(sc.fulfillment_channel,''))) > 0)::int AS fba,
-              count(*) FILTER (WHERE position('AMAZON' in upper(COALESCE(sc.fulfillment_channel,''))) = 0)::int AS merchant,
-              count(*) FILTER (WHERE sc.image_url IS NOT NULL)::int AS with_image,
-              count(*) FILTER (WHERE ci.asin IS NOT NULL)::int AS catalog_enriched,
-              max(sc.fetched_at) AS fetched_at
-            FROM mart.seller_catalog sc
-            LEFT JOIN core.catalog_item ci
-              ON ci.marketplace_id=sc.marketplace_id AND ci.asin=sc.asin
-            WHERE sc.marketplace_id=%s
+              count(*)::int AS listing_records,
+              count(*) FILTER (WHERE product_role <> 'STRUCTURAL_PARENT')::int AS sellable_offers,
+              count(*) FILTER (WHERE product_role = 'STRUCTURAL_PARENT')::int AS structural_parents,
+              count(*) FILTER (
+                WHERE product_role <> 'STRUCTURAL_PARENT'
+                  AND lower(COALESCE(status,'')) <> 'inactive'
+              )::int AS active_sellable,
+              count(*) FILTER (
+                WHERE product_role <> 'STRUCTURAL_PARENT'
+                  AND lower(COALESCE(status,'')) = 'inactive'
+              )::int AS inactive_sellable,
+              count(DISTINCT family_asin)::int AS families,
+              max(fetched_at) AS listings_fetched_at,
+              max(traffic_through_date) AS traffic_through_date
+            FROM mart.catalog_portfolio_product
+            WHERE marketplace_id=%s
             """,
             (marketplace,),
         )
-
         rows = _all(
             cur,
             """
-            SELECT
-              sc.seller_sku AS sku,
-              sc.asin,
-              sc.title AS product,
-              sc.image_url,
-              sc.price AS listing_price,
-              sc.status,
-              sc.fulfillment_channel,
-              sc.open_date,
-              COALESCE(i.available,0)::int AS available,
-              COALESCE(i.inbound,0)::int AS inbound,
-              COALESCE(m.sales_t28,0)::numeric(14,2) AS sales_t28,
-              COALESCE(m.units_t28,0)::bigint AS units_t28,
-              m.delta28_pct,
-              COALESCE(m.state,'NO SALES') AS state,
-              CASE WHEN ci.asin IS NOT NULL THEN true ELSE false END AS catalog_enriched
-            FROM mart.seller_catalog sc
-            LEFT JOIN mart.inventory_attention i
-              ON i.marketplace_id=sc.marketplace_id AND i.seller_sku=sc.seller_sku
-            LEFT JOIN mart.catalog_movers_t28 m
-              ON m.marketplace_id=sc.marketplace_id AND m.seller_sku=sc.seller_sku
-            LEFT JOIN core.catalog_item ci
-              ON ci.marketplace_id=sc.marketplace_id AND ci.asin=sc.asin
-            WHERE sc.marketplace_id=%s
-            ORDER BY COALESCE(m.sales_t28,0) DESC, sc.seller_sku
+            SELECT *
+            FROM mart.catalog_portfolio_product
+            WHERE marketplace_id=%s
+            ORDER BY sales_t28 DESC, seller_sku
             """,
             (marketplace,),
         )
+        local_clock = _one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
-        local_clock = _one(
-            cur,
-            "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time",
-        )
+    rows = decorate_products(rows)
+    costs = _product_costs()
+    sellable = [r for r in rows if r.get("product_role") != "STRUCTURAL_PARENT" and _is_active(r)]
+    traffic_values = [float(r.get("sessions_t28") or 0) for r in sellable if float(r.get("sessions_t28") or 0) > 0]
+    conversion_values = [float(r["conversion_t28_pct"]) for r in sellable if r.get("conversion_t28_pct") is not None]
+    traffic_median = median(traffic_values) if traffic_values else 0.0
+    conversion_median = median(conversion_values) if conversion_values else 0.0
+
+    for row in rows:
+        sku = str(row.get("sku") or row.get("seller_sku") or "")
+        # The SQL view exposes seller_sku; normalize the public API to sku.
+        row["sku"] = sku
+        row.pop("seller_sku", None)
+        unit_cogs = costs.get(sku)
+        row["unit_cogs"] = unit_cogs
+        row["estimated_cogs_t28"] = round(unit_cogs * int(row.get("units_t28") or 0), 2) if unit_cogs is not None else None
+        state, explanation = _commercial_state(row, traffic_median, conversion_median)
+        row["commercial_state"] = state
+        row["commercial_explanation"] = explanation
+
+    families = _family_rollup(rows)
+    active = [r for r in rows if r.get("product_role") != "STRUCTURAL_PARENT" and _is_active(r)]
+    attention = [r for r in active if r.get("commercial_state") in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "DECLINING"}]
+    drivers = sorted(active, key=lambda r: float(r.get("sales_t28") or 0), reverse=True)
+    summary.update(
+        {
+            "selling_now": sum(1 for r in active if float(r.get("units_t28") or 0) > 0),
+            "attention_count": len(attention),
+            "traffic_median_t28": round(traffic_median, 1),
+            "conversion_median_t28_pct": round(conversion_median, 2),
+            "sales_t28": round(sum(float(r.get("sales_t28") or 0) for r in active), 2),
+            "sessions_t28": sum(int(r.get("sessions_t28") or 0) for r in active),
+            "units_t28": sum(int(r.get("units_t28") or 0) for r in active),
+        }
+    )
+    summary["conversion_t28_pct"] = (
+        round(100.0 * summary["units_t28"] / summary["sessions_t28"], 2)
+        if summary["sessions_t28"]
+        else None
+    )
 
     return {
         "summary": summary,
-        "rows": decorate_products(rows),
+        "families": families,
+        "products": rows,
+        "attention": sorted(attention, key=lambda r: (-float(r.get("sales_t28") or 0), r.get("sku") or "")),
+        "drivers": drivers[:5],
+        "diagnostic_basis": {
+            "period": "28D",
+            "traffic_grain": "seller_sku / child ASIN as provided by Data Kiosk",
+            "traffic_median_t28": round(traffic_median, 1),
+            "conversion_median_t28_pct": round(conversion_median, 2),
+            "notes": "Commercial states are diagnostic signals, not causal claims. Structural parents are excluded from sellable metrics.",
+        },
         "local_time": local_clock.get("local_time"),
     }
