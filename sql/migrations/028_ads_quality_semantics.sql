@@ -6,6 +6,10 @@
 -- rollup invariant, useful diagnostically but not evidence that Amazon supplied
 -- two independently agreeing reports. Campaign and advertised-product reports
 -- are requested separately and are the independent commercial reconciliation.
+--
+-- PostgreSQL CREATE OR REPLACE VIEW requires all existing output columns to
+-- retain their names, types and order. Keep the 027 contract intact for
+-- downstream consumers and append the new diagnostics after it.
 
 CREATE OR REPLACE VIEW mart.ads_ingestion_quality AS
 WITH campaign AS (
@@ -45,13 +49,16 @@ product AS (
     GROUP BY account_id, business_date
 ),
 business AS (
-    SELECT marketplace_id, business_date,
-           sum(sales)::numeric(18,4) AS seller_sales
+    SELECT
+        marketplace_id,
+        business_date,
+        sum(sales)::numeric(18,4) AS seller_sales
     FROM mart.business_daily
     WHERE reconciled_daily_report
     GROUP BY marketplace_id, business_date
 )
 SELECT
+    -- Existing 027 columns. Do not rename or reorder these.
     a.marketplace_id,
     d.account_id,
     d.business_date,
@@ -83,23 +90,12 @@ SELECT
         AND abs(d.attributed_sales - c.attributed_sales) <= 0.01
         AND d.purchases = c.purchases
         AND d.units = c.units
-    ) AS account_rollup_consistent,
+    ) AS account_campaign_reconciled,
     (
-        c.account_id IS NOT NULL AND p.account_id IS NOT NULL
-        AND abs(c.spend - p.spend) <= 0.01
-        AND abs(c.attributed_sales - p.attributed_sales) <= 0.01
-    ) AS independent_value_reconciled,
-    (
-        c.account_id IS NOT NULL AND p.account_id IS NOT NULL
-        AND c.attribution_method_count = 1
-        AND c.attribution_window_count = 1
-        AND p.attribution_method_count = 1
-        AND p.attribution_window_count = 1
-        AND c.attribution_method IS NOT DISTINCT FROM p.attribution_method
-        AND c.attribution_window IS NOT DISTINCT FROM p.attribution_window
-        AND d.attribution_method IS NOT DISTINCT FROM c.attribution_method
-        AND d.attribution_window IS NOT DISTINCT FROM c.attribution_window
-    ) AS attribution_contract_consistent,
+        p.account_id IS NOT NULL
+        AND abs(d.spend - p.spend) <= 0.01
+        AND abs(d.attributed_sales - p.attributed_sales) <= 0.01
+    ) AS account_product_value_reconciled,
     greatest(d.ingested_at, c.ingested_at, p.ingested_at) AS latest_ingested_at,
     CASE
         WHEN a.marketplace_id IS NULL THEN 'ACCOUNT_MARKETPLACE_MISSING'
@@ -130,7 +126,35 @@ SELECT
         ) THEN 'ATTRIBUTION_CONTRACT_MISMATCH'
         WHEN b.seller_sales IS NULL THEN 'SELLER_SALES_DENOMINATOR_MISSING'
         ELSE 'OK'
-    END AS quality_state
+    END AS quality_state,
+
+    -- New 028 diagnostics are append-only so the existing view contract remains
+    -- compatible with CREATE OR REPLACE VIEW and downstream consumers.
+    (
+        c.account_id IS NOT NULL
+        AND d.impressions = c.impressions
+        AND d.clicks = c.clicks
+        AND abs(d.spend - c.spend) <= 0.01
+        AND abs(d.attributed_sales - c.attributed_sales) <= 0.01
+        AND d.purchases = c.purchases
+        AND d.units = c.units
+    ) AS account_rollup_consistent,
+    (
+        c.account_id IS NOT NULL AND p.account_id IS NOT NULL
+        AND abs(c.spend - p.spend) <= 0.01
+        AND abs(c.attributed_sales - p.attributed_sales) <= 0.01
+    ) AS independent_value_reconciled,
+    (
+        c.account_id IS NOT NULL AND p.account_id IS NOT NULL
+        AND c.attribution_method_count = 1
+        AND c.attribution_window_count = 1
+        AND p.attribution_method_count = 1
+        AND p.attribution_window_count = 1
+        AND c.attribution_method IS NOT DISTINCT FROM p.attribution_method
+        AND c.attribution_window IS NOT DISTINCT FROM p.attribution_window
+        AND d.attribution_method IS NOT DISTINCT FROM c.attribution_method
+        AND d.attribution_window IS NOT DISTINCT FROM c.attribution_window
+    ) AS attribution_contract_consistent
 FROM ads.daily_account d
 JOIN ads.account a USING (account_id)
 LEFT JOIN campaign c USING (account_id, business_date)
@@ -140,10 +164,11 @@ LEFT JOIN business b
  AND b.business_date = d.business_date;
 
 COMMENT ON VIEW mart.ads_ingestion_quality IS
-'Account/day Amazon Ads control contract. daily_account is a derived campaign rollup, so account_rollup_consistent is only an internal invariant. Operating trust is additionally gated by independent campaign-vs-advertised-product value reconciliation, a consistent attribution contract, account currency, and the independent seller-sales denominator required for TACOS. Attributed sales are Amazon attribution, never incremental sales.';
+'Account/day Amazon Ads control contract. The legacy account_campaign_reconciled and account_product_value_reconciled columns remain for compatibility. Operating trust is gated by the appended independent campaign-vs-advertised-product value reconciliation, attribution-contract consistency, account currency, account rollup consistency, and the independent seller-sales denominator required for TACOS. Attributed sales are Amazon attribution, never incremental sales.';
 
 CREATE OR REPLACE VIEW mart.ads_ingestion_quality_summary AS
 SELECT
+    -- Existing 027 summary columns. Do not rename or reorder these.
     marketplace_id,
     account_id,
     min(business_date) AS first_date,
@@ -151,17 +176,19 @@ SELECT
     count(*)::int AS days_seen,
     count(*) FILTER (WHERE quality_state = 'OK')::int AS healthy_days,
     count(*) FILTER (WHERE quality_state <> 'OK')::int AS issue_days,
-    count(*) FILTER (WHERE quality_state = 'ACCOUNT_ROLLUP_INCONSISTENT')::int AS rollup_issue_days,
-    count(*) FILTER (WHERE quality_state = 'INDEPENDENT_REPORT_VALUE_MISMATCH')::int AS independent_report_issue_days,
-    count(*) FILTER (WHERE quality_state = 'ATTRIBUTION_CONTRACT_MISMATCH')::int AS attribution_contract_issue_days,
     max(latest_ingested_at) AS latest_ingested_at,
     CASE
         WHEN count(*) = 0 THEN 'NO_DATA'
         WHEN count(*) FILTER (WHERE quality_state <> 'OK') = 0 THEN 'HEALTHY'
         ELSE 'ATTENTION'
-    END AS quality_state
+    END AS quality_state,
+
+    -- New 028 summary diagnostics are append-only.
+    count(*) FILTER (WHERE quality_state = 'ACCOUNT_ROLLUP_INCONSISTENT')::int AS rollup_issue_days,
+    count(*) FILTER (WHERE quality_state = 'INDEPENDENT_REPORT_VALUE_MISMATCH')::int AS independent_report_issue_days,
+    count(*) FILTER (WHERE quality_state = 'ATTRIBUTION_CONTRACT_MISMATCH')::int AS attribution_contract_issue_days
 FROM mart.ads_ingestion_quality
 GROUP BY marketplace_id, account_id;
 
 COMMENT ON VIEW mart.ads_ingestion_quality_summary IS
-'Per-account Ads ingestion readiness summary. HEALTHY means independent campaign and advertised-product reports reconcile for commercial values, attribution semantics agree, account rollup is internally consistent, currency is valid, and TACOS has seller-sales coverage.';
+'Per-account Ads ingestion readiness summary. HEALTHY means independent campaign and advertised-product reports reconcile for commercial values, attribution semantics agree, account rollup is internally consistent, currency is valid, and TACOS has seller-sales coverage. New diagnostic counts are appended to preserve the prior view contract.';
