@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
+import re
 from hashlib import sha256
 from datetime import date, datetime
 from decimal import Decimal
@@ -24,26 +26,53 @@ from trajectory_api import trajectory_payload as build_trajectory_payload
 
 ROOT = Path(__file__).parent
 STATIC = ROOT / "static"
+STATIC_ROOT = STATIC.resolve()
 LABELS_PATH = ROOT / "product_labels.json"
-THEME_CSS = (STATIC / "theme.css").read_bytes()
-CHART_CSS = (STATIC / "chart-system.css").read_bytes()
-CHART_JS = (STATIC / "chart-system.js").read_bytes()
-UI_SHELL_JS = (STATIC / "ui-shell.js").read_bytes()
-D3_JS = (STATIC / "vendor" / "d3.v7.min.js").read_bytes()
-ASSET_VERSION = sha256(THEME_CSS + CHART_CSS + CHART_JS + UI_SHELL_JS).hexdigest()[:12]
+VERSIONED_ASSET_RE = re.compile(r'(/assets/[^"\'?#]+\.(?:css|js))')
+
+
+def frontend_asset_version() -> str:
+    digest = sha256()
+    for asset in sorted(
+        path for path in STATIC.rglob("*") if path.is_file() and path.suffix.lower() in {".css", ".js"}
+    ):
+        digest.update(asset.relative_to(STATIC).as_posix().encode())
+        digest.update(asset.read_bytes())
+    return digest.hexdigest()[:12]
+
+
+ASSET_VERSION = frontend_asset_version()
 
 
 def versioned_page(name: str) -> bytes:
-    """Give every HTML response a content-derived asset generation.
-
-    Production browsers may retain the previous shared chart bundle for a few
-    minutes. A content hash keeps a newly deployed page from ever pairing with
-    an older DPPCharts API.
-    """
+    """Attach one content-derived generation to every local CSS/JS dependency."""
     text = (STATIC / name).read_text()
-    for asset in ("theme.css", "chart-system.css", "chart-system.js", "ui-shell.js"):
-        text = text.replace(f"/assets/{asset}", f"/assets/{asset}?v={ASSET_VERSION}")
+    text = VERSIONED_ASSET_RE.sub(lambda match: f"{match.group(1)}?v={ASSET_VERSION}", text)
     return text.encode()
+
+
+def asset_path(request_path: str) -> Path | None:
+    """Resolve an /assets path inside STATIC without allowing directory traversal."""
+    relative = request_path.removeprefix("/assets/")
+    if not relative:
+        return None
+    candidate = (STATIC / relative).resolve()
+    try:
+        candidate.relative_to(STATIC_ROOT)
+    except ValueError:
+        return None
+    return candidate if candidate.is_file() else None
+
+
+def asset_content_type(path: Path) -> str:
+    content_type, _ = mimetypes.guess_type(path.name)
+    if path.suffix == ".js":
+        return "text/javascript; charset=utf-8"
+    if path.suffix == ".css":
+        return "text/css; charset=utf-8"
+    if content_type and content_type.startswith("text/"):
+        return f"{content_type}; charset=utf-8"
+    return content_type or "application/octet-stream"
 
 
 HOME_INDEX = versioned_page("home.html")
@@ -98,7 +127,11 @@ def product_labels() -> dict[str, dict]:
         data = json.loads(LABELS_PATH.read_text())
     except (OSError, json.JSONDecodeError):
         return {}
-    return {str(sku): value for sku, value in data.items() if not str(sku).startswith("_") and isinstance(value, dict)}
+    return {
+        str(sku): value
+        for sku, value in data.items()
+        if not str(sku).startswith("_") and isinstance(value, dict)
+    }
 
 
 def decorate_products(rows: list[dict]) -> list[dict]:
@@ -193,64 +226,155 @@ def home_payload():
             WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1','merchant_listings_all_data','catalog_items_2022_04_01')
         """)
         local_clock = one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
-    return clean({"generated_at":datetime.utcnow().isoformat(timespec="seconds")+"Z","local_time":local_clock.get("local_time"),"today":today,"rolling":rolling,"inventory_summary":inventory_summary,"inventory":decorate_products(inventory),"movers":decorate_products(movers),"series":series,"weekly_products":decorate_products(weekly_products),"freshness":freshness})
+    return clean({
+        "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "local_time": local_clock.get("local_time"),
+        "today": today,
+        "rolling": rolling,
+        "inventory_summary": inventory_summary,
+        "inventory": decorate_products(inventory),
+        "movers": decorate_products(movers),
+        "series": series,
+        "weekly_products": decorate_products(weekly_products),
+        "freshness": freshness,
+    })
 
 
 def health_payload():
     with connect() as conn, conn.cursor() as cur:
-        cur.execute("SELECT 1"); cur.fetchone()
-        today=one(cur,"SELECT count(*)::int AS n FROM mart.today_operating WHERE marketplace_id=%s",(MARKETPLACE,))
-        rolling=one(cur,"SELECT count(*)::int AS n FROM mart.business_rolling WHERE marketplace_id=%s",(MARKETPLACE,))
-        sales=one(cur,"SELECT count(*)::int AS n,max(business_date) AS last_date FROM mart.business_daily WHERE marketplace_id=%s",(MARKETPLACE,))
-        inventory=one(cur,"SELECT count(*)::int AS n FROM mart.inventory_attention WHERE marketplace_id=%s",(MARKETPLACE,))
-        finance=one(cur,"SELECT count(*)::int AS n,max(posted_date) AS last_posted FROM core.financial_transaction WHERE marketplace_id=%s",(MARKETPLACE,))
-        catalog=one(cur,"SELECT count(*)::int AS n,max(updated_at) AS last_updated FROM core.catalog_item WHERE marketplace_id=%s",(MARKETPLACE,))
-        listings=one(cur,"SELECT count(*)::int AS n,max(fetched_at) AS last_updated FROM core.seller_listing WHERE marketplace_id=%s",(MARKETPLACE,))
-        freshness=all_rows(cur,"SELECT job_name,latest_status,extract(epoch from age)::bigint age_seconds FROM ops.data_health WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1')")
-    dependency_counts={"today":int(today.get("n") or 0),"rolling":int(rolling.get("n") or 0),"sales_days":int(sales.get("n") or 0),"inventory_rows":int(inventory.get("n") or 0),"finance_transactions":int(finance.get("n") or 0)}
-    missing=[name for name,count in dependency_counts.items() if count<=0]
-    feed_errors=[row.get("job_name") for row in freshness if row.get("latest_status") not in ("success","running")]
-    status="ok" if not missing and not feed_errors else "degraded"
-    return clean({"status":status,"marketplace":MARKETPLACE,"dependencies":dependency_counts,"seller_listings":int(listings.get("n") or 0),"seller_listings_last_updated":listings.get("last_updated"),"catalog_items":int(catalog.get("n") or 0),"catalog_last_updated":catalog.get("last_updated"),"sales_last_date":sales.get("last_date"),"finance_last_posted":finance.get("last_posted"),"feed_errors":feed_errors})
+        cur.execute("SELECT 1")
+        cur.fetchone()
+        today = one(cur, "SELECT count(*)::int AS n FROM mart.today_operating WHERE marketplace_id=%s", (MARKETPLACE,))
+        rolling = one(cur, "SELECT count(*)::int AS n FROM mart.business_rolling WHERE marketplace_id=%s", (MARKETPLACE,))
+        sales = one(cur, "SELECT count(*)::int AS n,max(business_date) AS last_date FROM mart.business_daily WHERE marketplace_id=%s", (MARKETPLACE,))
+        inventory = one(cur, "SELECT count(*)::int AS n FROM mart.inventory_attention WHERE marketplace_id=%s", (MARKETPLACE,))
+        finance = one(cur, "SELECT count(*)::int AS n,max(posted_date) AS last_posted FROM core.financial_transaction WHERE marketplace_id=%s", (MARKETPLACE,))
+        catalog = one(cur, "SELECT count(*)::int AS n,max(updated_at) AS last_updated FROM core.catalog_item WHERE marketplace_id=%s", (MARKETPLACE,))
+        listings = one(cur, "SELECT count(*)::int AS n,max(fetched_at) AS last_updated FROM core.seller_listing WHERE marketplace_id=%s", (MARKETPLACE,))
+        freshness = all_rows(cur, "SELECT job_name,latest_status,extract(epoch from age)::bigint age_seconds FROM ops.data_health WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1')")
+    dependency_counts = {
+        "today": int(today.get("n") or 0),
+        "rolling": int(rolling.get("n") or 0),
+        "sales_days": int(sales.get("n") or 0),
+        "inventory_rows": int(inventory.get("n") or 0),
+        "finance_transactions": int(finance.get("n") or 0),
+    }
+    missing = [name for name, count in dependency_counts.items() if count <= 0]
+    feed_errors = [
+        row.get("job_name")
+        for row in freshness
+        if row.get("latest_status") not in ("success", "running")
+    ]
+    status = "ok" if not missing and not feed_errors else "degraded"
+    return clean({
+        "status": status,
+        "marketplace": MARKETPLACE,
+        "dependencies": dependency_counts,
+        "seller_listings": int(listings.get("n") or 0),
+        "seller_listings_last_updated": listings.get("last_updated"),
+        "catalog_items": int(catalog.get("n") or 0),
+        "catalog_last_updated": catalog.get("last_updated"),
+        "sales_last_date": sales.get("last_date"),
+        "finance_last_posted": finance.get("last_posted"),
+        "feed_errors": feed_errors,
+    })
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version="DPPBoard/8"
-    def log_message(self,fmt,*args): print(f"{self.address_string()} {fmt % args}")
-    def send_bytes(self,status,content_type,body,cache="no-store"):
-        self.send_response(status); self.send_header("Content-Type",content_type); self.send_header("Cache-Control",cache); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
-    def json_endpoint(self,builder):
+    server_version = "DPPBoard/9"
+
+    def log_message(self, fmt, *args):
+        print(f"{self.address_string()} {fmt % args}")
+
+    def send_bytes(self, status, content_type, body, cache="no-store"):
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", cache)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def json_endpoint(self, builder):
         try:
-            payload=clean(builder()); body=json.dumps(payload,separators=(",",":")).encode(); self.send_bytes(200,"application/json",body)
+            payload = clean(builder())
+            body = json.dumps(payload, separators=(",", ":")).encode()
+            self.send_bytes(200, "application/json", body)
         except Exception as exc:
-            body=json.dumps({"error":str(exc)[:500]}).encode(); self.send_bytes(500,"application/json",body)
+            body = json.dumps({"error": str(exc)[:500]}).encode()
+            self.send_bytes(500, "application/json", body)
+
     def do_GET(self):
-        parsed=urlsplit(self.path); path=parsed.path; query=parse_qs(parsed.query)
-        if path=="/assets/theme.css": self.send_bytes(200,"text/css; charset=utf-8",THEME_CSS,cache="public, max-age=60"); return
-        if path=="/assets/chart-system.css": self.send_bytes(200,"text/css; charset=utf-8",CHART_CSS,cache="public, max-age=300"); return
-        if path=="/assets/chart-system.js": self.send_bytes(200,"text/javascript; charset=utf-8",CHART_JS,cache="public, max-age=300"); return
-        if path=="/assets/ui-shell.js": self.send_bytes(200,"text/javascript; charset=utf-8",UI_SHELL_JS,cache="public, max-age=300"); return
-        if path=="/assets/vendor/d3.v7.min.js": self.send_bytes(200,"text/javascript; charset=utf-8",D3_JS,cache="public, max-age=31536000, immutable"); return
-        if path=="/health":
-            try:
-                payload=health_payload(); status=200 if payload.get("status")=="ok" else 503; self.send_bytes(status,"application/json",json.dumps(payload,separators=(",",":")).encode())
-            except Exception as exc: self.send_bytes(503,"application/json",json.dumps({"status":"error","error":str(exc)[:160]}).encode())
+        parsed = urlsplit(self.path)
+        path = parsed.path
+        query = parse_qs(parsed.query)
+
+        if path.startswith("/assets/"):
+            asset = asset_path(path)
+            if asset is None:
+                self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
+                return
+            cache = "public, max-age=31536000, immutable" if "/vendor/" in path else "public, max-age=300"
+            self.send_bytes(200, asset_content_type(asset), asset.read_bytes(), cache=cache)
             return
-        if path=="/api/today":
-            selected_date=(query.get("date") or [None])[0]; self.json_endpoint(lambda:build_today_payload(connect,decorate_products,MARKETPLACE,selected_date)); return
-        if path=="/api/home": self.json_endpoint(home_payload); return
-        if path=="/api/sales": self.json_endpoint(lambda:build_sales_payload(connect,decorate_products,MARKETPLACE)); return
-        if path=="/api/catalog": self.json_endpoint(lambda:build_catalog_payload(connect,decorate_products,MARKETPLACE)); return
-        if path=="/api/inventory": self.json_endpoint(lambda:build_inventory_payload(connect,decorate_products,MARKETPLACE)); return
-        if path=="/api/finance": self.json_endpoint(lambda:build_finance_payload(connect,MARKETPLACE)); return
-        if path=="/api/ads": self.json_endpoint(lambda:build_ads_payload(connect,MARKETPLACE)); return
-        if path=="/api/product":
-            sku=(query.get("sku") or [""])[0]; self.json_endpoint(lambda:build_product_payload(connect,decorate_products,MARKETPLACE,sku)); return
-        if path=="/api/trajectory": self.json_endpoint(lambda:build_trajectory_payload(connect,MARKETPLACE)); return
-        if path=="/api/data-health": self.json_endpoint(lambda:build_health_board_payload(connect,MARKETPLACE)); return
-        pages={"/":HOME_INDEX,"/today":TODAY_INDEX,"/sales":SALES_INDEX,"/catalog":CATALOG_INDEX,"/inventory":INVENTORY_INDEX,"/ads":ADS_INDEX,"/finance":FINANCE_INDEX,"/product":PRODUCT_INDEX,"/trajectory":TRAJECTORY_INDEX,"/data-health":DATA_HEALTH_INDEX}
-        if path in pages: self.send_bytes(200,"text/html; charset=utf-8",pages[path],cache="no-cache"); return
-        self.send_bytes(404,"text/plain; charset=utf-8",b"Not found")
+
+        if path == "/health":
+            try:
+                payload = health_payload()
+                status = 200 if payload.get("status") == "ok" else 503
+                self.send_bytes(status, "application/json", json.dumps(payload, separators=(",", ":")).encode())
+            except Exception as exc:
+                self.send_bytes(503, "application/json", json.dumps({"status": "error", "error": str(exc)[:160]}).encode())
+            return
+        if path == "/api/today":
+            selected_date = (query.get("date") or [None])[0]
+            self.json_endpoint(lambda: build_today_payload(connect, decorate_products, MARKETPLACE, selected_date))
+            return
+        if path == "/api/home":
+            self.json_endpoint(home_payload)
+            return
+        if path == "/api/sales":
+            self.json_endpoint(lambda: build_sales_payload(connect, decorate_products, MARKETPLACE))
+            return
+        if path == "/api/catalog":
+            self.json_endpoint(lambda: build_catalog_payload(connect, decorate_products, MARKETPLACE))
+            return
+        if path == "/api/inventory":
+            self.json_endpoint(lambda: build_inventory_payload(connect, decorate_products, MARKETPLACE))
+            return
+        if path == "/api/finance":
+            self.json_endpoint(lambda: build_finance_payload(connect, MARKETPLACE))
+            return
+        if path == "/api/ads":
+            self.json_endpoint(lambda: build_ads_payload(connect, MARKETPLACE))
+            return
+        if path == "/api/product":
+            sku = (query.get("sku") or [""])[0]
+            self.json_endpoint(lambda: build_product_payload(connect, decorate_products, MARKETPLACE, sku))
+            return
+        if path == "/api/trajectory":
+            self.json_endpoint(lambda: build_trajectory_payload(connect, MARKETPLACE))
+            return
+        if path == "/api/data-health":
+            self.json_endpoint(lambda: build_health_board_payload(connect, MARKETPLACE))
+            return
+
+        pages = {
+            "/": HOME_INDEX,
+            "/today": TODAY_INDEX,
+            "/sales": SALES_INDEX,
+            "/catalog": CATALOG_INDEX,
+            "/inventory": INVENTORY_INDEX,
+            "/ads": ADS_INDEX,
+            "/finance": FINANCE_INDEX,
+            "/product": PRODUCT_INDEX,
+            "/trajectory": TRAJECTORY_INDEX,
+            "/data-health": DATA_HEALTH_INDEX,
+        }
+        if path in pages:
+            self.send_bytes(200, "text/html; charset=utf-8", pages[path], cache="no-cache")
+            return
+        self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
 
 
-if __name__=="__main__": ThreadingHTTPServer(("0.0.0.0",8080),Handler).serve_forever()
+if __name__ == "__main__":
+    ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
