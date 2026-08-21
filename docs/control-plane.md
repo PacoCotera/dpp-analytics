@@ -16,22 +16,23 @@ Prefer the GitHub workflow over manual changes to running containers. The workfl
 
 The deploy workflow performs these stages in order:
 
-1. bootstrap/validate the host and Docker tooling;
-2. ensure `/etc/dpp-analytics/env` exists and retain production secrets on-host;
-3. initialize persistent local product-label configuration if it does not already exist;
-4. validate `compose.yml`;
-5. pull PostgreSQL/Grafana base images and build worker/board images;
-6. start/health-check PostgreSQL;
-7. apply repository SQL migrations through `scripts/migrate.sh`;
-8. backfill historical product-cost state needed by Finance;
-9. refresh Finance month-close state;
-10. deploy the complete Compose stack;
-11. verify the worker and the configured SP-API authorization mode;
-12. verify Grafana;
-13. verify board health plus representative Home/Sales/Inventory APIs/pages;
-14. build and run the production browser-QA image against the deployed board;
-15. upload browser-QA artifacts;
-16. publish a machine-readable deployment heartbeat to GitHub.
+1. initialize run-local deployment diagnostic scratch state;
+2. bootstrap/validate the host and Docker tooling;
+3. ensure `/etc/dpp-analytics/env` exists and retain production secrets on-host;
+4. initialize persistent local product-label configuration if it does not already exist;
+5. validate `compose.yml`;
+6. pull PostgreSQL/Grafana base images and build worker/board images;
+7. start/health-check PostgreSQL;
+8. apply repository SQL migrations through `scripts/migrate.sh`;
+9. backfill historical product-cost state needed by Finance;
+10. refresh Finance month-close state;
+11. deploy the complete Compose stack;
+12. verify the worker and the configured SP-API authorization mode;
+13. verify Grafana;
+14. verify board health plus representative Home/Sales/Inventory APIs/pages;
+15. build and run the production browser-QA image against the deployed board;
+16. upload browser-QA artifacts;
+17. publish a machine-readable deployment heartbeat to GitHub.
 
 The board image itself does not inject CSS, JavaScript or page behavior. Its HTML build mutation is limited to stamping the deployed SHA into the footer.
 
@@ -54,7 +55,7 @@ Browser-QA selectors are part of the application contract. They should target ca
 
 ## Deployment heartbeat
 
-GitHub issue **#1** is the production deployment heartbeat. The workflow updates the same issue after every attempt so it can be inspected without SSH access.
+GitHub issue **#1** is the production deployment heartbeat. The workflow updates the same issue after every attempt so it can be inspected without SSH access. Each run clears its deployment diagnostic scratch files before host bootstrap, so a failed or skipped probe cannot leak evidence from a previous run into the current heartbeat.
 
 It records:
 
