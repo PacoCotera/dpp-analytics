@@ -63,8 +63,11 @@ These primitives are intentionally data-agnostic. Variable-length content such a
 - month/year boundaries
 - empty/loading states
 - supported chart forms
+- responsive behavior for charts that need more horizontal reading width than a phone viewport can provide
 
 Pages choose the correct analytical chart but should not independently recreate generic chart primitives.
+
+Dense multi-period charts may opt into `.dpp-chart-scroll` on the containing chart region and `.dpp-chart--wide` on the chart itself. At phone widths the shared chart system preserves a readable minimum chart width and contains horizontal scrolling inside that chart region. Do not shrink a dense analytical chart into an unreadable thumbnail merely to avoid scrolling, and do not allow the chart to create horizontal overflow on the page itself.
 
 ### 5. Page composition
 
@@ -176,7 +179,7 @@ A page is accepted only when:
 - its source has one renderer/style owner;
 - it composes shared primitives rather than recreating them;
 - desktop and mobile production renders match the page brief;
-- no horizontal page overflow occurs at supported widths;
+- no horizontal page overflow occurs at supported widths; intentionally scrollable chart/table regions must contain their own overflow;
 - empty/short/long content states are intentionally handled;
 - technical QA is green;
 - visual QA is manually compared against the business question, not merely checked for rendering success.
