@@ -18,6 +18,9 @@
 .workspace-identity h1{margin:0;font-size:22px;line-height:1;letter-spacing:-.025em;font-weight:840}
 .workspace-identity p{margin:5px 0 0;max-width:760px;font-size:11.5px;line-height:1.35;color:var(--muted)}
 .has-workspace-identity .workspace-legacy-head{display:none!important}
+/* Finance keeps the live accounting period/state but loses the redundant editorial title. */
+.has-workspace-identity .finance-head.workspace-finance-period{display:flex!important;justify-content:flex-end!important;align-items:center!important;padding:7px 0!important;border-bottom:1px solid var(--line)!important}
+.has-workspace-identity .workspace-finance-period .period-meta{text-align:right!important;margin:0!important;white-space:normal!important}
 /* Catalog's commercial-portfolio heading becomes a section read under the Products identity. */
 .has-workspace-identity .catalog-top{padding-top:10px}
 .has-workspace-identity .catalog-title h1{font-size:15px}
@@ -42,6 +45,8 @@
  .workspace-identity h1{font-size:20px}
  .workspace-identity p{font-size:11.5px;margin-top:4px}
  .has-workspace-identity .catalog-top{padding-top:9px}
+ .has-workspace-identity .finance-head.workspace-finance-period{justify-content:flex-start!important;padding:6px 0!important}
+ .has-workspace-identity .workspace-finance-period .period-meta{text-align:left!important}
 }
 @media(max-width:420px){
  .primary-nav.app-navigation .nav-primary-set>a{padding:0 9px;font-size:11.5px}
