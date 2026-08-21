@@ -87,32 +87,16 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
             WHERE marketplace_id=%s AND asin=%s AND business_date BETWEEN c.d-27 AND c.d
         """,(cutoff,marketplace,asin)) if cutoff and asin else {}
 
-        ads_through = _one(cur,"""
-            SELECT max(d.business_date) d FROM ads.daily_advertised_product d JOIN ads.account a USING(account_id)
-            WHERE a.marketplace_id=%s AND (d.advertised_sku=%s OR (%s<>'' AND d.advertised_asin=%s))
-        """,(marketplace,sku,asin or '',asin or '')).get('d')
+        # Product Workspace consumes the canonical product Ads mart. This keeps
+        # account aggregation, attribution maturity and TACOS semantics aligned
+        # with Catalog and the rest of the operating product.
         ads = _one(cur,"""
-            WITH c AS (SELECT %s::date d), ad AS (
-              SELECT coalesce(sum(d.spend) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0) spend_t28,
-                     coalesce(sum(d.attributed_sales) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0) attributed_sales_t28,
-                     coalesce(sum(d.clicks) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0)::bigint clicks_t28,
-                     coalesce(sum(d.impressions) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0)::bigint impressions_t28,
-                     coalesce(sum(d.purchases) FILTER (WHERE d.business_date BETWEEN c.d-27 AND c.d),0)::bigint purchases_t28,
-                     coalesce(sum(d.spend) FILTER (WHERE d.business_date BETWEEN c.d-55 AND c.d-28),0) spend_prior_t28,
-                     coalesce(sum(d.attributed_sales) FILTER (WHERE d.business_date BETWEEN c.d-55 AND c.d-28),0) attributed_sales_prior_t28
-              FROM ads.daily_advertised_product d JOIN ads.account a ON a.account_id=d.account_id CROSS JOIN c
-              WHERE a.marketplace_id=%s AND (d.advertised_sku=%s OR (%s<>'' AND d.advertised_asin=%s)) AND d.business_date BETWEEN c.d-55 AND c.d
-            ), seller AS (
-              SELECT coalesce(sum(sales),0) sales_t28 FROM mart.sku_daily,c
-              WHERE marketplace_id=%s AND seller_sku=%s AND business_date BETWEEN c.d-27 AND c.d
-            )
-            SELECT ad.*,CASE WHEN spend_t28>0 THEN attributed_sales_t28/spend_t28 END roas_t28,
-                   CASE WHEN attributed_sales_t28>0 THEN spend_t28/attributed_sales_t28 END acos_t28,
-                   CASE WHEN seller.sales_t28>0 THEN spend_t28/seller.sales_t28 END tacos_t28,
-                   CASE WHEN spend_prior_t28>0 THEN round(100.0*(spend_t28-spend_prior_t28)/spend_prior_t28,1) END spend_delta28_pct,
-                   c.d through_date FROM ad CROSS JOIN seller CROSS JOIN c
-        """,(ads_through,marketplace,sku,asin or '',asin or '',marketplace,sku)) if ads_through else {}
-        ads['status']='ready' if ads_through else 'awaiting_ads_data'
+            SELECT * FROM mart.ads_product_business_t28
+            WHERE marketplace_id=%s AND seller_sku=%s
+            LIMIT 1
+        """,(marketplace,sku))
+        ads['status']='ready' if ads else 'awaiting_ads_data'
+        ads['interpretation']='Amazon-attributed sales are attribution, not incremental sales. TACOS uses independently reconciled seller sales; seller sales minus attributed sales is not exact organic sales.'
 
         series = _all(cur,"""
             WITH c AS (SELECT %s::date d), days AS (SELECT generate_series(c.d-89,c.d,interval '1 day')::date business_date FROM c),
