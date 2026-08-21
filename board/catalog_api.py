@@ -96,19 +96,12 @@ def _family_rollup(rows: list[dict]) -> list[dict]:
     for row in rows:
         key = str(row.get("family_asin") or row.get("asin") or row.get("sku"))
         family = families.setdefault(key, {
-            "family_asin": key,
-            "members": [],
-            "aliases": [],
-            "sales_t28": 0.0,
-            "units_t28": 0,
-            "orders_t28": 0,
-            "sessions_t28": 0,
-            "available": 0,
-            "inbound": 0,
-            "estimated_cogs_t28": 0.0,
-            "cogs_known_units": 0,
-            "sellable_count": 0,
-            "active_sellable_count": 0,
+            "family_asin": key, "members": [], "aliases": [], "sales_t28": 0.0,
+            "units_t28": 0, "orders_t28": 0, "sessions_t28": 0, "available": 0,
+            "inbound": 0, "estimated_cogs_t28": 0.0, "cogs_known_units": 0,
+            "sellable_count": 0, "active_sellable_count": 0, "ad_spend_t28": 0.0,
+            "ad_attributed_sales_t28": 0.0, "ad_impressions_t28": 0, "ad_clicks_t28": 0,
+            "ad_observed_days": 0, "ad_mature_days": 0,
         })
         role = row.get("product_role")
         if role == "STRUCTURAL_PARENT":
@@ -121,14 +114,19 @@ def _family_rollup(rows: list[dict]) -> list[dict]:
             continue
         family["members"].append(row)
         family["sellable_count"] += 1
-        if _is_active(row):
-            family["active_sellable_count"] += 1
+        if _is_active(row): family["active_sellable_count"] += 1
         family["sales_t28"] += float(row.get("sales_t28") or 0)
         family["units_t28"] += int(row.get("units_t28") or 0)
         family["orders_t28"] += int(row.get("orders_t28") or 0)
         family["sessions_t28"] += int(row.get("sessions_t28") or 0)
         family["available"] += int(row.get("available") or 0)
         family["inbound"] += int(row.get("inbound") or 0)
+        family["ad_spend_t28"] += float(row.get("ad_spend_t28") or 0)
+        family["ad_attributed_sales_t28"] += float(row.get("ad_attributed_sales_t28") or 0)
+        family["ad_impressions_t28"] += int(row.get("ad_impressions_t28") or 0)
+        family["ad_clicks_t28"] += int(row.get("ad_clicks_t28") or 0)
+        family["ad_observed_days"] = max(family["ad_observed_days"], int(row.get("ad_observed_days") or 0))
+        family["ad_mature_days"] = max(family["ad_mature_days"], int(row.get("ad_mature_days") or 0))
         if row.get("estimated_cogs_t28") is not None:
             family["estimated_cogs_t28"] += float(row["estimated_cogs_t28"])
             family["cogs_known_units"] += int(row.get("units_t28") or 0)
@@ -138,16 +136,16 @@ def _family_rollup(rows: list[dict]) -> list[dict]:
     for family in families.values():
         sellable = family["members"]
         candidates = sellable or ([family["parent"]] if family.get("parent") else family["aliases"])
-        if not candidates:
-            continue
+        if not candidates: continue
         lead = max(candidates, key=lambda r: float(r.get("sales_t28") or 0))
         parent = family.get("parent")
         family["name"] = (parent or lead).get("product") or lead.get("sku")
-        # Commercial-family imagery follows the best-selling sellable child. A
-        # structural parent is a container and must not replace the child image.
         family["image_url"] = lead.get("image_url")
         family["image_source"] = lead.get("image_source")
         family["conversion_t28_pct"] = round(100.0 * family["units_t28"] / family["sessions_t28"], 2) if family["sessions_t28"] > 0 else None
+        family["ad_tacos_t28"] = family["ad_spend_t28"] / family["sales_t28"] if family["sales_t28"] > 0 and family["ad_spend_t28"] > 0 else None
+        family["ad_roas_t28"] = family["ad_attributed_sales_t28"] / family["ad_spend_t28"] if family["ad_spend_t28"] > 0 else None
+        family["ad_attribution_state"] = "PROVISIONAL" if family["ad_observed_days"] > family["ad_mature_days"] else ("MATURE" if family["ad_observed_days"] else "UNAVAILABLE")
         family["states"] = sorted({m.get("commercial_state") for m in sellable if m.get("commercial_state")}, key=lambda x: priority.get(x, 99))
         family["primary_state"] = family["states"][0] if family["states"] else "STRUCTURAL_PARENT"
         family["needs_attention"] = any(priority.get(s, 99) <= 3 for s in family["states"])
@@ -160,29 +158,38 @@ def _family_rollup(rows: list[dict]) -> list[dict]:
 def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
     with connect() as conn, conn.cursor() as cur:
         summary = _one(cur, """
-            SELECT
-              count(*)::int AS listing_records,
+            SELECT count(*)::int AS listing_records,
               count(*) FILTER (WHERE product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE'))::int AS sellable_offers,
               count(*) FILTER (WHERE product_role = 'STRUCTURAL_PARENT')::int AS structural_parents,
               count(*) FILTER (WHERE product_role = 'SELLER_SKU_ALIAS')::int AS sku_aliases,
               count(*) FILTER (WHERE product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE') AND lower(COALESCE(status,'')) <> 'inactive')::int AS active_sellable,
               count(*) FILTER (WHERE product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE') AND lower(COALESCE(status,'')) = 'inactive')::int AS inactive_sellable,
-              count(DISTINCT family_asin)::int AS families,
-              max(fetched_at) AS listings_fetched_at,
+              count(DISTINCT family_asin)::int AS families, max(fetched_at) AS listings_fetched_at,
               max(traffic_through_date) AS traffic_through_date
             FROM mart.catalog_portfolio_product WHERE marketplace_id=%s
         """, (marketplace,))
         rows = _all(cur, """
-            SELECT marketplace_id, seller_sku AS sku, asin, parent_asin, family_asin, product_role,
-                   offer_rank, offer_owner_sku, is_offer_owner,
-                   title AS product, image_url, image_source, price AS listing_price, status, fulfillment_channel,
-                   open_date, fetched_at, available, inbound, days_cover_on_hand, days_cover_with_inbound,
-                   inventory_action, sales_t28, units_t28, orders_t28, sessions_t28, page_views_t28,
-                   conversion_t28_pct, sales_delta28_pct, sessions_delta28_pct, conversion_delta28_pp,
-                   traffic_through_date, catalog_enriched
-            FROM mart.catalog_portfolio_product
-            WHERE marketplace_id=%s
-            ORDER BY is_offer_owner DESC, sales_t28 DESC, seller_sku
+            SELECT p.marketplace_id, p.seller_sku AS sku, p.asin, p.parent_asin, p.family_asin, p.product_role,
+                   p.offer_rank, p.offer_owner_sku, p.is_offer_owner, p.title AS product, p.image_url, p.image_source,
+                   p.price AS listing_price, p.status, p.fulfillment_channel, p.open_date, p.fetched_at,
+                   p.available, p.inbound, p.days_cover_on_hand, p.days_cover_with_inbound, p.inventory_action,
+                   p.sales_t28, p.units_t28, p.orders_t28, p.sessions_t28, p.page_views_t28,
+                   p.conversion_t28_pct, p.sales_delta28_pct, p.sessions_delta28_pct, p.conversion_delta28_pp,
+                   p.traffic_through_date, p.catalog_enriched,
+                   a.spend AS ad_spend_t28, a.attributed_sales AS ad_attributed_sales_t28,
+                   a.impressions AS ad_impressions_t28, a.clicks AS ad_clicks_t28,
+                   a.attributed_purchases AS ad_attributed_purchases_t28, a.attributed_units AS ad_attributed_units_t28,
+                   a.ctr AS ad_ctr_t28, a.cpc AS ad_cpc_t28, a.roas AS ad_roas_t28, a.acos AS ad_acos_t28,
+                   CASE WHEN p.sales_t28 > 0 AND a.spend IS NOT NULL THEN a.spend / p.sales_t28 END AS ad_tacos_t28,
+                   a.attributed_sales_share AS ad_attributed_sales_share_t28,
+                   a.observed_ads_days AS ad_observed_days, a.mature_ads_days AS ad_mature_days,
+                   a.through_date AS ads_through_date, a.ads_source_generated_at, a.ads_ingested_at
+            FROM mart.catalog_portfolio_product p
+            LEFT JOIN mart.ads_product_business_t28 a
+              ON a.marketplace_id=p.marketplace_id AND p.is_offer_owner
+             AND (a.sku=p.seller_sku OR (a.sku IS NULL AND a.asin=p.asin))
+            WHERE p.marketplace_id=%s
+            ORDER BY p.is_offer_owner DESC, p.sales_t28 DESC, p.seller_sku
         """, (marketplace,))
         local_clock = _one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
@@ -199,37 +206,32 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         unit_cogs = costs.get(sku)
         row["unit_cogs"] = unit_cogs
         row["estimated_cogs_t28"] = round(unit_cogs * int(row.get("units_t28") or 0), 2) if unit_cogs is not None and _is_offer(row) else None
+        observed, mature = int(row.get("ad_observed_days") or 0), int(row.get("ad_mature_days") or 0)
+        row["ad_attribution_state"] = "PROVISIONAL" if observed > mature else ("MATURE" if observed else "UNAVAILABLE")
         state, explanation = _commercial_state(row, traffic_median, conversion_median)
-        row["commercial_state"] = state
-        row["commercial_explanation"] = explanation
+        row["commercial_state"], row["commercial_explanation"] = state, explanation
 
     families = _family_rollup(rows)
     active = [r for r in rows if _is_offer(r) and _is_active(r)]
     attention = [r for r in active if r.get("commercial_state") in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "DECLINING"}]
     drivers = sorted(active, key=lambda r: float(r.get("sales_t28") or 0), reverse=True)
     summary.update({
-        "selling_now": sum(1 for r in active if float(r.get("units_t28") or 0) > 0),
-        "attention_count": len(attention),
-        "traffic_median_t28": round(traffic_median, 1),
-        "conversion_median_t28_pct": round(conversion_median, 2),
+        "selling_now": sum(1 for r in active if float(r.get("units_t28") or 0) > 0), "attention_count": len(attention),
+        "traffic_median_t28": round(traffic_median, 1), "conversion_median_t28_pct": round(conversion_median, 2),
         "sales_t28": round(sum(float(r.get("sales_t28") or 0) for r in active), 2),
-        "sessions_t28": sum(int(r.get("sessions_t28") or 0) for r in active),
-        "units_t28": sum(int(r.get("units_t28") or 0) for r in active),
+        "sessions_t28": sum(int(r.get("sessions_t28") or 0) for r in active), "units_t28": sum(int(r.get("units_t28") or 0) for r in active),
+        "ad_spend_t28": round(sum(float(r.get("ad_spend_t28") or 0) for r in active), 2),
+        "ad_attributed_sales_t28": round(sum(float(r.get("ad_attributed_sales_t28") or 0) for r in active), 2),
+        "ads_through_date": max((r.get("ads_through_date") for r in active if r.get("ads_through_date")), default=None),
     })
     summary["conversion_t28_pct"] = round(100.0 * summary["units_t28"] / summary["sessions_t28"], 2) if summary["sessions_t28"] else None
+    summary["ad_tacos_t28"] = summary["ad_spend_t28"] / summary["sales_t28"] if summary["sales_t28"] > 0 and summary["ad_spend_t28"] > 0 else None
+    summary["ad_roas_t28"] = summary["ad_attributed_sales_t28"] / summary["ad_spend_t28"] if summary["ad_spend_t28"] > 0 else None
 
-    return {
-        "summary": summary,
-        "families": families,
-        "products": rows,
-        "attention": sorted(attention, key=lambda r: (-float(r.get("sales_t28") or 0), r.get("sku") or "")),
-        "drivers": drivers[:5],
-        "diagnostic_basis": {
-            "period": "28D",
-            "traffic_grain": "child ASIN from Data Kiosk; one canonical seller SKU owns each customer-facing offer",
-            "traffic_median_t28": round(traffic_median, 1),
-            "conversion_median_t28_pct": round(conversion_median, 2),
-            "notes": "Commercial states are diagnostic signals, not causal claims. Structural parents and seller-SKU aliases are excluded from sellable demand metrics.",
-        },
-        "local_time": local_clock.get("local_time"),
-    }
+    return {"summary": summary, "families": families, "products": rows,
+        "attention": sorted(attention, key=lambda r: (-float(r.get("sales_t28") or 0), r.get("sku") or "")), "drivers": drivers[:5],
+        "diagnostic_basis": {"period": "28D", "traffic_grain": "child ASIN from Data Kiosk; one canonical seller SKU owns each customer-facing offer",
+            "traffic_median_t28": round(traffic_median, 1), "conversion_median_t28_pct": round(conversion_median, 2),
+            "ads_basis": "Amazon-attributed Ads performance; TACOS uses independent total seller sales. Attributed sales are not incremental sales and the residual is not exact organic sales.",
+            "notes": "Commercial states are diagnostic signals, not causal claims. Structural parents and seller-SKU aliases are excluded from sellable demand metrics."},
+        "local_time": local_clock.get("local_time")}
