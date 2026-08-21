@@ -15,7 +15,7 @@ def trajectory_payload(connect, marketplace: str) -> dict:
     with connect() as conn, conn.cursor() as cur:
         cutoff = _one(cur,"""SELECT max(business_date) AS d FROM mart.business_daily WHERE marketplace_id=%s AND reconciled_daily_report""",(marketplace,)).get("d")
         if cutoff is None:
-            return {"headline": {}, "horizons": [], "series": [], "weekly": [], "ads": {"status":"awaiting_ads_data"}, "local_time": None}
+            return {"headline": {}, "horizons": [], "series": [], "weekly": [], "portfolio": {}, "ads": {"status":"awaiting_ads_data"}, "local_time": None}
 
         horizons=[]
         for label,days in (("7D",7),("28D",28),("56D",56),("90D",90)):
@@ -42,6 +42,42 @@ def trajectory_payload(connect, marketplace: str) -> dict:
               CASE WHEN current_week THEN ('through '||to_char(cutoff,'Dy Mon DD')) ELSE (to_char(week_start,'Mon DD')||' – '||to_char(week_end,'Mon DD')) END date_range FROM enriched ORDER BY week_start DESC LIMIT 10
         """,(cutoff,cutoff,marketplace))
 
+        portfolio=_one(cur,"""
+            WITH offers AS (
+              SELECT seller_sku,asin,open_date,COALESCE(sales_t28,0)::numeric AS sales_t28,
+                     COALESCE(units_t28,0)::numeric AS units_t28
+              FROM mart.catalog_portfolio_product
+              WHERE marketplace_id=%s
+                AND is_offer_owner
+                AND product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE')
+                AND lower(COALESCE(status,'')) <> 'inactive'
+            ), ranked AS (
+              SELECT *,row_number() OVER (ORDER BY sales_t28 DESC,seller_sku) AS revenue_rank
+              FROM offers
+            ), agg AS (
+              SELECT count(*)::int AS active_skus,
+                     count(*) FILTER (WHERE units_t28>0)::int AS productive_skus,
+                     COALESCE(sum(sales_t28),0)::numeric(14,2) AS portfolio_sales_t28,
+                     COALESCE(avg(sales_t28),0)::numeric(14,2) AS revenue_per_active_sku,
+                     COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY sales_t28),0)::numeric(14,2) AS median_revenue_per_sku,
+                     COALESCE(sum(sales_t28) FILTER (WHERE revenue_rank=1),0)::numeric(14,2) AS top1_sales,
+                     COALESCE(sum(sales_t28) FILTER (WHERE revenue_rank<=3),0)::numeric(14,2) AS top3_sales,
+                     COALESCE(sum(sales_t28) FILTER (WHERE open_date IS NOT NULL AND open_date>=%s::date-89),0)::numeric(14,2) AS new_sku_sales
+              FROM ranked
+            )
+            SELECT active_skus,productive_skus,portfolio_sales_t28,revenue_per_active_sku,median_revenue_per_sku,
+                   CASE WHEN portfolio_sales_t28>0 THEN round(100.0*top1_sales/portfolio_sales_t28,1) END AS top_sku_share_pct,
+                   CASE WHEN portfolio_sales_t28>0 THEN round(100.0*top3_sales/portfolio_sales_t28,1) END AS top3_share_pct,
+                   CASE WHEN portfolio_sales_t28>0 THEN round(100.0*new_sku_sales/portfolio_sales_t28,1) END AS new_sku_share_pct
+            FROM agg
+        """,(marketplace,cutoff))
+        portfolio["definition"]={
+            "identity":"Canonical active sellable offer owners only; structural parents and seller-SKU aliases are excluded.",
+            "productive_sku":"An active sellable offer with at least one unit in the latest reconciled 28 days.",
+            "new_sku":"An active sellable offer whose Amazon open_date is within the latest 90 days.",
+            "shares":"Top-SKU, top-3 and new-SKU shares use current T28 seller sales as the denominator."
+        }
+
         ads=_one(cur,"""
             SELECT through_date,spend,attributed_sales,impressions,clicks,
               attributed_purchases purchases,attributed_units units,ctr,cpc,roas,acos,tacos,
@@ -61,4 +97,4 @@ def trajectory_payload(connect, marketplace: str) -> dict:
         """,(marketplace,cutoff,cutoff))
         local_clock=_one(cur,"SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
-    return {"headline":headline,"horizons":horizons,"series":series,"weekly":weekly,"ads":ads,"ads_daily":ads_daily,"local_time":local_clock.get("local_time")}
+    return {"headline":headline,"horizons":horizons,"series":series,"weekly":weekly,"portfolio":portfolio,"ads":ads,"ads_daily":ads_daily,"local_time":local_clock.get("local_time")}
