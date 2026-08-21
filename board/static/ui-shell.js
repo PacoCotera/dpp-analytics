@@ -111,6 +111,7 @@
   function buildWorkspaceIdentity(nav) {
     const path = rawPath();
     if (path === '/today' || path === '/inventory' || path === '/product') return;
+    if (document.querySelector('.page-header')) return;
     const spec = WORKSPACES[path];
     if (!spec || document.querySelector('.workspace-identity')) return;
 
