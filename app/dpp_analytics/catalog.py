@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from . import db
 from .settings import settings
 from .spapi import SpApiClient
@@ -29,6 +31,16 @@ def _main_image(item: dict) -> dict:
     return images[0] if images else {}
 
 
+def _variation_theme(item: dict) -> tuple[str | None, list[str]]:
+    group = _marketplace_group(item.get("relationships"))
+    for relationship in group.get("relationships") or []:
+        if str(relationship.get("type") or "").upper() != "VARIATION":
+            continue
+        theme = relationship.get("variationTheme") or {}
+        return theme.get("theme"), [str(x) for x in (theme.get("attributes") or []) if x]
+    return None, []
+
+
 def ingest_catalog() -> dict[str, int]:
     with db.ingestion_run(SOURCE, JOB, {"marketplace": settings.marketplace_id}) as run:
         with db.connect() as conn, conn.cursor() as cur:
@@ -51,7 +63,11 @@ def ingest_catalog() -> dict[str, int]:
                         "identifiers": ",".join(batch),
                         "identifiersType": "ASIN",
                         "marketplaceIds": settings.marketplace_id,
-                        "includedData": "images,summaries",
+                        # Relationships provide Amazon's actual variation family and
+                        # theme. Attributes provide the values for those dimensions.
+                        # Keep both raw because seller-defined taxonomy can refine the
+                        # commercial labels without losing Amazon source evidence.
+                        "includedData": "attributes,images,productTypes,relationships,summaries",
                         "pageSize": min(20, len(batch)),
                     },
                 )
@@ -63,16 +79,24 @@ def ingest_catalog() -> dict[str, int]:
                         if not asin:
                             continue
                         image = _main_image(item)
+                        variation_theme, variation_attributes = _variation_theme(item)
                         cur.execute(
                             """
                             INSERT INTO core.catalog_item(
-                                marketplace_id, asin, title, image_url, image_width, image_height, updated_at
-                            ) VALUES (%s,%s,%s,%s,%s,%s,now())
+                                marketplace_id, asin, title, image_url, image_width, image_height,
+                                attributes, relationships, product_types,
+                                variation_theme, variation_attributes, updated_at
+                            ) VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb,%s,%s,now())
                             ON CONFLICT (marketplace_id, asin) DO UPDATE SET
                                 title=EXCLUDED.title,
                                 image_url=EXCLUDED.image_url,
                                 image_width=EXCLUDED.image_width,
                                 image_height=EXCLUDED.image_height,
+                                attributes=EXCLUDED.attributes,
+                                relationships=EXCLUDED.relationships,
+                                product_types=EXCLUDED.product_types,
+                                variation_theme=EXCLUDED.variation_theme,
+                                variation_attributes=EXCLUDED.variation_attributes,
                                 updated_at=now()
                             """,
                             (
@@ -82,6 +106,11 @@ def ingest_catalog() -> dict[str, int]:
                                 image.get("link"),
                                 image.get("width"),
                                 image.get("height"),
+                                json.dumps(item.get("attributes") or {}, separators=(",", ":")),
+                                json.dumps(item.get("relationships") or [], separators=(",", ":")),
+                                json.dumps(item.get("productTypes") or [], separators=(",", ":")),
+                                variation_theme,
+                                variation_attributes,
                             ),
                         )
                         written += 1
