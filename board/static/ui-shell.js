@@ -27,6 +27,7 @@
     '/ads': { title: 'Ads', copy: 'Paid demand, efficiency and Amazon attribution.' },
     '/data-health': { title: 'Data Health', copy: 'Source freshness, coverage and trust.' },
   };
+  const CONTEXT_KEY = 'dpp-page-context-v1';
 
   function rawPath() {
     return location.pathname.replace(/\/$/, '') || '/';
@@ -132,10 +133,7 @@
 
   function workspaceGroups() {
     return [...document.querySelectorAll('.tabs, .view-tabs, .subnav')]
-      .map(tablist => ({
-        tablist,
-        tabs: [...tablist.querySelectorAll('button[data-view], button[data-ads-view]')],
-      }))
+      .map(tablist => ({ tablist, tabs: [...tablist.querySelectorAll('button[data-view], button[data-ads-view]')] }))
       .filter(group => group.tabs.length > 1);
   }
 
@@ -185,10 +183,7 @@
     const explicit = links.findIndex(link => link.classList.contains('active'));
     if (explicit >= 0) return explicit;
     const here = location.pathname.replace(/\/$/, '') || '/';
-    return links.findIndex(link => {
-      const path = new URL(link.href, location.href).pathname.replace(/\/$/, '') || '/';
-      return path === here;
-    });
+    return links.findIndex(link => new URL(link.href, location.href).pathname.replace(/\/$/, '') === here);
   }
 
   function movePrimary(delta) {
@@ -204,12 +199,50 @@
     let element = target instanceof Element ? target : null;
     while (element && element !== document.body) {
       const style = getComputedStyle(element);
-      if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && element.scrollWidth > element.clientWidth + 3) {
-        return true;
-      }
+      if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && element.scrollWidth > element.clientWidth + 3) return true;
       element = element.parentElement;
     }
     return false;
+  }
+
+  function savePageContext() {
+    if (document.visibilityState === 'hidden') return;
+    const groups = workspaceGroups();
+    const context = {
+      href: location.href,
+      path: rawPath(),
+      scrollY: Math.round(window.scrollY),
+      tabs: groups.map(group => targetId(group.tabs[activeIndex(group)])),
+      at: Date.now(),
+    };
+    try { sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(context)); } catch (_) {}
+  }
+
+  function restorePageContext() {
+    let context = null;
+    try { context = JSON.parse(sessionStorage.getItem(CONTEXT_KEY) || 'null'); } catch (_) {}
+    if (!context || context.path !== rawPath() || Date.now() - Number(context.at || 0) > 6 * 60 * 60 * 1000) return;
+    const groups = workspaceGroups();
+    (context.tabs || []).forEach((target, index) => {
+      const group = groups[index];
+      const tab = group?.tabs.find(item => targetId(item) === target);
+      if (tab && !tab.classList.contains('active')) tab.click();
+    });
+    window.requestAnimationFrame(() => window.scrollTo({ top: Number(context.scrollY || 0), behavior: 'instant' }));
+  }
+
+  function initializeContextPersistence() {
+    let timer = null;
+    const queueSave = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(savePageContext, 120);
+    };
+    window.addEventListener('scroll', queueSave, { passive: true });
+    window.addEventListener('pagehide', savePageContext);
+    document.addEventListener('click', event => {
+      if (event.target.closest('button[data-view],button[data-ads-view],a')) queueSave();
+    }, true);
+    restorePageContext();
   }
 
   function initializeSwipeNavigation() {
@@ -220,23 +253,10 @@
         tab.setAttribute('role', tab.getAttribute('role') || 'tab');
         tab.addEventListener('click', () => window.setTimeout(() => syncTabA11y(group), 0));
         tab.addEventListener('keydown', event => {
-          if (event.key === 'ArrowRight') {
-            event.preventDefault();
-            moveTab(group, 1);
-          } else if (event.key === 'ArrowLeft') {
-            event.preventDefault();
-            moveTab(group, -1);
-          } else if (event.key === 'Home') {
-            event.preventDefault();
-            group.tabs[0].click();
-            syncTabA11y(group);
-            group.tabs[0].focus();
-          } else if (event.key === 'End') {
-            event.preventDefault();
-            group.tabs.at(-1).click();
-            syncTabA11y(group);
-            group.tabs.at(-1).focus();
-          }
+          if (event.key === 'ArrowRight') { event.preventDefault(); moveTab(group, 1); }
+          else if (event.key === 'ArrowLeft') { event.preventDefault(); moveTab(group, -1); }
+          else if (event.key === 'Home') { event.preventDefault(); group.tabs[0].click(); syncTabA11y(group); group.tabs[0].focus(); }
+          else if (event.key === 'End') { event.preventDefault(); group.tabs.at(-1).click(); syncTabA11y(group); group.tabs.at(-1).focus(); }
         });
       });
       syncTabA11y(group);
@@ -245,7 +265,7 @@
     let start = null;
     let suppressClickUntil = 0;
     const isMobile = () => matchMedia('(max-width: 760px)').matches;
-    const explicitNoSwipe = '.primary-nav,.tabs,.view-tabs,.subnav,.filters,.periods,.chart-tools,.table-wrap,.order-stream,.catalog-toolbar,input,textarea,select,button,svg,[data-no-swipe],[data-horizontal-scroll]';
+    const explicitNoSwipe = '.primary-nav,.tabs,.view-tabs,.subnav,.filters,.periods,.chart-tools,.table-wrap,.order-stream,.chart,.rhythm-host,.trajectory-chart,.sales-chart,.chart-wrap,.chart-host,input,textarea,select,button,canvas,svg,[role="slider"],[data-no-swipe],[data-horizontal-scroll]';
 
     document.addEventListener('pointerdown', event => {
       if (!isMobile() || event.pointerType !== 'touch') return;
@@ -254,15 +274,15 @@
     }, { passive: true });
 
     document.addEventListener('pointerup', event => {
-      if (!start || !isMobile() || event.pointerType !== 'touch') {
-        start = null;
-        return;
-      }
+      if (!start || !isMobile() || event.pointerType !== 'touch') { start = null; return; }
       const dx = event.clientX - start.x;
       const dy = event.clientY - start.y;
       const elapsed = performance.now() - start.t;
       start = null;
-      if (elapsed > 900 || Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+      const distance = Math.abs(dx);
+      const viewportShare = distance / Math.max(1, window.innerWidth);
+      const horizontalIntent = distance >= 110 && viewportShare >= 0.28 && distance >= Math.abs(dy) * 2.1;
+      if (elapsed > 700 || !horizontalIntent) return;
 
       const delta = dx < 0 ? 1 : -1;
       suppressClickUntil = performance.now() + 450;
@@ -284,6 +304,7 @@
     buildNavigation(nav);
     buildWorkspaceIdentity(nav);
     initializeSwipeNavigation();
+    initializeContextPersistence();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeShell, { once: true });
