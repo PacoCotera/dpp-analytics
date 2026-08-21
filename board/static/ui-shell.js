@@ -122,7 +122,11 @@
 
     const legacy = document.querySelector('.page-head');
     if (legacy) legacy.classList.add('workspace-legacy-head');
-    if (path === '/finance') document.querySelector('.finance-head')?.classList.add('workspace-legacy-head');
+    if (path === '/finance') {
+      const financeHead = document.querySelector('.finance-head');
+      financeHead?.firstElementChild?.classList.add('workspace-legacy-head');
+      financeHead?.classList.add('workspace-finance-period');
+    }
   }
 
   function initializeShell() {
