@@ -1,5 +1,7 @@
 # Operating Board Frontend Architecture
 
+This document defines frontend ownership and architectural constraints. For the route → API → HTML/CSS/JS map and operational change recipes, use [`maintenance.md`](maintenance.md). For source-of-truth and reconciliation rules, use [`data-model.md`](data-model.md).
+
 ## Decision
 
 Use native HTML, CSS Grid/Flexbox and ES modules for the current application. Do not add React, Bootstrap or Tailwind merely to solve layout consistency.
@@ -74,7 +76,7 @@ Each workspace owns a small explicit trio where appropriate:
 
 Page modules do not own global typography, primary navigation, generic KPI/panel/table geometry or duplicated formatting utilities. Shared formatting, escaping and fetch behavior lives in `static/ui-utils.js`.
 
-The Sales workspace retains the existing `sales-canonical.js` filename for this refactor because it is already the single live renderer; filename normalization is not worth mixing into the behavioral migration.
+The Sales workspace retains the existing `sales-canonical.js` filename because it is already the single live renderer; the historical filename does not imply another Sales runtime.
 
 ### 6. Data/API
 
@@ -115,6 +117,19 @@ Frontend dependencies are source-controlled. The Docker build no longer rewrites
 
 This makes local/source behavior and deployed behavior materially easier to compare: what is reviewed in Git is what the browser loads in production.
 
+## Retained global styles
+
+`mobile-ux.css` and `design-refine.css` remain shared compatibility/foundation sheets from earlier iterations. They are not page-specific extension points.
+
+When touching these files:
+
+- keep only genuinely cross-page behavior there;
+- move page-specific selectors to the owning page stylesheet;
+- do not create another global “refine”, “override”, “v2” or “enhance” layer;
+- delete superseded rules once ownership has moved.
+
+The target is fewer owners, not more layers with clearer names.
+
 ## Lint and formatting policy
 
 Lint and formatting serve different purposes and run separately.
@@ -137,11 +152,22 @@ New and migrated files should be readable and formatted when touched even before
 8. Today extraction, responsive runtime and wall mode: **done**.
 9. Ads consolidation, including Targets/Search Terms and elimination of duplicate `/api/ads` fetch/injected DOM: **done**.
 10. Shared shell owns navigation, tab accessibility and mobile swipe behavior: **done**.
-11. Superseded Finance, Sales overrides, Home, Today, Ads and generic refinement layers: **removed**.
+11. Superseded Finance frontend layers, Sales overrides, Home, Today, Ads and generic refinement layers: **removed**.
 12. Legacy unused `index.html`: **removed**; `/`, `/home` and `/index.html` are served by canonical `home.html`.
 13. Full frontend lint on the consolidated source tree: **required and green before review/deploy**.
 14. Production visual regression review at desktop/mobile widths: **required before accepting the refactor**.
 15. Optional analytical/product redesigns such as chart-form changes: **separate from this structural refactor**.
+
+## Documentation boundary
+
+Frontend architecture changes are incomplete unless documentation remains navigable without reverse-engineering the source tree.
+
+In the same PR:
+
+- update this file when shared ownership/framework rules change;
+- update `maintenance.md` when a route or owning file changes;
+- update `data-model.md` when the authoritative data definition changes;
+- update the root README if the product surface or repository map changes.
 
 ## Quality gate
 
