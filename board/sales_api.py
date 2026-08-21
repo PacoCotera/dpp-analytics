@@ -3,14 +3,26 @@ from __future__ import annotations
 from ads_context import business_t28
 
 
+def _query_label(sql: str) -> str:
+    return " ".join(sql.split())[:180]
+
+
 def _one(cur, sql: str, params=()):
-    cur.execute(sql, params)
-    return cur.fetchone() or {}
+    try:
+        cur.execute(sql, params)
+        return cur.fetchone() or {}
+    except Exception as exc:
+        print(f"sales query failed [one] {_query_label(sql)}: {exc}", flush=True)
+        raise
 
 
 def _all(cur, sql: str, params=()):
-    cur.execute(sql, params)
-    return list(cur.fetchall())
+    try:
+        cur.execute(sql, params)
+        return list(cur.fetchall())
+    except Exception as exc:
+        print(f"sales query failed [all] {_query_label(sql)}: {exc}", flush=True)
+        raise
 
 
 def sales_payload(connect, decorate_products, marketplace: str) -> dict:
@@ -79,6 +91,7 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
             with conn.transaction():
                 ads = business_t28(cur, marketplace)
         except Exception as exc:
+            print(f"sales ads context degraded: {exc}", flush=True)
             ads = {
                 "status": "unavailable",
                 "reason": "ads_context_error",
