@@ -63,7 +63,7 @@ function renderHorizons(rows) {
       return `<div class="trajectory-horizon">
         <div class="trajectory-horizon__label">${escapeHtml(item.label)}</div>
         <div>
-          <div class="trajectory-horizon__track"><div class="trajectory-horizon__bar ${tone}" style="width:${width}%"></div></div>
+          <progress class="trajectory-horizon__track ${tone}" max="100" value="${width}" aria-label="${escapeHtml(item.label)} relative change magnitude"></progress>
           <div class="trajectory-horizon__copy">${money(item.sales)} · ${money(item.daily_avg)}/day · ${integer(item.orders)} orders</div>
         </div>
         <div class="trajectory-horizon__delta ${tone}">${percent(item.delta_pct)}</div>
