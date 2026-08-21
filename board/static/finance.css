@@ -360,6 +360,41 @@
   height: auto;
 }
 
+.finance-chart-grid {
+  stroke: #ded6ca;
+}
+
+.finance-chart-axis {
+  fill: #746c62;
+  font-size: 11px;
+}
+
+.finance-chart-month {
+  fill: #665f57;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.finance-chart-bar--sales {
+  fill: #b58b52;
+  stroke: #b58b52;
+}
+
+.finance-chart-bar--contribution {
+  fill: #6f8269;
+  stroke: #6f8269;
+}
+
+.finance-chart-bar--contribution.is-negative {
+  fill: #9c665f;
+  stroke: #9c665f;
+}
+
+.finance-chart-bar.is-open {
+  fill: none;
+  stroke-dasharray: 5 4;
+}
+
 .chart-legend {
   display: flex;
   align-items: center;
