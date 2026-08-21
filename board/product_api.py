@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ads_context import product_t28
 from catalog_api import (
     _product_costs,
     _product_taxonomy,
@@ -87,16 +88,7 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
             WHERE marketplace_id=%s AND asin=%s AND business_date BETWEEN c.d-27 AND c.d
         """,(cutoff,marketplace,asin)) if cutoff and asin else {}
 
-        # Product Workspace consumes the canonical product Ads mart. This keeps
-        # account aggregation, attribution maturity and TACOS semantics aligned
-        # with Catalog and the rest of the operating product.
-        ads = _one(cur,"""
-            SELECT * FROM mart.ads_product_business_t28
-            WHERE marketplace_id=%s AND seller_sku=%s
-            LIMIT 1
-        """,(marketplace,sku))
-        ads['status']='ready' if ads else 'awaiting_ads_data'
-        ads['interpretation']='Amazon-attributed sales are attribution, not incremental sales. TACOS uses independently reconciled seller sales; seller sales minus attributed sales is not exact organic sales.'
+        ads = product_t28(cur, marketplace, sku)
 
         series = _all(cur,"""
             WITH c AS (SELECT %s::date d), days AS (SELECT generate_series(c.d-89,c.d,interval '1 day')::date business_date FROM c),
