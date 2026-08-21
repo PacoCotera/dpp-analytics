@@ -33,7 +33,7 @@
           <div>
             <div class="kicker">Trust layer</div>
             <h1 class="page-header__title">Can I trust what I’m seeing?</h1>
-            <p class="page-header__description">This page translates ingestion plumbing into a simple answer: which data is healthy, what is stale, and whether a business decision should wait.</p>
+            <p class="page-header__description">Decision-critical seller data first. Optional domains are reported separately so a disconnected source cannot masquerade as either healthy or broken.</p>
           </div>
         </section>
 
@@ -42,8 +42,8 @@
             <div class="panel__body health-control">
               <div class="health-ring" id="ring"><strong id="score">—</strong></div>
               <div>
-                <h2 class="health-title" id="healthTitle">Checking the data pipeline…</h2>
-                <p class="health-copy" id="healthCopy">Reviewing each source and the warehouse coverage behind the operating product.</p>
+                <h2 class="health-title" id="healthTitle">Checking decision coverage…</h2>
+                <p class="health-copy" id="healthCopy">Reviewing the sources behind the operating product.</p>
               </div>
             </div>
           </div>
@@ -52,7 +52,14 @@
 
         <section class="page-section">
           <div class="section-header">
-            <div><h2 class="section-header__title">Warehouse coverage</h2><div class="section-header__description">Useful scale checks, not vanity metrics.</div></div>
+            <div><h2 class="section-header__title">Decision domains</h2><div class="section-header__description">What each source state means for the product right now.</div></div>
+          </div>
+          <div class="domain-grid" id="domains"></div>
+        </section>
+
+        <section class="page-section">
+          <div class="section-header">
+            <div><h2 class="section-header__title">Warehouse coverage</h2><div class="section-header__description">Scale checks for the seller-data foundation.</div></div>
           </div>
           <div class="source-grid">
             <div class="source"><strong id="orders">—</strong><span>orders captured</span></div>
@@ -64,7 +71,7 @@
 
         <section class="page-section">
           <div class="section-header">
-            <div><h2 class="section-header__title">Source freshness</h2><div class="section-header__description">Problems first. Expand the full job list only when you need pipeline detail.</div></div>
+            <div><h2 class="section-header__title">Pipeline detail</h2><div class="section-header__description">Problems first. Expand technical job detail only when investigating a source.</div></div>
             <button class="btn" id="toggle" type="button" aria-pressed="false">Show all jobs</button>
           </div>
           <div class="panel"><div class="panel__body"><div id="jobs"></div></div></div>
