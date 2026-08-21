@@ -5,6 +5,7 @@ const viewState = {
   payload: null,
   window: 'ytd',
   selectedMonth: null,
+  includeCogs: true,
 };
 
 function financeMoney(value) {
@@ -220,12 +221,16 @@ function rowsForWindow(rows, windowKey, currentMonth) {
   return rows;
 }
 
-function renderProgressionChart(svg, rows) {
+function trajectoryContribution(row, includeCogs) {
+  if (row.contribution_after_product_cogs === null || row.contribution_after_product_cogs === undefined) return null;
+  const contribution = Number(row.contribution_after_product_cogs || 0);
+  return includeCogs ? contribution : contribution + Math.abs(Number(row.product_cogs || 0));
+}
+
+function renderProgressionChart(svg, rows, includeCogs = true) {
   const height = 300;
   const margin = { left: 72, right: 20, top: 26, bottom: 62 };
-  const usableRows = rows.filter(
-    row => row.month && row.contribution_after_product_cogs !== null && row.contribution_after_product_cogs !== undefined,
-  );
+  const usableRows = rows.filter(row => row.month && trajectoryContribution(row, includeCogs) !== null);
   const width = Math.max(900, margin.left + margin.right + (usableRows.length + 1) * 72);
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
@@ -233,7 +238,7 @@ function renderProgressionChart(svg, rows) {
 
   let cumulative = 0;
   const points = usableRows.map(row => {
-    const delta = Number(row.contribution_after_product_cogs || 0);
+    const delta = trajectoryContribution(row, includeCogs);
     const start = cumulative;
     const end = cumulative + delta;
     cumulative = end;
@@ -278,7 +283,7 @@ function renderProgressionChart(svg, rows) {
     const openClass = point._current ? ' is-open' : '';
     const directionClass = positive ? '' : ' is-negative';
     const month = chartMonthParts(point.month);
-    const titleSuffix = point._current && point._adsPending ? '; advertising pending' : '';
+    const titleSuffix = `${point._current && point._adsPending ? '; advertising pending' : ''}${includeCogs ? '' : '; product COGS excluded'}`;
 
     output += `<g class="finance-chart-month-hit" data-month="${escapeHtml(point.month)}" tabindex="0" role="button" aria-label="Inspect ${escapeHtml(monthLongLabel(point.month))}">
       <rect class="finance-chart-bar dpp-bar finance-chart-bar--contribution${directionClass}${openClass}" x="${center - barWidth / 2}" y="${topY}" width="${barWidth}" height="${barHeight}" rx="4"></rect>
@@ -306,7 +311,7 @@ function renderProgressionChart(svg, rows) {
   const cumulativeY = y(cumulative);
   const totalTop = Math.min(zeroY, cumulativeY);
   const totalHeight = Math.max(2, Math.abs(cumulativeY - zeroY));
-  output += `<g><rect class="finance-chart-bar finance-chart-bar--sales" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>Window contribution: ${escapeHtml(financeMoney(cumulative))}${hasOpen ? ' including provisional open month' : ''}${hasAdsPending ? '; advertising pending' : ''}</title></g>`;
+  output += `<g><rect class="finance-chart-bar finance-chart-bar--sales" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>${includeCogs ? 'Window contribution' : 'Window contribution before product COGS'}: ${escapeHtml(financeMoney(cumulative))}${hasOpen ? ' including provisional open month' : ''}${hasAdsPending ? '; advertising pending' : ''}</title></g>`;
   const rawTotalValueY = cumulative < 0 ? cumulativeY - 8 : cumulativeY + 14;
   const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
   output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(cumulative)}</text>`;
@@ -382,7 +387,6 @@ function renderMonthWaterfall(svg, row) {
     const barHeight = Math.max(2, Math.abs(endY - startY));
     const positive = point.delta >= 0;
     const directionClass = positive ? '' : ' is-negative';
-    const openClass = open ? ' is-open' : '';
     const salesClass = point.kind === 'sales' ? ' finance-chart-bar--sales' : '';
     const barClass = salesClass || ` finance-chart-bar--contribution${directionClass}`;
 
@@ -390,7 +394,7 @@ function renderMonthWaterfall(svg, row) {
       output += `<line class="dpp-connector" x1="${center - barWidth / 2}" x2="${center + barWidth / 2}" y1="${startY}" y2="${startY}"></line>`;
       output += `<text class="dpp-muted" x="${center}" y="${Math.max(margin.top + 11, startY - 8)}" text-anchor="middle">PENDING</text>`;
     } else {
-      output += `<g><rect class="finance-chart-bar dpp-bar${barClass}${openClass}" x="${center - barWidth / 2}" y="${topY}" width="${barWidth}" height="${barHeight}" rx="4"></rect><title>${escapeHtml(point.detail)}: ${escapeHtml(compactSignedMoney(point.delta))}</title></g>`;
+      output += `<g><rect class="finance-chart-bar dpp-bar${barClass}" x="${center - barWidth / 2}" y="${topY}" width="${barWidth}" height="${barHeight}" rx="4"></rect><title>${escapeHtml(point.detail)}: ${escapeHtml(compactSignedMoney(point.delta))}</title></g>`;
       const rawValueY = positive ? topY - 7 : topY + barHeight + 13;
       const valueY = Math.max(margin.top + 10, Math.min(height - 66, rawValueY));
       output += `<text class="finance-chart-month" x="${center}" y="${valueY}" text-anchor="middle">${compactSignedMoney(point.delta)}</text>`;
@@ -408,8 +412,7 @@ function renderMonthWaterfall(svg, row) {
   const contributionY = y(contribution);
   const totalTop = Math.min(zeroY, contributionY);
   const totalHeight = Math.max(2, Math.abs(contributionY - zeroY));
-  const totalOpenClass = open ? ' is-open' : '';
-  output += `<g><rect class="finance-chart-bar finance-chart-bar--sales${totalOpenClass}" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>${row._adsPending ? 'Contribution before current-month advertising' : 'Contribution'}: ${escapeHtml(financeMoney(contribution))}</title></g>`;
+  output += `<g><rect class="finance-chart-bar finance-chart-bar--sales" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>${row._adsPending ? 'Contribution before current-month advertising' : 'Contribution'}: ${escapeHtml(financeMoney(contribution))}</title></g>`;
   const rawTotalValueY = contribution < 0 ? contributionY - 8 : contributionY + 14;
   const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
   output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(contribution)}</text>`;
@@ -544,20 +547,39 @@ function renderPendingMonths(payload) {
     .join('');
 }
 
-function renderHistory(closed) {
-  const rows = closed.slice().sort((a, b) => String(b.month).localeCompare(String(a.month)));
+function renderHistory(current, closed) {
+  const currentRow = currentContributionRow(current);
+  const closedRows = closed
+    .slice()
+    .sort((a, b) => String(b.month).localeCompare(String(a.month)))
+    .map(closedContributionRow);
+  const rows = currentRow.month ? [currentRow, ...closedRows] : closedRows;
   const header = '<div class="history-row head"><div>Month</div><div>Sales</div><div>Amazon effect</div><div>Advertising</div><div>Product cost</div><div>Contribution</div><div>State</div></div>';
 
   byId('history').innerHTML = header + rows
-    .map(item => `<div class="history-row">
-      <div>${monthLabel(item.month)}</div>
-      <div data-label="Sales"><strong>${financeMoney(item.net_sales_ex_vat)}</strong><small>ex IVA</small></div>
-      <div data-label="Amazon effect"><strong class="${valueClass(item.amazon_order_effect)}">${financeMoney(item.amazon_order_effect)}</strong></div>
-      <div data-label="Advertising"><strong class="${valueClass(item.advertising)}">${financeMoney(item.advertising)}</strong></div>
-      <div data-label="Product cost"><strong class="neg">${financeMoney(-Math.abs(Number(item.product_cogs || 0)))}</strong></div>
-      <div data-label="Contribution"><strong class="${valueClass(item.contribution_after_product_cogs)}">${financeMoney(item.contribution_after_product_cogs)}</strong><small>${item.contribution_margin_pct == null ? '—' : `${Number(item.contribution_margin_pct).toFixed(1)}%`}</small></div>
-      <div data-label="State"><span class="history-state">${escapeHtml(stateLabel(item.state || 'CLOSED'))}</span><small>v${integer(item.version || 1)}</small></div>
-    </div>`)
+    .map(item => {
+      const open = Boolean(item._current);
+      const margin = !open && item.contribution_margin_pct != null
+        ? `${Number(item.contribution_margin_pct).toFixed(1)}%`
+        : open && item._adsPending
+          ? 'pre-ads'
+          : 'provisional';
+      const advertising = open && item._adsPending
+        ? '<strong class="pending-value">Pending</strong><small>not accrued</small>'
+        : `<strong class="${valueClass(item.advertising)}">${financeMoney(item.advertising)}</strong>`;
+      const state = open ? 'OPEN' : stateLabel(item.state || 'CLOSED');
+      const stateNote = open ? 'provisional' : `v${integer(item.version || 1)}`;
+
+      return `<div class="history-row${open ? ' open-month' : ''}">
+        <div>${monthLabel(item.month)}${open ? '<small>current</small>' : ''}</div>
+        <div data-label="Sales"><strong>${financeMoney(item.net_sales_ex_vat)}</strong><small>ex IVA</small></div>
+        <div data-label="Amazon effect"><strong class="${valueClass(item.amazon_order_effect)}">${financeMoney(item.amazon_order_effect)}</strong></div>
+        <div data-label="Advertising">${advertising}</div>
+        <div data-label="Product cost"><strong class="neg">${financeMoney(-Math.abs(Number(item.product_cogs || 0)))}</strong></div>
+        <div data-label="Contribution"><strong class="${valueClass(item.contribution_after_product_cogs)}">${financeMoney(item.contribution_after_product_cogs)}</strong><small>${margin}</small></div>
+        <div data-label="State"><span class="history-state">${escapeHtml(state)}</span><small>${escapeHtml(stateNote)}</small></div>
+      </div>`;
+    })
     .join('');
 }
 
@@ -621,6 +643,11 @@ function updateWindowControls() {
     button.classList.toggle('active', selected);
   });
   byId('monthPickerWrap').hidden = viewState.window !== 'month';
+  byId('cogsToggleWrap').hidden = viewState.window === 'month';
+  const cogsToggle = byId('cogsToggle');
+  cogsToggle.classList.toggle('active', viewState.includeCogs);
+  cogsToggle.setAttribute('aria-pressed', String(viewState.includeCogs));
+  cogsToggle.textContent = viewState.includeCogs ? 'COGS included' : 'COGS excluded';
 }
 
 function renderWindow() {
@@ -650,7 +677,7 @@ function renderWindow() {
       '<span class="legend-key"><i class="legend-swatch"></i>Sales</span>',
       '<span class="legend-key"><strong class="pos">+</strong>Addition</span>',
       '<span class="legend-key"><strong class="neg">−</strong>Deduction</span>',
-      selected?._current ? '<span class="legend-key"><i class="legend-swatch open"></i>OPEN · provisional</span>' : '',
+      selected?._current ? '<span class="legend-key"><strong>OPEN</strong> · provisional</span>' : '',
       '<span class="legend-key"><i class="legend-swatch"></i>Contribution</span>',
     ].join('');
     svg.setAttribute('aria-label', `Contribution bridge for ${monthLongLabel(selected?.month)}`);
@@ -675,16 +702,20 @@ function renderWindow() {
   };
 
   title.textContent = labels[viewState.window] || 'Contribution trajectory';
-  sub.textContent = `${windowDescription(viewState.window, windowRows)} Click any month to inspect its contribution bridge.`;
+  const cogsRead = viewState.includeCogs
+    ? 'Product COGS is included.'
+    : 'Product COGS is excluded; the trajectory shows contribution before product COGS.';
+  sub.textContent = `${windowDescription(viewState.window, windowRows)} ${cogsRead} Click any month to inspect its contribution bridge.`;
   state.textContent = stateLabels[viewState.window] || 'RUNNING RESULT';
   legend.innerHTML = [
     '<span class="legend-key"><strong class="pos">+</strong>Positive month</span>',
     '<span class="legend-key"><strong class="neg">−</strong>Negative month</span>',
     windowRows.some(row => row._current) ? '<span class="legend-key"><i class="legend-swatch open"></i>OPEN · provisional</span>' : '',
+    `<span class="legend-key"><strong>${viewState.includeCogs ? 'COGS' : 'PRE-COGS'}</strong> ${viewState.includeCogs ? 'included' : 'view'}</span>`,
     '<span class="legend-key"><i class="legend-swatch"></i>Window total</span>',
   ].join('');
-  svg.setAttribute('aria-label', `${title.textContent}; cumulative contribution by accounting month`);
-  renderProgressionChart(svg, windowRows);
+  svg.setAttribute('aria-label', `${title.textContent}; cumulative contribution by accounting month; product COGS ${viewState.includeCogs ? 'included' : 'excluded'}`);
+  renderProgressionChart(svg, windowRows, viewState.includeCogs);
 }
 
 function inspectMonth(month) {
@@ -710,7 +741,7 @@ function render(payload) {
   renderCurrentBridge(current);
   renderYtd(ytd);
   renderPendingMonths(payload);
-  renderHistory(closed);
+  renderHistory(current, closed);
   renderEvents(payload.recent);
   renderWindow();
 }
@@ -721,7 +752,7 @@ function bindInteractions() {
   toggle.addEventListener('click', () => {
     const expanded = history.classList.toggle('expanded');
     toggle.setAttribute('aria-expanded', String(expanded));
-    toggle.textContent = expanded ? 'Show recent closes only' : 'Show full closed history';
+    toggle.textContent = expanded ? 'Show recent months only' : 'Show full month history';
   });
 
   document.querySelectorAll('[data-finance-window]').forEach(button => {
@@ -737,6 +768,11 @@ function bindInteractions() {
   byId('monthPicker').addEventListener('change', event => {
     viewState.window = 'month';
     viewState.selectedMonth = event.target.value;
+    renderWindow();
+  });
+
+  byId('cogsToggle').addEventListener('click', () => {
+    viewState.includeCogs = !viewState.includeCogs;
     renderWindow();
   });
 
