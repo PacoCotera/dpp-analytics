@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
-
 
 def _one(cur, sql: str, params=()):
     cur.execute(sql, params)
@@ -24,6 +22,10 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
     surface uses the same multi-account aggregation, seller-sales denominator,
     attribution maturity, and TACOS semantics. Campaign/target/search-term rows
     remain drilldown facts because they do not have a seller-sales denominator.
+
+    Attribution freshness is warehouse-owned. The board must not infer maturity
+    from a hard-coded number of days because Amazon attribution differs by ad
+    product/account type and can evolve independently of this application.
     """
     with connect() as conn, conn.cursor() as cur:
         ready = _one(cur, "SELECT to_regclass('mart.ads_business_t28') business_rel, to_regclass('mart.ads_product_business_t28') product_rel")
@@ -47,10 +49,21 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
         if not through:
             return _empty("awaiting_ads_data")
 
+        attribution = _one(cur, """
+            SELECT max(business_date) FILTER (WHERE attribution_mature) AS mature_through_date,
+                   max(attribution_window) FILTER (WHERE business_date=%s::date) AS attribution_window,
+                   max(attribution_method) FILTER (WHERE business_date=%s::date) AS attribution_method,
+                   max(attribution_state) FILTER (WHERE business_date=%s::date) AS latest_attribution_state
+            FROM mart.ads_business_daily
+            WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date
+        """, (through, through, through, marketplace, through, through))
+
         summary.update({
             "period_end": through.isoformat(),
             "period_start": summary.get("period_start").isoformat() if summary.get("period_start") else None,
             "basis": "Latest 28 Ads dates aligned to independently reconciled seller sales. Ads-attributed conversions can revise; attributed sales are not exact incremental sales and the residual is not exact organic sales.",
+            "attribution_window": attribution.get("attribution_window"),
+            "attribution_method": attribution.get("attribution_method"),
             "prior": {
                 "spend": summary.get("prior_spend") or 0,
                 "attributed_sales": summary.get("prior_attributed_sales") or 0,
@@ -58,6 +71,8 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
             },
         })
 
+        mature_through = attribution.get("mature_through_date")
+        latest_state = attribution.get("latest_attribution_state") or "provisional_attribution"
         freshness = {
             "through_date": through,
             "source_generated_at": summary.get("source_generated_at"),
@@ -66,9 +81,11 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
             "period_observed_days": summary.get("observed_ads_days") or 0,
             "period_missing_days": summary.get("missing_ads_days") or 0,
             "mature_days": summary.get("mature_ads_days") or 0,
-            "mature_through_date": (through - timedelta(days=7)).isoformat(),
-            "latest_days_state": "provisional_attribution",
-            "freshness_note": "Latest Ads days can revise as attributed conversions arrive. Days older than the current 7-day click window are attribution-mature, not immutable.",
+            "mature_through_date": mature_through.isoformat() if mature_through else None,
+            "latest_days_state": latest_state,
+            "attribution_window": attribution.get("attribution_window"),
+            "attribution_method": attribution.get("attribution_method"),
+            "freshness_note": "Attribution maturity is supplied by the warehouse reporting contract. Recent conversion metrics can revise until their applicable Amazon Ads lookback window has ended.",
         }
 
         daily = _all(cur, """
