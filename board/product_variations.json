@@ -1,0 +1,19 @@
+{
+  "_meta": {
+    "description": "Seller-owned commercial variation taxonomy. Amazon remains authoritative for parent/child identity; this file describes what each sellable child means for analysis. Production may override this file through PRODUCT_VARIATIONS_PATH so local taxonomy is never overwritten by Git.",
+    "fields": {
+      "family_name": "Optional commercial family label shared by siblings",
+      "attributes": "Arbitrary variation dimensions such as design, ruling, size, color, pack_count, etc. Values are aggregated independently and in combinations by the analytics layer."
+    },
+    "example_shape": {
+      "EXAMPLE-SKU": {
+        "family_name": "Example family",
+        "attributes": {
+          "design": "Example design",
+          "ruling": "Dotted"
+        }
+      }
+    }
+  },
+  "products": {}
+}
