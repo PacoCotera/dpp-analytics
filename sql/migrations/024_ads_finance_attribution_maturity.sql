@@ -1,5 +1,9 @@
 -- Finance must use the same explicit Ads attribution contract as operating marts.
 -- Do not assume every ad product/account has a seven-day conversion window.
+--
+-- IMPORTANT: mart.ads_finance_month_context already has dependent views in
+-- production. PostgreSQL CREATE OR REPLACE VIEW requires the existing column
+-- names/order/types to remain stable; new columns must be appended at the end.
 
 CREATE OR REPLACE VIEW mart.ads_finance_month_context AS
 WITH months AS (
@@ -63,10 +67,8 @@ SELECT marketplace_id,month,month_end,expected_ads_days,COALESCE(observed_ads_da
        CASE WHEN clicks>0 THEN ads_api_accrual/clicks END AS cpc,
        CASE WHEN ads_api_accrual>0 THEN attributed_sales/ads_api_accrual END AS roas,
        CASE WHEN attributed_sales>0 THEN ads_api_accrual/attributed_sales END AS acos,
-       attribution_method,attribution_window,attribution_window_days,ads_last_business_date,ads_through_date,
+       attribution_method,attribution_window,ads_last_business_date,ads_through_date,
        ads_source_generated_at,ads_ingested_at,ads_calendar_complete,ads_attribution_mature,
-       CASE WHEN attribution_window_known THEN month_end+attribution_window_days END AS ads_mature_after_date,
-       CASE WHEN attribution_window_known THEN CASE WHEN ads_attribution_mature THEN 'MATURE' ELSE 'PROVISIONAL' END ELSE 'UNKNOWN' END AS ads_attribution_state,
        COALESCE(bridge_events,0) AS bridge_events,bridge_amount AS product_ads_payment_bridge,
        bridge_first_posted_at,bridge_last_posted_at,
        CASE WHEN ads_calendar_complete AND ads_attribution_mature THEN 'ADS_API_ACCRUAL_READY'
@@ -79,7 +81,10 @@ SELECT marketplace_id,month,month_end,expected_ads_days,COALESCE(observed_ads_da
        close_basis AS immutable_close_basis,closed_at,
        (version IS NOT NULL
         AND close_basis->>'advertising_source'='following_calendar_month_ProductAdsPayment_bridge'
-        AND ads_calendar_complete AND ads_attribution_mature) AS ads_api_restatement_available
+        AND ads_calendar_complete AND ads_attribution_mature) AS ads_api_restatement_available,
+       attribution_window_days,
+       CASE WHEN attribution_window_known THEN month_end+attribution_window_days END AS ads_mature_after_date,
+       CASE WHEN attribution_window_known THEN CASE WHEN ads_attribution_mature THEN 'MATURE' ELSE 'PROVISIONAL' END ELSE 'UNKNOWN' END AS ads_attribution_state
 FROM readiness;
 
 COMMENT ON VIEW mart.ads_finance_month_context IS
