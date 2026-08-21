@@ -39,6 +39,38 @@ async function verifySalesOverview(page) {
   await page.locator('button[data-range="12m"]').click();
 }
 
+async function verifyCatalog(page) {
+  await page.locator('.family').first().waitFor({ timeout: 5000 });
+  const semantic = await page.evaluate(async () => {
+    const response = await fetch('/api/catalog', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) return { errors: [`catalog API ${response.status}`] };
+    const errors = [];
+    const close = (a, b, tolerance = 0.02) => Math.abs(Number(a || 0) - Number(b || 0)) <= tolerance;
+    for (const family of data.families || []) {
+      const members = (family.members || []).filter(x => ['SELLABLE_VARIATION', 'SELLABLE_STANDALONE'].includes(x.product_role));
+      if (!members.length) continue;
+      const sales = members.reduce((n, x) => n + Number(x.sales_t28 || 0), 0);
+      const units = members.reduce((n, x) => n + Number(x.units_t28 || 0), 0);
+      const sessions = members.reduce((n, x) => n + Number(x.sessions_t28 || 0), 0);
+      const available = members.reduce((n, x) => n + Number(x.available || 0), 0);
+      const inbound = members.reduce((n, x) => n + Number(x.inbound || 0), 0);
+      if (!close(family.sales_t28, sales)) errors.push(`${family.family_asin}: family sales != child rollup`);
+      if (Number(family.units_t28 || 0) !== units) errors.push(`${family.family_asin}: family units != child rollup`);
+      if (Number(family.sessions_t28 || 0) !== sessions) errors.push(`${family.family_asin}: family sessions != child rollup`);
+      if (Number(family.available || 0) !== available || Number(family.inbound || 0) !== inbound) errors.push(`${family.family_asin}: family inventory != child rollup`);
+      const expectedCvr = sessions > 0 ? Math.round((10000 * units / sessions)) / 100 : null;
+      if (expectedCvr === null ? family.conversion_t28_pct != null : !close(family.conversion_t28_pct, expectedCvr)) errors.push(`${family.family_asin}: family CVR not recomputed from units/sessions`);
+      if (family.parent && family.primary_state === 'STRUCTURAL_PARENT') errors.push(`${family.family_asin}: structural parent incorrectly used as family diagnosis`);
+      if ((family.members || []).some(x => x.product_role === 'STRUCTURAL_PARENT')) errors.push(`${family.family_asin}: structural parent leaked into sellable members`);
+    }
+    return { errors, familyCount: (data.families || []).length, dimensionNames: Object.keys(data.dimensions || {}) };
+  });
+  if (semantic.errors?.length) throw new Error(`Catalog semantic QA: ${semantic.errors.join('; ')}`);
+  const openCount = await page.locator('.family[open]').count();
+  if (openCount !== 0) throw new Error(`Catalog default comparison view has ${openCount} family expansions open`);
+}
+
 const scenarios = [
   { name: 'today', url: '/today', views: ['mobile', 'desktop'], action: async page => { await page.locator('#rhythm .dpp-bar').first().waitFor({ timeout: 5000 }); await page.locator('#dayPicker .day-choice').first().waitFor({ timeout: 5000 }); } },
   { name: 'today-wall', url: '/today?wall=1', views: ['desktop'] },
@@ -46,7 +78,7 @@ const scenarios = [
   { name: 'sales-overview', url: '/sales', views: ['mobile', 'tablet', 'desktop'], action: verifySalesOverview },
   { name: 'sales-products', url: '/sales', views: ['mobile', 'desktop'], action: async page => { await page.locator('button[data-view="products"]').click(); await page.locator('#skuRows tr').first().waitFor({ timeout: 5000 }); } },
   { name: 'sales-orders', url: '/sales', views: ['mobile', 'desktop'], action: async page => { await page.locator('button[data-view="orders"]').click(); await page.locator('#orderRows tr').first().waitFor({ timeout: 5000 }); } },
-  { name: 'catalog', url: '/catalog', views: ['mobile', 'tablet', 'desktop'] },
+  { name: 'catalog', url: '/catalog', views: ['mobile', 'tablet', 'desktop'], action: verifyCatalog },
   { name: 'product-pnc-001', url: '/product?sku=PNC-001', views: ['mobile', 'desktop'] },
   { name: 'inventory', url: '/inventory', views: ['mobile', 'tablet', 'desktop'] },
   { name: 'ads-overview', url: '/ads', views: ['mobile', 'tablet', 'desktop'], action: async page => verifyAds(page) },
