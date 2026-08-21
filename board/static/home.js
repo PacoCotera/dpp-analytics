@@ -119,6 +119,7 @@ function render(data) {
   document.getElementById('todayNote').textContent = `${integer(today.orders_today)} orders · ${integer(today.units_today)} units`;
   document.getElementById('decisionCount').textContent = integer(decisionCount);
   document.getElementById('decisionNote').textContent = decisionCount === 1 ? 'decision needs attention' : 'decisions need attention';
+  document.getElementById('attentionCount').textContent = integer(decisionCount);
 
   renderAttention(data, decisionCount);
   renderDrivers(data, Number(rolling.sales_t28 || 0));
