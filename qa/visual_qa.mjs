@@ -87,16 +87,7 @@ async function assertFinanceChartMarks(page, label) {
   if (!marks) throw new Error(`Finance ${label} rendered without chart marks`);
 }
 
-async function verifyFinanceWindows(page) {
-  const buttons = ['3m', 'ytd', '12m', 'lastYear', 'all'];
-  for (const windowKey of buttons) {
-    const button = page.locator(`button[data-finance-window="${windowKey}"]`);
-    await button.waitFor({ state: 'visible', timeout: 5000 });
-    await button.click();
-    await page.locator(`button[data-finance-window="${windowKey}"][aria-selected="true"]`).waitFor({ state: 'visible', timeout: 5000 });
-    await assertFinanceChartMarks(page, windowKey);
-  }
-
+async function chooseClosedFinanceMonth(page) {
   const monthButton = page.locator('button[data-finance-window="month"]');
   await monthButton.click();
   await page.locator('button[data-finance-window="month"][aria-selected="true"]').waitFor({ state: 'visible', timeout: 5000 });
@@ -109,6 +100,19 @@ async function verifyFinanceWindows(page) {
   await assertFinanceChartMarks(page, 'closed month');
   const closedState = (await page.locator('#progressionState').textContent() || '').trim();
   if (!closedState || closedState.includes('OPEN')) throw new Error(`Finance closed-month drill-down has invalid state: ${closedState || 'blank'}`);
+}
+
+async function verifyFinanceWindows(page) {
+  const buttons = ['3m', 'ytd', '12m', 'lastYear', 'all'];
+  for (const windowKey of buttons) {
+    const button = page.locator(`button[data-finance-window="${windowKey}"]`);
+    await button.waitFor({ state: 'visible', timeout: 5000 });
+    await button.click();
+    await page.locator(`button[data-finance-window="${windowKey}"][aria-selected="true"]`).waitFor({ state: 'visible', timeout: 5000 });
+    await assertFinanceChartMarks(page, windowKey);
+  }
+
+  await chooseClosedFinanceMonth(page);
 
   await page.locator('button[data-finance-window="ytd"]').click();
   await page.locator('button[data-finance-window="ytd"][aria-selected="true"]').waitFor({ state: 'visible', timeout: 5000 });
@@ -137,6 +141,11 @@ async function verifyFinanceReport(page) {
   await wait(page, '#history .history-row:not(.head)');
 }
 
+async function verifyFinanceClosed(page) {
+  await verifyFinanceReport(page);
+  await chooseClosedFinanceMonth(page);
+}
+
 async function verifyFinanceEvidence(page) {
   await verifyFinanceReport(page);
   const evidence = page.locator('.finance-evidence details').first();
@@ -162,7 +171,7 @@ const scenarios = [
   ['ads-overview', '/ads', ['mobile', 'tablet', 'desktop'], p => verifyAds(p)],
   ['ads-campaigns', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'campaigns')],
   ['finance-overview', '/finance', ['mobile', 'desktop'], verifyFinanceReport],
-  ['finance-closed', '/finance', ['mobile', 'tablet', 'desktop'], verifyFinanceReport],
+  ['finance-closed', '/finance', ['mobile', 'tablet', 'desktop'], verifyFinanceClosed],
   ['finance-ledger', '/finance', ['mobile', 'desktop'], verifyFinanceEvidence],
   ['trajectory', '/trajectory', ['mobile', 'desktop']],
   ['data-health', '/data-health', ['mobile', 'desktop']],
