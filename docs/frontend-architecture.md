@@ -100,18 +100,41 @@ Revisit React/Vite only after the legacy ownership layers are removed. Adopt it 
 
 If adopted, React replaces the existing page runtime rather than being injected into legacy pages as isolated islands.
 
+## Source ownership pattern
+
+A migrated page should be boring to inspect:
+
+- one HTML file owns semantic composition;
+- one page stylesheet owns only page-specific presentation;
+- one page runtime module owns data loading, view-model transformation and interaction;
+- shared shell, layout, chart and formatting modules are imported explicitly;
+- Docker does not inject page-specific CSS or JavaScript;
+- a second override stylesheet is a migration smell, not an extension point.
+
+Current examples are Home, Sales, Inventory and Catalog.
+
+## Lint and formatting policy
+
+Lint and formatting serve different purposes and run separately.
+
+`npm run lint` is the blocking code-quality gate. ESLint scans the complete application JavaScript tree and Stylelint scans the complete CSS tree. Stylelint intentionally does not enforce cosmetic conventions that conflict with the existing DOM/CSS vocabulary, such as camelCase legacy IDs, one-line declaration formatting, color-function spelling or media-range spelling. Those are formatting/migration concerns, not runtime defects.
+
+`npm run format:check` reports Prettier drift. It remains available as the mechanical formatting audit while old style layers are progressively removed. Once the legacy global sheets are consolidated, formatting can become a required deployment gate without creating a repository-wide churn commit whose only purpose is whitespace.
+
+New and migrated files should be readable and formatted when touched even before the repository-wide formatting gate becomes mandatory.
+
 ## Migration sequence
 
-1. Add lint/format tooling and shared utilities.
-2. Serve source-controlled frontend assets directly and remove Docker HTML mutation.
-3. Migrate Home, Sales and Inventory to shared page/layout primitives.
-4. Migrate Products and Product Workspace.
+1. Add lint/format tooling and shared utilities. **Done.**
+2. Serve source-controlled frontend assets directly and remove Docker HTML mutation. **In progress; page-specific injection is removed for migrated pages.**
+3. Migrate Home, Sales and Inventory to shared page/layout primitives. **Done.**
+4. Migrate Catalog/Products and Product Workspace. **Catalog done; Product Workspace remains.**
 5. Migrate Finance and replace grouped-bar pseudo-waterfall with a true waterfall.
 6. Migrate Trajectory and remove editorial over-explanation.
 7. Rebuild Data Health as a control-tower composition using the same shell/primitives.
 8. Migrate Ads when that product workstream resumes.
 9. Delete superseded CSS/JS layers.
-10. Turn lint/format into a required deployment gate.
+10. Turn lint and, after legacy formatting cleanup, format checks into required deployment gates.
 
 ## Quality gate
 
