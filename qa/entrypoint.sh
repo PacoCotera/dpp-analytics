@@ -5,6 +5,9 @@ out_root="${2:-/out}"
 work_dir="$out_root/captures"
 mkdir -p "$work_dir"
 node /qa/visual_qa.mjs "$base_url" "$work_dir"
-rc=$?
+visual_rc=$?
+node /qa/nav_qa.mjs "$base_url" "$work_dir"
+nav_rc=$?
 cp -a "$work_dir"/. "$out_root"/ 2>/dev/null || true
-exit "$rc"
+if [ "$visual_rc" -ne 0 ]; then exit "$visual_rc"; fi
+exit "$nav_rc"
