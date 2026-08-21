@@ -26,12 +26,13 @@ body.sales-operating-v2 .sales-momentum-card .sales-momentum-row .metric-note{gr
 
 body.sales-operating-v2 .sales-state-rail>.sales-utility-row{order:3;border:0!important;border-top:1px solid var(--line)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;margin:0!important;padding:11px 4px 9px!important}
 body.sales-operating-v2 .sales-state-rail>.sales-utility-row:hover{background:transparent!important;border-color:var(--line)!important}
-body.sales-operating-v2 .sales-state-rail>.sales-utility-today{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label sales" "meta link";gap:3px 12px;align-items:center}
+body.sales-operating-v2 .sales-state-rail>.sales-utility-today{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label sales" "meta link" "pace pace";gap:4px 12px;align-items:center}
 body.sales-operating-v2 .sales-state-rail>.sales-utility-today .live-label{grid-area:label;font-size:9px;color:#777067}
 body.sales-operating-v2 .sales-state-rail>.sales-utility-today .live-sales{grid-area:sales;font-size:21px;line-height:1;text-align:right}
 body.sales-operating-v2 .sales-state-rail>.sales-utility-today .live-meta{grid-area:meta;font-size:10.5px;color:#6f685f}
 body.sales-operating-v2 .sales-state-rail>.sales-utility-today .live-meta strong{font-size:11px}
-body.sales-operating-v2 .sales-state-rail>.sales-utility-today .btn{grid-area:link;font-size:9.5px!important}
+body.sales-operating-v2 .sales-state-rail>.sales-utility-today .live-pace{grid-area:pace;display:block;padding-top:3px;font-size:9px;line-height:1.25;color:#7b746b}
+body.sales-operating-v2 .sales-state-rail>.sales-utility-today .btn{grid-area:link;min-height:0!important;height:auto!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;transform:none!important;justify-content:flex-end;font-size:9.5px!important;color:#704000}
 
 body.sales-operating-v2 .sales-state-rail>.sales-utility-ytd{order:4;display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label value" "volume value";column-gap:12px;align-items:end;padding-top:12px!important}
 body.sales-operating-v2 .sales-state-rail>.sales-utility-ytd .metric-label{grid-area:label;font-size:9px!important;color:#777067}
@@ -50,4 +51,6 @@ body.sales-operating-v2 .sales-state-rail>.sales-utility-ytd .sales-volume stron
   body.sales-operating-v2 .sales-momentum-card,
   body.sales-operating-v2 .sales-state-rail>.sales-utility-row{width:100%;grid-column:auto!important}
   body.sales-operating-v2 .sales-momentum-card{padding-left:13px;padding-right:13px}
+  body.sales-operating-v2 .sales-state-rail>.sales-utility-today{row-gap:5px}
+  body.sales-operating-v2 .sales-state-rail>.sales-utility-today .live-pace{font-size:10px}
 }
