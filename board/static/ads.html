@@ -5,140 +5,29 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="theme-color" content="#f4f0e8">
     <title>Dirty Pawz Press · Advertising</title>
-    <link rel="stylesheet" href="/assets/theme.css">
-    <link rel="stylesheet" href="/assets/mobile-ux.css">
-    <link rel="stylesheet" href="/assets/design-refine.css">
-    <link rel="stylesheet" href="/assets/nav-shell.css">
-    <link rel="stylesheet" href="/assets/layout-system.css">
-    <link rel="stylesheet" href="/assets/chart-system.css">
-    <link rel="stylesheet" href="/assets/ads.css">
-    <script src="/assets/ui-shell.js" defer></script>
+    <link rel="stylesheet" href="/assets/theme.css"><link rel="stylesheet" href="/assets/mobile-ux.css"><link rel="stylesheet" href="/assets/design-refine.css"><link rel="stylesheet" href="/assets/nav-shell.css"><link rel="stylesheet" href="/assets/layout-system.css"><link rel="stylesheet" href="/assets/chart-system.css"><link rel="stylesheet" href="/assets/ads.css"><script src="/assets/ui-shell.js" defer></script>
   </head>
-  <body class="ads-page">
-    <div class="app">
-      <header class="topbar">
-        <div class="brand">
-          <div class="mark">DP</div>
-          <div class="brand-copy">
-            <div class="brand-title">DIRTY PAWZ PRESS</div>
-            <div class="brand-sub">Advertising · Amazon Mexico</div>
-          </div>
+  <body class="ads-page"><div class="app">
+    <header class="topbar"><div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Advertising · Amazon Mexico</div></div></div><div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading advertising</span></div></header>
+    <nav class="primary-nav"></nav>
+    <main>
+      <section class="page-header"><div><div class="kicker">Advertising manager</div><h1 class="page-header__title">Are ads helping us grow efficiently?</h1><p class="page-header__description">Spend matters only in context. Start with total-sales efficiency, then inspect campaigns, products, targets and shopper queries that are buying or destroying growth.</p></div></section>
+      <nav class="subnav" aria-label="Advertising views"><button class="subnav__item active" type="button" data-ads-view="overview" aria-selected="true">Overview</button><button class="subnav__item" type="button" data-ads-view="campaigns">Campaigns</button><button class="subnav__item" type="button" data-ads-view="products">Products</button><button class="subnav__item" type="button" data-ads-view="targets">Targets</button><button class="subnav__item" type="button" data-ads-view="searchTerms">Search terms</button></nav>
+      <section id="overview" class="ads-view active">
+        <div id="emptyState" class="panel ads-empty" hidden><div class="kicker">Advertising connection</div><h2>Waiting for Amazon Ads access.</h2><p>The warehouse, reporting client and product surfaces are ready. Once Ads authorization is connected, this page will backfill performance and link paid demand to Sales, Products and Finance automatically.</p></div>
+        <div id="readyState" hidden>
+          <section class="ads-hero-read"><div class="kicker">28-day read</div><h2 id="storyTitle">Reading paid demand…</h2><p id="storyCopy">Comparing spend, attributed performance and total business sales on the same reportable window.</p></section>
+          <section id="qualityBand" class="ads-quality" aria-live="polite"><div class="ads-quality__state"><span id="qualityBadge" class="ads-quality__badge">Checking data</span><strong id="qualityTitle">Validating Amazon report grains…</strong></div><p id="qualityCopy">Campaign, advertised-product, attribution and seller-sales coverage are checked before operating cues are treated as decision-grade.</p><div class="ads-quality__meta"><span><b id="coverageRead">—</b> report coverage</span><span><b id="maturityRead">—</b> attribution maturity</span><span><b id="qualityIssueRead">—</b> quality issues</span></div></section>
+          <section class="ads-metrics"><div class="card metric ads-metric"><div class="metric-label">Ad spend · 28D</div><div class="metric-value" id="spend">—</div><div class="metric-note"><strong id="spendDelta">—</strong> vs prior 28</div></div><div class="card metric ads-metric"><div class="metric-label">Attributed sales</div><div class="metric-value" id="attributed">—</div><div class="metric-note"><strong id="salesDelta">—</strong> vs prior 28 · Amazon attribution</div></div><div class="card metric ads-metric"><div class="metric-label">ACOS</div><div class="metric-value" id="acos">—</div><div class="metric-note"><span id="acosDelta">—</span> vs prior · lower is more efficient</div></div><div class="card metric ads-metric"><div class="metric-label">TACOS</div><div class="metric-value" id="tacos">—</div><div class="metric-note"><span id="tacosDelta">—</span> vs prior · spend / total seller sales</div></div></section>
+          <section id="actionSection" class="page-section ads-action-section" hidden><div class="section-header"><div><div class="kicker">What to inspect next</div><h2 class="section-header__title">Operating queue</h2><div class="section-header__description">Decision-grade review prompts ranked from Amazon reporting. Nothing here changes bids automatically.</div></div><span id="actionCount" class="ads-action-count">0</span></div><div id="actionQueue" class="ads-action-queue"></div></section>
+          <section class="page-section"><div class="dashboard-grid dashboard-grid--main-rail"><div class="panel"><div class="panel__header"><div><h2 class="panel__title">Paid demand rhythm</h2><div class="panel__description" id="chartSub">Daily ad spend and attributed sales · latest reportable 28 days</div></div></div><div class="panel__body"><svg id="chart" class="ads-chart" viewBox="0 0 900 300" preserveAspectRatio="none"></svg></div></div><aside class="panel"><div class="panel__header"><div><h2 class="panel__title">Efficiency context</h2><div class="panel__description">The useful denominator changes the story.</div></div></div><div class="panel__body list"><div class="list-row"><div><div class="row-title">ROAS</div><div class="row-sub">Attributed ad sales ÷ spend</div></div><div class="row-value"><strong id="roas">—</strong></div></div><div class="list-row"><div><div class="row-title">CTR</div><div class="row-sub">Clicks ÷ impressions</div></div><div class="row-value"><strong id="ctr">—</strong></div></div><div class="list-row"><div><div class="row-title">CPC</div><div class="row-sub">Spend ÷ clicks</div></div><div class="row-value"><strong id="cpc">—</strong></div></div><div class="list-row"><div><div class="row-title">Total seller sales</div><div class="row-sub">Independent sales denominator used for TACOS</div></div><div class="row-value"><strong id="totalSales">—</strong></div></div></div></aside></div></section>
+          <section class="ads-explain"><strong>Why ACOS and TACOS both matter.</strong> ACOS tells us how efficiently Amazon attributes sales to advertising. TACOS tells us how much of the whole business is being spent on ads. We do not call total sales minus attributed sales “organic sales” because attribution windows overlap and can revise after the sale.</section>
         </div>
-        <div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading advertising</span></div>
-      </header>
-
-      <nav class="primary-nav"></nav>
-
-      <main>
-        <section class="page-header">
-          <div>
-            <div class="kicker">Advertising manager</div>
-            <h1 class="page-header__title">Are ads helping us grow efficiently?</h1>
-            <p class="page-header__description">Spend matters only in context. Start with total-sales efficiency, then inspect campaigns, products, targets and shopper queries that are buying or destroying growth.</p>
-          </div>
-        </section>
-
-        <nav class="subnav" aria-label="Advertising views">
-          <button class="subnav__item active" type="button" data-ads-view="overview" aria-selected="true">Overview</button>
-          <button class="subnav__item" type="button" data-ads-view="campaigns" aria-selected="false">Campaigns</button>
-          <button class="subnav__item" type="button" data-ads-view="products" aria-selected="false">Products</button>
-          <button class="subnav__item" type="button" data-ads-view="targets" aria-selected="false">Targets</button>
-          <button class="subnav__item" type="button" data-ads-view="searchTerms" aria-selected="false">Search terms</button>
-        </nav>
-
-        <section id="overview" class="ads-view active">
-          <div id="emptyState" class="panel ads-empty" hidden>
-            <div class="kicker">Advertising connection</div>
-            <h2>Waiting for Amazon Ads access.</h2>
-            <p>The warehouse, reporting client and product surfaces are ready. Once Ads authorization is connected, this page will backfill performance and link paid demand to Sales, Products and Finance automatically.</p>
-          </div>
-
-          <div id="readyState" hidden>
-            <section class="ads-hero-read">
-              <div class="kicker">28-day read</div>
-              <h2 id="storyTitle">Reading paid demand…</h2>
-              <p id="storyCopy">Comparing spend, attributed performance and total business sales on the same reportable window.</p>
-            </section>
-
-            <section id="qualityBand" class="ads-quality" aria-live="polite">
-              <div class="ads-quality__state"><span id="qualityBadge" class="ads-quality__badge">Checking data</span><strong id="qualityTitle">Validating Amazon report grains…</strong></div>
-              <p id="qualityCopy">Campaign, advertised-product, attribution and seller-sales coverage are checked before operating cues are treated as decision-grade.</p>
-              <div class="ads-quality__meta">
-                <span><b id="coverageRead">—</b> report coverage</span>
-                <span><b id="maturityRead">—</b> attribution maturity</span>
-                <span><b id="qualityIssueRead">—</b> quality issues</span>
-              </div>
-            </section>
-
-            <section class="ads-metrics">
-              <div class="card metric ads-metric"><div class="metric-label">Ad spend · 28D</div><div class="metric-value" id="spend">—</div><div class="metric-note"><strong id="spendDelta">—</strong> vs prior 28</div></div>
-              <div class="card metric ads-metric"><div class="metric-label">Attributed sales</div><div class="metric-value" id="attributed">—</div><div class="metric-note"><strong id="salesDelta">—</strong> vs prior 28 · Amazon attribution</div></div>
-              <div class="card metric ads-metric"><div class="metric-label">ACOS</div><div class="metric-value" id="acos">—</div><div class="metric-note"><span id="acosDelta">—</span> vs prior · lower is more efficient</div></div>
-              <div class="card metric ads-metric"><div class="metric-label">TACOS</div><div class="metric-value" id="tacos">—</div><div class="metric-note"><span id="tacosDelta">—</span> vs prior · spend / total seller sales</div></div>
-            </section>
-
-            <section class="page-section">
-              <div class="dashboard-grid dashboard-grid--main-rail">
-                <div class="panel">
-                  <div class="panel__header"><div><h2 class="panel__title">Paid demand rhythm</h2><div class="panel__description" id="chartSub">Daily ad spend and attributed sales · latest reportable 28 days</div></div></div>
-                  <div class="panel__body"><svg id="chart" class="ads-chart" viewBox="0 0 900 300" preserveAspectRatio="none"></svg></div>
-                </div>
-                <aside class="panel">
-                  <div class="panel__header"><div><h2 class="panel__title">Efficiency context</h2><div class="panel__description">The useful denominator changes the story.</div></div></div>
-                  <div class="panel__body list">
-                    <div class="list-row"><div><div class="row-title">ROAS</div><div class="row-sub">Attributed ad sales ÷ spend</div></div><div class="row-value"><strong id="roas">—</strong></div></div>
-                    <div class="list-row"><div><div class="row-title">CTR</div><div class="row-sub">Clicks ÷ impressions</div></div><div class="row-value"><strong id="ctr">—</strong></div></div>
-                    <div class="list-row"><div><div class="row-title">CPC</div><div class="row-sub">Spend ÷ clicks</div></div><div class="row-value"><strong id="cpc">—</strong></div></div>
-                    <div class="list-row"><div><div class="row-title">Total seller sales</div><div class="row-sub">Independent sales denominator used for TACOS</div></div><div class="row-value"><strong id="totalSales">—</strong></div></div>
-                  </div>
-                </aside>
-              </div>
-            </section>
-
-            <section class="ads-explain"><strong>Why ACOS and TACOS both matter.</strong> ACOS tells us how efficiently Amazon attributes sales to advertising. TACOS tells us how much of the whole business is being spent on ads. We do not call total sales minus attributed sales “organic sales” because attribution windows overlap and can revise after the sale.</section>
-          </div>
-        </section>
-
-        <section id="campaigns" class="ads-view">
-          <section class="page-section">
-            <div class="section-header"><div><h2 class="section-header__title">Campaign efficiency map</h2><div class="section-header__description">Spend on the horizontal axis, ROAS on the vertical axis, bubble size by clicks.</div></div></div>
-            <div class="panel"><div class="panel__body"><svg class="ads-chart" id="campaignQuadrant" aria-label="Campaign efficiency quadrant"></svg></div></div>
-          </section>
-          <section class="page-section">
-            <div class="section-header"><div><h2 class="section-header__title">Campaigns</h2><div class="section-header__description">Latest 28 reportable days · highest spend first.</div></div></div>
-            <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Campaign</th><th class="ads-num">Spend</th><th class="ads-num">Attributed sales</th><th class="ads-num">ACOS</th><th class="ads-num">Clicks</th></tr></thead><tbody id="campaignRows"></tbody></table></div></div>
-          </section>
-        </section>
-
-        <section id="products" class="ads-view">
-          <section class="page-section">
-            <div class="section-header"><div><h2 class="section-header__title">Advertised products</h2><div class="section-header__description">Which products are consuming paid support, and what is Amazon attributing back?</div></div></div>
-            <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th class="ads-num">Spend</th><th class="ads-num">Attributed sales</th><th class="ads-num">ACOS</th><th class="ads-num">Clicks</th></tr></thead><tbody id="productRows"></tbody></table></div></div>
-          </section>
-        </section>
-
-        <section id="targets" class="ads-view">
-          <section class="ads-drill-intro"><div class="kicker">What we bid on</div><h2>Target efficiency</h2><p>Targets are the keywords, products, categories or automatic matches we tell Amazon to pursue. Start with the highest spend and inspect whether Amazon is attributing purchases back.</p></section>
-          <section class="page-section">
-            <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Target</th><th>Campaign</th><th>Action</th><th class="ads-num">Spend</th><th class="ads-num">Attributed sales</th><th class="ads-num">ACOS</th><th class="ads-num">ROAS</th><th class="ads-num">Clicks</th></tr></thead><tbody id="targetRows"><tr><td>Waiting for target reporting.</td></tr></tbody></table></div></div>
-            <div class="ads-guide"><strong>Operating cues are review prompts, not automation.</strong> “Inspect spend” requires at least 8 clicks with spend and no attributed purchase. Attribution can still revise, so nothing here automatically pauses, negates or changes a bid.</div>
-          </section>
-        </section>
-
-        <section id="searchTerms" class="ads-view">
-          <section class="ads-drill-intro"><div class="kicker">What shoppers matched</div><h2>Search-term discovery</h2><p>Search terms are the shopper queries or matched products Amazon reports after ad clicks. This is the discovery layer for harvesting useful queries and spotting paid traffic that is not converting.</p></section>
-          <section class="page-section">
-            <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Search term</th><th>Campaign</th><th>Action</th><th class="ads-num">Spend</th><th class="ads-num">Attributed sales</th><th class="ads-num">ACOS</th><th class="ads-num">ROAS</th><th class="ads-num">Clicks</th></tr></thead><tbody id="searchTermRows"><tr><td>Waiting for search-term reporting.</td></tr></tbody></table></div></div>
-            <div class="ads-guide"><strong>Discovery, not “organic” attribution.</strong> “Harvest candidate” means at least 2 attributed purchases and 2× ROAS in the current reporting window. It is a prompt to review for dedicated targeting, never proof of incrementality. We never subtract attributed sales from seller sales to invent organic sales.</div>
-          </section>
-        </section>
-      </main>
-
-      <footer class="footer"><span>Amazon Ads attribution · seller sales denominator independent</span><span>Dirty Pawz Press Analytics</span></footer>
-    </div>
-
-    <script src="/assets/vendor/d3.v7.min.js"></script>
-    <script src="/assets/chart-system.js"></script>
-    <script type="module" src="/assets/ads.js"></script>
-  </body>
+      </section>
+      <section id="campaigns" class="ads-view"><section class="page-section"><div class="section-header"><div><h2 class="section-header__title">Campaign efficiency map</h2><div class="section-header__description">Spend on the horizontal axis, ROAS on the vertical axis, bubble size by clicks.</div></div></div><div class="panel"><div class="panel__body"><svg class="ads-chart" id="campaignQuadrant"></svg></div></div></section><section class="page-section"><div class="section-header"><div><h2 class="section-header__title">Campaigns</h2><div class="section-header__description">Latest 28 reportable days · highest spend first.</div></div></div><div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Campaign</th><th class="ads-num">Spend</th><th class="ads-num">Attributed sales</th><th class="ads-num">ACOS</th><th class="ads-num">Clicks</th></tr></thead><tbody id="campaignRows"></tbody></table></div></div></section></section>
+      <section id="products" class="ads-view"><section class="page-section"><div class="section-header"><div><h2 class="section-header__title">Advertised products</h2><div class="section-header__description">Which products are consuming paid support, and what is Amazon attributing back?</div></div></div><div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Product</th><th class="ads-num">Spend</th><th class="ads-num">Attributed sales</th><th class="ads-num">ACOS</th><th class="ads-num">Clicks</th></tr></thead><tbody id="productRows"></tbody></table></div></div></section></section>
+      <section id="targets" class="ads-view"><section class="ads-drill-intro"><div class="kicker">What we bid on</div><h2>Target efficiency</h2><p>Targets are the keywords, products, categories or automatic matches we tell Amazon to pursue. Start with the highest spend and inspect whether Amazon is attributing purchases back.</p></section><section class="page-section"><div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Target</th><th>Campaign</th><th>Action</th><th class="ads-num">Spend</th><th class="ads-num">Attributed sales</th><th class="ads-num">ACOS</th><th class="ads-num">ROAS</th><th class="ads-num">Clicks</th></tr></thead><tbody id="targetRows"></tbody></table></div></div><div class="ads-guide"><strong>Operating cues are review prompts, not automation.</strong> Attribution can still revise, so nothing here automatically pauses, negates or changes a bid.</div></section></section>
+      <section id="searchTerms" class="ads-view"><section class="ads-drill-intro"><div class="kicker">What shoppers matched</div><h2>Search-term discovery</h2><p>Search terms are the shopper queries or matched products Amazon reports after ad clicks. This is the discovery layer for harvesting useful queries and spotting paid traffic that is not converting.</p></section><section class="page-section"><div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Search term</th><th>Campaign</th><th>Action</th><th class="ads-num">Spend</th><th class="ads-num">Attributed sales</th><th class="ads-num">ACOS</th><th class="ads-num">ROAS</th><th class="ads-num">Clicks</th></tr></thead><tbody id="searchTermRows"></tbody></table></div></div><div class="ads-guide"><strong>Discovery, not “organic” attribution.</strong> A harvest candidate is a prompt to review for dedicated targeting, never proof of incrementality.</div></section></section>
+    </main><footer class="footer"><span>Amazon Ads attribution · seller sales denominator independent</span><span>Dirty Pawz Press Analytics</span></footer>
+  </div><script src="/assets/vendor/d3.v7.min.js"></script><script src="/assets/chart-system.js"></script><script type="module" src="/assets/ads.js"></script></body>
 </html>
