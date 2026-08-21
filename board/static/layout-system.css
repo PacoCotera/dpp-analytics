@@ -1,23 +1,6 @@
 /* DPP operating board layout system.
-   This file owns reusable page geometry. Page modules should compose these
-   primitives rather than recreate header, KPI, panel, section or table grids. */
-
-:root {
-  --page-gap: 18px;
-  --section-gap: 22px;
-  --panel-gap: 12px;
-  --content-max: 1480px;
-  --reading-max: 760px;
-  --rail-min: 260px;
-  --control-height: 38px;
-  --panel-radius: 16px;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-}
+   Owns reusable page geometry only. Foundation tokens live in theme.css;
+   page modules compose these primitives instead of redefining them. */
 
 .page-header {
   display: grid;
@@ -149,7 +132,6 @@
 }
 
 @media (max-width: 640px) {
-  :root { --section-gap: 18px; --panel-gap: 9px; }
   .page-header { gap: 10px; padding: 9px 0 11px; }
   .page-header__title { font-size: 27px; }
   .page-header__description { font-size: 12px; }
