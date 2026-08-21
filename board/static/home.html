@@ -2,170 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f4f0e8">
-<title>Dirty Pawz Press · Home</title>
+<meta name="theme-color" content="#f4f0e8"><title>Dirty Pawz Press · Home</title>
 <link rel="stylesheet" href="/assets/theme.css"><link rel="stylesheet" href="/assets/chart-system.css"><script src="/assets/ui-shell.js" defer></script>
 <style>
-body.home-page .app{padding-top:14px}
-body.home-page .topbar{min-height:46px}
-body.home-page .mark{width:36px;height:36px;border-radius:11px;font-size:14px}
-body.home-page .brand{gap:10px}
-body.home-page .brand-title{font-size:16px}
-body.home-page .brand-sub{font-size:10px;margin-top:1px}
-body.home-page .top-meta strong{font-size:14px}
-body.home-page .primary-nav{margin:8px 0 12px;padding-bottom:5px;gap:3px}
-body.home-page .primary-nav a{min-height:34px;padding:0 11px;font-size:11.5px}
-body.home-page .home-main{margin-top:0}
-body.home-page .home-dashboard{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,340px);gap:18px;align-items:start;margin-top:0}
-body.home-page .home-canvas{min-width:0}
-body.home-page .home-rail{display:grid;gap:10px;align-content:start}
-body.home-page .signal-card{display:block;background:rgba(255,253,249,.76);border:1px solid var(--line);border-radius:16px;padding:15px 16px;min-width:0}
-body.home-page .signal-card:hover{background:#fffdf9;border-color:#c9bfb1}
-body.home-page .signal-card.primary{padding:18px 18px 16px;background:#fffdf9}
-body.home-page .signal-label{font-size:10px;font-weight:820;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-body.home-page .signal-value{font-size:28px;font-weight:840;line-height:1;letter-spacing:-.045em;margin:5px 0 4px;font-variant-numeric:tabular-nums}
-body.home-page .signal-card.primary .signal-value{font-size:46px;margin:7px 0 5px}
-body.home-page .signal-note{font-size:11px;line-height:1.35;color:var(--muted)}
-body.home-page .momentum-read{font-size:13px;font-weight:720;line-height:1.35;color:var(--ink);margin-top:2px}
-body.home-page .signal-divider{height:1px;background:var(--line);margin:13px 0 11px}
-body.home-page .signal-subread{display:flex;justify-content:space-between;gap:12px;align-items:end}
-body.home-page .signal-subread strong{font-size:22px;letter-spacing:-.035em}
-body.home-page .signal-subread span{display:block;font-size:10.5px;color:var(--muted);margin-top:2px}
-body.home-page .signal-subread .signal-submeta{text-align:right;font-size:10.5px;color:var(--muted);line-height:1.35}
-body.home-page .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#34a15f;margin-right:5px;box-shadow:0 0 0 3px rgba(52,161,95,.11)}
-body.home-page .restock-card{display:none}
-body.home-page .restock-card.show{display:block}
-body.home-page .restock-product{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
-body.home-page .restock-product .product-sku{font-size:9px;margin-bottom:2px}
-body.home-page .restock-product .row-title{font-size:13px}
-body.home-page .restock-product .row-sub{font-size:10.5px;margin-top:1px}
-body.home-page .restock-cover{text-align:right}
-body.home-page .restock-cover strong{display:block;font-size:20px}
-body.home-page .restock-cover span{font-size:10px;color:var(--muted)}
-body.home-page .rhythm-section{margin-top:0!important}
-body.home-page .spark-card{padding:13px 14px 8px!important;background:rgba(255,253,249,.56)!important;border:1px solid var(--line)!important;border-radius:16px!important}
-body.home-page .spark-card .section-head{margin:0 2px 4px!important}
-body.home-page .spark{width:100%;height:360px!important;display:block}
-body.home-page .movers-section{margin-top:14px!important}
-body.home-page .change-list{padding:0 14px!important}
-body.home-page .change-list .list-row{padding:11px 0}
-body.home-page .change-tag{margin-top:4px}
-body.home-page .change-list .list-row:nth-child(n+4){display:none!important}
-@media(max-width:980px){
- body.home-page .home-dashboard{grid-template-columns:minmax(0,1fr) 280px;gap:14px}
- body.home-page .signal-card.primary .signal-value{font-size:40px}
- body.home-page .spark{height:310px!important}
-}
-@media(max-width:720px){
- body.home-page .home-dashboard{grid-template-columns:1fr}
- body.home-page .home-rail{grid-template-columns:1fr;gap:8px}
- body.home-page .spark{height:240px!important}
-}
-@media(max-width:640px){
- body.home-page .app{padding-top:10px}
- body.home-page .topbar{min-height:40px;align-items:center}
- body.home-page .mark{width:34px;height:34px}
- body.home-page .brand-title{font-size:14px;letter-spacing:.065em}
- body.home-page .brand-sub{font-size:9.5px}
- body.home-page .primary-nav{margin:7px -14px 10px;padding:5px 14px 6px}
- body.home-page .primary-nav a{min-height:42px;padding:0 12px;font-size:12px}
- body.home-page .home-dashboard{gap:10px}
- body.home-page .home-rail{gap:8px}
- body.home-page .signal-card{padding:12px 13px;border-radius:14px}
- body.home-page .signal-card.primary{padding:14px}
- body.home-page .signal-card.primary .signal-value{font-size:38px}
- body.home-page .signal-subread strong{font-size:20px}
- body.home-page .spark-card{padding:10px 8px 5px!important}
- body.home-page .spark{height:220px!important}
- body.home-page .spark-card .section-sub{display:none}
- body.home-page .movers-section{margin-top:12px!important}
- body.home-page .change-list{padding:0 8px!important}
-}
+body.home-page .app{padding-top:14px}body.home-page .topbar{min-height:46px}.home-main{display:grid;gap:14px}.home-state{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:22px;align-items:end;padding:18px 20px 17px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.home-state-kicker,.attention-kicker,.driver-kicker{font-size:9px;font-weight:820;letter-spacing:.11em;text-transform:uppercase;color:#835318}.home-state h1{margin:4px 0 5px;font-size:clamp(30px,3.1vw,48px);line-height:1;letter-spacing:-.045em}.home-state p{margin:0;max-width:720px;color:var(--muted);font-size:12px;line-height:1.45}.state-metrics{display:flex;align-items:flex-end;gap:24px;text-align:right}.state-metric strong{display:block;font-size:25px;line-height:1;letter-spacing:-.035em}.state-metric span{display:block;margin-top:4px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.state-metric.live strong{font-size:20px}.state-metric .delta{font-size:12px;margin-top:4px;font-weight:760}.home-working{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,.45fr);gap:14px;align-items:stretch}.home-panel{background:rgba(255,253,249,.72);border:1px solid var(--line);border-radius:18px}.rhythm-panel{padding:15px 16px 9px;display:flex;flex-direction:column;min-height:390px}.panel-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.panel-title{font-size:15px;font-weight:820}.panel-sub{font-size:10px;color:var(--muted);margin-top:2px}.panel-link{font-size:10px;color:#7b4a0d;font-weight:760;text-decoration:none;white-space:nowrap}.spark{width:100%;height:320px;display:block;flex:1 1 auto}.attention-panel{padding:16px 17px;display:flex;flex-direction:column}.attention-head{display:flex;justify-content:space-between;align-items:start;gap:10px}.attention-count{font-size:30px;font-weight:850;line-height:1;letter-spacing:-.04em}.attention-title{margin-top:9px;font-size:17px;font-weight:800;line-height:1.15}.attention-copy{margin-top:5px;font-size:11px;line-height:1.4;color:var(--muted)}.attention-item{margin-top:14px;padding-top:13px;border-top:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;color:inherit;text-decoration:none}.attention-item .sku{font-size:8.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}.attention-item .name{font-size:12.5px;font-weight:760;margin-top:2px}.attention-item .meta{font-size:9.5px;color:var(--muted);margin-top:2px}.attention-cover{text-align:right}.attention-cover strong{display:block;font-size:21px}.attention-cover span{font-size:9px;color:var(--muted)}.attention-clear{margin:auto 0;padding:20px 0;text-align:left}.attention-clear strong{display:block;font-size:17px}.attention-clear p{font-size:11px;color:var(--muted);line-height:1.45;margin:5px 0 0}.drivers{padding:0 2px}.drivers-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:2px 2px 6px}.drivers-head h2{font-size:15px;margin:2px 0 0}.drivers-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.driver{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 12px;border-right:1px solid var(--line);color:inherit;text-decoration:none;min-width:0}.driver:last-child{border-right:0}.driver img{width:46px;height:52px;object-fit:contain;background:#fff;border-radius:8px}.driver .sku{font-size:8px;color:var(--muted);letter-spacing:.07em}.driver .name{font-size:11.5px;font-weight:740;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}.driver .read{font-size:9.5px;margin-top:4px;font-weight:700}.driver-value{text-align:right}.driver-value strong{display:block;font-size:15px}.driver-value small{display:block;font-size:8.5px;color:var(--muted);margin-top:2px}.home-footer{margin-top:4px}
+@media(max-width:820px){.home-working{grid-template-columns:minmax(0,1fr) 275px}.state-metrics{gap:16px}.drivers-grid{grid-template-columns:1fr}.driver{border-right:0;border-bottom:1px solid var(--line)}.driver:last-child{border-bottom:0}}
+@media(max-width:700px){body.home-page .app{padding-top:10px}.home-main{gap:10px}.home-state{grid-template-columns:1fr;padding:14px 2px 13px;gap:13px}.home-state h1{font-size:31px}.home-state p{font-size:11.5px}.state-metrics{display:grid;grid-template-columns:1fr 1fr;text-align:left;gap:10px}.state-metric{padding-top:8px;border-top:1px solid var(--line)}.home-working{grid-template-columns:1fr}.attention-panel{grid-row:1}.rhythm-panel{grid-row:2;min-height:0;padding:13px 10px 7px}.spark{height:240px;flex:none}.attention-panel{padding:14px}.drivers-head{padding:0 2px}.driver{padding:10px 3px;grid-template-columns:44px minmax(0,1fr) auto}.driver img{width:44px;height:49px}}
 </style>
 </head>
-<body class="home-page">
-<div class="app">
-<header class="topbar">
-  <div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Amazon Mexico · Operating Board</div></div></div>
-  <div class="top-meta"><strong id="clock">--:--</strong><span id="fresh">Loading live data</span></div>
-</header>
-<nav class="primary-nav">
-  <a class="today-link" href="/today">Today</a><a class="active" href="/">Home</a><a href="/sales">Sales</a><a href="/catalog">Catalog</a><a href="/inventory">Inventory</a><a href="/ads">Ads</a><a href="/finance">Finance</a><a href="/trajectory">Trajectory</a><a href="/data-health">Data</a>
-</nav>
-
+<body class="home-page"><div class="app">
+<header class="topbar"><div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Amazon Mexico · Operating Board</div></div></div><div class="top-meta"><strong id="clock">--:--</strong><span id="fresh">Loading live data</span></div></header>
+<nav class="primary-nav"><a class="today-link" href="/today">Today</a><a class="active" href="/">Home</a><a href="/sales">Sales</a><a href="/catalog">Products</a><a href="/inventory">Inventory</a><a href="/finance">Finance</a></nav>
 <main class="home-main">
-<div class="home-dashboard">
-  <div class="home-canvas">
-    <section class="section rhythm-section">
-      <div class="card spark-card"><div class="section-head"><div><div class="section-title">Business rhythm</div><div class="section-sub">90 days of daily sales with the seven-day signal.</div></div><a class="section-link" href="/sales">Open Sales →</a></div><svg class="spark" id="spark" viewBox="0 0 960 190"></svg></div>
-    </section>
-  </div>
-
-  <aside class="home-rail" aria-label="Current operating signals">
-    <a class="signal-card primary" href="/trajectory">
-      <div class="signal-label">Momentum · 28 days</div>
-      <div class="signal-value" id="momentum">—</div>
-      <div class="momentum-read" id="momentumRead">Reading recent momentum…</div>
-      <div class="signal-divider"></div>
-      <div class="signal-subread"><div><strong id="sales28">$—</strong><span>Last 28 days</span></div><div class="signal-submeta" id="sales28Meta">Reconciled sales</div></div>
-    </a>
-
-    <a class="signal-card" href="/today">
-      <div class="signal-label"><span class="live-dot"></span>Today · live</div>
-      <div class="signal-value" id="todaySales">$—</div>
-      <div class="signal-note" id="todayMeta">Waiting for orders</div>
-    </a>
-
-    <a class="signal-card restock-card" id="restockSection" href="/inventory">
-      <div class="signal-label">Restock</div>
-      <div class="signal-value" id="actions">—</div>
-      <div class="signal-note" id="actionMeta">Inventory decisions</div>
-      <div class="restock-product" id="attention"></div>
-    </a>
-  </aside>
-</div>
-
-<section class="section movers-section">
-  <div class="section-head"><div><div class="section-title">What changed</div><div class="section-sub">The three products creating the most movement over the last four weeks.</div></div><a class="section-link" href="/catalog">Open Catalog →</a></div>
-  <div class="card change-list"><div class="list" id="movers"><div class="empty"><strong>Reading product momentum</strong>One moment.</div></div></div>
-</section>
-</main>
-
-<footer class="footer"><span>MXN · today provisional / historical reconciled</span><span>Dirty Pawz Press Analytics</span></footer>
-</div>
-<script src="/assets/vendor/d3.v7.min.js"></script><script src="/assets/chart-system.js"></script><script>
-(function(){
-const fmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
-const money=v=>'$'+fmt.format(Math.round(Number(v||0)));
-const pct=v=>v==null?'—':(Number(v)>0?'+':'')+Number(v).toFixed(1)+'%';
-const cls=v=>Number(v)>0?'good':Number(v)<0?'bad':'';
-const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function momentumRead(delta){delta=Number(delta||0);if(delta>=8)return 'Strong. Clearly ahead of the prior four weeks.';if(delta>=2)return 'Positive. Modestly ahead of the prior four weeks.';if(delta>-2)return 'Steady. Essentially flat versus the prior four weeks.';if(delta>-8)return 'Softer. Recent sales are below the prior four weeks.';return 'Cooling. Recent sales are meaningfully below the prior four weeks.'}
-function render(d){
- document.getElementById('clock').textContent=d.local_time||'--:--';
- document.getElementById('fresh').textContent='Live operating data';
- const t=d.today||{},r=d.rolling||{},is=d.inventory_summary||{};
- document.getElementById('todaySales').textContent=money(t.sales_today);
- document.getElementById('todayMeta').textContent=`${fmt.format(t.orders_today||0)} orders · ${fmt.format(t.units_today||0)} units`;
- document.getElementById('sales28').textContent=money(r.sales_t28);
- document.getElementById('sales28Meta').textContent=`${fmt.format(r.orders_t28||0)} orders · through ${String(r.business_date||'').slice(5)}`;
- const m=document.getElementById('momentum');m.textContent=pct(r.delta28_pct);m.className='signal-value '+cls(r.delta28_pct);
- document.getElementById('momentumRead').textContent=momentumRead(r.delta28_pct);
- document.getElementById('actions').textContent=fmt.format(is.needs_action||0);
- document.getElementById('actionMeta').textContent=`${is.stockouts||0} stockout · ${is.produce||0} produce · ${is.plan||0} plan`;
- DPPCharts.homeRhythm('#spark',d.series,d.weekly_products);
- const att=(d.inventory||[]).filter(x=>['STOCKOUT','PRODUCE','PLAN'].includes(String(x.action||'').toUpperCase()));
- const restock=document.getElementById('restockSection');
- if(att.length){
-   restock.classList.add('show');
-   const x=att[0];
-   document.getElementById('attention').innerHTML=`<div><div class="product-sku">${esc(x.sku)} · ${esc(x.action)}</div><div class="row-title">${esc(x.product||x.sku)}</div><div class="row-sub">${fmt.format(x.available||0)} on hand · ${fmt.format(x.inbound||0)} inbound</div></div><div class="restock-cover"><strong>${x.days_cover==null?'—':Number(x.days_cover).toFixed(0)}</strong><span>days cover</span></div>`;
- } else {
-   restock.classList.remove('show');
- }
- const movers=(d.movers||[]).slice(0,3);document.getElementById('movers').innerHTML=movers.map(x=>{const c=cls(x.delta28_pct);const tag=x.state||'STABLE';const img=x.image_url?`<img class="product-thumb" src="${esc(x.image_url)}" alt="" loading="lazy">`:'';return `<a class="list-row" href="/product?sku=${encodeURIComponent(x.sku)}"><div class="product-line">${img}<div style="min-width:0"><div class="product-sku">${esc(x.sku)}</div><div class="product-name">${esc(x.product||x.sku)}</div><div class="change-tag"><span class="chip ${c}">${esc(tag)}</span></div></div></div><div class="row-value"><strong>${money(x.sales_t28)}</strong><small class="${c}">${pct(x.delta28_pct)} vs prior 28</small></div></a>`}).join('')||`<div class="empty"><strong>No mover data yet.</strong>Product trends will appear here as history builds.</div>`;
-}
-function load(){fetch('/api/home',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(render).catch(e=>{document.getElementById('momentumRead').textContent='Operating feed unavailable · '+e.message})}load();setInterval(load,60000);
-})();
-</script>
-</body></html>
+<section class="home-state" aria-label="Business state"><div><div class="home-state-kicker">Business state</div><h1 id="stateHeadline">Reading the business…</h1><p id="stateCopy">Comparing the last four weeks with the prior four and checking the current operating exceptions.</p></div><div class="state-metrics"><div class="state-metric"><strong id="sales28">$—</strong><span>Last 28 days</span><div class="delta" id="momentum">—</div></div><div class="state-metric live"><strong id="todaySales">$—</strong><span>Today · live</span><div class="delta" id="todayMeta">—</div></div></div></section>
+<section class="home-working"><div class="home-panel rhythm-panel"><div class="panel-head"><div><div class="panel-title">Business rhythm</div><div class="panel-sub">13 weeks · weekly sales · four-week signal · current week partial</div></div><a class="panel-link" href="/sales">Open Sales →</a></div><svg class="spark" id="spark" viewBox="0 0 960 320"></svg></div><aside class="home-panel attention-panel" aria-label="Attention and decisions"><div class="attention-head"><div><div class="attention-kicker">Attention</div><div class="attention-title" id="attentionTitle">Checking for decisions…</div></div><div class="attention-count" id="attentionCount">—</div></div><div class="attention-copy" id="attentionCopy">Inventory and operating exceptions that need a decision appear here.</div><div id="attention"></div></aside></section>
+<section class="drivers"><div class="drivers-head"><div><div class="driver-kicker">Why</div><h2>What is driving the change</h2></div><a class="panel-link" href="/catalog">Open Products →</a></div><div class="drivers-grid" id="movers"><div class="empty"><strong>Reading product momentum</strong>One moment.</div></div></section>
+</main><footer class="footer home-footer"><span>MXN · today provisional / historical reconciled</span><span>Dirty Pawz Press Analytics</span></footer></div>
+<script src="/assets/vendor/d3.v7.min.js"></script><script src="/assets/chart-system.js"></script>
+<script>
+(()=>{'use strict';const fmt=new Intl.NumberFormat('en-US',{maximumFractionDigits:0}),money=v=>'$'+fmt.format(Math.round(Number(v||0))),pct=v=>v==null?'—':`${Number(v)>0?'+':''}${Number(v).toFixed(1)}%`,tone=v=>Number(v)>=2?'good':Number(v)<=-2?'bad':'',esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function stateRead(delta,actions){delta=Number(delta||0);actions=Number(actions||0);if(delta>=8)return{h:'Momentum is strong.',x:actions?`The last four weeks are clearly ahead of the prior four. ${actions} operating decision${actions===1?'':'s'} need attention.`:'The last four weeks are clearly ahead of the prior four, with nothing requiring immediate attention.'};if(delta>=2)return{h:'The business is growing.',x:actions?`Recent sales are modestly ahead. ${actions} operating decision${actions===1?'':'s'} need attention.`:'Recent sales are modestly ahead and there are no immediate operating exceptions.'};if(delta>-2)return{h:'The business is steady.',x:actions?`Recent sales are essentially flat. ${actions} operating decision${actions===1?'':'s'} need attention.`:'Recent sales are essentially flat and operations are currently clear.'};if(delta>-8)return{h:'Momentum has softened.',x:actions?`The last four weeks are below the prior four. ${actions} operating decision${actions===1?'':'s'} also need attention.`:'The last four weeks are below the prior four, but no immediate operating exception is flagged.'};return{h:'The business is cooling.',x:actions?`Recent sales are meaningfully below the prior four weeks and ${actions} operating decision${actions===1?'':'s'} need attention.`:'Recent sales are meaningfully below the prior four weeks. Operations themselves are currently clear.'}}
+function render(d){const t=d.today||{},r=d.rolling||{},is=d.inventory_summary||{},actions=Number(is.needs_action||0),read=stateRead(r.delta28_pct,actions);document.getElementById('clock').textContent=d.local_time||'--:--';document.getElementById('fresh').textContent='Live operating data';document.getElementById('stateHeadline').textContent=read.h;document.getElementById('stateCopy').textContent=read.x;document.getElementById('sales28').textContent=money(r.sales_t28);const mom=document.getElementById('momentum');mom.textContent=`${pct(r.delta28_pct)} vs prior 28`;mom.className='delta '+tone(r.delta28_pct);document.getElementById('todaySales').textContent=money(t.sales_today);document.getElementById('todayMeta').textContent=`${fmt.format(t.orders_today||0)} orders · ${fmt.format(t.units_today||0)} units`;document.getElementById('attentionCount').textContent=actions;const att=(d.inventory||[]).filter(x=>['STOCKOUT','PRODUCE','PLAN'].includes(String(x.action||'').toUpperCase()));if(att.length){const x=att[0];document.getElementById('attentionTitle').textContent=actions===1?'One decision needs attention':`${actions} decisions need attention`;document.getElementById('attentionCopy').textContent=x.action==='STOCKOUT'?'Availability is already constraining demand.':x.action==='PRODUCE'?'Current cover is below the production threshold.':'Stock cover is approaching the planning threshold.';document.getElementById('attention').innerHTML=`<a class="attention-item" href="/inventory"><div><div class="sku">${esc(x.sku)} · ${esc(x.action)}</div><div class="name">${esc(x.product||x.sku)}</div><div class="meta">${fmt.format(x.available||0)} on hand · ${fmt.format(x.inbound||0)} inbound</div></div><div class="attention-cover"><strong>${x.days_cover==null?'—':Number(x.days_cover).toFixed(0)}</strong><span>days cover</span></div></a>`}else{document.getElementById('attentionTitle').textContent='Nothing needs attention';document.getElementById('attentionCopy').textContent='No stockout, production or planning exception is currently flagged.';document.getElementById('attention').innerHTML='<div class="attention-clear"><strong>Operations are clear.</strong><p>Use the business rhythm and product drivers to understand performance; there is no immediate inventory action.</p></div>'}if(window.DPPCharts?.homeRhythm)DPPCharts.homeRhythm('#spark',d.series,d.weekly_products);const movers=(d.movers||[]).slice(0,3);document.getElementById('movers').innerHTML=movers.map(x=>{const c=tone(x.delta28_pct),img=x.image_url?`<img src="${esc(x.image_url)}" alt="" loading="lazy">`:'';const direction=Number(x.delta28_pct)>=8?'Accelerating':Number(x.delta28_pct)<=-8?'Declining':'Stable';return`<a class="driver" href="/product?sku=${encodeURIComponent(x.sku)}">${img}<div><div class="sku">${esc(x.sku)}</div><div class="name">${esc(x.product||x.sku)}</div><div class="read ${c}">${direction} · ${pct(x.delta28_pct)}</div></div><div class="driver-value"><strong>${money(x.sales_t28)}</strong><small>28D sales</small></div></a>`}).join('')||'<div class="empty"><strong>No product-driver data yet.</strong>Drivers will appear as history builds.</div>'}function load(){fetch('/api/home',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(render).catch(e=>{document.getElementById('stateHeadline').textContent='Operating feed unavailable';document.getElementById('stateCopy').textContent=e.message})}load();setInterval(load,60000)})();
+</script></body></html>
