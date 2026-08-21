@@ -2,51 +2,29 @@ from __future__ import annotations
 
 """Freeze seller-owned COGS and management economics when a month closes.
 
-Standard costs are editable inputs for OPEN months. Once a historical month has
-finished Amazon release/advertising close and all SKU costs are known, this job
-writes an immutable close version plus SKU-level COGS snapshot. Later edits to
-product_costs.json do not rewrite history. A historical correction requires an
+Amazon-side readiness and the monthly advertising candidate come from the
+canonical mart.finance_month_state / ads_finance_month_context contract. Seller
+COGS remains an independent prerequisite for creating the immutable management
+close. Closed history never recomputes implicitly; later corrections require an
 explicit RESTATED version.
-
-The cost config is backward compatible:
-- "SKU": 50 applies to all periods.
-- "SKU": {"unit_cogs": 50} also applies to all periods.
-- effective-dated history can be supplied when costs changed over time:
-  "SKU": {
-    "unit_cogs": 55,
-    "effective_from": "2026-08-01",
-    "history": [
-      {"effective_from": "2025-11-01", "effective_to": "2026-07-31", "unit_cogs": 50}
-    ]
-  }
-Explicit history wins for matching months. Otherwise the current standard cost is
-the fallback, including earlier months, so already-sold units are never left
-without COGS merely because effective_from was added later.
 """
 
 import argparse
-import calendar
 import json
 import os
-from datetime import date, datetime, timedelta
+from datetime import date
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from . import db
 from .settings import settings
 
 TZ = "America/Mexico_City"
 VAT_RATE = float(os.getenv("MX_VAT_RATE", "0.16"))
-CLOSE_GRACE_DAYS = int(os.getenv("FINANCE_ADS_CLOSE_GRACE_DAYS", "10"))
 COSTS_PATH = Path(os.getenv("PRODUCT_COSTS_PATH", "/config/product_costs.json"))
 
 
 def _next_month(d: date) -> date:
     return date(d.year + (1 if d.month == 12 else 0), 1 if d.month == 12 else d.month + 1, 1)
-
-
-def _month_end(d: date) -> date:
-    return date(d.year, d.month, calendar.monthrange(d.year, d.month)[1])
 
 
 def _parse_dateish(value) -> date | None:
@@ -90,7 +68,6 @@ def _unit_cost(costs: dict[str, object], sku: str, when: date) -> float | None:
     if not isinstance(value, dict):
         return None
 
-    # Explicit dated history wins whenever a matching period exists.
     matches: list[tuple[date, float]] = []
     history = value.get("history")
     if isinstance(history, list):
@@ -107,18 +84,30 @@ def _unit_cost(costs: dict[str, object], sku: str, when: date) -> float | None:
     if matches:
         return max(matches, key=lambda x: x[0])[1]
 
-    # The current standard is the fallback whenever dated history does not
-    # provide an override. effective_from documents the current cost era; it
-    # must not turn earlier sold units into unknown COGS.
     amount = _numeric(value.get("unit_cogs"))
     if amount is None:
         amount = _numeric(value.get("current"))
     return amount
 
 
+def _canonical_month_state(cur, marketplace: str, month: date) -> dict:
+    cur.execute(
+        """
+        SELECT month,core_orders,released_orders,deferred_events,order_release_complete,
+               advertising_close_state,candidate_advertising_amount,
+               candidate_advertising_source,ads_calendar_complete,
+               ads_attribution_mature,ads_api_restatement_available,amazon_closed,
+               management_close_version,management_close_state,accounting_state
+        FROM mart.finance_month_state
+        WHERE marketplace_id=%s AND month=%s::date
+        """,
+        (marketplace, month),
+    )
+    return cur.fetchone() or {}
+
+
 def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, object]) -> dict:
     nxt = _next_month(month)
-    after = _next_month(nxt)
 
     cur.execute(
         """
@@ -144,13 +133,9 @@ def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, object]
             AND (created_time AT TIME ZONE '{TZ}')::date < %s::date
             AND fulfillment_status IS DISTINCT FROM 'CANCELLED'
         )
-        SELECT count(DISTINCT om.amazon_order_id)::int AS core_orders,
-               count(DISTINCT ft.amazon_order_id) FILTER (
-                 WHERE ft.transaction_status='RELEASED' AND ft.transaction_type='Shipment'
-               )::int AS released_orders,
-               count(*) FILTER (WHERE ft.transaction_status='DEFERRED')::int AS deferred_events,
-               COALESCE(sum(ft.total_amount) FILTER (
-                 WHERE ft.transaction_status='RELEASED' AND ft.transaction_type IN ('Shipment','Refund')
+        SELECT COALESCE(sum(ft.total_amount) FILTER (
+                 WHERE ft.transaction_status='RELEASED'
+                   AND ft.transaction_type IN ('Shipment','Refund')
                ),0)::numeric(16,2) AS order_net
         FROM om
         LEFT JOIN core.financial_transaction ft
@@ -158,29 +143,17 @@ def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, object]
         """,
         (marketplace, month, nxt, marketplace),
     )
-    fin = cur.fetchone() or {}
-    core_orders = int(fin.get("core_orders") or 0)
-    released_orders = int(fin.get("released_orders") or 0)
-    deferred_events = int(fin.get("deferred_events") or 0)
-    order_net = float(fin.get("order_net") or 0)
+    order_net = float((cur.fetchone() or {}).get("order_net") or 0)
 
-    # Temporary bridge until Ads API reporting is authorized: the Amazon ad
-    # charge posted in the following calendar month closes the prior ad month.
-    cur.execute(
-        f"""
-        SELECT COALESCE(sum(total_amount),0)::numeric(16,2) AS amount,
-               count(*)::int AS events
-        FROM core.financial_transaction
-        WHERE marketplace_id=%s AND transaction_status='RELEASED'
-          AND transaction_type='ProductAdsPayment'
-          AND (posted_date AT TIME ZONE '{TZ}')::date >= %s::date
-          AND (posted_date AT TIME ZONE '{TZ}')::date < %s::date
-        """,
-        (marketplace, nxt, after),
-    )
-    ads_row = cur.fetchone() or {}
-    ads_events = int(ads_row.get("events") or 0)
-    advertising = float(ads_row.get("amount") or 0)
+    state = _canonical_month_state(cur, marketplace, month)
+    if not state:
+        raise RuntimeError(f"No canonical Finance month state for {marketplace} {month:%Y-%m}")
+    accounting_state = str(state.get("accounting_state") or "AMAZON_CLOSING")
+    amazon_closed = bool(state.get("amazon_closed"))
+    advertising_state = str(state.get("advertising_close_state") or "PENDING")
+    advertising_source = state.get("candidate_advertising_source")
+    advertising_raw = state.get("candidate_advertising_amount")
+    advertising = float(advertising_raw) if advertising_raw is not None else None
 
     cur.execute(
         f"""
@@ -248,26 +221,27 @@ def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, object]
         {"sku": r["sku"], "units": r["units"]}
         for r in sku_rows if not r["configured"]
     ]
-    finance_released = deferred_events == 0 and (released_orders > 0 or net_sales == 0)
-    now_local = datetime.now(ZoneInfo(TZ)).date()
-    old_enough = now_local >= _month_end(month) + timedelta(days=CLOSE_GRACE_DAYS)
-    amazon_closed = finance_released and ads_events > 0 and old_enough
 
     contribution = None
     margin = None
-    if amazon_closed and cogs_complete:
+    if amazon_closed and cogs_complete and advertising is not None:
         contribution = round(order_net + advertising + other_postings - product_cogs, 2)
         margin = round(100.0 * contribution / net_sales, 2) if net_sales else None
 
     return {
         "month": month,
+        "accounting_state": accounting_state,
         "net_sales_ex_vat": round(net_sales, 2),
         "iva_on_sales": round(net_sales * VAT_RATE, 2),
         "shopper_product_spend": round(net_sales * (1 + VAT_RATE), 2),
         "amazon_order_net": round(order_net, 2),
         "amazon_order_effect": round(order_net - net_sales, 2),
-        "advertising": round(advertising, 2),
-        "advertising_events": ads_events,
+        "advertising": round(advertising, 2) if advertising is not None else None,
+        "advertising_close_state": advertising_state,
+        "advertising_source": advertising_source,
+        "ads_calendar_complete": bool(state.get("ads_calendar_complete")),
+        "ads_attribution_mature": bool(state.get("ads_attribution_mature")),
+        "ads_api_restatement_available": bool(state.get("ads_api_restatement_available")),
         "other_amazon_postings": round(other_postings, 2),
         "product_cogs": round(product_cogs, 2),
         "contribution_after_product_cogs": contribution,
@@ -277,11 +251,10 @@ def _month_snapshot(cur, marketplace: str, month: date, costs: dict[str, object]
         "missing_skus": missing_skus,
         "cogs_complete": cogs_complete,
         "cogs_coverage_pct": round(100.0 * covered_units / total_units, 1) if total_units else 100.0,
-        "core_orders": core_orders,
-        "released_orders": released_orders,
-        "deferred_events": deferred_events,
-        "finance_released": finance_released,
-        "old_enough": old_enough,
+        "core_orders": int(state.get("core_orders") or 0),
+        "released_orders": int(state.get("released_orders") or 0),
+        "deferred_events": int(state.get("deferred_events") or 0),
+        "finance_released": bool(state.get("order_release_complete")),
         "amazon_closed": amazon_closed,
     }
 
@@ -291,11 +264,15 @@ def _write_close(cur, marketplace: str, snap: dict, version: int, *, restatement
     state = "RESTATED" if version > 1 else "CLOSED"
     supersedes = version - 1 if version > 1 else None
     basis = {
-        "amazon_finance_status": "RELEASED",
+        "accounting_state_at_freeze": snap["accounting_state"],
+        "amazon_finance_status": "RELEASED" if snap["finance_released"] else "PENDING",
         "amazon_order_releases_complete": snap["finance_released"],
         "deferred_events": snap["deferred_events"],
-        "advertising_source": "following_calendar_month_ProductAdsPayment_bridge",
-        "advertising_events": snap["advertising_events"],
+        "advertising_source": snap["advertising_source"],
+        "advertising_close_state": snap["advertising_close_state"],
+        "ads_calendar_complete": snap["ads_calendar_complete"],
+        "ads_attribution_mature": snap["ads_attribution_mature"],
+        "ads_api_restatement_available_at_freeze": snap["ads_api_restatement_available"],
         "cogs_source": "seller_standard_cost_snapshot",
         "cogs_config_path": str(COSTS_PATH),
         "cogs_coverage_pct": snap["cogs_coverage_pct"],
@@ -364,23 +341,29 @@ def close_ready_months() -> dict:
                     cursor = _next_month(cursor)
                     continue
                 snap = _month_snapshot(cur, marketplace, cursor, costs)
-                if snap["amazon_closed"] and snap["cogs_complete"]:
+                ready = snap["accounting_state"] == "AMAZON_CLOSED_COGS_PENDING" and snap["amazon_closed"] and snap["cogs_complete"] and snap["advertising"] is not None
+                if ready:
                     _write_close(cur, marketplace, snap, 1)
                     created.append(str(cursor))
                 else:
                     waits = []
-                    if not snap["amazon_closed"]:
+                    if snap["accounting_state"] == "AMAZON_CLOSING":
                         if not snap["finance_released"]:
                             waits.append("amazon_order_releases")
-                        if snap["advertising_events"] == 0:
+                        if snap["advertising_close_state"] not in ("ADS_API_ACCRUAL_READY", "PRODUCT_ADS_PAYMENT_BRIDGE_READY"):
                             waits.append("advertising_close")
-                        if not snap["old_enough"]:
+                        if not waits:
                             waits.append("close_grace")
                     if not snap["cogs_complete"]:
                         waits.append("product_cogs")
+                    if snap["advertising"] is None:
+                        waits.append("advertising_amount")
                     pending.append({
                         "month": str(cursor),
+                        "accounting_state": snap["accounting_state"],
                         "amazon_closed": snap["amazon_closed"],
+                        "advertising_close_state": snap["advertising_close_state"],
+                        "advertising_source": snap["advertising_source"],
                         "waits": waits,
                         "cogs_coverage_pct": snap["cogs_coverage_pct"],
                         "missing_skus": snap["missing_skus"],
@@ -406,7 +389,9 @@ def restate_month(month_text: str, reason: str) -> dict:
             raise RuntimeError(f"{month:%Y-%m} is not closed yet; cannot restate it")
         snap = _month_snapshot(cur, marketplace, month, costs)
         if not snap["amazon_closed"]:
-            raise RuntimeError(f"{month:%Y-%m} no longer satisfies Amazon-close criteria")
+            raise RuntimeError(f"{month:%Y-%m} no longer satisfies canonical Amazon-close criteria")
+        if snap["advertising"] is None:
+            raise RuntimeError(f"{month:%Y-%m} has no canonical advertising close amount")
         if not snap["cogs_complete"]:
             missing = ", ".join(r["sku"] for r in snap["missing_skus"])
             raise RuntimeError(f"{month:%Y-%m} has incomplete product COGS: {missing}")
@@ -418,7 +403,7 @@ def restate_month(month_text: str, reason: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--restate", help="Explicitly restate a closed YYYY-MM month using current source data/costs")
+    parser.add_argument("--restate", help="Explicitly restate a closed YYYY-MM month using current canonical source data/costs")
     parser.add_argument("--reason", default="Manual finance restatement")
     args = parser.parse_args()
     result = restate_month(args.restate, args.reason) if args.restate else close_ready_months()
@@ -427,4 +412,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
