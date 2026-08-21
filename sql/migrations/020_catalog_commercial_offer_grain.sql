@@ -9,7 +9,8 @@
 --   * additional seller SKUs are operational aliases, not extra products;
 --   * parent ASINs remain structural variation containers and never receive child demand.
 
-CREATE OR REPLACE VIEW mart.catalog_portfolio_product AS
+DROP VIEW IF EXISTS mart.catalog_portfolio_product;
+CREATE VIEW mart.catalog_portfolio_product AS
 WITH cutoff AS (
     SELECT marketplace_id, max(business_date) AS through_date
     FROM core.asin_sales_traffic_daily
