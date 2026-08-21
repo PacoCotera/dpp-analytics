@@ -35,7 +35,9 @@ build_sha = raw_sha[:8] if re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha) else 'dev'
 footer_stamp = f'Dirty Pawz Press Analytics · main {build_sha}'
 
 # Transitional compatibility only for pages not yet migrated to explicit source
-# dependencies. Never inline CSS/JS contents here.
+# dependencies. Never inline CSS/JS contents here. Migrated pages declare their
+# own assets in source and therefore pass through this loop unchanged apart from
+# the build stamp (and the temporary global swipe-tabs compatibility layer).
 shared_styles = (
     'mobile-ux.css',
     'design-refine.css',
@@ -56,19 +58,9 @@ for page in static.glob('*.html'):
         text = text.replace('</body>', '<script src="/assets/swipe-tabs.js"></script>\n</body>', 1)
     page.write_text(text)
 
-# Today, Home, Product Workspace and Finance own their DOM/state composition directly.
-# Do not inject post-render layout or accounting layers into these canonical pages.
-
-# Sales has one composition/runtime owner. These remain explicit transitional
-# page dependencies until Sales is migrated into the shared page primitives.
-sales = static / 'sales.html'
-text = sales.read_text()
-for name in ('sales-operating-v2.css', 'sales-state-rail.css'):
-    if f'/assets/{name}' not in text:
-        text = text.replace('</head>', f'<link rel="stylesheet" href="/assets/{name}">\n</head>', 1)
-if '/assets/sales-canonical.js' not in text:
-    text = text.replace('</body>', '<script src="/assets/sales-canonical.js"></script>\n</body>', 1)
-sales.write_text(text)
+# Today, Home, Sales, Inventory, Product Workspace and Finance own their
+# DOM/state composition directly. Do not inject post-render layout, accounting
+# or page-specific runtime layers into these canonical pages.
 
 ads = static / 'ads.html'
 text = ads.read_text()
