@@ -1,7 +1,11 @@
+.trust-overview {
+  margin-top: 18px;
+}
+
 .health-control {
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
-  gap: 18px;
+  gap: 20px;
   align-items: center;
 }
 
@@ -14,6 +18,14 @@
   place-items: center;
   border-radius: 50%;
   background: conic-gradient(var(--good) 0deg, var(--good) var(--angle), #e6dfd4 var(--angle), #e6dfd4 360deg);
+}
+
+.health-ring[data-state='degraded'] {
+  background: conic-gradient(var(--warn) 0deg, var(--warn) var(--angle), #e6dfd4 var(--angle), #e6dfd4 360deg);
+}
+
+.health-ring[data-state='failed'] {
+  background: conic-gradient(var(--bad) 0deg, var(--bad) var(--angle), #e6dfd4 var(--angle), #e6dfd4 360deg);
 }
 
 .health-ring::after {
@@ -31,6 +43,15 @@
   letter-spacing: -0.04em;
 }
 
+.health-eyebrow {
+  margin-bottom: 5px;
+  color: var(--accent-ink);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
 .health-title {
   margin: 0 0 6px;
   font-size: 30px;
@@ -39,6 +60,7 @@
 }
 
 .health-copy {
+  max-width: 780px;
   margin: 0;
   color: var(--muted);
   font-size: 14px;
@@ -48,6 +70,78 @@
 .trust-note {
   margin-top: 12px;
   border-left: 5px solid var(--good);
+}
+
+.domain-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.domain-card {
+  min-height: 132px;
+  padding: 15px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 253, 249, 0.62);
+}
+
+.domain-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.domain-card__head strong {
+  font-size: 16px;
+}
+
+.domain-card p {
+  min-height: 36px;
+  margin: 10px 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.domain-card small {
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.domain-state {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.domain-state--healthy {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.domain-state--stale,
+.domain-state--degraded {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.domain-state--failed {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.domain-state--disconnected {
+  background: #eee8df;
+  color: var(--muted);
 }
 
 .source-grid {
@@ -72,17 +166,27 @@
   font-size: 11px;
 }
 
+.pipeline-panel .panel__body {
+  overflow: hidden;
+}
+
 .health-job {
   display: grid;
-  grid-template-columns: 160px minmax(150px, 0.7fr) 95px 100px minmax(150px, 1fr);
+  grid-template-columns: minmax(170px, 1.15fr) 120px 90px 90px minmax(180px, 1fr);
   gap: 12px;
   align-items: center;
   padding: 13px 0;
   border-top: 1px solid #e8e1d7;
 }
 
-.health-job:first-child {
+.health-job--header {
+  padding: 0 0 9px;
   border-top: 0;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .health-job__name {
@@ -91,6 +195,7 @@
 }
 
 .health-job__source {
+  margin-top: 2px;
   color: var(--muted);
   font-size: 10px;
   letter-spacing: 0.07em;
@@ -109,20 +214,20 @@
   text-transform: uppercase;
 }
 
-.health-status.success,
-.health-status.running {
+.health-status.healthy {
   background: var(--good-soft);
   color: var(--good);
 }
 
-.health-status.error {
-  background: var(--bad-soft);
-  color: var(--bad);
-}
-
-.health-status.interrupted {
+.health-status.stale,
+.health-status.degraded {
   background: var(--warn-soft);
   color: var(--warn);
+}
+
+.health-status.failed {
+  background: var(--bad-soft);
+  color: var(--bad);
 }
 
 .health-job__age {
@@ -137,53 +242,73 @@
 
 .health-job__error {
   overflow: hidden;
-  color: var(--bad);
+  color: var(--muted);
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 @media (max-width: 900px) {
+  .domain-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .source-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .health-job {
-    grid-template-columns: 1fr 90px 80px;
+  .health-job,
+  .health-job--header {
+    grid-template-columns: minmax(160px, 1fr) 110px 80px;
   }
 
-  .health-job__source,
-  .health-job__rows {
+  .health-job > :nth-child(4),
+  .health-job > :nth-child(5) {
     display: none;
-  }
-
-  .health-job__error {
-    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 640px) {
   .health-control {
-    grid-template-columns: 80px minmax(0, 1fr);
+    grid-template-columns: 76px minmax(0, 1fr);
     gap: 14px;
   }
 
   .health-ring {
-    width: 80px;
-    height: 80px;
+    width: 76px;
+    height: 76px;
   }
 
   .health-ring strong {
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .health-title {
-    font-size: 25px;
+    font-size: 23px;
+    line-height: 1.02;
   }
 
   .health-copy {
     font-size: 12px;
     line-height: 1.4;
+  }
+
+  .domain-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .domain-card {
+    min-height: 0;
+    padding: 13px 14px;
+  }
+
+  .domain-card p {
+    min-height: 0;
+    margin: 7px 0 5px;
+  }
+
+  .coverage-section {
+    margin-top: 22px;
   }
 
   .source-grid {
@@ -194,15 +319,13 @@
     font-size: 22px;
   }
 
-  .health-job {
+  .health-job,
+  .health-job--header {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .health-job__age {
+  .health-job--header > :nth-child(n + 3),
+  .health-job > :nth-child(n + 3) {
     display: none;
-  }
-
-  .health-job__error {
-    grid-column: 1 / -1;
   }
 }
