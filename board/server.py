@@ -28,7 +28,7 @@ ROOT = Path(__file__).parent
 STATIC = ROOT / "static"
 STATIC_ROOT = STATIC.resolve()
 LABELS_PATH = ROOT / "product_labels.json"
-VERSIONED_ASSET_RE = re.compile(r'(/assets/[^"\'?#]+\.(?:css|js))')
+VERSIONED_ASSET_RE = re.compile(r'''(/assets/[^"'?#]+\.(?:css|js))''')
 
 
 def frontend_asset_version() -> str:
