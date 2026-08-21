@@ -53,17 +53,13 @@ for page in static.glob('*.html'):
 
 today = static / 'today.html'
 text = today.read_text()
-today_enhance = (static / 'today-clarity.js').read_text()
-today_tag = '<script>\n' + today_enhance + '\n</script>'
-if '</body>' in text and 'Today clarity pass: compact recent-day selector' not in text:
-    text = text.replace('</body>', today_tag + '\n</body>', 1)
 today_layout = (static / 'today-operating-v2.css').read_text()
 today_layout_tag = '<style>\n' + today_layout + '\n</style>'
-if '</head>' in text and 'Today operating layout v2' not in text:
+if '</head>' in text and 'Today canonical operating layout v4' not in text:
     text = text.replace('</head>', today_layout_tag + '\n</head>', 1)
 today_runtime = (static / 'today-operating-v2.js').read_text()
 today_runtime_tag = '<script>\n' + today_runtime + '\n</script>'
-if '</body>' in text and 'Reframes normal Today as live state' not in text:
+if '</body>' in text and 'Today canonical operating composition v4' not in text:
     text = text.replace('</body>', today_runtime_tag + '\n</body>', 1)
 today.write_text(text)
 
