@@ -43,8 +43,12 @@ function validateDecoratedItems(label, orders, key = 'items') {
       if (!String(item.catalog_title || '').trim()) {
         throw new Error(`${label} SKU ${item.sku} missing catalog_title provenance`);
       }
-      if (!String(item.product || '').trim()) {
+      const productName = String(item.product || '').trim();
+      if (!productName) {
         throw new Error(`${label} SKU ${item.sku} missing display product name`);
+      }
+      if (/\b(actual|archivo)\b/i.test(productName) || /Pocket\s*-\s*/i.test(productName)) {
+        throw new Error(`${label} SKU ${item.sku} leaked raw catalog naming: ${productName}`);
       }
       if (item.label_source === 'override') overrides += 1;
     }

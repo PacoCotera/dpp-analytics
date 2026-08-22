@@ -11,6 +11,18 @@ function age(seconds) {
   return `${(value / 86400).toFixed(value < 259200 ? 1 : 0)}d`;
 }
 
+function ratioPercent(value) {
+  return value === null || value === undefined
+    ? '—'
+    : percent(100 * Number(value), { sign: false });
+}
+
+function decimal(value, digits = 2) {
+  if (value === null || value === undefined) return '—';
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed.toFixed(digits) : '—';
+}
+
 function draw() {
   if (!data || !window.DPPCharts) return;
   const rows = (data.series || []).slice(-days);
@@ -128,9 +140,9 @@ function renderListingAndInventory(profile, commercial, ads) {
 
   const hasAds = Boolean(ads.through_date && Number(ads.observed_ads_days || 0) > 0);
   if (!hasAds) {
-    byId('adsState').textContent = 'No Ads data';
-    byId('adsState').className = '';
-    byId('adsNote').textContent = 'paid attribution unavailable';
+    byId('adsState').textContent = 'Ads access pending';
+    byId('adsState').className = 'warn';
+    byId('adsNote').textContent = 'seller demand remains available';
   } else if (ads.trusted_for_operating_decisions) {
     byId('adsState').textContent = 'Decision-grade';
     byId('adsState').className = 'good';
@@ -199,11 +211,13 @@ function renderEconomicsDecision(economics) {
 
 function renderVariationContext(profile, commercial, familyVariations) {
   const attributes = commercial.variation_attributes || {};
-  byId('familyRead').textContent = commercial.family_asin
-    ? commercial.parent_asin
-      ? 'Variation family'
-      : 'Commercial family'
-    : 'Standalone product';
+  byId('familyRead').textContent =
+    commercial.family_name ||
+    (commercial.family_asin
+      ? commercial.parent_asin
+        ? 'Variation family'
+        : 'Commercial family'
+      : 'Standalone product');
 
   byId('variationChips').innerHTML = Object.entries(attributes)
     .map(([key, value]) => `<span class="variation-chip">${escapeHtml(key)} · ${escapeHtml(value)}</span>`)
@@ -229,19 +243,31 @@ function renderVariationContext(profile, commercial, familyVariations) {
 }
 
 function renderAds(ads) {
-  const hasAds = Boolean(ads.through_date && Number(ads.observed_ads_days || 0) > 0);
+  const observed = Number(ads.observed_ads_days || 0);
+  const mature = Number(ads.mature_ads_days || 0);
+  const hasAds = Boolean(ads.through_date && observed > 0);
   if (!hasAds) {
-    byId('adsDecision').textContent = 'Paid-support context pending';
+    byId('adsDecision').textContent = 'Ads integration ready';
     byId('adsRead').textContent =
-      'Seller demand remains readable without Ads. Paid attribution will appear here when Amazon Ads data is available.';
+      'Seller demand, conversion, inventory and COGS remain fully usable. Paid-support metrics will populate after Amazon Ads authorizes access and the initial backfill completes.';
     return;
   }
 
-  const trust = ads.trusted_for_operating_decisions ? 'Decision-grade' : 'Review';
+  const spend = Number(ads.spend || 0);
+  const trusted = Boolean(ads.trusted_for_operating_decisions);
+  const trust = trusted ? 'Decision-grade' : 'Review';
+  const attribution =
+    ads.attribution_state || (mature >= observed ? 'MATURE' : 'PROVISIONAL');
   byId('adsDecision').textContent =
-    `${money(ads.spend)} spend · ${ads.tacos == null ? '—' : percent(100 * Number(ads.tacos), { sign: false })} TACOS · ${ads.roas == null ? '—' : `${Number(ads.roas).toFixed(2)}×`} ROAS`;
+    `${money(spend)} spend · ${decimal(ads.roas)}× ROAS · ${ratioPercent(ads.tacos)} TACOS`;
   byId('adsRead').textContent =
-    `${trust} through ${String(ads.through_date).slice(5)}. Amazon-attributed sales ${money(ads.attributed_sales)} are attribution, not exact incremental sales; subtracting them from total sales does not produce exact organic sales.`;
+    `${money(ads.attributed_sales || 0)} Amazon-attributed sales · ${integer(ads.clicks || 0)} clicks · ${ratioPercent(ads.ctr)} CTR · ${ads.cpc == null ? '—' : money(ads.cpc)} CPC · ${ratioPercent(ads.acos)} ACOS · ${observed} observed Ads day${observed === 1 ? '' : 's'}${mature < observed ? ` · ${mature} mature` : ''}. ${trust} ${String(attribution).toLowerCase()} attribution through ${ads.through_date}. Attributed sales are not exact incremental sales, and total seller sales minus attributed sales is not exact organic sales.`;
+
+  const healthRead = byId('healthRead');
+  if (healthRead && spend > 0 && !healthRead.textContent.includes('Paid support is active')) {
+    healthRead.textContent +=
+      ` Paid support is active at ${money(spend)} over 28D, with ${ratioPercent(ads.tacos)} TACOS and ${decimal(ads.roas)}× attributed ROAS; this is context, not proof of causality.`;
+  }
 }
 
 function renderOrders(orders = []) {

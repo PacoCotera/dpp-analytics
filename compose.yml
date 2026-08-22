@@ -105,13 +105,13 @@ services:
       SPAPI_MARKETPLACE_ID: ${SPAPI_MARKETPLACE_ID:-A1AM78C64UM0Y8}
       PRODUCT_COSTS_PATH: /config/product_costs.json
       PRODUCT_VARIATIONS_PATH: /config/product_variations.json
+      PRODUCT_LABELS_PATH: /config/product_labels.json
       FINANCE_ADS_CLOSE_GRACE_DAYS: ${FINANCE_ADS_CLOSE_GRACE_DAYS:-10}
       MX_VAT_RATE: ${MX_VAT_RATE:-0.16}
       TZ: ${TZ}
     ports:
       - "8088:8080"
     volumes:
-      - /etc/dpp-analytics/product_labels.json:/app/product_labels.json:ro
       - /etc/dpp-analytics/board-config:/config:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()"]

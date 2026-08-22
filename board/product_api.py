@@ -136,6 +136,8 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
         local_clock = _one(cur,"SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
     taxonomy = _product_taxonomy()
+    local_taxonomy = taxonomy["products"].get(sku, {})
+    commercial["family_name"] = local_taxonomy.get("family_name")
     taxonomy_rows = [commercial] + siblings if commercial else siblings
     for row in taxonomy_rows:
         row['variation_attributes'],row['variation_attribute_source']=_variation_taxonomy_for_row(row,taxonomy)

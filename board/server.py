@@ -27,7 +27,13 @@ from trajectory_api import trajectory_payload as build_trajectory_payload
 ROOT = Path(__file__).parent
 STATIC = ROOT / "static"
 STATIC_ROOT = STATIC.resolve()
-LABELS_PATH = ROOT / "product_labels.json"
+DEFAULT_LABELS_PATH = ROOT / "product_labels.json"
+LABELS_PATH = Path(
+    os.getenv(
+        "PRODUCT_LABELS_PATH",
+        "/config/product_labels.json" if Path("/config").exists() else DEFAULT_LABELS_PATH,
+    )
+)
 VERSIONED_ASSET_RE = re.compile(r'''(/assets/[^"'?#]+\.(?:css|js))''')
 
 
@@ -122,9 +128,9 @@ def all_rows(cur, sql, params=()):
     return list(cur.fetchall())
 
 
-def product_labels() -> dict[str, dict]:
+def _label_file(path: Path) -> dict[str, dict]:
     try:
-        data = json.loads(LABELS_PATH.read_text())
+        data = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
         return {}
     return {
@@ -132,6 +138,25 @@ def product_labels() -> dict[str, dict]:
         for sku, value in data.items()
         if not str(sku).startswith("_") and isinstance(value, dict)
     }
+
+
+def product_labels() -> dict[str, dict]:
+    """Canonical repo names plus persistent host media/link overrides.
+
+    Product names are an application-wide contract, so a stale host seed must
+    never mask a corrected repo mapping. Host values remain authoritative for
+    optional image and Amazon-link overrides, and may name unknown future SKUs.
+    """
+    defaults = _label_file(DEFAULT_LABELS_PATH)
+    overrides = {} if LABELS_PATH == DEFAULT_LABELS_PATH else _label_file(LABELS_PATH)
+    labels = {}
+    for sku in defaults.keys() | overrides.keys():
+        merged = dict(defaults.get(sku, {}))
+        merged.update(overrides.get(sku, {}))
+        if defaults.get(sku, {}).get("name"):
+            merged["name"] = defaults[sku]["name"]
+        labels[sku] = merged
+    return labels
 
 
 def decorate_products(rows: list[dict]) -> list[dict]:

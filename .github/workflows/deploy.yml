@@ -103,13 +103,6 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/init-host-config.sh
-          if sudo test -d /etc/dpp-analytics/product_labels.json; then
-            sudo rm -rf /etc/dpp-analytics/product_labels.json
-          fi
-          if ! sudo test -f /etc/dpp-analytics/product_labels.json; then
-            sudo install -m 0644 board/product_labels.json /etc/dpp-analytics/product_labels.json
-          fi
-          sudo python3 -m json.tool /etc/dpp-analytics/product_labels.json >/dev/null
 
       - name: Validate compose
         run: |

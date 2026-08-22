@@ -47,6 +47,12 @@ prepare_config \
   "$CONFIG_DIR/product_variations.json" \
   "$ROOT/product_variations.json"
 
+prepare_config \
+  "product label override" \
+  "board/product_labels.json" \
+  "$CONFIG_DIR/product_labels.json" \
+  "$ROOT/product_labels.json"
+
 # Merge newly introduced canonical taxonomy entries without replacing any
 # seller-owned values already present on the host.
 sudo python3 - "$CONFIG_DIR/product_variations.json" "board/product_variations.json" <<'PY'

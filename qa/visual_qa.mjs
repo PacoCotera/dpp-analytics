@@ -86,6 +86,30 @@ async function verifyCatalogMode(page, mode) {
   await wait(page, '.analysis-row');
 }
 
+async function verifyProductWorkspace(page) {
+  await wait(page, '.hero-name');
+  const payload = await page.evaluate(async () =>
+    (await (await fetch('/api/product?sku=PNC-001', { cache: 'no-store' })).json()),
+  );
+  const expected =
+    'Pack de 3 Libretas de Bolsillo · Naturaleza · Cuadrícula Punteada';
+  if (payload.profile?.product !== expected)
+    throw new Error(`Product canonical name mismatch: ${payload.profile?.product || 'blank'}`);
+  const renderedName = (await page.locator('.hero-name').textContent() || '').trim();
+  if (renderedName !== expected)
+    throw new Error(`Product hero canonical name mismatch: ${renderedName || 'blank'}`);
+  if (await page.locator('script[src*="product-ads-context"]').count())
+    throw new Error('Product loaded the superseded Ads post-render module');
+  if (await page.locator('#ordersPanel[open]').count())
+    throw new Error('Product order evidence is open by default');
+  if (!payload.ads?.through_date || !Number(payload.ads?.observed_ads_days || 0)) {
+    const adsState = (await page.locator('#adsState').textContent() || '').trim();
+    const adsDecision = (await page.locator('#adsDecision').textContent() || '').trim();
+    if (adsState !== 'Ads access pending' || adsDecision !== 'Ads integration ready')
+      throw new Error(`Product Ads pending language mismatch: ${adsState} / ${adsDecision}`);
+  }
+}
+
 async function assertFinanceChartMarks(page, label) {
   await wait(page, '#progression');
   const marks = await page.locator('#progression rect, #progression path, #progression line').count();
@@ -171,7 +195,7 @@ const scenarios = [
   ['catalog-ruling', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'dimension:ruling')],
   ['catalog-combinations', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'pair')],
   ['catalog-sku', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'sku')],
-  ['product-pnc-001', '/product?sku=PNC-001', ['mobile', 'desktop']],
+  ['product-pnc-001', '/product?sku=PNC-001', ['mobile', 'desktop'], verifyProductWorkspace],
   ['inventory', '/inventory', ['mobile', 'tablet', 'desktop']],
   ['ads-overview', '/ads', ['mobile', 'tablet', 'desktop'], p => verifyAds(p)],
   ['ads-campaigns', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'campaigns')],
