@@ -115,7 +115,7 @@ def _product_taxonomy() -> dict:
         "dimension_map": dimension_map,
         "value_map": value_map,
         "source_path": str(path),
-        "configured": bool(raw),
+        "configured": bool(products or configured_map or configured_values),
     }
 
 
@@ -547,6 +547,8 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         "amazon_dimension_coverage": sum(1 for r in active if str(r.get("variation_attribute_source") or "").startswith("AMAZON_CATALOG")),
         "taxonomy_warning_count": len(taxonomy_warnings),
         "taxonomy_override_configured": taxonomy["configured"],
+        "taxonomy_mapped_skus": sum(1 for r in rows if _is_offer(r) and str(r.get("sku") or "") in taxonomy["products"]),
+        "taxonomy_unmapped_skus": sorted({str(r.get("sku") or "") for r in rows if _is_offer(r) and str(r.get("sku") or "") not in taxonomy["products"]}),
     })
     summary["conversion_t28_pct"] = round(100.0 * summary["units_t28"] / summary["sessions_t28"], 2) if summary["sessions_t28"] else None
     summary["ad_tacos_t28"] = summary["ad_spend_t28"] / summary["sales_t28"] if summary["sales_t28"] > 0 and summary["ad_spend_t28"] > 0 else None
