@@ -1,13 +1,6 @@
--- Correct shopper-spend basis using the transaction's explicit revenue/tax components.
---
--- Production evidence showed that Orders v2026 product.price.unitPrice for DPP MX
--- can be tax-exclusive. It is therefore not sufficient to label unitPrice x quantity
--- as shopper spend. PROCEEDS carries ITEM and TAX as separate revenue components
--- when tax is broken out. If TAX is absent, Amazon may already include tax in ITEM;
--- in that case ITEM is used as-is. Settlement fees are not part of this view.
---
--- This keeps every order on one basis: customer product spend including IVA.
--- Shipping is intentionally separate from product sales and is not added here.
+-- Correct shopper-spend basis using explicit item revenue/tax components.
+-- Keep the established mart view column contracts stable: downstream views depend
+-- on CREATE OR REPLACE preserving existing column names and positions.
 
 CREATE OR REPLACE VIEW mart.order_item_customer_spend AS
 SELECT
@@ -21,18 +14,10 @@ SELECT
     CASE
       WHEN i.proceeds_item_amount IS NOT NULL AND i.proceeds_tax_amount IS NOT NULL
         THEN i.proceeds_item_amount + i.proceeds_tax_amount
-      WHEN i.proceeds_item_amount IS NOT NULL
-        THEN i.proceeds_item_amount
+      WHEN i.proceeds_item_amount IS NOT NULL THEN i.proceeds_item_amount
       ELSE COALESCE(i.proceeds_total_amount, i.unit_price_amount * i.quantity_ordered, 0)
     END::numeric(14,2) AS customer_spend,
-    COALESCE(o.fulfillment_status,'') AS fulfillment_status,
-    CASE
-      WHEN i.proceeds_item_amount IS NOT NULL AND i.proceeds_tax_amount IS NOT NULL THEN 'PROCEEDS_ITEM_PLUS_TAX'
-      WHEN i.proceeds_item_amount IS NOT NULL THEN 'PROCEEDS_ITEM_TAX_EMBEDDED_OR_UNAVAILABLE'
-      WHEN i.proceeds_total_amount IS NOT NULL THEN 'PROCEEDS_TOTAL_FALLBACK'
-      WHEN i.unit_price_amount IS NOT NULL THEN 'UNIT_PRICE_FALLBACK'
-      ELSE 'NO_AMOUNT'
-    END::text AS customer_spend_source
+    COALESCE(o.fulfillment_status,'') AS fulfillment_status
 FROM core.amazon_order_item i
 JOIN core.amazon_order o USING (amazon_order_id)
 JOIN core.marketplace m USING (marketplace_id)
@@ -46,24 +31,29 @@ WITH item_rollup AS (
     SELECT marketplace_id,amazon_order_id,
            COALESCE(sum(units),0)::bigint AS units,
            COALESCE(sum(customer_spend),0)::numeric(14,2) AS item_customer_spend,
-           count(*)::bigint AS item_rows,
-           bool_and(customer_spend_source IN ('PROCEEDS_ITEM_PLUS_TAX','PROCEEDS_ITEM_TAX_EMBEDDED_OR_UNAVAILABLE')) AS proceeds_item_complete
+           count(*)::bigint AS item_rows
     FROM mart.order_item_customer_spend
     GROUP BY marketplace_id,amazon_order_id
+), source_quality AS (
+    SELECT o.marketplace_id,i.amazon_order_id,
+           bool_and(i.proceeds_item_amount IS NOT NULL) AS proceeds_item_complete,
+           bool_and(i.proceeds_item_amount IS NOT NULL AND i.proceeds_tax_amount IS NOT NULL) AS explicit_tax_complete
+    FROM core.amazon_order_item i
+    JOIN core.amazon_order o USING (amazon_order_id)
+    GROUP BY o.marketplace_id,i.amazon_order_id
 )
 SELECT
     o.marketplace_id,
     o.amazon_order_id,
     (o.created_time AT TIME ZONE m.timezone)::date AS business_date,
     o.created_time,
-    CASE
-      WHEN COALESCE(r.item_rows,0)>0 THEN r.item_customer_spend
-      ELSE COALESCE(o.grand_total_amount,0)
-    END::numeric(14,2) AS customer_spend,
+    CASE WHEN COALESCE(r.item_rows,0)>0 THEN r.item_customer_spend
+         ELSE COALESCE(o.grand_total_amount,0) END::numeric(14,2) AS customer_spend,
     COALESCE(r.units,COALESCE(o.quantity_fulfilled,0)+COALESCE(o.quantity_unfulfilled,0),0)::bigint AS units,
     COALESCE(o.fulfillment_status,'') AS fulfillment_status,
     CASE
-      WHEN COALESCE(r.item_rows,0)>0 AND r.proceeds_item_complete THEN 'ITEM_PROCEEDS_TAX_BASIS'
+      WHEN COALESCE(r.item_rows,0)>0 AND q.explicit_tax_complete THEN 'ITEM_PROCEEDS_TAX_BASIS'
+      WHEN COALESCE(r.item_rows,0)>0 AND q.proceeds_item_complete THEN 'ITEM_PROCEEDS_BASIS'
       WHEN COALESCE(r.item_rows,0)>0 THEN 'ITEM_FALLBACK_BASIS'
       WHEN o.grand_total_amount IS NOT NULL THEN 'ORDER_GRAND_TOTAL_FALLBACK'
       ELSE 'NO_AMOUNT'
@@ -71,6 +61,7 @@ SELECT
 FROM core.amazon_order o
 JOIN core.marketplace m USING (marketplace_id)
 LEFT JOIN item_rollup r USING (marketplace_id,amazon_order_id)
+LEFT JOIN source_quality q USING (marketplace_id,amazon_order_id)
 WHERE o.fulfillment_status IS DISTINCT FROM 'CANCELLED';
 
 COMMENT ON VIEW mart.order_customer_spend IS
