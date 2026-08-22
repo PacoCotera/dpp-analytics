@@ -32,14 +32,14 @@
 
       <main>
         <section class="today-stage">
-          <section class="today-card today-hero">
+          <section class="today-card today-hero" title="Shopper spend from Amazon Orders. Includes IVA. Order grand total is used; item price × quantity is the fallback. Settlement proceeds are excluded.">
             <div class="today-hero__top">
-              <div class="today-eyebrow" id="salesLabel">Sales today</div>
+              <div class="today-eyebrow" id="salesLabel">Shopper spend today · incl. IVA</div>
               <div class="day-picker" id="dayPicker" data-no-swipe></div>
             </div>
             <div class="today-hero__value"><span class="currency">$</span><span id="sales">—</span></div>
             <div class="today-hero__read">
-              <div class="today-hero__copy"><strong id="dayHeadline">Reading today…</strong><p id="dayExplanation">Comparing the selected day with recent operating context.</p></div>
+              <div class="today-hero__copy"><strong id="dayHeadline">Reading today…</strong><p id="dayExplanation">Comparing the selected day with recent shopper-spend context.</p></div>
               <div class="today-hero__metrics">
                 <div class="today-hero__metric"><strong id="orders">—</strong><span>orders</span></div>
                 <div class="today-hero__metric"><strong id="units">—</strong><span>units</span></div>
@@ -53,7 +53,7 @@
             <p id="pulseExplanation">Separating today’s signal from the broader trend.</p>
             <div class="context-list" id="contextList"></div>
             <section class="latest">
-              <div class="latest-title">Latest sale</div>
+              <div class="latest-title">Latest sale · shopper spend</div>
               <div id="latest"><div class="empty">Waiting for today’s first order.</div></div>
               <div class="latest-age" id="latestAge"></div>
             </section>
@@ -63,7 +63,7 @@
         <section class="today-content-grid">
           <section class="today-card today-panel">
             <div class="today-panel__head">
-              <div><div class="today-panel__title">Recent rhythm</div><div class="today-panel__sub" id="rhythmSub">How the selected day sits inside recent demand</div></div>
+              <div><div class="today-panel__title">Recent rhythm</div><div class="today-panel__sub" id="rhythmSub">Same shopper-spend basis across the selected window</div></div>
               <div class="periods" data-no-swipe>
                 <button class="period" type="button" data-period="7">7D</button>
                 <button class="period" type="button" data-period="mtd">MTD</button>
@@ -76,18 +76,18 @@
           </section>
 
           <section class="today-card today-panel">
-            <div class="today-panel__head"><div><div class="today-panel__title" id="productsTitle">What is driving today</div><div class="today-panel__sub">Ranked product contribution</div></div></div>
+            <div class="today-panel__head"><div><div class="today-panel__title" id="productsTitle">What is driving today</div><div class="today-panel__sub">Ranked shopper-spend contribution</div></div></div>
             <div class="today-products" id="products"><div class="empty">Products will appear as orders arrive.</div></div>
           </section>
         </section>
 
         <details class="today-card today-orders" id="ordersPanel">
-          <summary><span><strong>Order evidence</strong><small id="orderSummary">Transaction evidence for the selected day</small></span><b id="orderToggle">View ↓</b></summary>
+          <summary><span><strong>Order evidence</strong><small id="orderSummary">Shopper-spend evidence for the selected day · no customer PII</small></span><b id="orderToggle">View ↓</b></summary>
           <div class="order-grid" id="orderGrid"></div>
         </details>
       </main>
 
-      <footer class="footer"><span>Orders sync about every 3 minutes</span><span>Dirty Pawz Press Analytics</span></footer>
+      <footer class="footer"><span>MXN · shopper spend incl. IVA · Amazon Orders · sync about every 3 minutes</span><span>Settlement/proceeds amounts are not used on Today · Dirty Pawz Press Analytics</span></footer>
     </div>
 
     <script src="/assets/vendor/d3.v7.min.js"></script>
