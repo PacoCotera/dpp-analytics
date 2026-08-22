@@ -20,8 +20,17 @@
   } catch (_) {
     version = '';
   }
+
+  const loadFixes = () => {
+    const fixes = document.createElement('script');
+    fixes.src = `/assets/sales-geography-fixes.js${version}`;
+    fixes.async = false;
+    document.body.appendChild(fixes);
+  };
+
   const script = document.createElement('script');
   script.src = `/assets/sales-geography-v2.js${version}`;
   script.async = false;
+  script.addEventListener('load', loadFixes, { once: true });
   document.currentScript?.after(script);
 })();
