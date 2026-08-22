@@ -40,6 +40,7 @@
     ['32', 'Zacatecas', ['zacatecas', 'zac']],
   ].map(([code, name, aliases]) => ({ code, name, aliases }));
   const META_BY_CODE = new Map(STATE_META.map((x) => [x.code, x]));
+  const SORT_LABELS = { area: 'Area', sales: 'Spend', orders: 'Orders', units: 'Units', aov: 'AOV' };
   const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   const money = (v) => '$' + nf.format(Math.round(Number(v || 0)));
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -51,6 +52,8 @@
   let METRIC = 'sales';
   let SKU = 'all';
   let SELECTED_STATE = null;
+  let SORT_FIELD = 'sales';
+  let SORT_DIRECTION = 'desc';
   let STATES_GEO = null;
   const POSTAL_CACHE = new Map();
   let renderToken = 0;
@@ -242,6 +245,41 @@
     return (geo.features || []).find((feature) => String(Number(feature.properties?.state_code || 0)).padStart(2, '0') === code) || null;
   }
 
+  function coordinateBounds(value, bounds = [Infinity, Infinity, -Infinity, -Infinity]) {
+    if (!Array.isArray(value)) return bounds;
+    if (value.length >= 2 && Number.isFinite(Number(value[0])) && Number.isFinite(Number(value[1]))) {
+      const x = Number(value[0]);
+      const y = Number(value[1]);
+      bounds[0] = Math.min(bounds[0], x);
+      bounds[1] = Math.min(bounds[1], y);
+      bounds[2] = Math.max(bounds[2], x);
+      bounds[3] = Math.max(bounds[3], y);
+      return bounds;
+    }
+    value.forEach((child) => coordinateBounds(child, bounds));
+    return bounds;
+  }
+
+  function featureBounds(feature) {
+    const bounds = coordinateBounds(feature?.geometry?.coordinates);
+    return bounds.every(Number.isFinite) ? bounds : null;
+  }
+
+  function postalFeaturesWithinState(features, context) {
+    if (!context) return features || [];
+    const stateBounds = featureBounds(context);
+    if (!stateBounds) return features || [];
+    const margin = 0.35;
+    return (features || []).filter((feature) => {
+      const bounds = featureBounds(feature);
+      if (!bounds) return false;
+      return bounds[0] >= stateBounds[0] - margin &&
+        bounds[1] >= stateBounds[1] - margin &&
+        bounds[2] <= stateBounds[2] + margin &&
+        bounds[3] <= stateBounds[3] + margin;
+    });
+  }
+
   function mapShell() {
     const svg = d3.select('#geoMap');
     svg.selectAll('*').remove();
@@ -291,14 +329,16 @@
     const [states, geo] = await Promise.all([getStatesGeo(), getPostalGeo(code, rows)]);
     if (token !== renderToken) return;
     const context = stateFeature(states, code);
-    const fitTarget = context ? { type: 'FeatureCollection', features: [context] } : geo;
+    const features = postalFeaturesWithinState(geo.features || [], context);
+    const renderGeo = { type: 'FeatureCollection', features };
+    const fitTarget = context ? { type: 'FeatureCollection', features: [context] } : renderGeo;
     const projection = d3.geoMercator().fitExtent([[22, 18], [shell.width - 22, shell.height - 20]], fitTarget);
     const path = d3.geoPath(projection);
     if (context) shell.svg.append('path').datum(context).attr('class', 'geo-state-context').attr('d', path);
 
     const byPostal = new Map(rows.map((r) => [postal(r.postal_code), r]));
     const fill = scaleFor(rows);
-    shell.svg.append('g').selectAll('path').data(geo.features || []).join('path')
+    shell.svg.append('g').selectAll('path').data(features).join('path')
       .attr('class', 'geo-shape postal-shape')
       .attr('d', path)
       .attr('fill', (feature) => {
@@ -313,23 +353,52 @@
       })
       .on('pointerleave blur', hideTip);
 
-    const matched = Number(geo.matched_codes || 0);
+    const renderedCodes = new Set(features.map((feature) => postal(feature.properties?.d_codigo))).size;
     const requested = Number(geo.requested_codes || rows.length);
-    setText('geoMapStatus', `${meta?.name || 'State'} · ${matched}/${requested} active postal polygons mapped`);
+    const rejected = Math.max(0, Number(geo.matched_codes || 0) - renderedCodes);
+    const suffix = rejected ? ` · ${rejected} rejected outside state bounds` : '';
+    setText('geoMapStatus', `${meta?.name || 'State'} · ${renderedCodes}/${requested} active postal polygons mapped${suffix}`);
+  }
+
+  function areaSortValue(row) {
+    if (SELECTED_STATE) return `${postalLabel(row.postal_code)} ${postal(row.postal_code)}`;
+    return row.label || row.code || '';
+  }
+
+  function sortedRankRows() {
+    const rows = SELECTED_STATE ? postalRows(SELECTED_STATE) : stateRows();
+    return rows.slice().sort((a, b) => {
+      let comparison;
+      if (SORT_FIELD === 'area') comparison = d3.ascending(normalize(areaSortValue(a)), normalize(areaSortValue(b)));
+      else comparison = d3.ascending(Number(a?.[SORT_FIELD] || 0), Number(b?.[SORT_FIELD] || 0));
+      if (SORT_DIRECTION === 'desc') comparison *= -1;
+      if (comparison) return comparison;
+      return d3.ascending(normalize(areaSortValue(a)), normalize(areaSortValue(b)));
+    });
+  }
+
+  function updateSortUi() {
+    document.querySelectorAll('.geo-table th[data-geo-sort]').forEach((header) => {
+      const active = header.dataset.geoSort === SORT_FIELD;
+      header.setAttribute('aria-sort', active ? (SORT_DIRECTION === 'desc' ? 'descending' : 'ascending') : 'none');
+    });
+    const direction = SORT_DIRECTION === 'desc' ? '↓' : '↑';
+    setText('geoSortStatus', `Sorted by ${SORT_LABELS[SORT_FIELD] || SORT_FIELD} ${direction} · click a column to reorder`);
   }
 
   function renderRanked() {
     const out = document.getElementById('geoRankedRows');
     const title = document.getElementById('geoRankedTitle');
     if (!out || !title) return;
-    const rows = (SELECTED_STATE ? postalRows(SELECTED_STATE) : stateRows()).sort((a, b) => d3.descending(metricValue(a), metricValue(b)));
-    title.textContent = SELECTED_STATE ? `Top postal codes · ${META_BY_CODE.get(SELECTED_STATE)?.name || ''}` : 'Top states';
+    const rows = sortedRankRows();
+    title.textContent = SELECTED_STATE ? `Postal codes · ${META_BY_CODE.get(SELECTED_STATE)?.name || ''}` : 'States';
+    updateSortUi();
     out.innerHTML = rows.slice(0, 20).map((r) => {
       const click = !SELECTED_STATE && r.code ? ` data-state="${r.code}" tabindex="0" role="button"` : '';
       const area = SELECTED_STATE
-        ? `<strong>CP ${esc(r.postal_code)}</strong><small>${esc(postalDetail(r.postal_code) || postalLabel(r.postal_code))}</small>`
+        ? `<strong>CP ${esc(r.postal_code)} · ${esc(postalLabel(r.postal_code))}</strong><small>${esc(postalDetail(r.postal_code))}</small>`
         : `<strong>${esc(r.label)}</strong>`;
-      return `<tr${click}><td class="geo-area-cell">${area}</td><td class="num">${money(r.sales)}</td><td class="num">${nf.format(r.orders)}</td><td class="num">${nf.format(r.units)}</td><td class="num">${money(r.aov)}</td></tr>`;
+      return `<tr${click}><td class="geo-area-cell">${area}</td><td class="num" data-value="${Number(r.sales || 0)}">${money(r.sales)}</td><td class="num" data-value="${Number(r.orders || 0)}">${nf.format(r.orders)}</td><td class="num" data-value="${Number(r.units || 0)}">${nf.format(r.units)}</td><td class="num" data-value="${Number(r.aov || 0)}">${money(r.aov)}</td></tr>`;
     }).join('');
     out.querySelectorAll('[data-state]').forEach((row) => {
       const go = () => selectState(row.dataset.state);
@@ -394,6 +463,18 @@
     document.getElementById('geoProduct')?.addEventListener('change', (event) => { SKU = event.target.value; renderAll(); });
     document.getElementById('geoStateSelect')?.addEventListener('change', (event) => selectState(event.target.value));
     document.getElementById('geoBack')?.addEventListener('click', () => selectState(null));
+    document.querySelector('.geo-table thead')?.addEventListener('click', (event) => {
+      const header = event.target.closest('th[data-geo-sort]');
+      if (!header) return;
+      const field = header.dataset.geoSort;
+      if (!SORT_LABELS[field]) return;
+      if (SORT_FIELD === field) SORT_DIRECTION = SORT_DIRECTION === 'desc' ? 'asc' : 'desc';
+      else {
+        SORT_FIELD = field;
+        SORT_DIRECTION = field === 'area' ? 'asc' : 'desc';
+      }
+      renderRanked();
+    });
     document.querySelector('[data-view="geography"]')?.addEventListener('click', () => { if (DATA) renderAll(); else load(); });
     let timer;
     window.addEventListener('resize', () => {
