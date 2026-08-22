@@ -29,6 +29,29 @@ function sameCounts(label, actual, expected) {
   }
 }
 
+function validateDecoratedItems(label, orders, key = 'items') {
+  let count = 0;
+  let overrides = 0;
+  for (const order of orders || []) {
+    const items = Array.isArray(order?.[key]) ? order[key] : [];
+    for (const item of items) {
+      count += 1;
+      if (!item.sku) continue;
+      if (!['override', 'catalog'].includes(String(item.label_source || ''))) {
+        throw new Error(`${label} SKU ${item.sku} did not pass through product-label decorator`);
+      }
+      if (!String(item.catalog_title || '').trim()) {
+        throw new Error(`${label} SKU ${item.sku} missing catalog_title provenance`);
+      }
+      if (!String(item.product || '').trim()) {
+        throw new Error(`${label} SKU ${item.sku} missing display product name`);
+      }
+      if (item.label_source === 'override') overrides += 1;
+    }
+  }
+  return { count, overrides };
+}
+
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [];
@@ -64,6 +87,13 @@ try {
     throw new Error(`Recent order fulfillment-status coverage too low: ${statusCovered}/${recentOrders.length}`);
   }
 
+  // Order evidence must resolve item names through the same local product_labels
+  // dictionary as Catalog/Product cards. The dictionary may intentionally be
+  // partial, so catalog fallback is valid; bypassing the decorator is not.
+  const todayRecent = Array.isArray(payloads.today?.recent_orders) ? payloads.today.recent_orders : [];
+  const todayRecentLabels = validateDecoratedItems('Today selected-day order', todayRecent);
+  const salesLabels = validateDecoratedItems('Sales recent order', recentOrders, 'order_items');
+
   // The renderer consumes the top-level queue. Validate that source directly,
   // then require the nested mart-backed copy and Sales to agree with it.
   const flow = payloads.today?.order_flow;
@@ -72,6 +102,7 @@ try {
     throw new Error(`Today renderer source does not expose current fulfillment-state basis: ${JSON.stringify(flow)}`);
   }
   if (!Array.isArray(openOrders)) throw new Error('Today renderer current open-order detail is not an array');
+  const openLabels = validateDecoratedItems('Today open order', openOrders);
 
   const nestedFlow = payloads.today?.today?.order_flow;
   const nestedOpenOrders = payloads.today?.today?.open_orders;
@@ -103,7 +134,7 @@ try {
   }
 
   if (Number(flow.open_orders || 0) !== Number(flow.pending_orders || 0) + Number(flow.unshipped_orders || 0) + Number(flow.partially_shipped_orders || 0)) {
-    throw new Error(`Open roll-up does not equal pending + unshipped + partial: ${JSON.stringify(flow)}`);
+    throw new Error(`Open roll-up does not equal Amazon processing + unshipped + partial: ${JSON.stringify(flow)}`);
   }
 
   for (const order of openOrders) {
@@ -125,6 +156,7 @@ try {
   );
   const rendered = await page.evaluate(() => ({
     pendingKpi: document.getElementById('pendingOrdersKpi')?.textContent?.trim() || '',
+    pendingHeroLabel: document.querySelector('#pendingOrdersKpi + span')?.textContent?.trim() || '',
     pendingNote: document.getElementById('pendingOrdersKpiNote')?.textContent?.trim() || '',
     flow: document.getElementById('orderFlowGrid')?.textContent?.replace(/\s+/g, ' ').trim() || '',
     foot: document.getElementById('orderFlowFoot')?.textContent?.trim() || '',
@@ -132,18 +164,33 @@ try {
     openCards: document.querySelectorAll('#openOrderGrid .operational-order').length,
     rollupCount: document.querySelector('.order-flow-rollup strong')?.textContent?.trim() || '',
     childCount: document.querySelectorAll('.order-flow-children .order-flow-stat').length,
+    badgeTexts: [...document.querySelectorAll('#openOrderGrid .order-badge')].map(node => node.textContent?.trim() || ''),
+    cardFooters: [...document.querySelectorAll('#openOrderGrid .operational-order__foot')].map(node => node.textContent?.replace(/\s+/g, ' ').trim() || ''),
+    itemNames: [...document.querySelectorAll('#openOrderGrid .item-name')].map(node => node.textContent?.trim() || ''),
   }));
   if (rendered.pendingKpi !== String(Number(flow.pending_orders || 0))) {
-    throw new Error(`Rendered Pending hero KPI mismatch: ${JSON.stringify(rendered)}`);
+    throw new Error(`Rendered Amazon-processing hero KPI mismatch: ${JSON.stringify(rendered)}`);
+  }
+  if (rendered.pendingHeroLabel !== 'Amazon processing') {
+    throw new Error(`Hero must use Amazon processing language: ${JSON.stringify(rendered)}`);
   }
   if (rendered.rollupCount !== String(Number(flow.open_orders || 0))) {
     throw new Error(`Rendered Open roll-up mismatch: ${JSON.stringify(rendered)}`);
   }
   if (rendered.childCount !== 3) {
-    throw new Error(`Order queue must show exactly Pending/Unshipped/Partial children: ${JSON.stringify(rendered)}`);
+    throw new Error(`Order queue must show exactly Amazon processing/Unshipped/Partial children: ${JSON.stringify(rendered)}`);
   }
-  if (!rendered.flow.includes('Open now') || !rendered.flow.includes(`${Number(flow.pending_orders || 0)} Pending`)) {
+  if (!rendered.flow.includes('Open now') || !rendered.flow.includes(`${Number(flow.pending_orders || 0)} Amazon processing`)) {
     throw new Error(`Rendered order hierarchy is incomplete: ${JSON.stringify(rendered)}`);
+  }
+  if (rendered.badgeTexts.some(text => text === 'PENDING' || text === 'Pending')) {
+    throw new Error(`Raw Pending language is visible in order cards: ${JSON.stringify(rendered.badgeTexts)}`);
+  }
+  if (Number(flow.pending_orders || 0) > 0 && !rendered.badgeTexts.some(text => text.startsWith('Amazon processing'))) {
+    throw new Error(`Amazon-processing orders are not labeled clearly: ${JSON.stringify(rendered.badgeTexts)}`);
+  }
+  if (Number(flow.pending_orders || 0) > 0 && !rendered.cardFooters.some(text => text.includes('fulfillment not started'))) {
+    throw new Error(`Pending/Amazon-processing card still shows misleading fulfillment quantities: ${JSON.stringify(rendered.cardFooters)}`);
   }
   if (Number(flow.open_orders || 0) > 0 && rendered.openCards !== Number(flow.open_orders || 0)) {
     throw new Error(`Rendered open-order detail mismatch: expected ${flow.open_orders}, got ${rendered.openCards}`);
@@ -160,6 +207,11 @@ try {
       total: recentOrders.length,
       pct: Number((statusCoverage * 100).toFixed(1)),
     },
+    productLabelDecoration: {
+      todayRecent: todayRecentLabels,
+      todayOpen: openLabels,
+      salesRecent: salesLabels,
+    },
     flow,
     openOrderDetailCount: openOrders.length,
     olderPendingIncluded: olderPending,
@@ -167,7 +219,7 @@ try {
   };
   await fs.writeFile(path.join(outDir, 'order-operations-summary.json'), JSON.stringify(summary, null, 2));
   await page.screenshot({ path: path.join(outDir, 'today-order-operations.png'), fullPage: true });
-  console.log(`ORDER_OPERATIONS current pending=${Number(flow.pending_orders || 0)} open=${Number(flow.open_orders || 0)} older_pending=${olderPending} status_coverage=${statusCovered}/${recentOrders.length}`);
+  console.log(`ORDER_OPERATIONS current amazon_processing=${Number(flow.pending_orders || 0)} open=${Number(flow.open_orders || 0)} older_processing=${olderPending} status_coverage=${statusCovered}/${recentOrders.length}`);
   console.log(JSON.stringify(summary));
 } catch (error) {
   await page.screenshot({ path: path.join(outDir, 'today-order-operations-error.png'), fullPage: true }).catch(() => {});
