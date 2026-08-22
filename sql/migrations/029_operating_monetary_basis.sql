@@ -73,30 +73,44 @@ GROUP BY business_date, marketplace_id;
 COMMENT ON VIEW mart.order_sales_daily IS
 'Near-real-time order-derived operating sales. sales/aov are gross customer spend; reconciled history comes from Amazon Sales & Traffic in mart.business_daily.';
 
--- SKU/order operational history is also gross customer spend. This view is not
--- an accounting/proceeds view and must never use proceeds_* fields.
+-- SKU/order operational history is also gross customer spend. Preserve the exact
+-- column contract introduced by migration 003 because downstream views depend on
+-- session_percentage and units_refunded being present and in the same order.
 CREATE OR REPLACE VIEW mart.sku_daily AS
+WITH order_sku AS (
+    SELECT
+        x.business_date,
+        x.marketplace_id,
+        x.seller_sku,
+        max(x.asin) AS asin,
+        COALESCE(sum(x.customer_spend),0)::numeric(14,2) AS sales,
+        COALESCE(sum(x.units),0)::bigint AS units,
+        count(DISTINCT x.amazon_order_id)::bigint AS orders
+    FROM mart.order_item_customer_spend x
+    WHERE x.seller_sku IS NOT NULL
+    GROUP BY x.business_date,x.marketplace_id,x.seller_sku
+)
 SELECT
-    x.business_date,
-    x.marketplace_id,
-    x.seller_sku,
-    max(x.asin) AS asin,
-    COALESCE(sum(x.customer_spend),0)::numeric(14,2) AS sales,
-    COALESCE(sum(x.units),0)::bigint AS units,
-    count(DISTINCT x.amazon_order_id)::bigint AS orders,
-    max(k.sessions) AS sessions,
-    max(k.page_views) AS page_views,
-    max(k.unit_session_percentage) AS unit_session_percentage
-FROM mart.order_item_customer_spend x
-LEFT JOIN core.sku_sales_traffic_daily k
-  ON k.business_date=x.business_date
- AND k.marketplace_id=x.marketplace_id
- AND k.seller_sku=x.seller_sku
-WHERE x.seller_sku IS NOT NULL
-GROUP BY x.business_date,x.marketplace_id,x.seller_sku;
+    o.business_date,
+    o.marketplace_id,
+    o.seller_sku,
+    o.asin,
+    o.sales,
+    o.units,
+    o.orders,
+    a.sessions,
+    a.page_views,
+    a.unit_session_percentage,
+    a.session_percentage,
+    a.units_refunded
+FROM order_sku o
+LEFT JOIN core.asin_sales_traffic_daily a
+  ON a.business_date=o.business_date
+ AND a.marketplace_id=o.marketplace_id
+ AND a.asin=o.asin;
 
 COMMENT ON VIEW mart.sku_daily IS
-'Near-real-time SKU operating history. sales is gross customer spend from order item price x quantity; proceeds are intentionally excluded.';
+'Near-real-time SKU operating history. sales is gross customer spend from order item price x quantity; proceeds are intentionally excluded. Traffic/refund columns preserve the existing ASIN Sales & Traffic contract.';
 
 -- Inventory velocity and product-mover reads should use reconciled Amazon Sales &
 -- Traffic rather than an accounting/proceeds order measure.
