@@ -13,6 +13,15 @@
       'Postal labels: SEPOMEX · polygon source: open-mexico / SEPOMEX · geometry is filtered server-side to postal codes present in the selected demand slice.';
   }
 
+  // The zoom hardening layer owns map gestures, so it also needs a stable way
+  // to dismiss any geography/chart tooltip before a pan begins. Keep this
+  // compatibility hook here until the v2 + fixes split is consolidated.
+  window.hideTip = () => {
+    document
+      .querySelectorAll('.geo-map-tooltip, .dpp-chart-tooltip')
+      .forEach((tip) => tip.classList.remove('show'));
+  };
+
   const current = document.currentScript?.src || '';
   let version = '';
   try {
