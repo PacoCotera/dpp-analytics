@@ -1,108 +1,21 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta name="theme-color" content="#f4f0e8">
-    <title>Dirty Pawz Press · Product</title>
-    <link rel="stylesheet" href="/assets/theme.css">
-    <link rel="stylesheet" href="/assets/mobile-ux.css">
-    <link rel="stylesheet" href="/assets/design-refine.css">
-    <link rel="stylesheet" href="/assets/nav-shell.css">
-    <link rel="stylesheet" href="/assets/layout-system.css">
-    <link rel="stylesheet" href="/assets/chart-system.css">
-    <link rel="stylesheet" href="/assets/product.css">
-    <script src="/assets/ui-shell.js" defer></script>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f4f0e8"><title>Dirty Pawz Press · Product</title>
+    <link rel="stylesheet" href="/assets/theme.css"><link rel="stylesheet" href="/assets/mobile-ux.css"><link rel="stylesheet" href="/assets/design-refine.css"><link rel="stylesheet" href="/assets/nav-shell.css"><link rel="stylesheet" href="/assets/layout-system.css"><link rel="stylesheet" href="/assets/chart-system.css"><link rel="stylesheet" href="/assets/product.css"><script src="/assets/ui-shell.js" defer></script>
   </head>
-  <body class="product-page">
-    <div class="app">
-      <header class="topbar">
-        <div class="brand">
-          <div class="mark">DP</div>
-          <div class="brand-copy">
-            <div class="brand-title">DIRTY PAWZ PRESS</div>
-            <div class="brand-sub">Product workspace</div>
-          </div>
-        </div>
-        <div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading</span></div>
-      </header>
-
-      <nav class="primary-nav"></nav>
-
-      <main>
-        <section class="product-hero" id="hero">
-          <div class="hero-img skeleton"></div>
-          <div>
-            <div class="hero-sku">Loading product</div>
-            <div class="hero-name">One moment…</div>
-          </div>
-        </section>
-
-        <section class="product-health">
-          <div>
-            <div class="product-health__kicker">Product health</div>
-            <h1 id="healthHeadline">Reading the product…</h1>
-            <p id="healthRead">Connecting demand, traffic, availability, listing state and economics.</p>
-          </div>
-          <div class="product-health__facts">
-            <div class="product-health__fact"><div class="label">Listing</div><strong id="listingState">—</strong><small id="listingNote">sellability</small></div>
-            <div class="product-health__fact"><div class="label">Variation</div><strong id="variationRead">—</strong><small id="variationNote">commercial identity</small></div>
-            <div class="product-health__fact"><div class="label">Inventory</div><strong id="inventoryState">—</strong><small id="inventoryNote">availability</small></div>
-            <div class="product-health__fact"><div class="label">Paid support</div><strong id="adsState">—</strong><small id="adsNote">advertising context</small></div>
-          </div>
-        </section>
-
-        <section class="kpi-rail product-kpi-rail" aria-label="Product key metrics">
-          <div class="kpi product-kpi" title="Reconciled Amazon Sales &amp; Traffic ordered-product sales. Net sales ex IVA; settlement proceeds are excluded."><div class="label">28D net sales ex IVA</div><strong id="sales28">—</strong><span><b id="units28">—</b> units · <span id="delta28">—</span></span></div>
-          <div class="kpi product-kpi"><div class="label">Traffic → CVR</div><strong id="sessions28">—</strong><span>sessions · <b id="cvr28">—</b> CVR</span></div>
-          <div class="kpi product-kpi"><div class="label">Stock → cover</div><strong id="stockRead">—</strong><span><b id="cover">—</b> days incl. inbound</span></div>
-          <div class="kpi product-kpi"><div class="label">Economics</div><strong id="cogsRead">—</strong><span id="economicsNote">standard COGS</span></div>
-        </section>
-
-        <section class="dashboard-grid product-workspace">
-          <div class="panel product-chart-panel">
-            <div class="panel__header">
-              <div>
-                <h2 class="panel__title">Demand rhythm</h2>
-                <div class="panel__description" id="chartSub">Net sales ex IVA · reconciled Amazon Sales &amp; Traffic · daily + seven-day signal</div>
-              </div>
-              <div class="segmented-control product-range" role="group" aria-label="Demand chart range">
-                <button class="segmented-control__item active" type="button" data-days="28" aria-selected="true">28D</button>
-                <button class="segmented-control__item" type="button" data-days="90" aria-selected="false">90D</button>
-              </div>
-            </div>
-            <div class="panel__body"><svg id="chart" class="product-chart" viewBox="0 0 900 260"></svg></div>
-          </div>
-
-          <aside class="panel decision-rail" aria-label="Product decisions">
-            <div class="decision-block">
-              <div class="decision-label">Inventory</div>
-              <strong id="invDecision">—</strong>
-              <p id="invRead">Reading stock position.</p>
-              <div class="inventory-line">
-                <div><b id="available">—</b><span>available</span></div>
-                <div><b id="inbound">—</b><span>inbound</span></div>
-                <div><b id="velocity">—</b><span>units/day</span></div>
-              </div>
-            </div>
-            <div class="decision-block"><div class="decision-label">Economics</div><strong id="econDecision">—</strong><p id="econRead">Standard COGS against reconciled net product sales ex IVA.</p></div>
-            <div class="decision-block"><div class="decision-label">Variation context</div><strong id="familyRead">—</strong><div class="variation-chips" id="variationChips"></div><div class="sibling-list" id="siblings"></div></div>
-            <div class="decision-block"><div class="decision-label">Advertising</div><strong id="adsDecision">—</strong><p id="adsRead">Paid-support context is separate from seller demand.</p></div>
-          </aside>
-        </section>
-
-        <details class="evidence" id="ordersPanel">
-          <summary><span><strong>Order evidence</strong><small id="orderSummary">Recent orders · shopper spend incl. IVA</small></span><b id="orderToggle">View ↓</b></summary>
-          <div class="order-list"><div class="list" id="orders"></div></div>
-        </details>
-      </main>
-
-      <footer class="footer"><span>MXN · product performance = net sales ex IVA · order evidence = shopper spend incl. IVA</span><span>Finance shows net + IVA + gross spend · Ads attribution ≠ incremental sales · Dirty Pawz Press Analytics</span></footer>
-    </div>
-
-    <script src="/assets/vendor/d3.v7.min.js"></script>
-    <script src="/assets/chart-system.js"></script>
-    <script type="module" src="/assets/product.js"></script>
-    <script src="/assets/metric-basis-ui.js"></script>
-  </body>
+  <body class="product-page"><div class="app">
+    <header class="topbar"><div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Product workspace</div></div></div><div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading</span></div></header>
+    <nav class="primary-nav"></nav>
+    <main>
+      <section class="product-hero" id="hero"><div class="hero-img skeleton"></div><div><div class="hero-sku">Loading product</div><div class="hero-name">One moment…</div></div></section>
+      <section class="product-health"><div><div class="product-health__kicker">Product health</div><h1 id="healthHeadline">Reading the product…</h1><p id="healthRead">Connecting demand, traffic, availability, listing state and economics.</p></div><div class="product-health__facts"><div class="product-health__fact"><div class="label">Listing</div><strong id="listingState">—</strong><small id="listingNote">sellability</small></div><div class="product-health__fact"><div class="label">Variation</div><strong id="variationRead">—</strong><small id="variationNote">commercial identity</small></div><div class="product-health__fact"><div class="label">Inventory</div><strong id="inventoryState">—</strong><small id="inventoryNote">availability</small></div><div class="product-health__fact"><div class="label">Paid support</div><strong id="adsState">—</strong><small id="adsNote">advertising context</small></div></div></section>
+      <section class="kpi-rail product-kpi-rail" aria-label="Product key metrics"><div class="kpi product-kpi" title="Reconciled Amazon Sales &amp; Traffic shopper spend including IVA. Finance derives net revenue ex IVA separately."><div class="label">28D shopper spend incl. IVA</div><strong id="sales28">—</strong><span><b id="units28">—</b> units · <span id="delta28">—</span></span></div><div class="kpi product-kpi"><div class="label">Traffic → CVR</div><strong id="sessions28">—</strong><span>sessions · <b id="cvr28">—</b> CVR</span></div><div class="kpi product-kpi"><div class="label">Stock → cover</div><strong id="stockRead">—</strong><span><b id="cover">—</b> days incl. inbound</span></div><div class="kpi product-kpi"><div class="label">Economics</div><strong id="cogsRead">—</strong><span id="economicsNote">standard COGS</span></div></section>
+      <section class="dashboard-grid product-workspace"><div class="panel product-chart-panel"><div class="panel__header"><div><h2 class="panel__title">Demand rhythm</h2><div class="panel__description" id="chartSub">Shopper spend incl. IVA · reconciled Amazon Sales &amp; Traffic · daily + seven-day signal</div></div><div class="segmented-control product-range" role="group" aria-label="Demand chart range"><button class="segmented-control__item active" type="button" data-days="28" aria-selected="true">28D</button><button class="segmented-control__item" type="button" data-days="90" aria-selected="false">90D</button></div></div><div class="panel__body"><svg id="chart" class="product-chart" viewBox="0 0 900 260"></svg></div></div>
+        <aside class="panel decision-rail" aria-label="Product decisions"><div class="decision-block"><div class="decision-label">Inventory</div><strong id="invDecision">—</strong><p id="invRead">Reading stock position.</p><div class="inventory-line"><div><b id="available">—</b><span>available</span></div><div><b id="inbound">—</b><span>inbound</span></div><div><b id="velocity">—</b><span>units/day</span></div></div></div><div class="decision-block"><div class="decision-label">Economics</div><strong id="econDecision">—</strong><p id="econRead">Standard COGS against reconciled shopper spend incl. IVA. Use Finance for accounting margin ex IVA.</p></div><div class="decision-block"><div class="decision-label">Variation context</div><strong id="familyRead">—</strong><div class="variation-chips" id="variationChips"></div><div class="sibling-list" id="siblings"></div></div><div class="decision-block"><div class="decision-label">Advertising</div><strong id="adsDecision">—</strong><p id="adsRead">Paid-support context is separate from seller demand.</p></div></aside>
+      </section>
+      <details class="evidence" id="ordersPanel"><summary><span><strong>Order evidence</strong><small id="orderSummary">Recent orders · shopper spend incl. IVA</small></span><b id="orderToggle">View ↓</b></summary><div class="order-list"><div class="list" id="orders"></div></div></details>
+    </main>
+    <footer class="footer"><span>MXN · product performance and order evidence = shopper spend incl. IVA</span><span>Net sales ex IVA and IVA withheld live in Finance · Ads attribution ≠ incremental sales · Dirty Pawz Press Analytics</span></footer>
+  </div><script src="/assets/vendor/d3.v7.min.js"></script><script src="/assets/chart-system.js"></script><script type="module" src="/assets/product.js"></script><script src="/assets/metric-basis-ui.js"></script></body>
 </html>
