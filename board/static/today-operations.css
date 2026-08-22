@@ -48,26 +48,64 @@
 }
 
 .order-flow-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 14px;
 }
 
+.order-flow-rollup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 13px;
+  border-bottom: 1px solid var(--line);
+  background: rgb(248 244 237 / 58%);
+}
+
+.order-flow-rollup > div {
+  min-width: 0;
+}
+
+.order-flow-rollup span,
+.order-flow-rollup small {
+  display: block;
+}
+
+.order-flow-rollup span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.order-flow-rollup small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.2;
+}
+
+.order-flow-rollup strong {
+  flex: 0 0 auto;
+  font-size: 27px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.order-flow-children {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .order-flow-stat {
   min-width: 0;
-  padding: 11px 12px;
+  padding: 11px 10px;
   border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
 }
 
-.order-flow-stat:nth-child(2n) {
+.order-flow-stat:last-child {
   border-right: 0;
-}
-
-.order-flow-stat:nth-last-child(-n + 2) {
-  border-bottom: 0;
 }
 
 .order-flow-stat strong {
@@ -81,7 +119,7 @@
   display: block;
   margin-top: 5px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 760;
   letter-spacing: 0.045em;
   text-transform: uppercase;
@@ -249,7 +287,8 @@
 }
 
 .wall-mode .today-hero__metrics,
-.wall-mode .today-order.operational-order {
+.wall-mode .today-order.operational-order,
+.wall-mode .order-flow-rollup {
   border-color: #3a3127;
   background: #1d1915;
 }
@@ -258,6 +297,7 @@
 .wall-mode .operational-order__items,
 .wall-mode .operational-order__foot,
 .wall-mode .order-flow-grid,
+.wall-mode .order-flow-rollup,
 .wall-mode .order-flow-stat {
   border-color: #3a3127;
 }
@@ -283,6 +323,27 @@
 
   .today-hero__metric small {
     font-size: 8.5px;
+  }
+
+  .order-flow-rollup {
+    padding: 11px 10px;
+  }
+
+  .order-flow-rollup strong {
+    font-size: 24px;
+  }
+
+  .order-flow-stat {
+    padding: 10px 6px;
+    text-align: center;
+  }
+
+  .order-flow-stat strong {
+    font-size: 19px;
+  }
+
+  .order-flow-stat span {
+    font-size: 8px;
   }
 
   .operational-order-grid {
