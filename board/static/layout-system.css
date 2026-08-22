@@ -46,16 +46,22 @@
 
 .page-header__aside { min-width: 0; }
 
+/* KPI rails are a single reusable object, never a collection of free-floating
+   numbers. The rail owns its surface, separators and responsive geometry. */
 .kpi-rail {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(94px, 1fr);
+  grid-auto-columns: minmax(104px, 1fr);
   align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  background: rgba(255, 253, 249, 0.64);
 }
 
 .kpi {
   min-width: 0;
-  padding: 0 16px;
+  padding: 11px 15px 10px;
   border-left: 1px solid var(--line);
 }
 
@@ -153,7 +159,7 @@
   .page-header { gap: 10px; padding: 9px 0 11px; }
   .page-header__title { font-size: 27px; }
   .page-header__description { font-size: 12px; }
-  .kpi-rail { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .kpi-rail { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpi { padding: 10px; border-left: 0; }
   .kpi:nth-child(even) { border-left: 1px solid var(--line); }
   .kpi:nth-child(n + 3) { border-top: 1px solid var(--line); }
