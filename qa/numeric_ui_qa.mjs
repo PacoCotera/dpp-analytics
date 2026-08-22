@@ -1,0 +1,143 @@
+import { chromium } from 'playwright';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+const baseUrl = (process.argv[2] || 'http://127.0.0.1:8088').replace(/\/$/, '');
+const outDir = process.argv[3] || '/out';
+const failures = [];
+const checks = [];
+
+function numberFromText(value) {
+  const normalized = String(value || '')
+    .replace(/−/g, '-')
+    .replace(/[^0-9.\-]/g, '');
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+function expectedDisplay(value) {
+  return Math.round(Number(value || 0));
+}
+
+function record(name, actual, expected, tolerance = 0.01) {
+  const ok = actual !== null && Math.abs(Number(actual) - Number(expected)) <= tolerance;
+  checks.push({ name, actual, expected, ok });
+  if (!ok) failures.push(`${name}: rendered ${actual} != expected ${expected}`);
+}
+
+async function api(page, url) {
+  return page.evaluate(async endpoint => {
+    const response = await fetch(endpoint, { cache: 'no-store' });
+    const body = await response.json();
+    if (!response.ok) throw new Error(`${endpoint} HTTP ${response.status}: ${body.error || 'error'}`);
+    return body;
+  }, url);
+}
+
+async function renderedMoney(page, selector) {
+  await page.locator(selector).first().waitFor({ state: 'visible', timeout: 7000 });
+  return numberFromText(await page.locator(selector).first().textContent());
+}
+
+async function bodyHas(page, phrase, name) {
+  const text = await page.locator('body').innerText();
+  const ok = text.toLowerCase().includes(phrase.toLowerCase());
+  checks.push({ name, actual: ok, expected: true, ok });
+  if (!ok) failures.push(`${name}: UI does not visibly state “${phrase}”`);
+}
+
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
+const page = await context.newPage();
+page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
+
+try {
+  await page.goto(`${baseUrl}/today`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  const today = await api(page, '/api/today');
+  await page.waitForTimeout(800);
+  record('Today shopper spend', await renderedMoney(page, '#sales'), expectedDisplay(today.today?.sales_today));
+  record('Today orders', numberFromText(await page.locator('#orders').textContent()), Number(today.today?.orders_today || 0));
+  record('Today units', numberFromText(await page.locator('#units').textContent()), Number(today.today?.units_today || 0));
+  await bodyHas(page, 'shopper spend today · incl. IVA', 'Today basis label');
+
+  await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  const home = await api(page, '/api/home');
+  await page.waitForTimeout(800);
+  record('Home 28D net sales', await renderedMoney(page, '#sales28'), expectedDisplay(home.rolling?.sales_t28));
+  record('Home Today shopper spend', await renderedMoney(page, '#todaySales'), expectedDisplay(home.today?.sales_today));
+  await bodyHas(page, 'net ex IVA', 'Home historical basis label');
+  await bodyHas(page, 'incl. IVA', 'Home Today basis label');
+
+  await page.goto(`${baseUrl}/sales`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  const sales = await api(page, '/api/sales');
+  await page.waitForTimeout(1000);
+  record('Sales MTD net sales', await renderedMoney(page, '#mtdSales'), expectedDisplay(sales.headline?.sales_mtd));
+  record('Sales 7D net sales', await renderedMoney(page, '#t7Sales'), expectedDisplay(sales.headline?.sales_t7));
+  record('Sales 28D net sales', await renderedMoney(page, '#t28Sales'), expectedDisplay(sales.headline?.sales_t28));
+  record('Sales YTD net sales', await renderedMoney(page, '#ytdSales'), expectedDisplay(sales.headline?.sales_ytd));
+  record('Sales Today shopper spend', await renderedMoney(page, '#todaySales'), expectedDisplay(sales.today?.sales_today));
+  await bodyHas(page, 'historical Sales & Traffic = net sales ex IVA', 'Sales historical basis notice');
+  await bodyHas(page, 'shopper spend today · incl. IVA', 'Sales Today basis label');
+
+  await page.locator('button[data-view="orders"]').click();
+  await page.locator('#orderRows tr').first().waitFor({ state: 'visible', timeout: 5000 });
+  const renderedOrders = await page.locator('#orderRows tr').evaluateAll(rows => rows.map(row => ({
+    order: row.children[2]?.textContent?.trim() || '',
+    amount: row.children[4]?.textContent?.trim() || '',
+  })));
+  const apiOrders = sales.orders || [];
+  for (let i = 0; i < Math.min(renderedOrders.length, apiOrders.length, 10); i += 1) {
+    if (renderedOrders[i].order !== String(apiOrders[i].order_short || '')) {
+      failures.push(`Sales Orders row ${i + 1}: rendered order ${renderedOrders[i].order} != API ${apiOrders[i].order_short}`);
+      continue;
+    }
+    record(`Sales Orders ${renderedOrders[i].order} shopper spend`, numberFromText(renderedOrders[i].amount), expectedDisplay(apiOrders[i].sales));
+  }
+  await bodyHas(page, 'Shopper spend incl. IVA', 'Sales Orders basis label');
+
+  await page.goto(`${baseUrl}/catalog`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  const catalog = await api(page, '/api/catalog');
+  await page.waitForTimeout(1000);
+  const portfolioText = await page.locator('#portfolioRead').textContent();
+  record('Catalog 28D net sales', numberFromText(String(portfolioText || '').split(' from ')[0]), expectedDisplay(catalog.summary?.sales_t28));
+  await bodyHas(page, '28D net sales ex IVA', 'Catalog sales basis label');
+
+  await page.goto(`${baseUrl}/product?sku=PNC-001`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  const product = await api(page, '/api/product?sku=PNC-001');
+  await page.waitForTimeout(1000);
+  record('Product 28D net sales', await renderedMoney(page, '#sales28'), expectedDisplay(product.performance?.sales_t28));
+  await bodyHas(page, '28D net sales ex IVA', 'Product historical basis label');
+  await bodyHas(page, 'shopper spend incl. IVA', 'Product order-evidence basis label');
+
+  await page.goto(`${baseUrl}/finance`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  const finance = await api(page, '/api/finance');
+  await page.waitForTimeout(1000);
+  const current = finance.current_month || {};
+  record('Finance OPEN net sales ex IVA', await renderedMoney(page, '#sales'), expectedDisplay(current.net_sales_ex_vat));
+  record('Finance OPEN IVA withheld', await renderedMoney(page, '#iva'), expectedDisplay(current.iva_on_sales));
+  record('Finance OPEN gross customer spend', await renderedMoney(page, '#gross'), expectedDisplay(current.shopper_product_spend));
+  await bodyHas(page, 'Net sales ex IVA', 'Finance net-sales label');
+  await bodyHas(page, 'IVA withheld', 'Finance IVA label');
+  await bodyHas(page, 'Gross customer spend', 'Finance gross label');
+
+  await page.goto(`${baseUrl}/trajectory`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await page.waitForTimeout(800);
+  await bodyHas(page, 'Net sales ex IVA', 'Trajectory historical basis label');
+} catch (error) {
+  failures.push(`numeric UI QA: ${error.message}`);
+} finally {
+  await context.close();
+  await browser.close();
+}
+
+const summary = {
+  generatedAt: new Date().toISOString(),
+  baseUrl,
+  status: failures.length ? 'FAIL' : 'PASS',
+  checks,
+  failures,
+};
+await fs.mkdir(outDir, { recursive: true });
+await fs.writeFile(path.join(outDir, 'numeric-ui-summary.json'), JSON.stringify(summary, null, 2));
+console.log(JSON.stringify({ status: summary.status, checks: checks.length, failures }, null, 2));
+if (failures.length) process.exitCode = 3;
