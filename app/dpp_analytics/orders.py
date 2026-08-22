@@ -16,6 +16,7 @@ from .spapi import SpApiClient
 SOURCE = "amazon_spapi"
 JOB = "orders_v2026"
 GEOGRAPHY_JOB = "orders_geography_v2026"
+FULFILLMENT_BACKFILL_CURSOR = "fulfillment_csv_v1_complete"
 
 
 def _decimal(money: dict[str, Any] | None) -> Decimal | None:
@@ -78,18 +79,30 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
 
     Recipient geography is intentionally handled by a separate enrichment job so
     a missing restricted role can never interrupt sales/order ingestion.
+
+    The first successful run with the corrected includedData serialization
+    deliberately replays the configured order history once. Earlier requests sent
+    repeated includedData keys, which Amazon accepted but did not populate the
+    FULFILLMENT dataset for our stored rows. The named cursor makes this repair
+    durable and prevents repeated historical sweeps.
     """
     own_client = client is None
     client = client or SpApiClient()
 
     now = dt.datetime.now(dt.timezone.utc)
     safe_before = now - dt.timedelta(minutes=3)
+    configured = os.getenv("ORDERS_BACKFILL_START", "2025-10-01T00:00:00Z")
+    configured_after = _parse_iso(configured)
     cursor = db.get_cursor(SOURCE, JOB)
-    if cursor:
+    fulfillment_backfill_complete = db.get_cursor(SOURCE, JOB, FULFILLMENT_BACKFILL_CURSOR)
+    repair_fulfillment_history = fulfillment_backfill_complete is None
+
+    if repair_fulfillment_history:
+        after = configured_after
+    elif cursor:
         after = _parse_iso(cursor) - dt.timedelta(minutes=5)
     else:
-        configured = os.getenv("ORDERS_BACKFILL_START", "2025-10-01T00:00:00Z")
-        after = _parse_iso(configured)
+        after = configured_after
 
     if after >= safe_before:
         return {"records_read": 0, "records_written": 0}
@@ -111,7 +124,16 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
     token: str | None = None
 
     try:
-        with db.ingestion_run(SOURCE, JOB, {"after": _iso(after), "before": _iso(safe_before)}) as run:
+        with db.ingestion_run(
+            SOURCE,
+            JOB,
+            {
+                "after": _iso(after),
+                "before": _iso(safe_before),
+                "fulfillment_history_repair": repair_fulfillment_history,
+                "included_data": ["PROCEEDS", "FULFILLMENT", "PROMOTION"],
+            },
+        ) as run:
             while True:
                 params = list(base_params)
                 if token:
@@ -261,6 +283,8 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
                     break
 
             db.set_cursor(SOURCE, JOB, _iso(safe_before))
+            if repair_fulfillment_history:
+                db.set_cursor(SOURCE, JOB, _iso(safe_before), FULFILLMENT_BACKFILL_CURSOR)
 
         return totals
     finally:
