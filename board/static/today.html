@@ -32,7 +32,7 @@
 
       <main>
         <section class="today-stage">
-          <section class="today-card today-hero" title="Shopper spend from Amazon Orders. Includes IVA. Order grand total is used; item price × quantity is the fallback. Settlement proceeds are excluded.">
+          <section class="today-card today-hero" title="Shopper-facing product spend including IVA. Amazon ITEM + TAX is used when complete; provisional tax-exclusive item values are normalized to the marketplace IVA basis. Settlement proceeds and Amazon fees are excluded.">
             <div class="today-hero__top">
               <div class="today-eyebrow" id="salesLabel">Shopper spend today · incl. IVA</div>
               <div class="day-picker" id="dayPicker" data-no-swipe></div>
@@ -53,7 +53,7 @@
             <p id="pulseExplanation">Separating today’s signal from the broader trend.</p>
             <div class="context-list" id="contextList"></div>
             <section class="latest">
-              <div class="latest-title">Latest sale · shopper spend</div>
+              <div class="latest-title">Latest sale · shopper spend incl. IVA</div>
               <div id="latest"><div class="empty">Waiting for today’s first order.</div></div>
               <div class="latest-age" id="latestAge"></div>
             </section>
@@ -63,7 +63,7 @@
         <section class="today-content-grid">
           <section class="today-card today-panel">
             <div class="today-panel__head">
-              <div><div class="today-panel__title">Recent rhythm</div><div class="today-panel__sub" id="rhythmSub">Same shopper-spend basis across the selected window</div></div>
+              <div><div class="today-panel__title">Recent rhythm</div><div class="today-panel__sub" id="rhythmSub">Same shopper-spend incl.-IVA basis across the selected window</div></div>
               <div class="periods" data-no-swipe>
                 <button class="period" type="button" data-period="7">7D</button>
                 <button class="period" type="button" data-period="mtd">MTD</button>
@@ -76,18 +76,18 @@
           </section>
 
           <section class="today-card today-panel">
-            <div class="today-panel__head"><div><div class="today-panel__title" id="productsTitle">What is driving today</div><div class="today-panel__sub">Ranked shopper-spend contribution</div></div></div>
+            <div class="today-panel__head"><div><div class="today-panel__title" id="productsTitle">What is driving today</div><div class="today-panel__sub">Ranked shopper-spend contribution · incl. IVA</div></div></div>
             <div class="today-products" id="products"><div class="empty">Products will appear as orders arrive.</div></div>
           </section>
         </section>
 
         <details class="today-card today-orders" id="ordersPanel">
-          <summary><span><strong>Order evidence</strong><small id="orderSummary">Shopper-spend evidence for the selected day · no customer PII</small></span><b id="orderToggle">View ↓</b></summary>
+          <summary><span><strong>Order evidence</strong><small id="orderSummary">Shopper spend incl. IVA for the selected day · no customer PII</small></span><b id="orderToggle">View ↓</b></summary>
           <div class="order-grid" id="orderGrid"></div>
         </details>
       </main>
 
-      <footer class="footer"><span>MXN · shopper spend incl. IVA · Amazon Orders · sync about every 3 minutes</span><span>Settlement/proceeds amounts are not used on Today · Dirty Pawz Press Analytics</span></footer>
+      <footer class="footer"><span>MXN · shopper spend incl. IVA · Amazon Orders · sync about every 3 minutes</span><span>Historical net sales ex IVA live on Sales/Home; Finance shows both bases · Dirty Pawz Press Analytics</span></footer>
     </div>
 
     <script src="/assets/vendor/d3.v7.min.js"></script>
