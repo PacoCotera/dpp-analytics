@@ -1,0 +1,81 @@
+name: Production Number Audit
+
+on:
+  workflow_run:
+    workflows: ["Deploy DPP Analytics"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: dpp-production-number-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: [self-hosted, linux, x64, dpp-analytics]
+    timeout-minutes: 5
+    steps:
+      - name: Reconcile deployed production numbers
+        run: |
+          set -uo pipefail
+          rm -f /tmp/dpp-production-number-audit.json
+          set +e
+          sudo docker compose --env-file /etc/dpp-analytics/env exec -T worker \
+            python -m dpp_analytics.production_number_audit --board-url http://board:8080 \
+            >/tmp/dpp-production-number-audit.json
+          rc=$?
+          set -e
+          python3 -m json.tool /tmp/dpp-production-number-audit.json
+          exit "$rc"
+
+      - name: Publish production number audit
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let raw = '{}';
+            try { raw = fs.readFileSync('/tmp/dpp-production-number-audit.json','utf8'); } catch (_) {}
+            let audit = {};
+            try { audit = JSON.parse(raw); } catch (_) { audit = {status:'ERROR',failures:['audit output was not valid JSON']}; }
+            const ev = audit.evidence || {};
+            const lines = [
+              '# DPP Analytics production number audit',
+              '',
+              `**Deployed commit:** \`${process.env.DEPLOY_SHA || 'unknown'}\``,
+              `**Status:** **${audit.status || 'ERROR'}**`,
+              `**Marketplace:** \`${audit.marketplace || 'unknown'}\``,
+              `**Local date:** \`${audit.local_date || 'unknown'}\``,
+              '',
+              '## Failures',
+              ...(audit.failures && audit.failures.length ? audit.failures.map(x => `- ${x}`) : ['- None']),
+              '',
+              '## Warnings',
+              ...(audit.warnings && audit.warnings.length ? audit.warnings.map(x => `- ${x}`) : ['- None']),
+              '',
+              '## Production KPI reconciliation',
+              '```json',
+              JSON.stringify(audit.api_summary || {}, null, 2),
+              '```',
+              '',
+              '## Today raw money evidence',
+              '```json',
+              JSON.stringify(ev.today_order_money || [], null, 2),
+              '```',
+              '',
+              '## Canonical warehouse evidence',
+              '```json',
+              JSON.stringify({canonical_today: ev.canonical_today, reconciled_business: ev.reconciled_business, canonical_portfolio: ev.canonical_portfolio, inventory_db: ev.inventory_db}, null, 2),
+              '```',
+              '',
+              '_This report is produced against the deployed production database and APIs. Order identifiers are truncated and no customer PII is included._'
+            ];
+            await github.rest.issues.update({owner:context.repo.owner,repo:context.repo.repo,issue_number:62,body:lines.join('\n')});
