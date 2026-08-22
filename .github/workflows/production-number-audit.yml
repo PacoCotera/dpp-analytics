@@ -23,7 +23,7 @@ jobs:
       - name: Reconcile deployed production numbers
         run: |
           set -uo pipefail
-          rm -f /tmp/dpp-production-number-audit.json /tmp/dpp-sales-basis-probe.json /tmp/dpp-finance-basis-audit.json
+          rm -f /tmp/dpp-production-number-audit.json /tmp/dpp-sales-basis-probe.json /tmp/dpp-finance-basis-audit.json /tmp/dpp-finance-cash-probe.json
           set +e
           sudo docker compose --env-file /etc/dpp-analytics/env exec -T worker \
             python -m dpp_analytics.production_number_audit --board-url http://board:8080 \
@@ -37,12 +37,18 @@ jobs:
             python -m dpp_analytics.finance_basis_audit --board-url http://board:8080 \
             >/tmp/dpp-finance-basis-audit.json
           finance_rc=$?
+          sudo docker compose --env-file /etc/dpp-analytics/env exec -T worker \
+            python -m dpp_analytics.finance_cash_probe \
+            >/tmp/dpp-finance-cash-probe.json
+          cash_rc=$?
           set -e
           python3 -m json.tool /tmp/dpp-production-number-audit.json
           python3 -m json.tool /tmp/dpp-sales-basis-probe.json
           python3 -m json.tool /tmp/dpp-finance-basis-audit.json
+          python3 -m json.tool /tmp/dpp-finance-cash-probe.json
           if [[ "$basis_rc" -ne 0 ]]; then exit "$basis_rc"; fi
           if [[ "$finance_rc" -ne 0 ]]; then exit "$finance_rc"; fi
+          if [[ "$cash_rc" -ne 0 ]]; then exit "$cash_rc"; fi
           exit "$rc"
 
       - name: Publish production number audit
@@ -57,15 +63,19 @@ jobs:
             let raw = '{}';
             let basisRaw = '{}';
             let financeRaw = '{}';
+            let cashRaw = '{}';
             try { raw = fs.readFileSync('/tmp/dpp-production-number-audit.json','utf8'); } catch (_) {}
             try { basisRaw = fs.readFileSync('/tmp/dpp-sales-basis-probe.json','utf8'); } catch (_) {}
             try { financeRaw = fs.readFileSync('/tmp/dpp-finance-basis-audit.json','utf8'); } catch (_) {}
+            try { cashRaw = fs.readFileSync('/tmp/dpp-finance-cash-probe.json','utf8'); } catch (_) {}
             let audit = {};
             let basis = {};
             let finance = {};
+            let cash = {};
             try { audit = JSON.parse(raw); } catch (_) { audit = {status:'ERROR',failures:['audit output was not valid JSON']}; }
             try { basis = JSON.parse(basisRaw); } catch (_) { basis = {classification:'ERROR'}; }
             try { finance = JSON.parse(financeRaw); } catch (_) { finance = {status:'ERROR',failures:['Finance basis audit output was not valid JSON']}; }
+            try { cash = JSON.parse(cashRaw); } catch (_) { cash = {summary:{error:'Finance cash probe output was not valid JSON'}}; }
             const ev = audit.evidence || {};
             const combinedFailures = [
               ...(audit.failures || []),
@@ -99,6 +109,11 @@ jobs:
               '## Finance tax-basis audit',
               '```json',
               JSON.stringify(finance || {}, null, 2),
+              '```',
+              '',
+              '## Finance settlement cash probe',
+              '```json',
+              JSON.stringify(cash || {}, null, 2),
               '```',
               '',
               '## Today raw money evidence',
