@@ -7,6 +7,8 @@ from today_api_legacy import today_payload as _legacy_today_payload
 
 
 TERMINAL_ORDER_STATUSES = {"SHIPPED", "CANCELLED"}
+PENDING_ORDER_STATUSES = {"PENDING", "PENDING_AVAILABILITY", "INVOICE_UNCONFIRMED"}
+OPEN_ORDER_STATUSES = PENDING_ORDER_STATUSES | {"UNSHIPPED", "PARTIALLY_SHIPPED"}
 
 
 def _pct(current: float, prior: float):
@@ -184,6 +186,19 @@ def _attach_order_detail(cur, orders: list[dict]) -> list[dict]:
     return orders
 
 
+def _decorate_order_items(decorate_products, orders: list[dict]) -> list[dict]:
+    """Apply the same editable SKU display dictionary used everywhere else."""
+    item_rows = [
+        item
+        for order in orders
+        for item in (order.get("items") or [])
+        if isinstance(item, dict)
+    ]
+    if item_rows:
+        decorate_products(item_rows)
+    return orders
+
+
 def _current_order_queue(cur, marketplace: str) -> tuple[dict, list[dict]]:
     cur.execute(
         """
@@ -198,7 +213,7 @@ def _current_order_queue(cur, marketplace: str) -> tuple[dict, list[dict]]:
         )
         SELECT
           count(*) FILTER (
-            WHERE status_norm<>'' AND status_norm NOT IN ('SHIPPED','CANCELLED')
+            WHERE status_norm IN ('PENDING','PENDING_AVAILABILITY','INVOICE_UNCONFIRMED','UNSHIPPED','PARTIALLY_SHIPPED')
           )::bigint AS open_orders,
           count(*) FILTER (
             WHERE status_norm IN ('PENDING','PENDING_AVAILABILITY','INVOICE_UNCONFIRMED')
@@ -207,11 +222,11 @@ def _current_order_queue(cur, marketplace: str) -> tuple[dict, list[dict]]:
           count(*) FILTER (WHERE status_norm='PARTIALLY_SHIPPED')::bigint AS partially_shipped_orders,
           count(*) FILTER (WHERE status_norm='UNFULFILLABLE')::bigint AS problem_orders,
           count(*) FILTER (
-            WHERE status_norm<>'' AND status_norm NOT IN ('SHIPPED','CANCELLED')
+            WHERE status_norm IN ('PENDING','PENDING_AVAILABILITY','INVOICE_UNCONFIRMED','UNSHIPPED','PARTIALLY_SHIPPED')
               AND fulfilled_by_norm='AMAZON'
           )::bigint AS fba_open_orders,
           count(*) FILTER (
-            WHERE status_norm<>'' AND status_norm NOT IN ('SHIPPED','CANCELLED')
+            WHERE status_norm IN ('PENDING','PENDING_AVAILABILITY','INVOICE_UNCONFIRMED','UNSHIPPED','PARTIALLY_SHIPPED')
               AND fulfilled_by_norm='MERCHANT'
           )::bigint AS fbm_open_orders,
           count(*) FILTER (
@@ -224,6 +239,7 @@ def _current_order_queue(cur, marketplace: str) -> tuple[dict, list[dict]]:
         (marketplace,),
     )
     flow = dict(cur.fetchone() or {})
+    flow["basis"] = "CURRENT_FULFILLMENT_STATE"
 
     cur.execute(
         """
@@ -241,8 +257,9 @@ def _current_order_queue(cur, marketplace: str) -> tuple[dict, list[dict]]:
         LEFT JOIN mart.order_customer_spend cs
           ON cs.marketplace_id=o.marketplace_id AND cs.amazon_order_id=o.amazon_order_id
         WHERE o.marketplace_id=%s
-          AND upper(COALESCE(o.fulfillment_status,''))<>''
-          AND upper(COALESCE(o.fulfillment_status,'')) NOT IN ('SHIPPED','CANCELLED')
+          AND upper(COALESCE(o.fulfillment_status,'')) IN (
+            'PENDING','PENDING_AVAILABILITY','INVOICE_UNCONFIRMED','UNSHIPPED','PARTIALLY_SHIPPED'
+          )
         ORDER BY o.created_time DESC
         LIMIT 20
         """,
@@ -293,11 +310,13 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
 
         recent_orders = payload.get("recent_orders") or []
         _attach_order_detail(cur, recent_orders)
+        _decorate_order_items(decorate_products, recent_orders)
         for order in recent_orders:
             order["sales_basis"] = "GROSS_CUSTOMER_SPEND"
         payload["latest_order"] = (recent_orders or [None])[0]
 
         flow, open_orders = _current_order_queue(cur, marketplace)
+        _decorate_order_items(decorate_products, open_orders)
         payload["order_flow"] = flow
         payload["open_orders"] = open_orders
 
