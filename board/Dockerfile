@@ -17,9 +17,11 @@ COPY board/today_api_canonical.py ./today_api.py
 COPY board/product_api.py ./product_api_legacy.py
 COPY board/product_api_canonical.py ./product_api.py
 COPY board/ads_context.py .
-# finance_emergency.py is the current immutable-close implementation. Copy it
-# once under the module name imported by the router.
-COPY board/finance_emergency.py ./finance_api.py
+# Finance legacy reader owns period-state/immutable-close behavior. The adapter
+# corrects OPEN/finalizing Sales & Traffic from gross shopper spend to net revenue;
+# closed history is already corrected by explicit RESTATED versions in migration 037.
+COPY board/finance_emergency.py ./finance_api_legacy.py
+COPY board/finance_api_corrected.py ./finance_api.py
 COPY board/inventory_api.py .
 COPY board/catalog_api.py .
 COPY board/trajectory_api.py .
