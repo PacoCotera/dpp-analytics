@@ -1,6 +1,8 @@
 -- Amazon Ads warehouse foundation.
--- Designed for Amazon Ads API v1 unified reporting: multi-account, multi-marketplace,
--- cross-ad-product facts with explicit attribution/freshness metadata.
+-- Canonical facts are intentionally independent of Amazon report payload shapes.
+-- Reporting v3 is a transport adapter while available; new integration work must target
+-- Amazon's current Unified Reporting direction so a reporting-endpoint migration never
+-- requires remodeling DPP's commercial facts.
 
 CREATE SCHEMA IF NOT EXISTS ads;
 
