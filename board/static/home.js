@@ -11,39 +11,39 @@ function stateRead(delta, actions) {
     return {
       headline: 'Momentum is strong.',
       copy: decisionCount
-        ? `The last four weeks are clearly ahead of the prior four. ${decisionCopy}`
-        : 'The last four weeks are clearly ahead of the prior four, with nothing requiring immediate attention.',
+        ? `The last four weeks of net sales ex IVA are clearly ahead of the prior four. ${decisionCopy}`
+        : 'The last four weeks of net sales ex IVA are clearly ahead of the prior four, with nothing requiring immediate attention.',
     };
   }
   if (momentum >= 2) {
     return {
       headline: 'The business is growing.',
       copy: decisionCount
-        ? `Recent sales are modestly ahead. ${decisionCopy}`
-        : 'Recent sales are modestly ahead and there are no immediate operating exceptions.',
+        ? `Recent net sales ex IVA are modestly ahead. ${decisionCopy}`
+        : 'Recent net sales ex IVA are modestly ahead and there are no immediate operating exceptions.',
     };
   }
   if (momentum > -2) {
     return {
       headline: 'The business is steady.',
       copy: decisionCount
-        ? `Recent sales are essentially flat. ${decisionCopy}`
-        : 'Recent sales are essentially flat and operations are currently clear.',
+        ? `Recent net sales ex IVA are essentially flat. ${decisionCopy}`
+        : 'Recent net sales ex IVA are essentially flat and operations are currently clear.',
     };
   }
   if (momentum > -8) {
     return {
       headline: 'Momentum has softened.',
       copy: decisionCount
-        ? `The last four weeks are below the prior four. ${decisionCount} operating decision${decisionCount === 1 ? ' also needs' : 's also need'} attention.`
-        : 'The last four weeks are below the prior four, but no immediate operating exception is flagged.',
+        ? `The last four weeks of net sales ex IVA are below the prior four. ${decisionCount} operating decision${decisionCount === 1 ? ' also needs' : 's also need'} attention.`
+        : 'The last four weeks of net sales ex IVA are below the prior four, but no immediate operating exception is flagged.',
     };
   }
   return {
     headline: 'The business is cooling.',
     copy: decisionCount
-      ? `Recent sales are meaningfully below the prior four weeks and ${decisionCopy}`
-      : 'Recent sales are meaningfully below the prior four weeks. Operations themselves are currently clear.',
+      ? `Recent net sales ex IVA are meaningfully below the prior four weeks and ${decisionCopy}`
+      : 'Recent net sales ex IVA are meaningfully below the prior four weeks. Operations themselves are currently clear.',
   };
 }
 
@@ -91,8 +91,8 @@ function renderDrivers(data, businessSales) {
         ? 'declining'
         : 'stable';
     const share = businessSales > 0 ? (100 * Number(item.sales_t28 || 0)) / businessSales : null;
-    const read = `${index === 0 ? 'Largest driver · ' : ''}${share == null ? 'share unavailable' : `${share.toFixed(0)}% of 28D sales`} · ${direction} ${percent(item.delta28_pct)}`;
-    return `<a class="driver" href="/product?sku=${encodeURIComponent(item.sku)}">${image}<div><div class="sku">${escapeHtml(item.sku)}</div><div class="name">${escapeHtml(item.product || item.sku)}</div><div class="read ${deltaTone}">${read}</div></div><div class="driver-value"><strong>${money(item.sales_t28)}</strong><small>Amazon 28D sales</small></div></a>`;
+    const read = `${index === 0 ? 'Largest driver · ' : ''}${share == null ? 'share unavailable' : `${share.toFixed(0)}% of 28D net sales`} · ${direction} ${percent(item.delta28_pct)}`;
+    return `<a class="driver" href="/product?sku=${encodeURIComponent(item.sku)}">${image}<div><div class="sku">${escapeHtml(item.sku)}</div><div class="name">${escapeHtml(item.product || item.sku)}</div><div class="read ${deltaTone}">${read}</div></div><div class="driver-value"><strong>${money(item.sales_t28)}</strong><small>28D net sales · ex IVA</small></div></a>`;
   }).join('');
 }
 
@@ -108,12 +108,12 @@ function render(data) {
   document.getElementById('stateHeadline').textContent = read.headline;
   document.getElementById('stateCopy').textContent = read.copy;
   document.getElementById('sales28').textContent = money(rolling.sales_t28);
-  document.getElementById('sales28Note').textContent = 'Amazon Sales & Traffic';
+  document.getElementById('sales28Note').textContent = 'net ex IVA · Sales & Traffic';
 
   const momentum = document.getElementById('momentum');
   momentum.textContent = percent(rolling.delta28_pct);
   momentum.className = `kpi__value ${tone(rolling.delta28_pct)}`;
-  document.getElementById('momentumNote').textContent = 'vs prior 28';
+  document.getElementById('momentumNote').textContent = 'vs prior 28 · same net basis';
 
   document.getElementById('todaySales').textContent = money(today.sales_today);
   document.getElementById('todayNote').textContent = `${integer(today.orders_today)} orders · ${integer(today.units_today)} units · incl. IVA`;
