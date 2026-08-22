@@ -126,7 +126,7 @@ try {
   }
   if (!Array.isArray(postalPayload.features) || !postalPayload.features.length) throw new Error('Estado de México postal geometry is empty');
 
-  const windingAudit = page.evaluate(payload => {
+  const windingAudit = await page.evaluate(payload => {
     const area = ring => {
       let total = 0;
       for (let i = 0; i < ring.length - 1; i += 1) total += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
