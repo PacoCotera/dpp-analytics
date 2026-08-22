@@ -45,7 +45,9 @@
 }
 
 .today-left-column .rhythm-host {
-  overflow: hidden;
+  position: relative;
+  z-index: 3;
+  overflow: visible;
   min-height: 245px;
 }
 
@@ -55,8 +57,18 @@
   height: 245px;
 }
 
+.today-left-column .rhythm-insight,
+.today-left-column .today-panel__head {
+  position: relative;
+  z-index: 1;
+}
+
 .today-left-column .today-panel {
   overflow: hidden;
+}
+
+.today-left-column .today-panel:has(.rhythm-host) {
+  overflow: visible;
 }
 
 .today-right-column .today-products .empty {
