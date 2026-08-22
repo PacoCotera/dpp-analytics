@@ -49,11 +49,13 @@ def _parse_iso(value: str) -> dt.datetime:
     return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def _recipient_geography(order: dict[str, Any]) -> tuple[str | None, str | None]:
+def _recipient_geography(order: dict[str, Any]) -> tuple[str | None, str | None, str | None]:
     recipient = order.get("recipient") or {}
     address = recipient.get("deliveryAddress") or {}
     state = address.get("stateOrRegion")
     country = address.get("countryCode")
+    postal = address.get("postalCode")
+
     if isinstance(state, str):
         state = state.strip() or None
     else:
@@ -62,22 +64,21 @@ def _recipient_geography(order: dict[str, Any]) -> tuple[str | None, str | None]
         country = country.strip().upper()[:2] or None
     else:
         country = None
-    return state, country
-
-
-def _raw_safe_order(order: dict[str, Any]) -> dict[str, Any]:
-    """Return the order payload without recipient data.
-
-    RECIPIENT is requested only to extract coarse state/country dimensions. The
-    raw warehouse must not become a recipient/address store, so the complete
-    recipient object is discarded before raw payload persistence and hashing.
-    """
-    safe = dict(order)
-    safe.pop("recipient", None)
-    return safe
+    if isinstance(postal, str):
+        postal = postal.strip().upper() or None
+    elif postal is not None:
+        postal = str(postal).strip().upper() or None
+    else:
+        postal = None
+    return state, country, postal
 
 
 def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
+    """Canonical Orders ingestion without recipient PII.
+
+    Recipient geography is intentionally handled by a separate enrichment job so
+    a missing restricted role can never interrupt sales/order ingestion.
+    """
     own_client = client is None
     client = client or SpApiClient()
 
@@ -101,14 +102,13 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
         ("includedData", "PROCEEDS"),
         ("includedData", "FULFILLMENT"),
         ("includedData", "PROMOTION"),
-        ("includedData", "RECIPIENT"),
     ]
 
     totals = {"records_read": 0, "records_written": 0}
     token: str | None = None
 
     try:
-        with db.ingestion_run(SOURCE, JOB, {"after": _iso(after), "before": _iso(safe_before), "recipient_geo": "state_country_only"}) as run:
+        with db.ingestion_run(SOURCE, JOB, {"after": _iso(after), "before": _iso(safe_before)}) as run:
             while True:
                 params = list(base_params)
                 if token:
@@ -121,9 +121,7 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
 
                 with db.connect() as conn, conn.cursor() as cur:
                     for order in orders:
-                        state_or_region, destination_country = _recipient_geography(order)
-                        raw_order = _raw_safe_order(order)
-                        encoded = json.dumps(raw_order, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+                        encoded = json.dumps(order, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
                         digest = hashlib.sha256(encoded).hexdigest()
                         order_id = order.get("orderId")
                         channel = order.get("salesChannel") or {}
@@ -137,7 +135,7 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
                             VALUES (%s,'order',%s,%s,now(),%s,%s,%s,%s,%s)
                             RETURNING id
                             """,
-                            (SOURCE, order_id, marketplace_id, after, safe_before, Jsonb(raw_order), digest, run["id"]),
+                            (SOURCE, order_id, marketplace_id, after, safe_before, Jsonb(order), digest, run["id"]),
                         )
                         raw_id = cur.fetchone()["id"]
 
@@ -151,9 +149,8 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
                                 (amazon_order_id, marketplace_id, created_time, last_updated_time,
                                  fulfillment_status, fulfilled_by, channel_name, programs,
                                  grand_total_amount, currency, quantity_fulfilled, quantity_unfulfilled,
-                                 destination_state_or_region, destination_country_code,
                                  last_seen_at, source_payload_id)
-                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),%s)
+                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),%s)
                             ON CONFLICT (amazon_order_id) DO UPDATE SET
                                 marketplace_id=EXCLUDED.marketplace_id,
                                 created_time=EXCLUDED.created_time,
@@ -166,8 +163,6 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
                                 currency=EXCLUDED.currency,
                                 quantity_fulfilled=EXCLUDED.quantity_fulfilled,
                                 quantity_unfulfilled=EXCLUDED.quantity_unfulfilled,
-                                destination_state_or_region=COALESCE(EXCLUDED.destination_state_or_region,core.amazon_order.destination_state_or_region),
-                                destination_country_code=COALESCE(EXCLUDED.destination_country_code,core.amazon_order.destination_country_code),
                                 last_seen_at=now(), source_payload_id=EXCLUDED.source_payload_id
                             """,
                             (
@@ -183,8 +178,6 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
                                 _currency(grand_total),
                                 fulfillment.get("quantityFulfilled"),
                                 fulfillment.get("quantityUnfulfilled"),
-                                state_or_region,
-                                destination_country,
                                 raw_id,
                             ),
                         )
@@ -273,7 +266,7 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
 
 
 def backfill_order_geography(client: SpApiClient | None = None) -> dict[str, int]:
-    """Backfill coarse state/country for historical orders without retaining PII."""
+    """Backfill state/country/postal only; never persist the recipient payload."""
     own_client = client is None
     client = client or SpApiClient()
     safe_before = dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=3)
@@ -293,7 +286,12 @@ def backfill_order_geography(client: SpApiClient | None = None) -> dict[str, int
         with db.ingestion_run(
             SOURCE,
             GEOGRAPHY_JOB,
-            {"after": _iso(created_after), "before": _iso(safe_before), "retained": ["stateOrRegion", "countryCode"]},
+            {
+                "after": _iso(created_after),
+                "before": _iso(safe_before),
+                "retained": ["stateOrRegion", "countryCode", "postalCode"],
+                "recipient_payload_persisted": False,
+            },
         ) as run:
             while True:
                 params = list(params_base)
@@ -309,17 +307,18 @@ def backfill_order_geography(client: SpApiClient | None = None) -> dict[str, int
                         order_id = order.get("orderId")
                         if not order_id:
                             continue
-                        state_or_region, country = _recipient_geography(order)
-                        if state_or_region is None and country is None:
+                        state_or_region, country, postal_code = _recipient_geography(order)
+                        if state_or_region is None and country is None and postal_code is None:
                             continue
                         cur.execute(
                             """
                             UPDATE core.amazon_order
                             SET destination_state_or_region=COALESCE(%s,destination_state_or_region),
-                                destination_country_code=COALESCE(%s,destination_country_code)
+                                destination_country_code=COALESCE(%s,destination_country_code),
+                                destination_postal_code=COALESCE(%s,destination_postal_code)
                             WHERE amazon_order_id=%s AND marketplace_id=%s
                             """,
-                            (state_or_region, country, order_id, settings.marketplace_id),
+                            (state_or_region, country, postal_code, order_id, settings.marketplace_id),
                         )
                         totals["records_written"] += cur.rowcount
                     conn.commit()
