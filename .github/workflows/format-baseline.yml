@@ -1,0 +1,44 @@
+name: Format baseline branch
+
+on:
+  push:
+    branches:
+      - refactor/prettier-baseline
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/prettier-baseline
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend tooling
+        working-directory: board
+        run: npm install --no-package-lock --ignore-scripts
+
+      - name: Apply canonical formatting
+        working-directory: board
+        run: npm run format
+
+      - name: Commit formatting if needed
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- board/static board/.prettierignore
+          if git diff --cached --quiet; then
+            echo "Formatting already clean"
+            exit 0
+          fi
+          git commit -m "Apply Prettier baseline to frontend source"
+          git push origin HEAD:refactor/prettier-baseline
