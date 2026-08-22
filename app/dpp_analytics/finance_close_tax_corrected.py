@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-"""Corrected Finance-close entry point for DPP Mexico tax basis.
+"""Corrected Finance-close implementation for DPP Mexico tax basis.
 
 Amazon Sales & Traffic orderedProductSales has been empirically reconciled in
-production to shopper sales including IVA. The original close implementation
-predated that evidence and treated the source as ex-IVA. We reuse its immutable
-close/state machinery but normalize the snapshot before any new CLOSED or
-RESTATED version is written.
+production to shopper sales including IVA. The legacy close implementation
+predated that evidence and treated the source as ex-IVA. Production packaging
+keeps that implementation as finance_close_legacy and routes every close entry
+point through this module.
 """
 
-from . import finance_close as _legacy
+from . import finance_close_legacy as _legacy
 
 VAT_RATE = _legacy.VAT_RATE
 SOURCE_BASIS = "AMAZON_SALES_TRAFFIC_GROSS_INCL_IVA"
@@ -35,11 +35,9 @@ def _corrected_month_snapshot(cur, marketplace, month, costs):
     return snap
 
 
-# Patch only the snapshot interpretation. The original writer remains untouched:
-# core.finance_month_close is immutable immediately on INSERT, so trying to
-# enrich close_basis with a subsequent UPDATE would correctly be rejected by
-# the database trigger. Migration 037 records the explicit basis on the tax-basis
-# restatement; future close semantics are also recoverable from marketplace policy.
+# The legacy public functions resolve _month_snapshot from their own module
+# globals, so replacing it here corrects scheduled closes and explicit
+# restatements without copying the close-state/COGS machinery.
 _legacy._month_snapshot = _corrected_month_snapshot
 
 close_ready_months = _legacy.close_ready_months
