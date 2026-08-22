@@ -138,25 +138,22 @@ function renderBusinessRead() {
   const orders = Number(today.orders_today || 0);
   const mtd = Number(context.mtd_delta_pct);
   const last30 = Number(context.last30_delta_pct);
-  let headline;
-  let explanation;
+  const wtd = Number(context.week_delta_pct);
+  const finite = [mtd, last30].filter(Number.isFinite);
+  const positive = finite.filter((value) => value >= 5).length;
+  const negative = finite.filter((value) => value <= -5).length;
 
-  if (mtd >= 8 && last30 >= 5) {
-    headline = 'The underlying business is strengthening';
-    explanation = `MTD shopper spend is ${signedPercent0(mtd)} and the latest 30 days are ${signedPercent0(last30)}. ${live && orders < 3 ? 'Today is too early to override that broader read.' : ''}`;
-  } else if (mtd <= -8 && last30 <= -5) {
-    headline = 'The underlying business is weakening';
-    explanation = `MTD shopper spend is ${signedPercent0(mtd)} and the latest 30 days are ${signedPercent0(last30)}. ${live && orders < 3 ? 'Today is too early to change that broader read.' : ''}`;
-  } else if (Math.sign(mtd) !== Math.sign(last30) && Math.abs(mtd) >= 5 && Math.abs(last30) >= 5) {
-    headline = 'Short and medium horizons disagree';
-    explanation = `MTD shopper spend is ${signedPercent0(mtd)} while the latest 30 days are ${signedPercent0(last30)}. Treat the trend as mixed until the horizons converge.`;
-  } else {
-    headline = 'The broader business is broadly stable';
-    explanation = `MTD shopper spend is ${signedPercent0(mtd)} and the latest 30 days are ${signedPercent0(last30)}. Today should be read as one operating day, not the whole trend.`;
-  }
+  let headline = 'Momentum';
+  if (positive === finite.length && finite.length) headline = 'Positive momentum';
+  else if (negative === finite.length && finite.length) headline = 'Negative momentum';
+  else if (positive && negative) headline = 'Mixed momentum';
+  else if (finite.every((value) => Math.abs(value) < 5)) headline = 'Mostly flat';
+
+  const facts = [`MTD ${signedPercent0(mtd)}`, `30D ${signedPercent0(last30)}`, `WTD ${signedPercent0(wtd)}`];
+  if (live && orders < 3) facts.push(`Today ${orders} order${orders === 1 ? '' : 's'}`);
 
   byId('pulseHeadline').textContent = headline;
-  byId('pulseExplanation').textContent = explanation;
+  byId('pulseExplanation').textContent = facts.join(' · ');
 
   const rows = [
     ['MTD', context.sales_mtd, context.mtd_delta_pct, 'vs same days last month'],
@@ -201,16 +198,10 @@ function renderRhythmInsight() {
     )
     .map((row) => row.sales);
   const typical = median(comparable);
-  let text;
-
-  if (Number.isFinite(delta) && Math.abs(delta) >= 10) {
-    text = `<strong>Recent shopper spend is ${delta > 0 ? 'running stronger' : 'running softer'}.</strong> The latest 7 closed days average ${money(latestAverage)}, ${signedPercent0(delta)} versus the prior 7.`;
-  } else {
-    text = `<strong>Recent shopper spend is fairly steady.</strong> The latest 7 closed days average ${money(latestAverage)}${Number.isFinite(delta) ? `, ${signedPercent0(delta)} versus the prior 7` : ''}.`;
-  }
-  if (typical != null)
-    text += ` A typical recent ${weekday(selected)} closed day is about ${money(typical)}.`;
-  byId('rhythmInsight').innerHTML = text;
+  const facts = [`7D avg ${money(latestAverage)}`];
+  if (Number.isFinite(delta)) facts.push(`${signedPercent0(delta)} vs prior 7`);
+  if (typical != null) facts.push(`${weekday(selected)} median ${money(typical)}`);
+  byId('rhythmInsight').textContent = facts.join(' · ');
 }
 
 function drawChart() {
@@ -234,10 +225,11 @@ function drawChart() {
   renderRhythmInsight();
   const width = Math.max(300, Math.round(host.getBoundingClientRect().width));
   const compact = width < 560;
-  const height = compact ? 190 : 178;
-  const margin = { top: 12, right: 8, bottom: 30, left: compact ? 46 : 52 };
+  const height = compact ? 220 : width < 900 ? 245 : 275;
+  const margin = { top: 16, right: 8, bottom: 34, left: compact ? 46 : 54 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
+  const yTicks = compact ? 4 : 5;
 
   svg.selectAll('*').remove();
   svg.attr('viewBox', `0 0 ${width} ${height}`);
@@ -251,17 +243,17 @@ function drawChart() {
   const y = d3
     .scaleLinear()
     .domain([0, d3.max(rows, (row) => row.sales) || 1])
-    .nice(4)
+    .nice(yTicks)
     .range([innerHeight, 0]);
 
   group
     .append('g')
     .attr('class', 'dpp-grid')
-    .call(d3.axisLeft(y).ticks(4).tickSize(-innerWidth).tickFormat(''));
+    .call(d3.axisLeft(y).ticks(yTicks).tickSize(-innerWidth).tickFormat(''));
   group
     .append('g')
     .attr('class', 'dpp-axis')
-    .call(d3.axisLeft(y).ticks(4).tickSize(0).tickPadding(7).tickFormat(shortMoney))
+    .call(d3.axisLeft(y).ticks(yTicks).tickSize(0).tickPadding(7).tickFormat(shortMoney))
     .call((axis) => axis.select('.domain').remove());
 
   const bars = group
