@@ -102,6 +102,10 @@ try {
     if (actual !== expected) throw new Error(`${label} current-state count mismatch: API=${actual} detail=${expected}`);
   }
 
+  if (Number(flow.open_orders || 0) !== Number(flow.pending_orders || 0) + Number(flow.unshipped_orders || 0) + Number(flow.partially_shipped_orders || 0)) {
+    throw new Error(`Open roll-up does not equal pending + unshipped + partial: ${JSON.stringify(flow)}`);
+  }
+
   for (const order of openOrders) {
     if (!OPEN.has(upper(order.status))) throw new Error(`Closed/problem status leaked into open queue: ${order.status}`);
     if (!order.order_id) throw new Error('Open order missing Amazon order ID');
@@ -115,22 +119,31 @@ try {
   sameCounts('Sales/Today', salesFlow, flow);
 
   await page.waitForFunction(
-    expected => document.getElementById('orderFlowGrid')?.textContent?.includes(String(expected)),
+    expected => document.getElementById('pendingOrdersKpi')?.textContent?.trim() === String(expected),
     Number(flow.pending_orders || 0),
     { timeout: 10000 },
   );
   const rendered = await page.evaluate(() => ({
-    openKpi: document.getElementById('openOrdersKpi')?.textContent?.trim() || '',
+    pendingKpi: document.getElementById('pendingOrdersKpi')?.textContent?.trim() || '',
+    pendingNote: document.getElementById('pendingOrdersKpiNote')?.textContent?.trim() || '',
     flow: document.getElementById('orderFlowGrid')?.textContent?.replace(/\s+/g, ' ').trim() || '',
     foot: document.getElementById('orderFlowFoot')?.textContent?.trim() || '',
     openSummary: document.getElementById('openOrderSummary')?.textContent?.trim() || '',
     openCards: document.querySelectorAll('#openOrderGrid .operational-order').length,
+    rollupCount: document.querySelector('.order-flow-rollup strong')?.textContent?.trim() || '',
+    childCount: document.querySelectorAll('.order-flow-children .order-flow-stat').length,
   }));
-  if (rendered.openKpi !== String(Number(flow.open_orders || 0))) {
-    throw new Error(`Rendered Open KPI mismatch: ${JSON.stringify(rendered)}`);
+  if (rendered.pendingKpi !== String(Number(flow.pending_orders || 0))) {
+    throw new Error(`Rendered Pending hero KPI mismatch: ${JSON.stringify(rendered)}`);
   }
-  if (!rendered.flow.includes(`${Number(flow.pending_orders || 0)}Pending`)) {
-    throw new Error(`Rendered Pending count mismatch: ${JSON.stringify(rendered)}`);
+  if (rendered.rollupCount !== String(Number(flow.open_orders || 0))) {
+    throw new Error(`Rendered Open roll-up mismatch: ${JSON.stringify(rendered)}`);
+  }
+  if (rendered.childCount !== 3) {
+    throw new Error(`Order queue must show exactly Pending/Unshipped/Partial children: ${JSON.stringify(rendered)}`);
+  }
+  if (!rendered.flow.includes('Open now') || !rendered.flow.includes(`${Number(flow.pending_orders || 0)} Pending`)) {
+    throw new Error(`Rendered order hierarchy is incomplete: ${JSON.stringify(rendered)}`);
   }
   if (Number(flow.open_orders || 0) > 0 && rendered.openCards !== Number(flow.open_orders || 0)) {
     throw new Error(`Rendered open-order detail mismatch: expected ${flow.open_orders}, got ${rendered.openCards}`);
