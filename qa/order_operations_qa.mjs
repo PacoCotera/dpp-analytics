@@ -162,8 +162,12 @@ try {
     foot: document.getElementById('orderFlowFoot')?.textContent?.trim() || '',
     openSummary: document.getElementById('openOrderSummary')?.textContent?.trim() || '',
     openCards: document.querySelectorAll('#openOrderGrid .operational-order').length,
+    rollupLabel: document.querySelector('.order-flow-rollup span')?.textContent?.trim() || '',
     rollupCount: document.querySelector('.order-flow-rollup strong')?.textContent?.trim() || '',
-    childCount: document.querySelectorAll('.order-flow-children .order-flow-stat').length,
+    children: [...document.querySelectorAll('.order-flow-children .order-flow-stat')].map(node => ({
+      count: node.querySelector('strong')?.textContent?.trim() || '',
+      label: node.querySelector('span')?.textContent?.trim() || '',
+    })),
     badgeTexts: [...document.querySelectorAll('#openOrderGrid .order-badge')].map(node => node.textContent?.trim() || ''),
     cardFooters: [...document.querySelectorAll('#openOrderGrid .operational-order__foot')].map(node => node.textContent?.replace(/\s+/g, ' ').trim() || ''),
     itemNames: [...document.querySelectorAll('#openOrderGrid .item-name')].map(node => node.textContent?.trim() || ''),
@@ -174,13 +178,15 @@ try {
   if (rendered.pendingHeroLabel !== 'Amazon processing') {
     throw new Error(`Hero must use Amazon processing language: ${JSON.stringify(rendered)}`);
   }
-  if (rendered.rollupCount !== String(Number(flow.open_orders || 0))) {
+  if (rendered.rollupLabel !== 'Open now' || rendered.rollupCount !== String(Number(flow.open_orders || 0))) {
     throw new Error(`Rendered Open roll-up mismatch: ${JSON.stringify(rendered)}`);
   }
-  if (rendered.childCount !== 3) {
-    throw new Error(`Order queue must show exactly Amazon processing/Unshipped/Partial children: ${JSON.stringify(rendered)}`);
-  }
-  if (!rendered.flow.includes('Open now') || !rendered.flow.includes(`${Number(flow.pending_orders || 0)} Amazon processing`)) {
+  const expectedChildren = [
+    { count: String(Number(flow.pending_orders || 0)), label: 'Amazon processing' },
+    { count: String(Number(flow.unshipped_orders || 0)), label: 'Unshipped' },
+    { count: String(Number(flow.partially_shipped_orders || 0)), label: 'Partial' },
+  ];
+  if (JSON.stringify(rendered.children) !== JSON.stringify(expectedChildren)) {
     throw new Error(`Rendered order hierarchy is incomplete: ${JSON.stringify(rendered)}`);
   }
   if (rendered.badgeTexts.some(text => text === 'PENDING' || text === 'Pending')) {
