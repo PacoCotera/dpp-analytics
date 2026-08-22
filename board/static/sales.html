@@ -36,7 +36,7 @@
       </nav>
 
       <div class="notice" role="note" aria-label="Sales monetary basis">
-        <strong>Basis:</strong> historical Sales &amp; Traffic = <strong>net sales ex IVA</strong>. Today and individual Orders = <strong>shopper spend incl. IVA</strong>. Finance shows both side by side.
+        <strong>Money basis:</strong> historical Sales &amp; Traffic = <strong>net sales ex IVA</strong>. Today and individual Orders = <strong>shopper spend incl. IVA</strong>. For the accounting bridge between them, use Finance.
       </div>
 
       <main id="overview" class="view active">
@@ -74,14 +74,14 @@
 
             <section class="sales-momentum-card" aria-label="Recent sales momentum">
               <div class="sales-momentum-title">Net sales momentum · ex IVA</div>
-              <div class="sales-signal sales-momentum-row" data-window="t7">
-                <div class="sales-signal-label">7D</div>
+              <div class="sales-signal sales-momentum-row" data-window="t7" title="Reconciled Amazon Sales & Traffic · net sales ex IVA.">
+                <div class="sales-signal-label">7D · net ex IVA</div>
                 <div class="sales-signal-value" id="t7Sales">—</div>
                 <div class="sales-volume" id="t7Volume">—</div>
                 <div class="sales-signal-note" id="t7Note">—</div>
               </div>
-              <div class="sales-signal sales-momentum-row" data-window="t28">
-                <div class="sales-signal-label">28D</div>
+              <div class="sales-signal sales-momentum-row" data-window="t28" title="Reconciled Amazon Sales & Traffic · net sales ex IVA.">
+                <div class="sales-signal-label">28D · net ex IVA</div>
                 <div class="sales-signal-value" id="t28Sales">—</div>
                 <div class="sales-volume" id="t28Volume">—</div>
                 <div class="sales-signal-note" id="t28Note">—</div>
@@ -144,11 +144,12 @@
         </section>
       </main>
 
-      <footer class="footer"><span>MXN · historical Sales = net sales ex IVA · Today/Orders = shopper spend incl. IVA</span><span>Finance shows net sales ex IVA + IVA withheld + gross shopper spend · Dirty Pawz Press Analytics</span></footer>
+      <footer class="footer"><span>MXN · historical Sales = net sales ex IVA · Today/Orders = shopper spend incl. IVA</span><span>Finance = net sales ex IVA + IVA withheld + gross shopper spend + payout cash timing · Dirty Pawz Press Analytics</span></footer>
     </div>
 
     <script src="/assets/vendor/d3.v7.min.js"></script>
     <script src="/assets/chart-system.js"></script>
     <script src="/assets/sales-canonical.js"></script>
+    <script src="/assets/sales-basis-ui.js"></script>
   </body>
 </html>
