@@ -54,6 +54,16 @@ try {
   if (payloads.todayStatus !== 200) throw new Error(`Today API ${payloads.todayStatus}`);
   if (payloads.salesStatus !== 200) throw new Error(`Sales API ${payloads.salesStatus}`);
 
+  // Fulfillment state is a required Orders dataset, not optional decoration. The
+  // recent Sales evidence catches ingestion regressions even when the current
+  // open queue happens to be empty and could otherwise falsely pass as zero.
+  const recentOrders = Array.isArray(payloads.sales?.orders) ? payloads.sales.orders : [];
+  const statusCovered = recentOrders.filter(order => upper(order.status)).length;
+  const statusCoverage = recentOrders.length ? statusCovered / recentOrders.length : 1;
+  if (recentOrders.length && statusCoverage < 0.9) {
+    throw new Error(`Recent order fulfillment-status coverage too low: ${statusCovered}/${recentOrders.length}`);
+  }
+
   // The renderer consumes the top-level queue. Validate that source directly,
   // then require the nested mart-backed copy and Sales to agree with it.
   const flow = payloads.today?.order_flow;
@@ -132,6 +142,11 @@ try {
   const summary = {
     ok: true,
     localToday,
+    fulfillmentStatusCoverage: {
+      covered: statusCovered,
+      total: recentOrders.length,
+      pct: Number((statusCoverage * 100).toFixed(1)),
+    },
     flow,
     openOrderDetailCount: openOrders.length,
     olderPendingIncluded: olderPending,
@@ -139,7 +154,7 @@ try {
   };
   await fs.writeFile(path.join(outDir, 'order-operations-summary.json'), JSON.stringify(summary, null, 2));
   await page.screenshot({ path: path.join(outDir, 'today-order-operations.png'), fullPage: true });
-  console.log(`ORDER_OPERATIONS current pending=${Number(flow.pending_orders || 0)} open=${Number(flow.open_orders || 0)} older_pending=${olderPending}`);
+  console.log(`ORDER_OPERATIONS current pending=${Number(flow.pending_orders || 0)} open=${Number(flow.open_orders || 0)} older_pending=${olderPending} status_coverage=${statusCovered}/${recentOrders.length}`);
   console.log(JSON.stringify(summary));
 } catch (error) {
   await page.screenshot({ path: path.join(outDir, 'today-order-operations-error.png'), fullPage: true }).catch(() => {});
