@@ -45,8 +45,9 @@ try{
       check('Product Ads interpretation rejects residual-organic claim',read.includes('not exact organic sales'),read);
       check('Product Ads interpretation names attribution',read.includes('Amazon-attributed sales'),read);
     }else{
-      check('Product empty Ads state is explicit',state.includes('No Ads data'),state);
-      check('Product empty Ads state avoids fake zero efficiency',decision.includes('pending'),decision);
+      check('Product empty Ads state is explicit',state.includes('Ads access pending'),state);
+      check('Product empty Ads state avoids fake zero efficiency',decision.includes('Ads integration ready'),decision);
+      check('Product empty Ads state explains authorization wait',read.includes('after Amazon Ads authorizes access'),read);
     }
   }else{
     check('Catalog supplies a sellable SKU for Product Ads QA',false,'no sellable SKU');
