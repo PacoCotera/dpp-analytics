@@ -38,7 +38,8 @@ The frontend intentionally uses native HTML, CSS Grid/Flexbox and ES modules rat
 
 - **Today and individual order evidence:** `GROSS_CUSTOMER_SPEND`, the shopper-facing product amount **including IVA**. Live Amazon order rows are normalized to one tax-inclusive basis before aggregation.
 - **Historical Sales / Home / Catalog / Product / Trajectory:** reconciled Amazon Sales & Traffic `orderedProductSales`. Production reconciliation proves that, for DPP Mexico, this is also **shopper spend including IVA**. On 25 matched production days the report totaled MX$16,385.49 versus MX$16,396.39 normalized Orders gross and MX$14,134.82 Orders ex IVA. Operating pages therefore stay on one gross commercial basis.
-- **Finance:** derives **Net sales ex IVA** from the gross Sales & Traffic amount, then shows **IVA withheld** and **Gross customer spend** side by side. Historical CLOSED/RESTATED months come from immutable close snapshots. Amazon payout remains cash timing after withheld tax and settlement deductions.
+- **Finance:** derives **Net sales ex IVA** from the gross Sales & Traffic amount, then shows **IVA withheld** and **Gross customer spend** side by side. Historical CLOSED/RESTATED months come from immutable close snapshots.
+- **Amazon payout:** a separate settlement-grain cash identity. The Finance bridge starts with signed customer activity inside one settlement, subtracts IVA withheld and all other signed deductions (including settlement-charged advertising where present), adds reimbursements/other additions, and must reconcile to Amazon's settlement report total within MX$0.02. It is cash timing, never revenue or contribution.
 - **Ads:** attributed sales are Amazon attribution, not incremental sales. TACOS uses independently reconciled seller sales.
 
 ### Where to look
@@ -49,7 +50,7 @@ The frontend intentionally uses native HTML, CSS Grid/Flexbox and ES modules rat
 | What is the commercial sales trend? | Sales, Home, Catalog, Product, Trajectory | Shopper spend incl. IVA |
 | What is accounting revenue excluding IVA? | Finance | Net sales ex IVA |
 | What were gross shopper spend, IVA and ex-IVA revenue for an accounting month? | Finance | All three shown explicitly |
-| What cash did Amazon actually transfer? | Finance | Payout / cash timing, not revenue |
+| What cash did Amazon actually transfer? | Finance → latest Amazon settlement | Reconciled payout cash, not revenue |
 
 The canonical definitions, source ownership and presentation rules are in [`docs/metric-basis.md`](docs/metric-basis.md). Any code that changes a monetary source or fallback must update that document in the same change.
 
@@ -73,7 +74,7 @@ The canonical definitions, source ownership and presentation rules are in [`docs
 2. Intraday Today data is provisional and uses gross shopper spend from Orders. Reconciled historical commercial sales and trajectory use the same gross-including-IVA basis from Sales & Traffic.
 3. Finance is the accounting translation layer: gross shopper spend → IVA withheld → net sales ex IVA. Do not relabel operating gross sales as net revenue.
 4. Settlement/proceeds amounts are accounting evidence and must never silently substitute for shopper-facing operating sales.
-5. Cash movement and economic contribution are separate concepts.
+5. Cash movement and economic contribution are separate concepts. A displayed payout bridge is trusted only when its raw signed settlement lines reconcile to Amazon's settlement report total.
 6. Closed Finance months are immutable snapshots. Corrections require an explicit restatement, never a silent rewrite.
 7. Amazon Ads attributed sales are not subtracted from total seller sales to manufacture an “organic sales” number.
 8. Customer PII is not intentionally collected or exposed in the operating board.
@@ -96,7 +97,9 @@ npm run format:check   # audit; not yet the blocking gate
 
 Production deployment is controlled by `.github/workflows/deploy.yml` and runs on the repository-scoped self-hosted runner. A push to `main` deploys automatically; `workflow_dispatch` is also supported. The deployment applies migrations, refreshes Finance close state, deploys the stack, probes core APIs/services, runs production browser QA and publishes a deployment heartbeat.
 
-**Do not call a change production-ready merely because lint passes.** Production browser QA and a visual sanity check of the affected decision surfaces are part of acceptance.
+**Data-trust acceptance is executable.** Production browser QA verifies rendered monetary values and visible basis labels, including the Finance settlement payout arithmetic. After a successful deployment, `.github/workflows/production-number-audit.yml` independently reconciles production APIs against warehouse/raw evidence, re-proves the Sales & Traffic tax basis, audits immutable Finance closes, and recalculates the latest settlement payout bridge directly from `core.settlement_line`. A monetary-basis or payout-reconciliation failure is a production failure, not a documentation warning.
+
+**Do not call a change production-ready merely because lint passes.** Production browser QA, numeric reconciliation and a visual sanity check of the affected decision surfaces are part of acceptance.
 
 ## Documentation
 
