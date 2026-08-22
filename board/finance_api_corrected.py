@@ -8,9 +8,11 @@ IVA explicitly so net revenue, withheld IVA and gross customer spend are three
 separate values. Immutable closed history is read as stored; migration 037
 appends corrected RESTATED versions rather than rewriting prior closes.
 
-Cash is a separate contract. The latest Amazon settlement is reconstructed from
-raw settlement lines and reconciled to Amazon's settlement total. It is shown as
-cash timing, never as business-period revenue or contribution.
+Cash is a separate contract. Amazon may expose more than one report_id for the
+same settlement_id, so trusted cash uses the canonical one-report-per-settlement
+views introduced by migration 040. The latest canonical settlement is then
+reconstructed from signed lines and reconciled to Amazon's own report total. It
+is shown as cash timing, never as business-period revenue or contribution.
 """
 
 from finance_api_legacy import finance_payload as _legacy_finance_payload
@@ -46,36 +48,42 @@ def _derive_finance_sales(row: dict, rate: float) -> None:
 
 
 def _latest_cash_bridge(connect, marketplace: str) -> dict:
-    """Return one settlement-id cash identity using deliberately broad buckets.
+    """Return one canonical settlement-id cash identity using broad signed buckets.
 
     We do not need to pretend every Amazon fee subtype is perfectly classified to
     prove cash. Customer activity, withheld tax and settlement advertising are
     recognized explicitly; every remaining signed line is retained in either
-    other deductions or other additions. The signed sum must reconcile to the
-    settlement report total before the bridge is marked RECONCILED.
+    other deductions or other additions. Raw duplicate/revised report copies are
+    retained in core for evidence but cannot be double-counted here. The selected
+    report's signed sum must reconcile to Amazon's report total before the bridge
+    is marked RECONCILED.
     """
     with connect() as conn, conn.cursor() as cur:
         cur.execute(
             """
             WITH latest AS (
               SELECT settlement_id,
-                     min(settlement_start_date) AS settlement_start_date,
-                     max(settlement_end_date) AS settlement_end_date,
-                     max(deposit_date) AS deposit_date,
-                     max(currency) AS currency,
-                     max(total_amount) AS report_total
-              FROM core.settlement_line
-              WHERE marketplace_id=%s AND settlement_id IS NOT NULL
-              GROUP BY settlement_id
-              ORDER BY COALESCE(max(deposit_date),max(settlement_end_date),min(settlement_start_date)) DESC NULLS LAST,
+                     report_id,
+                     report_versions,
+                     settlement_start_date,
+                     settlement_end_date,
+                     deposit_date,
+                     currency,
+                     max_report_total AS report_total,
+                     is_reconciled AS selected_report_reconciled
+              FROM mart.settlement_canonical_report
+              WHERE marketplace_id=%s
+              ORDER BY COALESCE(deposit_date,settlement_end_date,settlement_start_date) DESC NULLS LAST,
                        settlement_id DESC
               LIMIT 1
             ), classified AS (
               SELECT l.*,
                      lower(COALESCE(l.amount_type,'')) AS at,
                      lower(COALESCE(l.amount_description,'')) AS ad
-              FROM core.settlement_line l
-              JOIN latest x USING(settlement_id)
+              FROM mart.settlement_line_canonical l
+              JOIN latest x
+                ON x.settlement_id=l.settlement_id
+               AND x.report_id=l.report_id
               WHERE l.marketplace_id=%s
             ), agg AS (
               SELECT
@@ -132,12 +140,15 @@ def _latest_cash_bridge(connect, marketplace: str) -> dict:
     report_total = row.get("report_total")
     payout = round(float(report_total if report_total is not None else line_sum), 2)
     delta = round(line_sum - payout, 2)
-    status = "RECONCILED" if abs(delta) <= 0.02 else "UNRECONCILED"
+    selected_report_reconciled = bool(row.get("selected_report_reconciled"))
+    status = "RECONCILED" if selected_report_reconciled and abs(delta) <= 0.02 else "UNRECONCILED"
 
     return {
         "status": status,
         "basis": "AMAZON_SETTLEMENT_REPORT",
         "settlement_id": row.get("settlement_id"),
+        "source_report_id": row.get("report_id"),
+        "report_versions": int(row.get("report_versions") or 1),
         "settlement_start_date": row.get("settlement_start_date"),
         "settlement_end_date": row.get("settlement_end_date"),
         "deposit_date": row.get("deposit_date"),
@@ -154,9 +165,10 @@ def _latest_cash_bridge(connect, marketplace: str) -> dict:
         "reconciliation_delta": delta,
         "line_count": int(row.get("line_count") or 0),
         "classification": "BROAD_RECONCILED_BUCKETS",
+        "report_selection": "ONE_CANONICAL_RECONCILED_REPORT_PER_SETTLEMENT",
         "note": (
             "Cash settlement identity, not business-period P&L. Customer activity is net of any refunds present in this settlement. "
-            "Detailed selling/FBA fee subtypes remain grouped until separately validated."
+            "Duplicate/revised Amazon report copies are retained as raw evidence but counted once. Detailed selling/FBA fee subtypes remain grouped until separately validated."
         ),
     }
 
@@ -181,6 +193,6 @@ def finance_payload(connect, marketplace: str) -> dict:
         "iva_withheld": "Gross shopper spend - net sales ex IVA",
         "gross_customer_spend": "Amazon Sales & Traffic shopper spend including IVA",
         "payout": "Amazon settlement cash after withheld tax and signed settlement deductions/additions; never revenue",
-        "cash_bridge": "Latest settlement-id signed line sum reconciled to Amazon settlement report total",
+        "cash_bridge": "One canonical report copy per settlement; latest settlement signed line sum reconciled to Amazon report total",
     }
     return payload
