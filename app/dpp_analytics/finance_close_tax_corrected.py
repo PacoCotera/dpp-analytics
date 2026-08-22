@@ -14,7 +14,6 @@ from . import finance_close as _legacy
 VAT_RATE = _legacy.VAT_RATE
 SOURCE_BASIS = "AMAZON_SALES_TRAFFIC_GROSS_INCL_IVA"
 _original_month_snapshot = _legacy._month_snapshot
-_original_write_close = _legacy._write_close
 
 
 def _corrected_month_snapshot(cur, marketplace, month, costs):
@@ -36,41 +35,12 @@ def _corrected_month_snapshot(cur, marketplace, month, costs):
     return snap
 
 
-def _write_close(cur, marketplace, snap, version, *, restatement_reason=None):
-    # Preserve the original writer and then enrich the immutable audit basis in
-    # the same transaction. The update is allowed only before COMMIT; once the
-    # close becomes durable, DB immutability guards prevent further mutation.
-    _original_write_close(
-        cur,
-        marketplace,
-        snap,
-        version,
-        restatement_reason=restatement_reason,
-    )
-    cur.execute(
-        """
-        UPDATE core.finance_month_close
-        SET close_basis = close_basis || %s::jsonb
-        WHERE marketplace_id=%s AND month=%s AND version=%s
-        """,
-        (
-            __import__("json").dumps({
-                "sales_source": "Amazon Sales & Traffic orderedProductSales",
-                "sales_source_tax_basis": SOURCE_BASIS,
-                "sales_tax_transform": snap.get("sales_tax_transform"),
-                "vat_rate": VAT_RATE,
-            }),
-            marketplace,
-            snap["month"],
-            version,
-        ),
-    )
-
-
-# Patch only inside this explicit corrected entry point. Existing historical
-# versions are untouched; new versions receive the corrected basis.
+# Patch only the snapshot interpretation. The original writer remains untouched:
+# core.finance_month_close is immutable immediately on INSERT, so trying to
+# enrich close_basis with a subsequent UPDATE would correctly be rejected by
+# the database trigger. Migration 037 records the explicit basis on the tax-basis
+# restatement; future close semantics are also recoverable from marketplace policy.
 _legacy._month_snapshot = _corrected_month_snapshot
-_legacy._write_close = _write_close
 
 close_ready_months = _legacy.close_ready_months
 restate_month = _legacy.restate_month
