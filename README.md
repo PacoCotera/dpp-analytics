@@ -37,8 +37,8 @@ The frontend intentionally uses native HTML, CSS Grid/Flexbox and ES modules rat
 **A money value is not fully defined until its basis is known.** DPP Analytics deliberately separates shopper spend, net seller revenue, Finance accounting values, settlement cash and Ads attribution.
 
 - **Today and individual order evidence:** `GROSS_CUSTOMER_SPEND`, the shopper-facing product amount **including IVA**. Live Amazon order rows are normalized to one tax-inclusive basis before aggregation.
-- **Historical Sales / Home / Catalog / Product / Trajectory:** reconciled Amazon Sales & Traffic `orderedProductSales`, treated by DPP as **net sales ex IVA**. These historical commercial figures are the same revenue basis used by Finance; settlement/proceeds values are not substituted into them.
-- **Finance:** shows **Net sales ex IVA**, **IVA withheld**, and **Gross customer spend** side by side. Historical CLOSED/RESTATED months come from immutable close snapshots. Amazon payout remains cash timing after withheld tax and settlement deductions.
+- **Historical Sales / Home / Catalog / Product / Trajectory:** reconciled Amazon Sales & Traffic `orderedProductSales`. Production reconciliation proves that, for DPP Mexico, this is also **shopper spend including IVA**. On 25 matched production days the report totaled MX$16,385.49 versus MX$16,396.39 normalized Orders gross and MX$14,134.82 Orders ex IVA. Operating pages therefore stay on one gross commercial basis.
+- **Finance:** derives **Net sales ex IVA** from the gross Sales & Traffic amount, then shows **IVA withheld** and **Gross customer spend** side by side. Historical CLOSED/RESTATED months come from immutable close snapshots. Amazon payout remains cash timing after withheld tax and settlement deductions.
 - **Ads:** attributed sales are Amazon attribution, not incremental sales. TACOS uses independently reconciled seller sales.
 
 ### Where to look
@@ -46,8 +46,9 @@ The frontend intentionally uses native HTML, CSS Grid/Flexbox and ES modules rat
 | Question | Surface | Basis |
 | --- | --- | --- |
 | What did shoppers pay today? | Today; Sales → Orders | Shopper spend incl. IVA |
-| How much seller revenue did the business generate? | Sales, Home, Catalog, Product, Trajectory | Net sales ex IVA |
-| What were both gross shopper spend and ex-IVA revenue for an accounting month? | Finance | Both shown explicitly |
+| What is the commercial sales trend? | Sales, Home, Catalog, Product, Trajectory | Shopper spend incl. IVA |
+| What is accounting revenue excluding IVA? | Finance | Net sales ex IVA |
+| What were gross shopper spend, IVA and ex-IVA revenue for an accounting month? | Finance | All three shown explicitly |
 | What cash did Amazon actually transfer? | Finance | Payout / cash timing, not revenue |
 
 The canonical definitions, source ownership and presentation rules are in [`docs/metric-basis.md`](docs/metric-basis.md). Any code that changes a monetary source or fallback must update that document in the same change.
@@ -69,15 +70,16 @@ The canonical definitions, source ownership and presentation rules are in [`docs
 ## Non-negotiable data rules
 
 1. PostgreSQL owns business truth; browser code should render, not redefine accounting or reconciliation rules.
-2. Intraday Today data is provisional and uses gross shopper spend from Orders. Reconciled historical sales and trajectory use the net-sales-ex-IVA Sales & Traffic basis.
-3. Settlement/proceeds amounts are accounting evidence and must never silently substitute for shopper-facing operating sales or historical seller revenue.
-4. Cash movement and economic contribution are separate concepts.
-5. Closed Finance months are immutable snapshots. Corrections require an explicit restatement, never a silent rewrite.
-6. Amazon Ads attributed sales are not subtracted from total seller sales to manufacture an “organic sales” number.
-7. Customer PII is not intentionally collected or exposed in the operating board.
-8. Secrets and production tokens never live in Git.
-9. A frontend workspace has one semantic HTML owner, one page stylesheet and one page runtime. Docker does not inject page behavior.
-10. Applied SQL migrations are immutable. Clarifications belong in documentation or a new migration/comment artifact, never by editing an already-applied migration.
+2. Intraday Today data is provisional and uses gross shopper spend from Orders. Reconciled historical commercial sales and trajectory use the same gross-including-IVA basis from Sales & Traffic.
+3. Finance is the accounting translation layer: gross shopper spend → IVA withheld → net sales ex IVA. Do not relabel operating gross sales as net revenue.
+4. Settlement/proceeds amounts are accounting evidence and must never silently substitute for shopper-facing operating sales.
+5. Cash movement and economic contribution are separate concepts.
+6. Closed Finance months are immutable snapshots. Corrections require an explicit restatement, never a silent rewrite.
+7. Amazon Ads attributed sales are not subtracted from total seller sales to manufacture an “organic sales” number.
+8. Customer PII is not intentionally collected or exposed in the operating board.
+9. Secrets and production tokens never live in Git.
+10. A frontend workspace has one semantic HTML owner, one page stylesheet and one page runtime. Docker does not inject page behavior.
+11. Applied SQL migrations are immutable. Clarifications belong in documentation or a new migration/comment artifact, never by editing an already-applied migration.
 
 ## Development and quality
 
