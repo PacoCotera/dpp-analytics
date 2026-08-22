@@ -102,13 +102,26 @@ function renderOrderCard(order) {
 }
 
 function renderOrderFlow(payload) {
-  const flow = payload.order_flow || {};
+  const flow = payload.order_flow || payload.today?.order_flow || null;
+  if (!flow) {
+    byId('openOrdersKpi').textContent = '—';
+    byId('openOrdersKpiNote').textContent = 'current queue';
+    byId('orderFlowGrid').innerHTML = '<div class="empty ops-owned">Current order queue is shown on live Today.</div>';
+    byId('orderFlowFoot').textContent = 'Operational status is current state, not selected-day history.';
+    byId('openOrderSummary').textContent = 'Current order queue is not attached to historical day views';
+    byId('openOrderGrid').innerHTML = '<div class="empty ops-owned">Open orders are available on live Today.</div>';
+    return;
+  }
+
   const open = Number(flow.open_orders || 0);
   const fba = Number(flow.fba_open_orders || 0);
   const fbm = Number(flow.fbm_open_orders || 0);
+  const unknown = Number(flow.unknown_fulfillment_open_orders || 0);
 
   byId('openOrdersKpi').textContent = integer(open);
-  byId('openOrdersKpiNote').textContent = open ? `FBA ${fba} · FBM ${fbm}` : 'queue clear';
+  byId('openOrdersKpiNote').textContent = open
+    ? `FBA ${fba} · FBM ${fbm}${unknown ? ` · ${unknown} other` : ''}`
+    : 'queue clear';
 
   byId('orderFlowGrid').innerHTML = [
     ['Open', flow.open_orders],
@@ -121,12 +134,12 @@ function renderOrderFlow(payload) {
     )
     .join('');
 
-  const notes = [`Open split: FBA ${fba} · FBM ${fbm}`];
+  const notes = [`Current state · FBA ${fba} · FBM ${fbm}${unknown ? ` · ${unknown} other` : ''}`];
   if (Number(flow.partially_shipped_orders || 0)) notes.push(`${integer(flow.partially_shipped_orders)} partial`);
   if (Number(flow.problem_orders || 0)) notes.push(`${integer(flow.problem_orders)} needs attention`);
   byId('orderFlowFoot').textContent = notes.join(' · ');
 
-  const openOrders = payload.open_orders || [];
+  const openOrders = payload.open_orders || payload.today?.open_orders || [];
   byId('openOrderSummary').textContent = open
     ? `${open} open · ${fba} FBA · ${fbm} FBM · current Amazon fulfillment state`
     : 'No open Amazon orders';
