@@ -8,6 +8,9 @@ node /qa/visual_qa.mjs "$base_url" "$work_dir"
 visual_rc=$?
 node /qa/nav_qa.mjs "$base_url" "$work_dir"
 nav_rc=$?
+node /qa/numeric_ui_qa.mjs "$base_url" "$work_dir"
+numeric_rc=$?
 cp -a "$work_dir"/. "$out_root"/ 2>/dev/null || true
 if [ "$visual_rc" -ne 0 ]; then exit "$visual_rc"; fi
-exit "$nav_rc"
+if [ "$nav_rc" -ne 0 ]; then exit "$nav_rc"; fi
+exit "$numeric_rc"
