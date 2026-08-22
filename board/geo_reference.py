@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sqlite3
@@ -47,6 +48,13 @@ STATE_FILES = {
 POSTAL_RE = re.compile(r"^\d{5}$")
 STATE_RE = re.compile(r"^\d{2}$")
 
+# Postal geometry is WGS84.  Keep a deliberately generous Mexico envelope so
+# malformed KML conversions cannot create world-sized SVG paths in the browser.
+MEXICO_LON_MIN = -120.0
+MEXICO_LON_MAX = -85.0
+MEXICO_LAT_MIN = 10.0
+MEXICO_LAT_MAX = 35.0
+
 
 def _postal(value: object) -> str | None:
     raw = str(value or "").strip()
@@ -58,9 +66,9 @@ def _postal(value: object) -> str | None:
 def postal_dictionary(codes: list[str] | set[str] | tuple[str, ...]) -> list[dict]:
     """Return compact SEPOMEX labels for postal codes already present in DPP facts.
 
-    One postal code may contain multiple settlements.  The reference therefore
+    One postal code may contain multiple settlements. The reference therefore
     preserves the settlement list while exposing municipality/city as the useful
-    human-readable label.  This is public reference data, not customer data.
+    human-readable label. This is public reference data, not customer data.
     """
     requested = sorted({cp for value in codes if (cp := _postal(value))})
     if not requested or not POSTAL_DB.is_file():
@@ -83,6 +91,7 @@ def postal_dictionary(codes: list[str] | set[str] | tuple[str, ...]) -> list[dic
         ORDER BY c.codigo,c.nombre
     """
 
+    conn = None
     try:
         conn = sqlite3.connect(f"file:{POSTAL_DB}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
@@ -90,10 +99,11 @@ def postal_dictionary(codes: list[str] | set[str] | tuple[str, ...]) -> list[dic
     except sqlite3.Error:
         return []
     finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     grouped: dict[str, dict] = {}
     for row in rows:
@@ -141,12 +151,116 @@ def _state_geojson(state_code: str) -> dict:
     return json.loads(payload)
 
 
-def postal_geometry(state_code: str, codes: list[str] | set[str] | tuple[str, ...]) -> dict:
-    """Return only requested postal polygons from the Open Mexico state file.
+def _position(value: object) -> list[float] | None:
+    if not isinstance(value, (list, tuple)) or len(value) < 2:
+        return None
+    try:
+        lon = float(value[0])
+        lat = float(value[1])
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(lon) or not math.isfinite(lat):
+        return None
+    if not (MEXICO_LON_MIN <= lon <= MEXICO_LON_MAX and MEXICO_LAT_MIN <= lat <= MEXICO_LAT_MAX):
+        return None
+    return [lon, lat]
 
-    The browser never downloads the multi-megabyte raw state file.  The board
-    fetches it server-side, caches two parsed states, and returns only the postal
-    polygons that actually exist in the selected DPP demand slice.
+
+def _ring_area(ring: list[list[float]]) -> float:
+    """Planar signed area; negative is clockwise in lon/lat Cartesian space."""
+    return 0.5 * sum(
+        ring[index][0] * ring[index + 1][1] - ring[index + 1][0] * ring[index][1]
+        for index in range(len(ring) - 1)
+    )
+
+
+def _sanitize_ring(value: object, *, clockwise: bool) -> tuple[list[list[float]] | None, bool]:
+    if not isinstance(value, list):
+        return None, False
+    ring: list[list[float]] = []
+    for raw in value:
+        point = _position(raw)
+        if point is None:
+            return None, False
+        ring.append(point)
+    if len(ring) < 3:
+        return None, False
+    if ring[0] != ring[-1]:
+        ring.append(list(ring[0]))
+    if len(ring) < 4 or len({(p[0], p[1]) for p in ring[:-1]}) < 3:
+        return None, False
+
+    area = _ring_area(ring)
+    if not math.isfinite(area) or abs(area) < 1e-12:
+        return None, False
+    is_clockwise = area < 0
+    rewound = is_clockwise != clockwise
+    if rewound:
+        ring = list(reversed(ring))
+    return ring, rewound
+
+
+def _sanitize_polygon(value: object) -> tuple[list[list[list[float]]] | None, int]:
+    if not isinstance(value, list) or not value:
+        return None, 0
+    outer, rewound = _sanitize_ring(value[0], clockwise=True)
+    if outer is None:
+        return None, 0
+    rings = [outer]
+    rewound_count = int(rewound)
+    for raw_hole in value[1:]:
+        hole, hole_rewound = _sanitize_ring(raw_hole, clockwise=False)
+        if hole is None:
+            continue
+        rings.append(hole)
+        rewound_count += int(hole_rewound)
+    return rings, rewound_count
+
+
+def _sanitize_geometry(value: object) -> tuple[dict | None, int]:
+    if not isinstance(value, dict):
+        return None, 0
+    geometry_type = value.get("type")
+    coordinates = value.get("coordinates")
+    if geometry_type == "Polygon":
+        polygon, rewound = _sanitize_polygon(coordinates)
+        return ({"type": "Polygon", "coordinates": polygon}, rewound) if polygon else (None, 0)
+    if geometry_type == "MultiPolygon" and isinstance(coordinates, list):
+        polygons = []
+        rewound_count = 0
+        for raw_polygon in coordinates:
+            polygon, rewound = _sanitize_polygon(raw_polygon)
+            if polygon is None:
+                continue
+            polygons.append(polygon)
+            rewound_count += rewound
+        if polygons:
+            return {"type": "MultiPolygon", "coordinates": polygons}, rewound_count
+    return None, 0
+
+
+def _sanitize_feature(feature: object) -> tuple[dict | None, int]:
+    if not isinstance(feature, dict):
+        return None, 0
+    geometry, rewound = _sanitize_geometry(feature.get("geometry"))
+    if geometry is None:
+        return None, 0
+    return {
+        "type": "Feature",
+        "properties": dict(feature.get("properties") or {}),
+        "geometry": geometry,
+    }, rewound
+
+
+def postal_geometry(state_code: str, codes: list[str] | set[str] | tuple[str, ...]) -> dict:
+    """Return requested postal polygons normalized for D3's spherical winding.
+
+    Open Mexico publishes RFC-7946-style GeoJSON, whose exterior-ring winding is
+    opposite D3's spherical convention. Passing those polygons directly to
+    d3.geoPath can render the complement of a small postal polygon, visually
+    filling almost the entire page. This endpoint validates WGS84 coordinates,
+    rewinds exterior rings clockwise and holes counterclockwise, and only then
+    exposes the filtered geometry to the browser.
     """
     state_code = str(state_code or "").strip().zfill(2)
     if not STATE_RE.fullmatch(state_code) or state_code not in STATE_FILES:
@@ -160,26 +274,48 @@ def postal_geometry(state_code: str, codes: list[str] | set[str] | tuple[str, ..
             "requested_codes": 0,
             "matched_codes": 0,
             "missing_codes": [],
+            "invalid_codes": [],
+            "invalid_feature_count": 0,
+            "rewound_ring_count": 0,
             "source": "open-mexico/mexico-geojson",
+            "geometry_contract": "WGS84 lon/lat · D3 clockwise exterior rings",
         }
 
     geo = _state_geojson(state_code)
     features = []
+    raw_matched: set[str] = set()
     matched: set[str] = set()
+    invalid_codes: set[str] = set()
+    invalid_feature_count = 0
+    rewound_ring_count = 0
+
     for feature in geo.get("features") or []:
         cp = _postal((feature.get("properties") or {}).get("d_codigo"))
-        if cp and cp in requested:
-            features.append(feature)
-            matched.add(cp)
+        if not cp or cp not in requested:
+            continue
+        raw_matched.add(cp)
+        sanitized, rewound = _sanitize_feature(feature)
+        if sanitized is None:
+            invalid_feature_count += 1
+            invalid_codes.add(cp)
+            continue
+        features.append(sanitized)
+        matched.add(cp)
+        invalid_codes.discard(cp)
+        rewound_ring_count += rewound
 
     return {
         "type": "FeatureCollection",
         "name": geo.get("name"),
-        "bbox": geo.get("bbox"),
         "features": features,
         "state_code": state_code,
         "requested_codes": len(requested),
+        "source_matched_codes": len(raw_matched),
         "matched_codes": len(matched),
         "missing_codes": sorted(requested - matched),
+        "invalid_codes": sorted(invalid_codes - matched),
+        "invalid_feature_count": invalid_feature_count,
+        "rewound_ring_count": rewound_ring_count,
         "source": "open-mexico/mexico-geojson · SEPOMEX",
+        "geometry_contract": "WGS84 lon/lat · D3 clockwise exterior rings",
     }
