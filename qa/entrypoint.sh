@@ -10,7 +10,10 @@ node /qa/nav_qa.mjs "$base_url" "$work_dir"
 nav_rc=$?
 node /qa/numeric_ui_qa.mjs "$base_url" "$work_dir"
 numeric_rc=$?
+node /qa/geography_qa.mjs "$base_url" "$work_dir"
+geography_rc=$?
 cp -a "$work_dir"/. "$out_root"/ 2>/dev/null || true
 if [ "$visual_rc" -ne 0 ]; then exit "$visual_rc"; fi
 if [ "$nav_rc" -ne 0 ]; then exit "$nav_rc"; fi
-exit "$numeric_rc"
+if [ "$numeric_rc" -ne 0 ]; then exit "$numeric_rc"; fi
+exit "$geography_rc"
