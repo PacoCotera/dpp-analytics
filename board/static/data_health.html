@@ -1,16 +1,16 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta name="theme-color" content="#f4f0e8">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f0e8" />
     <title>Dirty Pawz Press · Data Health</title>
-    <link rel="stylesheet" href="/assets/theme.css">
-    <link rel="stylesheet" href="/assets/mobile-ux.css">
-    <link rel="stylesheet" href="/assets/design-refine.css">
-    <link rel="stylesheet" href="/assets/nav-shell.css">
-    <link rel="stylesheet" href="/assets/layout-system.css">
-    <link rel="stylesheet" href="/assets/data-health.css">
+    <link rel="stylesheet" href="/assets/theme.css" />
+    <link rel="stylesheet" href="/assets/mobile-ux.css" />
+    <link rel="stylesheet" href="/assets/design-refine.css" />
+    <link rel="stylesheet" href="/assets/nav-shell.css" />
+    <link rel="stylesheet" href="/assets/layout-system.css" />
+    <link rel="stylesheet" href="/assets/data-health.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
   <body>
@@ -32,7 +32,9 @@
         <header class="page-header">
           <div>
             <h1 class="page-header__title">Data Health</h1>
-            <p class="page-header__description">Trust by business decision, with pipeline detail only when something needs investigation.</p>
+            <p class="page-header__description">
+              Trust by business decision, with pipeline detail only when something needs investigation.
+            </p>
           </div>
         </header>
 
@@ -43,7 +45,9 @@
               <div>
                 <div class="health-eyebrow">Decision-critical coverage</div>
                 <h2 class="health-title" id="healthTitle">Checking decision coverage…</h2>
-                <p class="health-copy" id="healthCopy">Mapping source freshness to the business surfaces that depend on it.</p>
+                <p class="health-copy" id="healthCopy">
+                  Mapping source freshness to the business surfaces that depend on it.
+                </p>
               </div>
             </div>
           </div>
@@ -54,7 +58,9 @@
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Decision coverage</h2>
-              <div class="section-header__description">The status that matters: which operating decisions are supported right now.</div>
+              <div class="section-header__description">
+                The status that matters: which operating decisions are supported right now.
+              </div>
             </div>
           </div>
           <div class="domain-grid" id="domains" aria-live="polite"></div>
@@ -79,14 +85,20 @@
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Pipeline detail</h2>
-              <div class="section-header__description">Problems first. Expand the full source list only for technical investigation.</div>
+              <div class="section-header__description">
+                Problems first. Expand the full source list only for technical investigation.
+              </div>
             </div>
             <button class="btn" id="toggle" type="button" aria-pressed="false">Show all jobs</button>
           </div>
           <div class="panel pipeline-panel">
             <div class="panel__body">
               <div class="health-job health-job--header" aria-hidden="true">
-                <div>Job</div><div>Status</div><div>Freshness</div><div>Rows</div><div>Diagnostic</div>
+                <div>Job</div>
+                <div>Status</div>
+                <div>Freshness</div>
+                <div>Rows</div>
+                <div>Diagnostic</div>
               </div>
               <div id="jobs"></div>
             </div>
@@ -94,7 +106,9 @@
         </section>
       </main>
 
-      <footer class="footer"><span>Operational metadata · no customer PII</span><span>Dirty Pawz Press Analytics</span></footer>
+      <footer class="footer">
+        <span>Operational metadata · no customer PII</span><span>Dirty Pawz Press Analytics</span>
+      </footer>
     </div>
     <script type="module" src="/assets/data-health.js"></script>
   </body>

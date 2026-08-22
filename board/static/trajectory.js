@@ -12,9 +12,7 @@ function share(value) {
 }
 
 function renderStory(horizons) {
-  const values = Object.fromEntries(
-    horizons.map(item => [item.label, Number(item.delta_pct || 0)]),
-  );
+  const values = Object.fromEntries(horizons.map((item) => [item.label, Number(item.delta_pct || 0)]));
   const short = values['7D'];
   const main = values['28D'];
   const persistent = values['56D'];
@@ -24,29 +22,35 @@ function renderStory(horizons) {
 
   if (main > 5 && persistent > 2 && long > 2) {
     title = 'Momentum is structurally stronger.';
-    copy = short < 0
-      ? 'The latest week softened, but 28D, 56D and 90D remain positive. Treat the dip as noise unless it persists.'
-      : 'The main and longer horizons are positive, with the latest week reinforcing the trend.';
+    copy =
+      short < 0
+        ? 'The latest week softened, but 28D, 56D and 90D remain positive. Treat the dip as noise unless it persists.'
+        : 'The main and longer horizons are positive, with the latest week reinforcing the trend.';
   } else if (main < -5 && persistent < -2 && long < -2) {
     title = 'The slowdown looks structural.';
-    copy = short > 0
-      ? 'The latest week improved, but the 28D, 56D and 90D base remains weaker. The bounce is early, not yet a reversal.'
-      : 'Main and longer horizons are weaker, and the latest week is not contradicting that signal.';
+    copy =
+      short > 0
+        ? 'The latest week improved, but the 28D, 56D and 90D base remains weaker. The bounce is early, not yet a reversal.'
+        : 'Main and longer horizons are weaker, and the latest week is not contradicting that signal.';
   } else if (short > 5 && main < 2) {
     title = 'Short-term acceleration, not yet structural.';
-    copy = 'The latest week improved before the 28D and longer windows clearly turned. Watch for persistence.';
+    copy =
+      'The latest week improved before the 28D and longer windows clearly turned. Watch for persistence.';
   } else if (short < -5 && main > 2) {
     title = 'Recent softness inside a stronger base.';
-    copy = 'The latest week is down while the four-week business remains ahead. Watch whether softness reaches the longer horizons.';
+    copy =
+      'The latest week is down while the four-week business remains ahead. Watch whether softness reaches the longer horizons.';
   } else if (Math.abs(main) < 2) {
     title = 'The structural signal is flat.';
-    copy = 'The 28-day business has not made a meaningful step up or down. Weekly movement is mostly context until the longer windows move.';
+    copy =
+      'The 28-day business has not made a meaningful step up or down. Weekly movement is mostly context until the longer windows move.';
   } else if (main > 0) {
     title = 'The business is strengthening, but not uniformly.';
     copy = 'The 28-day horizon is ahead; 56D and 90D determine whether that improvement has become durable.';
   } else {
     title = 'The business has softened, but the signal is mixed.';
-    copy = 'The 28-day horizon is behind; longer windows determine whether this is structural or still ordinary volatility.';
+    copy =
+      'The 28-day horizon is behind; longer windows determine whether this is structural or still ordinary volatility.';
   }
 
   byId('storyTitle').textContent = title;
@@ -54,9 +58,9 @@ function renderStory(horizons) {
 }
 
 function renderHorizons(rows) {
-  const maxDelta = Math.max(...rows.map(item => Math.abs(Number(item.delta_pct || 0))), 10);
+  const maxDelta = Math.max(...rows.map((item) => Math.abs(Number(item.delta_pct || 0))), 10);
   byId('horizons').innerHTML = rows
-    .map(item => {
+    .map((item) => {
       const delta = Number(item.delta_pct || 0);
       const width = Math.max(4, Math.min(100, (Math.abs(delta) / maxDelta) * 100));
       const tone = toneClass(delta);
@@ -80,21 +84,33 @@ function renderPortfolio(portfolio = {}) {
     [
       'Productive SKUs',
       `${productive}${active ? ` / ${active}` : ''}`,
-      productiveShare == null ? 'No active offers' : `Selling in T28 · ${productiveShare.toFixed(0)}% of active`,
+      productiveShare == null
+        ? 'No active offers'
+        : `Selling in T28 · ${productiveShare.toFixed(0)}% of active`,
     ],
     ['Revenue / SKU', money(portfolio.revenue_per_active_sku), 'T28 average across active sellable offers'],
     ['Median SKU', money(portfolio.median_revenue_per_sku), 'Less distorted by the largest products'],
-    ['Top SKU share', share(portfolio.top_sku_share_pct), 'Lower concentration means broader portfolio support'],
+    [
+      'Top SKU share',
+      share(portfolio.top_sku_share_pct),
+      'Lower concentration means broader portfolio support',
+    ],
     ['Top 3 share', share(portfolio.top3_share_pct), 'How dependent T28 revenue is on the leaders'],
-    ['New SKU share', share(portfolio.new_sku_share_pct), 'T28 revenue from offers opened in the last 90 days'],
+    [
+      'New SKU share',
+      share(portfolio.new_sku_share_pct),
+      'T28 revenue from offers opened in the last 90 days',
+    ],
   ];
 
   byId('portfolio').innerHTML = cards
-    .map(([label, value, copy]) => `<div class="structure-card">
+    .map(
+      ([label, value, copy]) => `<div class="structure-card">
       <div class="structure-label">${escapeHtml(label)}</div>
       <div class="structure-value">${escapeHtml(value)}</div>
       <div class="structure-copy">${escapeHtml(copy)}</div>
-    </div>`)
+    </div>`,
+    )
     .join('');
 
   const definition = portfolio.definition || {};

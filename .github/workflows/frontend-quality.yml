@@ -56,8 +56,8 @@ jobs:
       - name: Install frontend tooling
         run: npm install --no-package-lock --ignore-scripts
 
-      - name: Lint frontend
-        run: npm run lint
+      - name: Lint and verify formatting
+        run: npm run quality
 
   qa-syntax:
     runs-on: ubuntu-latest

@@ -1,16 +1,16 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta name="theme-color" content="#f4f0e8">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f0e8" />
     <title>Dirty Pawz Press · Inventory</title>
-    <link rel="stylesheet" href="/assets/theme.css">
-    <link rel="stylesheet" href="/assets/mobile-ux.css">
-    <link rel="stylesheet" href="/assets/design-refine.css">
-    <link rel="stylesheet" href="/assets/nav-shell.css">
-    <link rel="stylesheet" href="/assets/layout-system.css">
-    <link rel="stylesheet" href="/assets/inventory.css">
+    <link rel="stylesheet" href="/assets/theme.css" />
+    <link rel="stylesheet" href="/assets/mobile-ux.css" />
+    <link rel="stylesheet" href="/assets/design-refine.css" />
+    <link rel="stylesheet" href="/assets/nav-shell.css" />
+    <link rel="stylesheet" href="/assets/layout-system.css" />
+    <link rel="stylesheet" href="/assets/inventory.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
   <body>
@@ -33,33 +33,55 @@
           <div>
             <div class="kicker">Inventory manager</div>
             <h1 class="page-header__title">Inventory</h1>
-            <p class="page-header__description">Velocity turns stock counts into decisions. Start with the action queue, then use coverage and SKU detail when you need to understand why.</p>
+            <p class="page-header__description">
+              Velocity turns stock counts into decisions. Start with the action queue, then use coverage and
+              SKU detail when you need to understand why.
+            </p>
           </div>
           <div class="page-header__aside inventory-header-actions">
             <div class="kpi-rail" aria-label="Inventory key metrics">
-              <div class="kpi"><strong class="kpi__value" id="coverPortfolio">—</strong><span class="kpi__label">Days of cover</span><small class="kpi__note">portfolio · 28D velocity</small></div>
-              <div class="kpi"><strong class="kpi__value" id="available">—</strong><span class="kpi__label">Available</span><small class="kpi__note">units</small></div>
-              <div class="kpi"><strong class="kpi__value" id="reserved">—</strong><span class="kpi__label">Reserved</span><small class="kpi__note">units</small></div>
-              <div class="kpi"><strong class="kpi__value" id="inbound">—</strong><span class="kpi__label">Inbound</span><small class="kpi__note">units</small></div>
+              <div class="kpi">
+                <strong class="kpi__value" id="coverPortfolio">—</strong
+                ><span class="kpi__label">Days of cover</span
+                ><small class="kpi__note">portfolio · 28D velocity</small>
+              </div>
+              <div class="kpi">
+                <strong class="kpi__value" id="available">—</strong><span class="kpi__label">Available</span
+                ><small class="kpi__note">units</small>
+              </div>
+              <div class="kpi">
+                <strong class="kpi__value" id="reserved">—</strong><span class="kpi__label">Reserved</span
+                ><small class="kpi__note">units</small>
+              </div>
+              <div class="kpi">
+                <strong class="kpi__value" id="inbound">—</strong><span class="kpi__label">Inbound</span
+                ><small class="kpi__note">units</small>
+              </div>
             </div>
             <button class="how-btn" id="howBtn" type="button">How actions work</button>
           </div>
         </section>
 
         <div class="notice how" id="how">
-          <strong>Action logic:</strong> STOCKOUT means zero available with recent sales. PRODUCE means less than 14 days of cover including inbound. PLAN means 14–27 days. OK means 28+ days. HOLD means no recent selling velocity, so producing more needs judgment rather than an automatic signal.
+          <strong>Action logic:</strong> STOCKOUT means zero available with recent sales. PRODUCE means less
+          than 14 days of cover including inbound. PLAN means 14–27 days. OK means 28+ days. HOLD means no
+          recent selling velocity, so producing more needs judgment rather than an automatic signal.
         </div>
 
         <section class="page-section">
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Action queue</h2>
-              <div class="section-header__description">Only SKUs that deserve a production or replenishment decision.</div>
+              <div class="section-header__description">
+                Only SKUs that deserve a production or replenishment decision.
+              </div>
             </div>
             <a class="section-header__action" href="#all">Browse reference inventory ↓</a>
           </div>
           <div class="dashboard-grid inventory-decision-grid">
-            <div class="action-list" id="queue"><div class="empty"><strong>Checking stock</strong></div></div>
+            <div class="action-list" id="queue">
+              <div class="empty"><strong>Checking stock</strong></div>
+            </div>
             <aside class="panel coverage">
               <h3>Coverage map</h3>
               <p>Active SKUs by days of cover using recent 28-day velocity.</p>
@@ -72,12 +94,14 @@
           <div class="section-header">
             <div>
               <h2 class="section-header__title">All inventory</h2>
-              <div class="section-header__description">Search or filter; tap a product to connect stock with sales and traffic.</div>
+              <div class="section-header__description">
+                Search or filter; tap a product to connect stock with sales and traffic.
+              </div>
             </div>
           </div>
 
           <div class="inventory-tools">
-            <input id="search" class="search" type="search" placeholder="Search product or SKU…">
+            <input id="search" class="search" type="search" placeholder="Search product or SKU…" />
             <div class="filters" role="group" aria-label="Inventory status filter">
               <button class="filter active" type="button" data-filter="all">All</button>
               <button class="filter" type="button" data-filter="attention">Needs action</button>
@@ -91,21 +115,43 @@
             <div class="data-table-scroll">
               <table class="data-table inventory-table">
                 <colgroup>
-                  <col class="product"><col class="actionc"><col class="numc"><col class="numc"><col class="numc"><col class="numc"><col class="coverc"><col class="coverc">
+                  <col class="product" />
+                  <col class="actionc" />
+                  <col class="numc" />
+                  <col class="numc" />
+                  <col class="numc" />
+                  <col class="numc" />
+                  <col class="coverc" />
+                  <col class="coverc" />
                 </colgroup>
                 <thead>
-                  <tr><th>Product</th><th>Action</th><th class="num">Available</th><th class="num">Inbound</th><th class="num">Reserved</th><th class="num">28D units</th><th class="num">Days cover</th><th>Status</th></tr>
+                  <tr>
+                    <th>Product</th>
+                    <th>Action</th>
+                    <th class="num">Available</th>
+                    <th class="num">Inbound</th>
+                    <th class="num">Reserved</th>
+                    <th class="num">28D units</th>
+                    <th class="num">Days cover</th>
+                    <th>Status</th>
+                  </tr>
                 </thead>
                 <tbody id="rows"></tbody>
               </table>
             </div>
             <div id="inventoryCards" class="inventory-cards"></div>
           </div>
-          <div class="inventory-foot"><span>Velocity = recent 28-day units sold. Days of cover = (Available + inbound) / velocity.</span><span id="snapshotFoot">Snapshot —</span></div>
+          <div class="inventory-foot">
+            <span>Velocity = recent 28-day units sold. Days of cover = (Available + inbound) / velocity.</span
+            ><span id="snapshotFoot">Snapshot —</span>
+          </div>
         </section>
       </main>
 
-      <footer class="footer"><span>Coverage uses last-28-day selling velocity · not a demand forecast</span><span>Dirty Pawz Press Analytics</span></footer>
+      <footer class="footer">
+        <span>Coverage uses last-28-day selling velocity · not a demand forecast</span
+        ><span>Dirty Pawz Press Analytics</span>
+      </footer>
     </div>
     <script type="module" src="/assets/inventory.js"></script>
   </body>

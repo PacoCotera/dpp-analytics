@@ -49,8 +49,8 @@
 
   function buildNavigation(nav) {
     const current = normalizedPath();
-    const desktopMoreActive = MORE.some(item => current === item.href);
-    const mobileMoreActive = [...MOBILE_MORE, ...MORE].some(item => current === item.href);
+    const desktopMoreActive = MORE.some((item) => current === item.href);
+    const mobileMoreActive = [...MOBILE_MORE, ...MORE].some((item) => current === item.href);
     nav.innerHTML = '';
     nav.classList.add('app-navigation');
     nav.setAttribute('aria-label', 'Primary navigation');
@@ -75,7 +75,10 @@
     more.setAttribute('data-no-swipe', '');
     const summary = document.createElement('summary');
     summary.innerHTML = '<span>More</span><span class="nav-more-chevron" aria-hidden="true">⌄</span>';
-    summary.setAttribute('aria-label', mobileMoreActive ? 'More navigation, current section inside' : 'More navigation');
+    summary.setAttribute(
+      'aria-label',
+      mobileMoreActive ? 'More navigation, current section inside' : 'More navigation',
+    );
     more.appendChild(summary);
 
     const menu = document.createElement('div');
@@ -89,10 +92,10 @@
     more.appendChild(menu);
     nav.append(primary, more);
 
-    document.addEventListener('pointerdown', event => {
+    document.addEventListener('pointerdown', (event) => {
       if (more.open && !more.contains(event.target)) more.open = false;
     });
-    document.addEventListener('keydown', event => {
+    document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && more.open) {
         more.open = false;
         summary.focus();
@@ -102,17 +105,21 @@
 
   function workspaceGroups() {
     return [...document.querySelectorAll('.tabs, .view-tabs, .subnav')]
-      .map(tablist => ({ tablist, tabs: [...tablist.querySelectorAll('button[data-view], button[data-ads-view]')] }))
-      .filter(group => group.tabs.length > 1);
+      .map((tablist) => ({
+        tablist,
+        tabs: [...tablist.querySelectorAll('button[data-view], button[data-ads-view]')],
+      }))
+      .filter((group) => group.tabs.length > 1);
   }
 
   function primaryLinks() {
-    return [...document.querySelectorAll('.primary-nav a:not(.disabled)')]
-      .filter(link => link.href && new URL(link.href, location.href).origin === location.origin);
+    return [...document.querySelectorAll('.primary-nav a:not(.disabled)')].filter(
+      (link) => link.href && new URL(link.href, location.href).origin === location.origin,
+    );
   }
 
   function activeIndex(group) {
-    const index = group.tabs.findIndex(tab => tab.classList.contains('active'));
+    const index = group.tabs.findIndex((tab) => tab.classList.contains('active'));
     return index < 0 ? 0 : index;
   }
 
@@ -149,10 +156,10 @@
   }
 
   function currentPrimaryIndex(links) {
-    const explicit = links.findIndex(link => link.classList.contains('active'));
+    const explicit = links.findIndex((link) => link.classList.contains('active'));
     if (explicit >= 0) return explicit;
     const here = location.pathname.replace(/\/$/, '') || '/';
-    return links.findIndex(link => new URL(link.href, location.href).pathname.replace(/\/$/, '') === here);
+    return links.findIndex((link) => new URL(link.href, location.href).pathname.replace(/\/$/, '') === here);
   }
 
   function movePrimary(delta) {
@@ -168,7 +175,11 @@
     let element = target instanceof Element ? target : null;
     while (element && element !== document.body) {
       const style = getComputedStyle(element);
-      if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && element.scrollWidth > element.clientWidth + 3) return true;
+      if (
+        (style.overflowX === 'auto' || style.overflowX === 'scroll') &&
+        element.scrollWidth > element.clientWidth + 3
+      )
+        return true;
       element = element.parentElement;
     }
     return false;
@@ -181,23 +192,30 @@
       href: location.href,
       path: rawPath(),
       scrollY: Math.round(window.scrollY),
-      tabs: groups.map(group => targetId(group.tabs[activeIndex(group)])),
+      tabs: groups.map((group) => targetId(group.tabs[activeIndex(group)])),
       at: Date.now(),
     };
-    try { sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(context)); } catch (_) {}
+    try {
+      sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(context));
+    } catch (_) {}
   }
 
   function restorePageContext() {
     let context = null;
-    try { context = JSON.parse(sessionStorage.getItem(CONTEXT_KEY) || 'null'); } catch (_) {}
-    if (!context || context.path !== rawPath() || Date.now() - Number(context.at || 0) > 6 * 60 * 60 * 1000) return;
+    try {
+      context = JSON.parse(sessionStorage.getItem(CONTEXT_KEY) || 'null');
+    } catch (_) {}
+    if (!context || context.path !== rawPath() || Date.now() - Number(context.at || 0) > 6 * 60 * 60 * 1000)
+      return;
     const groups = workspaceGroups();
     (context.tabs || []).forEach((target, index) => {
       const group = groups[index];
-      const tab = group?.tabs.find(item => targetId(item) === target);
+      const tab = group?.tabs.find((item) => targetId(item) === target);
       if (tab && !tab.classList.contains('active')) tab.click();
     });
-    window.requestAnimationFrame(() => window.scrollTo({ top: Number(context.scrollY || 0), behavior: 'instant' }));
+    window.requestAnimationFrame(() =>
+      window.scrollTo({ top: Number(context.scrollY || 0), behavior: 'instant' }),
+    );
   }
 
   function initializeContextPersistence() {
@@ -208,9 +226,13 @@
     };
     window.addEventListener('scroll', queueSave, { passive: true });
     window.addEventListener('pagehide', savePageContext);
-    document.addEventListener('click', event => {
-      if (event.target.closest('button[data-view],button[data-ads-view],a')) queueSave();
-    }, true);
+    document.addEventListener(
+      'click',
+      (event) => {
+        if (event.target.closest('button[data-view],button[data-ads-view],a')) queueSave();
+      },
+      true,
+    );
     restorePageContext();
   }
 
@@ -218,14 +240,27 @@
     const groups = workspaceGroups();
     for (const group of groups) {
       group.tablist.setAttribute('role', group.tablist.getAttribute('role') || 'tablist');
-      group.tabs.forEach(tab => {
+      group.tabs.forEach((tab) => {
         tab.setAttribute('role', tab.getAttribute('role') || 'tab');
         tab.addEventListener('click', () => window.setTimeout(() => syncTabA11y(group), 0));
-        tab.addEventListener('keydown', event => {
-          if (event.key === 'ArrowRight') { event.preventDefault(); moveTab(group, 1); }
-          else if (event.key === 'ArrowLeft') { event.preventDefault(); moveTab(group, -1); }
-          else if (event.key === 'Home') { event.preventDefault(); group.tabs[0].click(); syncTabA11y(group); group.tabs[0].focus(); }
-          else if (event.key === 'End') { event.preventDefault(); group.tabs.at(-1).click(); syncTabA11y(group); group.tabs.at(-1).focus(); }
+        tab.addEventListener('keydown', (event) => {
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            moveTab(group, 1);
+          } else if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            moveTab(group, -1);
+          } else if (event.key === 'Home') {
+            event.preventDefault();
+            group.tabs[0].click();
+            syncTabA11y(group);
+            group.tabs[0].focus();
+          } else if (event.key === 'End') {
+            event.preventDefault();
+            group.tabs.at(-1).click();
+            syncTabA11y(group);
+            group.tabs.at(-1).focus();
+          }
         });
       });
       syncTabA11y(group);
@@ -234,37 +269,53 @@
     let start = null;
     let suppressClickUntil = 0;
     const isMobile = () => matchMedia('(max-width: 760px)').matches;
-    const explicitNoSwipe = '.primary-nav,.tabs,.view-tabs,.subnav,.filters,.periods,.chart-tools,.table-wrap,.order-stream,.chart,.rhythm-host,.trajectory-chart,.sales-chart,.chart-wrap,.chart-host,input,textarea,select,button,canvas,svg,[role="slider"],[data-no-swipe],[data-horizontal-scroll]';
+    const explicitNoSwipe =
+      '.primary-nav,.tabs,.view-tabs,.subnav,.filters,.periods,.chart-tools,.table-wrap,.order-stream,.chart,.rhythm-host,.trajectory-chart,.sales-chart,.chart-wrap,.chart-host,input,textarea,select,button,canvas,svg,[role="slider"],[data-no-swipe],[data-horizontal-scroll]';
 
-    document.addEventListener('pointerdown', event => {
-      if (!isMobile() || event.pointerType !== 'touch') return;
-      if (event.target.closest(explicitNoSwipe) || hasHorizontalScrollRegion(event.target)) return;
-      start = { x: event.clientX, y: event.clientY, t: performance.now() };
-    }, { passive: true });
+    document.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (!isMobile() || event.pointerType !== 'touch') return;
+        if (event.target.closest(explicitNoSwipe) || hasHorizontalScrollRegion(event.target)) return;
+        start = { x: event.clientX, y: event.clientY, t: performance.now() };
+      },
+      { passive: true },
+    );
 
-    document.addEventListener('pointerup', event => {
-      if (!start || !isMobile() || event.pointerType !== 'touch') { start = null; return; }
-      const dx = event.clientX - start.x;
-      const dy = event.clientY - start.y;
-      const elapsed = performance.now() - start.t;
-      start = null;
-      const distance = Math.abs(dx);
-      const viewportShare = distance / Math.max(1, window.innerWidth);
-      const horizontalIntent = distance >= 110 && viewportShare >= 0.28 && distance >= Math.abs(dy) * 2.1;
-      if (elapsed > 700 || !horizontalIntent) return;
+    document.addEventListener(
+      'pointerup',
+      (event) => {
+        if (!start || !isMobile() || event.pointerType !== 'touch') {
+          start = null;
+          return;
+        }
+        const dx = event.clientX - start.x;
+        const dy = event.clientY - start.y;
+        const elapsed = performance.now() - start.t;
+        start = null;
+        const distance = Math.abs(dx);
+        const viewportShare = distance / Math.max(1, window.innerWidth);
+        const horizontalIntent = distance >= 110 && viewportShare >= 0.28 && distance >= Math.abs(dy) * 2.1;
+        if (elapsed > 700 || !horizontalIntent) return;
 
-      const delta = dx < 0 ? 1 : -1;
-      suppressClickUntil = performance.now() + 450;
-      if (groups.length && moveTab(groups[0], delta)) return;
-      movePrimary(delta);
-    }, { passive: true });
+        const delta = dx < 0 ? 1 : -1;
+        suppressClickUntil = performance.now() + 450;
+        if (groups.length && moveTab(groups[0], delta)) return;
+        movePrimary(delta);
+      },
+      { passive: true },
+    );
 
-    document.addEventListener('click', event => {
-      if (performance.now() >= suppressClickUntil) return;
-      event.preventDefault();
-      event.stopPropagation();
-      suppressClickUntil = 0;
-    }, true);
+    document.addEventListener(
+      'click',
+      (event) => {
+        if (performance.now() >= suppressClickUntil) return;
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClickUntil = 0;
+      },
+      true,
+    );
   }
 
   function initializeShell() {
@@ -275,6 +326,7 @@
     initializeContextPersistence();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeShell, { once: true });
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', initializeShell, { once: true });
   else initializeShell();
 })();

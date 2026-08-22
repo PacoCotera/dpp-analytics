@@ -1,24 +1,124 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta name="theme-color" content="#f4f0e8">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f0e8" />
     <title>Dirty Pawz Press · Catalog</title>
-    <link rel="stylesheet" href="/assets/theme.css"><link rel="stylesheet" href="/assets/mobile-ux.css"><link rel="stylesheet" href="/assets/design-refine.css"><link rel="stylesheet" href="/assets/nav-shell.css"><link rel="stylesheet" href="/assets/layout-system.css"><link rel="stylesheet" href="/assets/catalog.css">
+    <link rel="stylesheet" href="/assets/theme.css" />
+    <link rel="stylesheet" href="/assets/mobile-ux.css" />
+    <link rel="stylesheet" href="/assets/design-refine.css" />
+    <link rel="stylesheet" href="/assets/nav-shell.css" />
+    <link rel="stylesheet" href="/assets/layout-system.css" />
+    <link rel="stylesheet" href="/assets/catalog.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
-  <body class="catalog-shell"><div class="app">
-    <header class="topbar"><div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Catalog · Amazon Mexico</div></div></div><div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading portfolio</span></div></header>
-    <nav class="primary-nav"></nav>
-    <header class="page-header"><div><h1 class="page-header__title">Products</h1><p class="page-header__description">Commercial portfolio, demand, conversion, availability and economics.</p></div></header>
-    <section class="catalog-top"><div class="catalog-title"><h1>Commercial portfolio</h1><p>Traffic → conversion → units and shopper spend incl. IVA → availability → economics.</p></div><div class="portfolio-summary" aria-label="Portfolio summary"><div><strong id="familyCount">—</strong><span>families</span></div><div><strong id="activeCount">—</strong><span>active</span></div><div><strong id="sellingCount">—</strong><span>selling</span></div><div><strong id="attentionCount">—</strong><span>attention</span></div></div></section>
-    <section class="portfolio-read"><div class="funnel-read"><strong id="portfolioRead">Reading the portfolio…</strong><p id="portfolioBasis">28-day shopper spend incl. IVA · Amazon Sales &amp; Traffic + current FBA availability</p></div><div class="attention" id="attentionList"><div class="attention-empty">Checking commercial exceptions…</div></div></section>
-    <section class="analysis-bar"><span class="analysis-label">Analyze by</span><div class="analysis-modes" id="analysisModes" data-no-swipe><button class="mode active" type="button" data-mode="family">Family</button><button class="mode" type="button" data-mode="sku">SKU</button></div><span class="mode-source" id="modeSource">Family = child roll-up</span></section>
-    <section class="catalog-tools"><input id="search" class="search" type="search" placeholder="Search product, SKU, ASIN or variation…" autocomplete="off"><div class="filters" id="filters" data-no-swipe><button class="filter active" type="button" data-filter="all">All</button><button class="filter" type="button" data-filter="attention">Attention</button><button class="filter" type="button" data-filter="funnel">Funnel</button><button class="filter" type="button" data-filter="stock">Stock</button><button class="filter" type="button" data-filter="dormant">Dormant</button><button class="filter" type="button" data-filter="inactive">Inactive</button></div><select id="sort" class="select" aria-label="Sort portfolio"><option value="attention">Attention first</option><option value="sales">Top sales</option><option value="traffic">Most traffic</option><option value="conversion">Best conversion</option><option value="stock">Lowest stock</option><option value="name">Name A–Z</option></select></section>
-    <section class="portfolio-head" id="portfolioHead"><span>Family / product</span><span>Commercial read</span><span title="Amazon orderedProductSales from Sales &amp; Traffic. Production reconciliation confirms this matches shopper spend including IVA; Finance derives net revenue separately.">28D shopper spend incl. IVA</span><span>Traffic → CVR</span><span>Units → stock</span><span>Economics</span><span></span></section>
-    <section class="portfolio" id="portfolio"><div class="empty">Loading commercial portfolio…</div></section>
-    <div class="portfolio-foot"><span id="portfolioFootMain"><b>Family metrics</b> roll up canonical sellable children. Shopper spend incl. IVA, traffic and conversion use the latest completed Amazon Sales &amp; Traffic day; inventory may be fresher.</span><span><b>Ads:</b> attributed sales are Amazon attribution, not incremental sales. TACOS uses independent seller sales.</span></div>
-    <footer class="footer"><span id="freshness">MXN · historical/product sales = shopper spend incl. IVA · Amazon Sales &amp; Traffic</span><span>Net sales ex IVA and IVA withheld are accounting measures in Finance · Dirty Pawz Press Analytics</span></footer>
-  </div><script type="module" src="/assets/catalog.js"></script><script src="/assets/metric-basis-ui.js"></script></body>
+  <body class="catalog-shell">
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark">DP</div>
+          <div class="brand-copy">
+            <div class="brand-title">DIRTY PAWZ PRESS</div>
+            <div class="brand-sub">Catalog · Amazon Mexico</div>
+          </div>
+        </div>
+        <div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading portfolio</span></div>
+      </header>
+      <nav class="primary-nav"></nav>
+      <header class="page-header">
+        <div>
+          <h1 class="page-header__title">Products</h1>
+          <p class="page-header__description">
+            Commercial portfolio, demand, conversion, availability and economics.
+          </p>
+        </div>
+      </header>
+      <section class="catalog-top">
+        <div class="catalog-title">
+          <h1>Commercial portfolio</h1>
+          <p>Traffic → conversion → units and shopper spend incl. IVA → availability → economics.</p>
+        </div>
+        <div class="portfolio-summary" aria-label="Portfolio summary">
+          <div><strong id="familyCount">—</strong><span>families</span></div>
+          <div><strong id="activeCount">—</strong><span>active</span></div>
+          <div><strong id="sellingCount">—</strong><span>selling</span></div>
+          <div><strong id="attentionCount">—</strong><span>attention</span></div>
+        </div>
+      </section>
+      <section class="portfolio-read">
+        <div class="funnel-read">
+          <strong id="portfolioRead">Reading the portfolio…</strong>
+          <p id="portfolioBasis">
+            28-day shopper spend incl. IVA · Amazon Sales &amp; Traffic + current FBA availability
+          </p>
+        </div>
+        <div class="attention" id="attentionList">
+          <div class="attention-empty">Checking commercial exceptions…</div>
+        </div>
+      </section>
+      <section class="analysis-bar">
+        <span class="analysis-label">Analyze by</span>
+        <div class="analysis-modes" id="analysisModes" data-no-swipe>
+          <button class="mode active" type="button" data-mode="family">Family</button
+          ><button class="mode" type="button" data-mode="sku">SKU</button>
+        </div>
+        <span class="mode-source" id="modeSource">Family = child roll-up</span>
+      </section>
+      <section class="catalog-tools">
+        <input
+          id="search"
+          class="search"
+          type="search"
+          placeholder="Search product, SKU, ASIN or variation…"
+          autocomplete="off"
+        />
+        <div class="filters" id="filters" data-no-swipe>
+          <button class="filter active" type="button" data-filter="all">All</button
+          ><button class="filter" type="button" data-filter="attention">Attention</button
+          ><button class="filter" type="button" data-filter="funnel">Funnel</button
+          ><button class="filter" type="button" data-filter="stock">Stock</button
+          ><button class="filter" type="button" data-filter="dormant">Dormant</button
+          ><button class="filter" type="button" data-filter="inactive">Inactive</button>
+        </div>
+        <select id="sort" class="select" aria-label="Sort portfolio">
+          <option value="attention">Attention first</option>
+          <option value="sales">Top sales</option>
+          <option value="traffic">Most traffic</option>
+          <option value="conversion">Best conversion</option>
+          <option value="stock">Lowest stock</option>
+          <option value="name">Name A–Z</option>
+        </select>
+      </section>
+      <section class="portfolio-head" id="portfolioHead">
+        <span>Family / product</span><span>Commercial read</span
+        ><span
+          title="Amazon orderedProductSales from Sales &amp; Traffic. Production reconciliation confirms this matches shopper spend including IVA; Finance derives net revenue separately."
+          >28D shopper spend incl. IVA</span
+        ><span>Traffic → CVR</span><span>Units → stock</span><span>Economics</span><span></span>
+      </section>
+      <section class="portfolio" id="portfolio">
+        <div class="empty">Loading commercial portfolio…</div>
+      </section>
+      <div class="portfolio-foot">
+        <span id="portfolioFootMain"
+          ><b>Family metrics</b> roll up canonical sellable children. Shopper spend incl. IVA, traffic and
+          conversion use the latest completed Amazon Sales &amp; Traffic day; inventory may be fresher.</span
+        ><span
+          ><b>Ads:</b> attributed sales are Amazon attribution, not incremental sales. TACOS uses independent
+          seller sales.</span
+        >
+      </div>
+      <footer class="footer">
+        <span id="freshness"
+          >MXN · historical/product sales = shopper spend incl. IVA · Amazon Sales &amp; Traffic</span
+        ><span
+          >Net sales ex IVA and IVA withheld are accounting measures in Finance · Dirty Pawz Press
+          Analytics</span
+        >
+      </footer>
+    </div>
+    <script type="module" src="/assets/catalog.js"></script>
+    <script src="/assets/metric-basis-ui.js"></script>
+  </body>
 </html>

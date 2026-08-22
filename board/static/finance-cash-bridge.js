@@ -20,7 +20,9 @@ function shortDate(value) {
   if (!value) return '—';
   const text = String(value).slice(0, 10);
   const date = new Date(`${text}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? text : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return Number.isNaN(date.getTime())
+    ? text
+    : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function renderCashBridge(payload) {
@@ -34,7 +36,8 @@ function renderCashBridge(payload) {
   if (!bridge.settlement_id) {
     state.textContent = 'NO SETTLEMENT DATA';
     sub.textContent = `${CASH_BASIS_LABEL} · ${bridge.note || 'No Amazon settlement report is available yet.'}`;
-    body.innerHTML = '<div class="bridge-step final"><span>Payout bridge</span><strong>Not available</strong></div>';
+    body.innerHTML =
+      '<div class="bridge-step final"><span>Payout bridge</span><strong>Not available</strong></div>';
     return;
   }
 

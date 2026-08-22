@@ -77,7 +77,12 @@
   appearance: none;
   background: transparent;
   color: var(--muted);
-  font: 800 10px/1 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font:
+    800 10px/1 Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   cursor: pointer;
 }
 
@@ -237,8 +242,8 @@
 .sales-momentum-card .sales-momentum-row {
   display: grid;
   grid-template-areas:
-    "label value"
-    "volume note";
+    'label value'
+    'volume note';
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 3px 12px;
   padding: 10px 1px;
@@ -304,9 +309,9 @@
 .sales-state-rail > .sales-utility-today {
   display: grid;
   grid-template-areas:
-    "label sales"
-    "meta link"
-    "pace pace";
+    'label sales'
+    'meta link'
+    'pace pace';
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 12px;
   align-items: center;
@@ -363,8 +368,8 @@
   display: grid;
   order: 4;
   grid-template-areas:
-    "label value"
-    "volume value";
+    'label value'
+    'volume value';
   grid-template-columns: minmax(0, 1fr) auto;
   column-gap: 12px;
   align-items: end;
