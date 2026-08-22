@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="/assets/layout-system.css" />
     <link rel="stylesheet" href="/assets/chart-system.css" />
     <link rel="stylesheet" href="/assets/today.css" />
+    <link rel="stylesheet" href="/assets/today-layout.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
   <body class="today-app">
@@ -31,72 +32,74 @@
       <nav class="primary-nav"></nav>
 
       <main>
-        <section class="today-stage">
-          <section
-            class="today-card today-hero"
-            title="Shopper-facing product spend including IVA. Amazon ITEM + TAX is used when complete; provisional tax-exclusive item values are normalized to the marketplace IVA basis. Settlement proceeds and Amazon fees are excluded."
-          >
-            <div class="today-hero__top">
-              <div class="today-eyebrow" id="salesLabel">Shopper spend today · incl. IVA</div>
-              <div class="day-picker" id="dayPicker" data-no-swipe></div>
-            </div>
-            <div class="today-hero__value"><span class="currency">$</span><span id="sales">—</span></div>
-            <div class="today-hero__read">
-              <div class="today-hero__copy">
-                <strong id="dayHeadline">Reading today…</strong>
-                <p id="dayExplanation">Comparing the selected day with recent shopper-spend context.</p>
+        <section class="today-workspace">
+          <div class="today-left-column">
+            <section
+              class="today-card today-hero"
+              title="Shopper-facing product spend including IVA. Amazon ITEM + TAX is used when complete; provisional tax-exclusive item values are normalized to the marketplace IVA basis. Settlement proceeds and Amazon fees are excluded."
+            >
+              <div class="today-hero__top">
+                <div class="today-eyebrow" id="salesLabel">Shopper spend today · incl. IVA</div>
+                <div class="day-picker" id="dayPicker" data-no-swipe></div>
               </div>
-              <div class="today-hero__metrics">
-                <div class="today-hero__metric"><strong id="orders">—</strong><span>orders</span></div>
-                <div class="today-hero__metric"><strong id="units">—</strong><span>units</span></div>
-              </div>
-            </div>
-          </section>
-
-          <aside class="today-card today-read-panel">
-            <div class="today-eyebrow">Business read</div>
-            <h2 id="pulseHeadline">Reading the business…</h2>
-            <p id="pulseExplanation">Separating today’s signal from the broader trend.</p>
-            <div class="context-list" id="contextList"></div>
-            <section class="latest">
-              <div class="latest-title">Latest sale · shopper spend incl. IVA</div>
-              <div id="latest"><div class="empty">Waiting for today’s first order.</div></div>
-              <div class="latest-age" id="latestAge"></div>
-            </section>
-          </aside>
-        </section>
-
-        <section class="today-content-grid">
-          <section class="today-card today-panel">
-            <div class="today-panel__head">
-              <div>
-                <div class="today-panel__title">Recent rhythm</div>
-                <div class="today-panel__sub" id="rhythmSub">
-                  Same shopper-spend incl.-IVA basis across the selected window
+              <div class="today-hero__value"><span class="currency">$</span><span id="sales">—</span></div>
+              <div class="today-hero__read">
+                <div class="today-hero__copy">
+                  <strong id="dayHeadline">Reading today…</strong>
+                  <p id="dayExplanation">Comparing the selected day with recent shopper-spend context.</p>
+                </div>
+                <div class="today-hero__metrics">
+                  <div class="today-hero__metric"><strong id="orders">—</strong><span>orders</span></div>
+                  <div class="today-hero__metric"><strong id="units">—</strong><span>units</span></div>
                 </div>
               </div>
-              <div class="periods" data-no-swipe>
-                <button class="period" type="button" data-period="7">7D</button>
-                <button class="period" type="button" data-period="mtd">MTD</button>
-                <button class="period active" type="button" data-period="30">30D</button>
-              </div>
-            </div>
-            <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
-            <div class="rhythm-host"><svg id="rhythm" class="rhythm" viewBox="0 0 900 190"></svg></div>
-            <div class="rhythm-rail" id="rhythmRail"></div>
-          </section>
+            </section>
 
-          <section class="today-card today-panel">
-            <div class="today-panel__head">
-              <div>
-                <div class="today-panel__title" id="productsTitle">What is driving today</div>
-                <div class="today-panel__sub">Ranked shopper-spend contribution · incl. IVA</div>
+            <section class="today-card today-panel">
+              <div class="today-panel__head">
+                <div>
+                  <div class="today-panel__title">Recent rhythm</div>
+                  <div class="today-panel__sub" id="rhythmSub">
+                    Same shopper-spend incl.-IVA basis across the selected window
+                  </div>
+                </div>
+                <div class="periods" data-no-swipe>
+                  <button class="period" type="button" data-period="7">7D</button>
+                  <button class="period" type="button" data-period="mtd">MTD</button>
+                  <button class="period active" type="button" data-period="30">30D</button>
+                </div>
               </div>
-            </div>
-            <div class="today-products" id="products">
-              <div class="empty">Products will appear as orders arrive.</div>
-            </div>
-          </section>
+              <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
+              <div class="rhythm-host"><svg id="rhythm" class="rhythm" viewBox="0 0 900 190"></svg></div>
+              <div class="rhythm-rail" id="rhythmRail"></div>
+            </section>
+          </div>
+
+          <aside class="today-right-column">
+            <section class="today-card today-read-panel">
+              <div class="today-eyebrow">Business read</div>
+              <h2 id="pulseHeadline">Reading the business…</h2>
+              <p id="pulseExplanation">Separating today’s signal from the broader trend.</p>
+              <div class="context-list" id="contextList"></div>
+              <section class="latest">
+                <div class="latest-title">Latest sale · shopper spend incl. IVA</div>
+                <div id="latest"><div class="empty">Waiting for today’s first order.</div></div>
+                <div class="latest-age" id="latestAge"></div>
+              </section>
+            </section>
+
+            <section class="today-card today-panel">
+              <div class="today-panel__head">
+                <div>
+                  <div class="today-panel__title" id="productsTitle">What is driving today</div>
+                  <div class="today-panel__sub">Ranked shopper-spend contribution · incl. IVA</div>
+                </div>
+              </div>
+              <div class="today-products" id="products">
+                <div class="empty">Products will appear as orders arrive.</div>
+              </div>
+            </section>
+          </aside>
         </section>
 
         <details class="today-card today-orders" id="ordersPanel">
