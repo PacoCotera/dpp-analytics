@@ -67,13 +67,33 @@ function decorate(payload) {
   });
 }
 
+function attach(payload) {
+  const portfolio = document.getElementById('portfolio');
+  const ready = document.getElementById('portfolioBasis')?.textContent?.includes('28D through');
+  if (!ready) {
+    window.setTimeout(() => attach(payload), 80);
+    return;
+  }
+  decorate(payload);
+  if (portfolio && window.MutationObserver) {
+    let queued = false;
+    new MutationObserver(() => {
+      if (queued) return;
+      queued = true;
+      window.requestAnimationFrame(() => {
+        queued = false;
+        decorate(payload);
+      });
+    }).observe(portfolio, { childList: true, subtree: true });
+  }
+}
+
 async function load() {
   try {
     const response = await fetch('/api/catalog', { cache: 'no-store' });
     if (!response.ok) return;
     const payload = await response.json();
-    // Base Catalog render is asynchronous too; wait one frame so its rows exist.
-    window.requestAnimationFrame(() => window.setTimeout(() => decorate(payload), 30));
+    attach(payload);
   } catch {
     // Catalog owns the primary loading/error state; Ads is optional enrichment.
   }
