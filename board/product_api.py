@@ -105,7 +105,9 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
                    right(o.amazon_order_id,9) order_short,i.quantity_ordered units,
                    COALESCE(i.proceeds_total_amount,i.proceeds_item_amount,i.unit_price_amount*i.quantity_ordered,0)::numeric(14,2) sales,
                    COALESCE(o.fulfillment_status,'') status
-            FROM core.amazon_order_item i JOIN core.amazon_order o USING(amazon_order_id) JOIN core.marketplace mp USING(marketplace_id)
+            FROM core.amazon_order_item i
+            JOIN core.amazon_order o ON o.amazon_order_id=i.amazon_order_id
+            JOIN core.marketplace mp ON mp.marketplace_id=o.marketplace_id
             WHERE o.marketplace_id=%s AND i.seller_sku=%s AND o.fulfillment_status IS DISTINCT FROM 'CANCELLED'
             ORDER BY o.created_time DESC LIMIT 15
         """,(marketplace,sku))
