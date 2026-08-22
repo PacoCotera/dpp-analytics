@@ -46,3 +46,42 @@ prepare_config \
   "board/product_variations.json" \
   "$CONFIG_DIR/product_variations.json" \
   "$ROOT/product_variations.json"
+
+# Merge newly introduced canonical taxonomy entries without replacing any
+# seller-owned values already present on the host.
+sudo python3 - "$CONFIG_DIR/product_variations.json" "board/product_variations.json" <<'PY'
+import json
+import os
+import tempfile
+import sys
+from pathlib import Path
+
+target = Path(sys.argv[1])
+template = Path(sys.argv[2])
+current = json.loads(target.read_text())
+defaults = json.loads(template.read_text())
+
+def merge_missing(existing, seed):
+    if not isinstance(existing, dict) or not isinstance(seed, dict):
+        return existing
+    for key, value in seed.items():
+        if key not in existing:
+            existing[key] = value
+        elif isinstance(existing[key], dict) and isinstance(value, dict):
+            merge_missing(existing[key], value)
+    return existing
+
+merged = merge_missing(current, defaults)
+fd, temporary = tempfile.mkstemp(prefix=".product-variations.", suffix=".json", dir=target.parent)
+try:
+    with os.fdopen(fd, "w") as handle:
+        json.dump(merged, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+    os.chmod(temporary, 0o644)
+    os.replace(temporary, target)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+PY
+
+sudo python3 -m json.tool "$CONFIG_DIR/product_variations.json" >/dev/null
