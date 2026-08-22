@@ -24,9 +24,11 @@ class Settings:
     lwa_refresh_token: str = os.getenv("SPAPI_LWA_REFRESH_TOKEN", "")
     spapi_enabled: bool = _bool("SPAPI_ENABLED")
 
-    # Amazon Ads is a separate authorization surface from SP-API. Keep its credentials
-    # and account identity independent so the warehouse can support multiple advertisers
-    # and marketplaces later. API v1 unified reporting is the forward reporting path.
+    # Amazon Ads is a separate authorization surface from SP-API. Keep credentials
+    # and advertiser identity independent so the warehouse remains multi-account and
+    # multi-marketplace ready. The current collector uses Reporting v3 as a transport
+    # adapter; canonical ads facts deliberately do not encode Sponsored Ads report
+    # shapes because Amazon's Unified Reporting / Reporting API is the forward path.
     ads_enabled: bool = _bool("AMAZON_ADS_ENABLED")
     ads_client_id: str = os.getenv("AMAZON_ADS_CLIENT_ID", "")
     ads_client_secret: str = os.getenv("AMAZON_ADS_CLIENT_SECRET", "")
