@@ -9,7 +9,7 @@ from . import db
 from .amazon_ads import ingest_ads, probe_ads
 from .catalog import ingest_catalog
 from .data_kiosk import ingest_sales_traffic
-from .finance_close import close_ready_months
+from .finance_close_tax_corrected import close_ready_months
 from .finances import ingest_finances
 from .inventory import ingest_inventory
 from .listings_report import ingest_listings_report
@@ -106,8 +106,6 @@ def _catalog_metadata_backfill_needed() -> bool:
             log.info("Catalog variation metadata backfill required enriched=%s total=%s", enriched, total)
         return needed
     except Exception:
-        # During a rolling migration an older schema may be visible for a moment.
-        # Do not make worker startup depend on the optional enrichment check.
         log.exception("could not inspect Catalog variation metadata; using normal schedule")
         return False
 
