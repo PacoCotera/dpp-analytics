@@ -6,6 +6,10 @@
     if (node && node.textContent !== value) node.textContent = value;
   }
 
+  function setNodeText(node, value) {
+    if (node && node.textContent !== value) node.textContent = value;
+  }
+
   function clarifyHistoricalTooltipLabels() {
     document.querySelectorAll('.dpp-chart-tooltip .home-tip-label').forEach(node => {
       if (node.textContent.trim() === 'Sales' || /net sales ex IVA/i.test(node.textContent)) {
@@ -21,16 +25,14 @@
 
   function catalog() {
     const head = document.getElementById('portfolioHead');
-    const third = head?.children?.[2];
-    if (third) third.textContent = '28D shopper spend incl. IVA';
+    setNodeText(head?.children?.[2], '28D shopper spend incl. IVA');
     const read = document.getElementById('portfolioRead');
-    if (read) read.setAttribute('title', 'Portfolio amount is reconciled Amazon Sales & Traffic shopper spend including IVA. Net revenue ex IVA is in Finance.');
-    const basis = document.getElementById('portfolioBasis');
-    if (basis) basis.textContent = '28-day shopper spend incl. IVA · Amazon Sales & Traffic + current FBA availability';
-    const freshness = document.getElementById('freshness');
-    if (freshness) freshness.textContent = 'MXN · historical/product sales = shopper spend incl. IVA · Amazon Sales & Traffic';
+    const title = 'Portfolio amount is reconciled Amazon Sales & Traffic shopper spend including IVA. Net revenue ex IVA is in Finance.';
+    if (read && read.getAttribute('title') !== title) read.setAttribute('title', title);
+    setText('portfolioBasis', '28-day shopper spend incl. IVA · Amazon Sales & Traffic + current FBA availability');
+    setText('freshness', 'MXN · historical/product sales = shopper spend incl. IVA · Amazon Sales & Traffic');
     document.querySelectorAll('.child-head span:nth-child(3)').forEach(node => {
-      node.textContent = '28D shopper spend incl. IVA';
+      setNodeText(node, '28D shopper spend incl. IVA');
     });
   }
 
