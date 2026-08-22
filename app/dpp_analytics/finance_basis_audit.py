@@ -37,6 +37,72 @@ def _report_gross(cur, marketplace: str, month: date) -> float:
     return _money((cur.fetchone() or {}).get("gross"))
 
 
+def _latest_settlement_bridge(cur, marketplace: str) -> dict:
+    """Recompute the API's broad cash buckets directly from raw settlement lines."""
+    cur.execute(
+        """
+        WITH latest AS (
+          SELECT settlement_id,
+                 max(total_amount) AS report_total,
+                 max(currency) AS currency
+          FROM core.settlement_line
+          WHERE marketplace_id=%s AND settlement_id IS NOT NULL
+          GROUP BY settlement_id
+          ORDER BY COALESCE(max(deposit_date),max(settlement_end_date),min(settlement_start_date)) DESC NULLS LAST,
+                   settlement_id DESC
+          LIMIT 1
+        ), classified AS (
+          SELECT l.*,
+                 lower(COALESCE(l.amount_type,'')) AS at,
+                 lower(COALESCE(l.amount_description,'')) AS ad
+          FROM core.settlement_line l
+          JOIN latest x USING(settlement_id)
+          WHERE l.marketplace_id=%s
+        )
+        SELECT
+          x.settlement_id,x.report_total,x.currency,
+          COALESCE(sum(c.amount),0)::numeric(16,2) AS line_sum,
+          COALESCE(sum(c.amount) FILTER (WHERE c.at='itemprice' AND c.ad='principal'),0)::numeric(16,2) AS customer_principal,
+          COALESCE(sum(c.amount) FILTER (WHERE c.at='itemprice' AND c.ad LIKE '%%tax%%'),0)::numeric(16,2) AS customer_tax,
+          COALESCE(sum(c.amount) FILTER (WHERE c.at='itemwithheldtax' OR c.ad LIKE '%%withheld%%tax%%'),0)::numeric(16,2) AS tax_withheld,
+          COALESCE(sum(c.amount) FILTER (WHERE c.at='cost of advertising' OR c.ad LIKE '%%advertis%%'),0)::numeric(16,2) AS advertising,
+          COALESCE(sum(c.amount) FILTER (
+            WHERE NOT (c.at='itemprice' AND (c.ad='principal' OR c.ad LIKE '%%tax%%'))
+              AND NOT (c.at='itemwithheldtax' OR c.ad LIKE '%%withheld%%tax%%')
+              AND NOT (c.at='cost of advertising' OR c.ad LIKE '%%advertis%%')
+              AND c.amount < 0
+          ),0)::numeric(16,2) AS other_deductions,
+          COALESCE(sum(c.amount) FILTER (
+            WHERE NOT (c.at='itemprice' AND (c.ad='principal' OR c.ad LIKE '%%tax%%'))
+              AND NOT (c.at='itemwithheldtax' OR c.ad LIKE '%%withheld%%tax%%')
+              AND NOT (c.at='cost of advertising' OR c.ad LIKE '%%advertis%%')
+              AND c.amount > 0
+          ),0)::numeric(16,2) AS other_additions,
+          count(c.*)::int AS line_count
+        FROM latest x LEFT JOIN classified c USING(settlement_id)
+        GROUP BY x.settlement_id,x.report_total,x.currency
+        """,
+        (marketplace, marketplace),
+    )
+    row = cur.fetchone() or {}
+    if not row.get("settlement_id"):
+        return {}
+    principal = _money(row.get("customer_principal"))
+    tax = _money(row.get("customer_tax"))
+    return {
+        "settlement_id": row.get("settlement_id"),
+        "currency": row.get("currency"),
+        "customer_activity_incl_tax": round(principal + tax, 2),
+        "tax_withheld": _money(row.get("tax_withheld")),
+        "advertising": _money(row.get("advertising")),
+        "other_deductions": _money(row.get("other_deductions")),
+        "other_additions": _money(row.get("other_additions")),
+        "line_sum": _money(row.get("line_sum")),
+        "payout": _money(row.get("report_total") if row.get("report_total") is not None else row.get("line_sum")),
+        "line_count": int(row.get("line_count") or 0),
+    }
+
+
 def audit(board_url: str) -> dict:
     failures: list[str] = []
     evidence: dict[str, object] = {}
@@ -107,6 +173,9 @@ def audit(board_url: str) -> dict:
         closed_rows = list(cur.fetchall())
         evidence["latest_closed_versions"] = closed_rows
 
+        cash_db = _latest_settlement_bridge(cur, settings.marketplace_id)
+        evidence["latest_settlement_cash_db"] = cash_db
+
     closed_api = {str(row.get("month") or "")[:10]: row for row in finance.get("closed_months") or []}
     for row in closed_rows:
         month_key = str(row.get("month") or "")[:10]
@@ -135,6 +204,44 @@ def audit(board_url: str) -> dict:
     if not _close(metric_basis.get("standard_vat_rate"), vat_rate, 0.000001):
         failures.append("Finance API metric_basis VAT rate != marketplace tax policy")
 
+    cash_api = finance.get("cash_bridge") or {}
+    if cash_db:
+        if cash_api.get("status") != "RECONCILED":
+            failures.append(f"Finance cash bridge is {cash_api.get('status')}, expected RECONCILED")
+        if cash_api.get("basis") != "AMAZON_SETTLEMENT_REPORT":
+            failures.append("Finance cash bridge basis is not AMAZON_SETTLEMENT_REPORT")
+        if str(cash_api.get("settlement_id") or "") != str(cash_db.get("settlement_id") or ""):
+            failures.append("Finance cash bridge does not use latest settlement id")
+        for key in (
+            "customer_activity_incl_tax",
+            "tax_withheld",
+            "advertising",
+            "other_deductions",
+            "other_additions",
+            "line_sum",
+            "payout",
+        ):
+            if not _close(cash_api.get(key), cash_db.get(key)):
+                failures.append(f"Finance cash bridge API {key} != raw settlement calculation")
+        if int(cash_api.get("line_count") or 0) != int(cash_db.get("line_count") or 0):
+            failures.append("Finance cash bridge line count != raw settlement")
+        if not _close(cash_db.get("line_sum"), cash_db.get("payout")):
+            failures.append(
+                f"Latest Amazon settlement does not reconcile: signed lines {_money(cash_db.get('line_sum'))} != report payout {_money(cash_db.get('payout'))}"
+            )
+        bridge_sum = round(
+            _money(cash_api.get("customer_activity_incl_tax"))
+            + _money(cash_api.get("tax_withheld"))
+            + _money(cash_api.get("advertising"))
+            + _money(cash_api.get("other_deductions"))
+            + _money(cash_api.get("other_additions")),
+            2,
+        )
+        if not _close(bridge_sum, cash_api.get("payout")):
+            failures.append(f"Finance cash bridge arithmetic {bridge_sum} != payout {_money(cash_api.get('payout'))}")
+    elif cash_api.get("status") not in (None, "NO_DATA"):
+        failures.append("Finance API exposes settlement cash despite no raw settlement data")
+
     return {
         "status": "PASS" if not failures else "FAIL",
         "marketplace": settings.marketplace_id,
@@ -148,6 +255,9 @@ def audit(board_url: str) -> dict:
             "open_iva": _money(current.get("iva_on_sales")) if current else None,
             "latest_closed_months": len(closed_rows),
             "restated_latest_months": sum(1 for row in closed_rows if str(row.get("state") or "") == "RESTATED"),
+            "latest_settlement": cash_db.get("settlement_id") if cash_db else None,
+            "latest_settlement_payout": cash_db.get("payout") if cash_db else None,
+            "latest_settlement_reconciled": bool(cash_db and _close(cash_db.get("line_sum"), cash_db.get("payout"))),
         },
     }
 
