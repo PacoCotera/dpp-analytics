@@ -29,7 +29,7 @@ BEGIN
 
     IF abs(COALESCE(NEW.net_sales_ex_vat,0) - expected_net) > 0.02 THEN
       RAISE EXCEPTION
-        'Finance close %.% v% tax basis invalid: net sales % must equal gross % / (1 + VAT %%) = %',
+        'Finance close %.% v% tax basis invalid: net sales % must equal gross % divided by one plus VAT rate % = %',
         NEW.marketplace_id, NEW.month, NEW.version,
         NEW.net_sales_ex_vat, NEW.shopper_product_spend, vat_rate, expected_net;
     END IF;
