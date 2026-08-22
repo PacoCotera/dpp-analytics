@@ -32,7 +32,7 @@
       <header class="page-header">
         <div>
           <h1 class="page-header__title">Sales</h1>
-          <p class="page-header__description">Revenue, momentum and product performance.</p>
+          <p class="page-header__description">Revenue, momentum, product performance and demand geography.</p>
         </div>
       </header>
 
@@ -44,6 +44,7 @@
           Products
         </button>
         <button class="subnav__item" type="button" data-view="orders" aria-selected="false">Orders</button>
+        <button class="subnav__item" type="button" data-view="geography" aria-selected="false">Geography</button>
       </nav>
 
       <div class="notice" role="note" aria-label="Sales monetary basis">
@@ -219,6 +220,90 @@
         </section>
       </main>
 
+      <main id="geography" class="view">
+        <section class="page-section geography-workspace">
+          <div class="section-header geo-section-header">
+            <div>
+              <h2 class="section-header__title">Demand geography</h2>
+              <div class="section-header__description">
+                Amazon Orders · destination state and postal code only · shopper spend incl. IVA.
+              </div>
+              <div class="geo-coverage" id="geoCoverage">Checking geography coverage…</div>
+            </div>
+            <div class="geo-controls" aria-label="Geography filters">
+              <div class="geo-range" id="geoRange" role="group" aria-label="Geography time window">
+                <button type="button" data-geo-range="30d">30D</button>
+                <button class="active" type="button" data-geo-range="90d">90D</button>
+                <button type="button" data-geo-range="ytd">YTD</button>
+                <button type="button" data-geo-range="all">ALL</button>
+              </div>
+              <label class="geo-control">
+                <span>Metric</span>
+                <select id="geoMetric">
+                  <option value="sales">Shopper spend</option>
+                  <option value="orders">Orders</option>
+                  <option value="units">Units</option>
+                  <option value="aov">AOV</option>
+                </select>
+              </label>
+              <label class="geo-control geo-product-control">
+                <span>Product</span>
+                <select id="geoProduct"><option value="all">All products</option></select>
+              </label>
+              <label class="geo-control">
+                <span>Area</span>
+                <select id="geoStateSelect"><option value="all">Mexico</option></select>
+              </label>
+            </div>
+          </div>
+
+          <div class="geo-kpi-rail" id="geoKpis" aria-label="Geography key metrics"></div>
+
+          <div class="geo-grid">
+            <section class="panel geo-map-panel">
+              <div class="geo-map-header">
+                <div>
+                  <strong id="geoMapStatus">Mexico · loading map</strong>
+                  <small>Click a state to drill into postal-code polygons.</small>
+                </div>
+                <button class="geo-back" id="geoBack" type="button" hidden>← Mexico</button>
+              </div>
+              <svg id="geoMap" class="geo-map" viewBox="0 0 960 520" preserveAspectRatio="xMidYMid meet"></svg>
+              <div class="geo-map-source">
+                State outlines: public GeoJSON · postal boundaries: open-mexico / SEPOMEX · external geometry is loaded only for visualization.
+              </div>
+            </section>
+
+            <section class="panel geo-ranked-panel">
+              <div class="geo-ranked-header">
+                <strong id="geoRankedTitle">Top states</strong>
+                <small>Ranked by selected metric</small>
+              </div>
+              <div class="data-table-scroll">
+                <table class="data-table geo-table">
+                  <thead>
+                    <tr>
+                      <th>Area</th>
+                      <th class="num">Selected</th>
+                      <th class="num">Spend</th>
+                      <th class="num">Orders</th>
+                      <th class="num">Units</th>
+                      <th class="num">AOV</th>
+                    </tr>
+                  </thead>
+                  <tbody id="geoRankedRows"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <div class="geo-privacy-note">
+            <strong>Privacy boundary:</strong> reporting stores only destination country, state/region and postal code.
+            Recipient name, street address, city, phone, delivery instructions and the raw recipient object are discarded before warehouse persistence.
+          </div>
+        </section>
+      </main>
+
       <footer class="footer">
         <span>MXN · Sales page = shopper spend incl. IVA throughout</span
         ><span
@@ -231,6 +316,7 @@
     <script src="/assets/vendor/d3.v7.min.js"></script>
     <script src="/assets/chart-system.js"></script>
     <script src="/assets/sales-canonical.js"></script>
+    <script src="/assets/sales-geography.js"></script>
     <script src="/assets/sales-basis-ui.js"></script>
   </body>
 </html>
