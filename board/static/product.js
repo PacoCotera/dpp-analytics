@@ -126,9 +126,20 @@ function renderListingAndInventory(profile, commercial, ads) {
       ? 'cover unavailable'
       : `${Number(profile.days_cover_with_inbound).toFixed(0)} days cover`;
 
-  const adsReady = ads.status === 'ready';
-  byId('adsState').textContent = adsReady ? 'Available' : 'Pending';
-  byId('adsNote').textContent = adsReady ? 'attribution may revise' : 'Ads data not yet available';
+  const hasAds = Boolean(ads.through_date && Number(ads.observed_ads_days || 0) > 0);
+  if (!hasAds) {
+    byId('adsState').textContent = 'No Ads data';
+    byId('adsState').className = '';
+    byId('adsNote').textContent = 'paid attribution unavailable';
+  } else if (ads.trusted_for_operating_decisions) {
+    byId('adsState').textContent = 'Decision-grade';
+    byId('adsState').className = 'good';
+    byId('adsNote').textContent = `through ${String(ads.through_date).slice(5)}`;
+  } else {
+    byId('adsState').textContent = 'Review';
+    byId('adsState').className = 'warn';
+    byId('adsNote').textContent = `${String(ads.coverage_state || 'partial').toLowerCase()} · ${String(ads.attribution_state || 'provisional').toLowerCase()}`;
+  }
 }
 
 function renderMetrics(profile, performance, traffic, economics) {
@@ -218,17 +229,19 @@ function renderVariationContext(profile, commercial, familyVariations) {
 }
 
 function renderAds(ads) {
-  if (ads.status === 'ready') {
-    byId('adsDecision').textContent =
-      `${money(ads.spend_t28)} spend · ${ads.roas_t28 == null ? '—' : `${Number(ads.roas_t28).toFixed(2)}×`} ROAS`;
+  const hasAds = Boolean(ads.through_date && Number(ads.observed_ads_days || 0) > 0);
+  if (!hasAds) {
+    byId('adsDecision').textContent = 'Paid-support context pending';
     byId('adsRead').textContent =
-      `TACOS ${ads.tacos_t28 == null ? '—' : percent(100 * Number(ads.tacos_t28), { sign: false })}. Attributed sales are not exact incremental or organic sales.`;
+      'Seller demand remains readable without Ads. Paid attribution will appear here when Amazon Ads data is available.';
     return;
   }
 
-  byId('adsDecision').textContent = 'Paid-support context pending';
+  const trust = ads.trusted_for_operating_decisions ? 'Decision-grade' : 'Review';
+  byId('adsDecision').textContent =
+    `${money(ads.spend)} spend · ${ads.tacos == null ? '—' : percent(100 * Number(ads.tacos), { sign: false })} TACOS · ${ads.roas == null ? '—' : `${Number(ads.roas).toFixed(2)}×`} ROAS`;
   byId('adsRead').textContent =
-    'Seller demand remains readable without Ads. Paid attribution will appear here when the Ads feed is available.';
+    `${trust} through ${String(ads.through_date).slice(5)}. Amazon-attributed sales ${money(ads.attributed_sales)} are attribution, not exact incremental sales; subtracting them from total sales does not produce exact organic sales.`;
 }
 
 function renderOrders(orders = []) {
