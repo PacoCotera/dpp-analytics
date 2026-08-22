@@ -4,6 +4,8 @@ let lastPayload = null;
 let lastQuery = null;
 let loadingQuery = null;
 
+const AMAZON_PROCESSING = new Set(['PENDING', 'PENDING_AVAILABILITY', 'INVOICE_UNCONFIRMED']);
+
 function queryKey() {
   return new URLSearchParams(window.location.search).get('date') || '';
 }
@@ -19,9 +21,9 @@ function statusLabel(status) {
   const key = String(status || '').toUpperCase();
   return (
     {
-      PENDING: 'Pending',
-      PENDING_AVAILABILITY: 'Pending availability',
-      INVOICE_UNCONFIRMED: 'Invoice unconfirmed',
+      PENDING: 'Amazon processing',
+      PENDING_AVAILABILITY: 'Amazon processing · availability',
+      INVOICE_UNCONFIRMED: 'Amazon processing · invoice',
       UNSHIPPED: 'Unshipped',
       PARTIALLY_SHIPPED: 'Partially shipped',
       SHIPPED: 'Shipped',
@@ -33,7 +35,7 @@ function statusLabel(status) {
 
 function statusTone(status) {
   const key = String(status || '').toUpperCase();
-  if (['PENDING', 'PENDING_AVAILABILITY', 'INVOICE_UNCONFIRMED'].includes(key)) return 'pending';
+  if (AMAZON_PROCESSING.has(key)) return 'pending';
   if (['UNSHIPPED', 'PARTIALLY_SHIPPED', 'SHIPPED'].includes(key)) return 'active';
   if (['UNFULFILLABLE', 'CANCELLED'].includes(key)) return 'problem';
   return '';
@@ -71,7 +73,8 @@ function renderOrderCard(order) {
         .join('')
     : `<div class="operational-order__item"><span class="item-image-placeholder"></span><div><div class="item-name">${escapeHtml(order.product || order.sku || 'Order')}</div><div class="item-identity">${escapeHtml([order.sku ? `SKU ${order.sku}` : '', order.asin ? `ASIN ${order.asin}` : ''].filter(Boolean).join(' · ') || 'Item detail pending')}</div></div><div class="item-qty">×${integer(order.units || 0)}</div></div>`;
 
-  const status = statusLabel(order.status);
+  const rawStatus = String(order.status || '').toUpperCase();
+  const status = statusLabel(rawStatus);
   const fulfillment = fulfillmentLabel(order);
   const total = order.sales === null || order.sales === undefined ? '—' : money(order.sales);
   const timing = [order.local_time || '', order.age_seconds !== null && order.age_seconds !== undefined ? age(order.age_seconds) : '']
@@ -79,12 +82,17 @@ function renderOrderCard(order) {
     .join(' · ');
   const fulfilled = Number(order.quantity_fulfilled || 0);
   const unfulfilled = Number(order.quantity_unfulfilled || 0);
+  const units = Number(order.units || items.reduce((sum, item) => sum + Number(item.quantity_ordered || 0), 0));
+  const unitLabel = `${integer(units)} unit${units === 1 ? '' : 's'}`;
+  const fulfillmentState = AMAZON_PROCESSING.has(rawStatus)
+    ? `${unitLabel} · fulfillment not started`
+    : `${unitLabel} · ${fulfilled} fulfilled · ${unfulfilled} unfulfilled`;
   const channel = order.channel_name || 'Amazon';
 
   return `<article class="today-order operational-order ops-owned">
     <div class="operational-order__top">
       <div class="operational-order__badges">
-        <span class="order-badge ${statusTone(order.status)}">${escapeHtml(status)}</span>
+        <span class="order-badge ${statusTone(rawStatus)}" title="Amazon status: ${escapeHtml(rawStatus || 'unknown')}">${escapeHtml(status)}</span>
         <span class="order-badge fulfillment">${escapeHtml(fulfillment)}</span>
       </div>
       <strong>${total}</strong>
@@ -95,7 +103,7 @@ function renderOrderCard(order) {
     </div>
     <div class="operational-order__items">${itemHtml}</div>
     <div class="operational-order__foot">
-      <span>${integer(order.units || items.reduce((sum, item) => sum + Number(item.quantity_ordered || 0), 0))} units · ${fulfilled} fulfilled · ${unfulfilled} unfulfilled</span>
+      <span>${fulfillmentState}</span>
       <span>${escapeHtml(channel)} · shopper spend incl. IVA</span>
     </div>
   </article>`;
@@ -124,28 +132,36 @@ function renderOrderFlow(payload) {
   byId('pendingOrdersKpi').textContent = integer(pending);
   byId('pendingOrdersKpiNote').textContent = pending
     ? open === pending
-      ? 'Amazon processing'
+      ? 'awaiting Amazon'
       : `${pending} of ${open} open`
-    : 'none pending';
+    : 'none awaiting Amazon';
 
   byId('orderFlowGrid').innerHTML = `<div class="order-flow-rollup ops-owned">
-      <div><span>Open now</span><small>Pending + unshipped + partial</small></div>
+      <div><span>Open now</span><small>Amazon processing + unshipped + partial</small></div>
       <strong>${integer(open)}</strong>
     </div>
     <div class="order-flow-children ops-owned">
-      <div class="order-flow-stat"><strong>${integer(pending)}</strong><span>Pending</span></div>
+      <div class="order-flow-stat"><strong>${integer(pending)}</strong><span>Amazon processing</span></div>
       <div class="order-flow-stat"><strong>${integer(unshipped)}</strong><span>Unshipped</span></div>
       <div class="order-flow-stat"><strong>${integer(partial)}</strong><span>Partial</span></div>
     </div>`;
 
-  const notes = [`Shipped today ${integer(flow.shipped_today || 0)}`, `Open split · FBA ${fba} · FBM ${fbm}${unknown ? ` · ${unknown} other` : ''}`];
+  const notes = [`Shipped today ${integer(flow.shipped_today || 0)}`, `Open fulfillment · FBA ${fba} · FBM ${fbm}${unknown ? ` · ${unknown} other` : ''}`];
   if (Number(flow.problem_orders || 0)) notes.push(`${integer(flow.problem_orders)} needs attention`);
   byId('orderFlowFoot').textContent = notes.join(' · ');
 
   const openOrders = payload.open_orders || payload.today?.open_orders || [];
-  byId('openOrderSummary').textContent = open
-    ? `${open} open · ${pending} pending · ${unshipped} unshipped · ${partial} partial · current Amazon fulfillment state`
-    : 'No open Amazon orders';
+  if (!open) {
+    byId('openOrderSummary').textContent = 'No open Amazon orders';
+  } else if (open === pending && unshipped === 0 && partial === 0) {
+    byId('openOrderSummary').textContent = `${open} open · all awaiting Amazon processing · current fulfillment state`;
+  } else {
+    const components = [];
+    if (pending) components.push(`${pending} Amazon processing`);
+    if (unshipped) components.push(`${unshipped} unshipped`);
+    if (partial) components.push(`${partial} partial`);
+    byId('openOrderSummary').textContent = `${open} open · ${components.join(' · ')} · current fulfillment state`;
+  }
   byId('openOrderGrid').innerHTML = openOrders.length
     ? openOrders.map(renderOrderCard).join('')
     : '<div class="empty ops-owned">No open orders.</div>';
