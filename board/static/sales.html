@@ -271,25 +271,31 @@
               </div>
               <svg id="geoMap" class="geo-map" viewBox="0 0 960 520" preserveAspectRatio="xMidYMid meet"></svg>
               <div class="geo-map-source">
-                State outlines: public GeoJSON · postal boundaries: open-mexico / SEPOMEX · external geometry is loaded only for visualization.
+                Postal labels: SEPOMEX · polygon source: open-mexico / SEPOMEX · geometry is filtered server-side to postal codes present in the selected demand slice.
               </div>
             </section>
 
             <section class="panel geo-ranked-panel">
               <div class="geo-ranked-header">
                 <strong id="geoRankedTitle">Top states</strong>
-                <small>Ranked by selected metric</small>
+                <small id="geoSortStatus">Sorted by Spend ↓ · click a column to reorder</small>
               </div>
               <div class="data-table-scroll">
                 <table class="data-table geo-table">
+                  <colgroup>
+                    <col class="geo-col-area" />
+                    <col class="geo-col-sales" />
+                    <col class="geo-col-orders" />
+                    <col class="geo-col-units" />
+                    <col class="geo-col-aov" />
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th>Area</th>
-                      <th class="num">Selected</th>
-                      <th class="num">Spend</th>
-                      <th class="num">Orders</th>
-                      <th class="num">Units</th>
-                      <th class="num">AOV</th>
+                      <th data-geo-sort="area" aria-sort="none"><button type="button">Area</button></th>
+                      <th class="num" data-geo-sort="sales" aria-sort="descending"><button type="button">Spend</button></th>
+                      <th class="num" data-geo-sort="orders" aria-sort="none"><button type="button">Orders</button></th>
+                      <th class="num" data-geo-sort="units" aria-sort="none"><button type="button">Units</button></th>
+                      <th class="num" data-geo-sort="aov" aria-sort="none"><button type="button">AOV</button></th>
                     </tr>
                   </thead>
                   <tbody id="geoRankedRows"></tbody>
