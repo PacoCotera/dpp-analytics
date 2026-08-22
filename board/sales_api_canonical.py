@@ -4,6 +4,51 @@ from geo_reference import postal_dictionary
 from sales_api_legacy import sales_payload as _legacy_sales_payload
 
 
+def _decorate_recent_order_items(cur, decorate_products, orders: list[dict]) -> list[dict]:
+    """Resolve Sales order evidence through the same editable SKU label map as products."""
+    order_ids = [str(row.get("order_id") or "") for row in orders if row.get("order_id")]
+    if not order_ids:
+        return orders
+
+    cur.execute(
+        """
+        SELECT i.amazon_order_id AS order_id,
+               i.seller_sku AS sku,
+               i.asin,
+               COALESCE(sl.item_name,s.title,i.title,i.seller_sku,'Item') AS product,
+               COALESCE(sl.image_url,ci.image_url) AS image_url,
+               COALESCE(i.quantity_ordered,0)::bigint AS quantity_ordered
+        FROM core.amazon_order_item i
+        JOIN core.amazon_order o USING (amazon_order_id)
+        LEFT JOIN core.sku s ON s.sku=i.seller_sku
+        LEFT JOIN core.seller_listing sl
+          ON sl.marketplace_id=o.marketplace_id AND sl.seller_sku=i.seller_sku
+        LEFT JOIN core.catalog_item ci
+          ON ci.marketplace_id=o.marketplace_id AND ci.asin=COALESCE(i.asin,s.asin)
+        WHERE i.amazon_order_id=ANY(%s)
+        ORDER BY i.amazon_order_id,i.order_item_id
+        """,
+        (order_ids,),
+    )
+    item_rows = [dict(row) for row in cur.fetchall()]
+    decorate_products(item_rows)
+
+    grouped: dict[str, list[dict]] = {}
+    for item in item_rows:
+        grouped.setdefault(str(item.get("order_id") or ""), []).append(item)
+
+    for order in orders:
+        items = grouped.get(str(order.get("order_id") or ""), [])
+        order["order_items"] = items
+        labels: list[str] = []
+        for item in items:
+            name = str(item.get("product") or item.get("sku") or item.get("asin") or "Item")
+            qty = int(item.get("quantity_ordered") or 0)
+            labels.append(f"{name} ×{qty}" if qty > 1 else name)
+        order["items"] = ", ".join(labels)
+    return orders
+
+
 def sales_payload(connect, decorate_products, marketplace: str) -> dict:
     payload = _legacy_sales_payload(connect, decorate_products, marketplace)
     cutoff = (payload.get("headline") or {}).get("business_date")
@@ -90,23 +135,21 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
 
         cur.execute(
             """
-            WITH items AS (
-              SELECT amazon_order_id,string_agg(DISTINCT COALESCE(seller_sku,title,'item'),', ' ORDER BY COALESCE(seller_sku,title,'item')) AS items
-              FROM core.amazon_order_item GROUP BY amazon_order_id
-            )
-            SELECT to_char(o.created_time AT TIME ZONE mp.timezone,'MM-DD HH24:MI') AS local_time,
+            SELECT o.amazon_order_id AS order_id,
+                   to_char(o.created_time AT TIME ZONE mp.timezone,'MM-DD HH24:MI') AS local_time,
                    extract(epoch FROM (CURRENT_TIMESTAMP-o.created_time))::bigint AS age_seconds,
-                   right(o.amazon_order_id,9) AS order_short,COALESCE(i.items,'') AS items,
+                   right(o.amazon_order_id,9) AS order_short,
+                   ''::text AS items,
                    o.customer_spend AS sales,'GROSS_CUSTOMER_SPEND'::text AS sales_basis,
                    COALESCE(o.fulfillment_status,'') AS status
             FROM mart.order_customer_spend o
             JOIN core.marketplace mp USING(marketplace_id)
-            LEFT JOIN items i USING(amazon_order_id)
             WHERE o.marketplace_id=%s ORDER BY o.created_time DESC LIMIT 30
             """,
             (marketplace,),
         )
-        payload["orders"] = list(cur.fetchall())
+        recent_orders = [dict(row) for row in cur.fetchall()]
+        payload["orders"] = _decorate_recent_order_items(cur, decorate_products, recent_orders)
 
     geography = payload.setdefault("geography", {})
     geo_rows = list(geography.get("daily") or [])
