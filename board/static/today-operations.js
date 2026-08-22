@@ -104,8 +104,8 @@ function renderOrderCard(order) {
 function renderOrderFlow(payload) {
   const flow = payload.order_flow || payload.today?.order_flow || null;
   if (!flow) {
-    byId('openOrdersKpi').textContent = '—';
-    byId('openOrdersKpiNote').textContent = 'current queue';
+    byId('pendingOrdersKpi').textContent = '—';
+    byId('pendingOrdersKpiNote').textContent = 'current queue';
     byId('orderFlowGrid').innerHTML = '<div class="empty ops-owned">Current order queue is shown on live Today.</div>';
     byId('orderFlowFoot').textContent = 'Operational status is current state, not selected-day history.';
     byId('openOrderSummary').textContent = 'Current order queue is not attached to historical day views';
@@ -114,34 +114,37 @@ function renderOrderFlow(payload) {
   }
 
   const open = Number(flow.open_orders || 0);
+  const pending = Number(flow.pending_orders || 0);
+  const unshipped = Number(flow.unshipped_orders || 0);
+  const partial = Number(flow.partially_shipped_orders || 0);
   const fba = Number(flow.fba_open_orders || 0);
   const fbm = Number(flow.fbm_open_orders || 0);
   const unknown = Number(flow.unknown_fulfillment_open_orders || 0);
 
-  byId('openOrdersKpi').textContent = integer(open);
-  byId('openOrdersKpiNote').textContent = open
-    ? `FBA ${fba} · FBM ${fbm}${unknown ? ` · ${unknown} other` : ''}`
-    : 'queue clear';
+  byId('pendingOrdersKpi').textContent = integer(pending);
+  byId('pendingOrdersKpiNote').textContent = pending
+    ? open === pending
+      ? 'Amazon processing'
+      : `${pending} of ${open} open`
+    : 'none pending';
 
-  byId('orderFlowGrid').innerHTML = [
-    ['Open', flow.open_orders],
-    ['Pending', flow.pending_orders],
-    ['Unshipped', flow.unshipped_orders],
-    ['Shipped today', flow.shipped_today],
-  ]
-    .map(
-      ([label, value]) => `<div class="order-flow-stat"><strong>${integer(value || 0)}</strong><span>${label}</span></div>`,
-    )
-    .join('');
+  byId('orderFlowGrid').innerHTML = `<div class="order-flow-rollup ops-owned">
+      <div><span>Open now</span><small>Pending + unshipped + partial</small></div>
+      <strong>${integer(open)}</strong>
+    </div>
+    <div class="order-flow-children ops-owned">
+      <div class="order-flow-stat"><strong>${integer(pending)}</strong><span>Pending</span></div>
+      <div class="order-flow-stat"><strong>${integer(unshipped)}</strong><span>Unshipped</span></div>
+      <div class="order-flow-stat"><strong>${integer(partial)}</strong><span>Partial</span></div>
+    </div>`;
 
-  const notes = [`Current state · FBA ${fba} · FBM ${fbm}${unknown ? ` · ${unknown} other` : ''}`];
-  if (Number(flow.partially_shipped_orders || 0)) notes.push(`${integer(flow.partially_shipped_orders)} partial`);
+  const notes = [`Shipped today ${integer(flow.shipped_today || 0)}`, `Open split · FBA ${fba} · FBM ${fbm}${unknown ? ` · ${unknown} other` : ''}`];
   if (Number(flow.problem_orders || 0)) notes.push(`${integer(flow.problem_orders)} needs attention`);
   byId('orderFlowFoot').textContent = notes.join(' · ');
 
   const openOrders = payload.open_orders || payload.today?.open_orders || [];
   byId('openOrderSummary').textContent = open
-    ? `${open} open · ${fba} FBA · ${fbm} FBM · current Amazon fulfillment state`
+    ? `${open} open · ${pending} pending · ${unshipped} unshipped · ${partial} partial · current Amazon fulfillment state`
     : 'No open Amazon orders';
   byId('openOrderGrid').innerHTML = openOrders.length
     ? openOrders.map(renderOrderCard).join('')
