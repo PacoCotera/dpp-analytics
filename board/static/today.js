@@ -134,8 +134,6 @@ function renderDayRead() {
 function renderBusinessRead() {
   const context = data.context || {};
   const today = data.today || {};
-  const live = Boolean(data.is_live);
-  const orders = Number(today.orders_today || 0);
   const mtd = Number(context.mtd_delta_pct);
   const last30 = Number(context.last30_delta_pct);
   const wtd = Number(context.week_delta_pct);
@@ -149,11 +147,22 @@ function renderBusinessRead() {
   else if (positive && negative) headline = 'Mixed momentum';
   else if (finite.every((value) => Math.abs(value) < 5)) headline = 'Mostly flat';
 
-  const facts = [`MTD ${signedPercent0(mtd)}`, `30D ${signedPercent0(last30)}`, `WTD ${signedPercent0(wtd)}`];
-  if (live && orders < 3) facts.push(`Today ${orders} order${orders === 1 ? '' : 's'}`);
+  const benchmarks = [
+    ['MTD', mtd],
+    ['30D', last30],
+    ['WTD', wtd],
+  ];
 
   byId('pulseHeadline').textContent = headline;
-  byId('pulseExplanation').textContent = facts.join(' · ');
+  byId('pulseExplanation').className = 'business-benchmarks';
+  byId('pulseExplanation').innerHTML = benchmarks
+    .map(
+      ([label, delta]) => `<span class="business-benchmark">
+        <b>${label}</b>
+        <strong class="${tone(delta)}">${signedPercent0(delta)}</strong>
+      </span>`,
+    )
+    .join('');
 
   const rows = [
     ['MTD', context.sales_mtd, context.mtd_delta_pct, 'vs same days last month'],
