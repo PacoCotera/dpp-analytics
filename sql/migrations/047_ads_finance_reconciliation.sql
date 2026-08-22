@@ -6,13 +6,13 @@ CREATE OR REPLACE VIEW mart.ads_finance_reconciliation AS
 WITH ads_month AS (
   SELECT
     a.marketplace_id,
-    date_trunc('month', d.report_date)::date AS month,
+    date_trunc('month', d.business_date)::date AS month,
     sum(d.spend)::numeric(16,2) AS ads_accrual,
-    min(d.report_date) AS first_ads_date,
-    max(d.report_date) AS last_ads_date
+    min(d.business_date) AS first_ads_date,
+    max(d.business_date) AS last_ads_date
   FROM ads.account a
-  JOIN ads.account_daily d ON d.account_id = a.id
-  GROUP BY a.marketplace_id, date_trunc('month', d.report_date)::date
+  JOIN ads.daily_account d USING (account_id)
+  GROUP BY a.marketplace_id, date_trunc('month', d.business_date)::date
 ), payments AS (
   SELECT
     marketplace_id,
