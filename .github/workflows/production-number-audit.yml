@@ -23,14 +23,20 @@ jobs:
       - name: Reconcile deployed production numbers
         run: |
           set -uo pipefail
-          rm -f /tmp/dpp-production-number-audit.json
+          rm -f /tmp/dpp-production-number-audit.json /tmp/dpp-sales-basis-probe.json
           set +e
           sudo docker compose --env-file /etc/dpp-analytics/env exec -T worker \
             python -m dpp_analytics.production_number_audit --board-url http://board:8080 \
             >/tmp/dpp-production-number-audit.json
           rc=$?
+          sudo docker compose --env-file /etc/dpp-analytics/env exec -T worker \
+            python -m dpp_analytics.sales_basis_probe \
+            >/tmp/dpp-sales-basis-probe.json
+          basis_rc=$?
           set -e
           python3 -m json.tool /tmp/dpp-production-number-audit.json
+          python3 -m json.tool /tmp/dpp-sales-basis-probe.json
+          if [[ "$basis_rc" -ne 0 ]]; then exit "$basis_rc"; fi
           exit "$rc"
 
       - name: Publish production number audit
@@ -43,9 +49,13 @@ jobs:
           script: |
             const fs = require('fs');
             let raw = '{}';
+            let basisRaw = '{}';
             try { raw = fs.readFileSync('/tmp/dpp-production-number-audit.json','utf8'); } catch (_) {}
+            try { basisRaw = fs.readFileSync('/tmp/dpp-sales-basis-probe.json','utf8'); } catch (_) {}
             let audit = {};
+            let basis = {};
             try { audit = JSON.parse(raw); } catch (_) { audit = {status:'ERROR',failures:['audit output was not valid JSON']}; }
+            try { basis = JSON.parse(basisRaw); } catch (_) { basis = {classification:'ERROR'}; }
             const ev = audit.evidence || {};
             const lines = [
               '# DPP Analytics production number audit',
@@ -64,6 +74,11 @@ jobs:
               '## Production KPI reconciliation',
               '```json',
               JSON.stringify(audit.api_summary || {}, null, 2),
+              '```',
+              '',
+              '## Sales & Traffic tax-basis probe',
+              '```json',
+              JSON.stringify(basis || {}, null, 2),
               '```',
               '',
               '## Today raw money evidence',
