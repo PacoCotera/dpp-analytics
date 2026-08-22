@@ -15,7 +15,7 @@ function draw() {
   if (!data || !window.DPPCharts) return;
   const rows = (data.series || []).slice(-days);
   window.DPPCharts.productDemand('#chart', rows);
-  byId('chartSub').textContent = `Daily sales and seven-day demand signal · last ${days} days`;
+  byId('chartSub').textContent = `Shopper spend incl. IVA · reconciled Amazon Sales & Traffic · last ${days} days`;
 }
 
 function renderHealth(payload) {
@@ -166,7 +166,7 @@ function renderEconomicsDecision(economics) {
   }
 
   byId('econDecision').textContent = `${money(economics.estimated_cogs_t28)} estimated COGS · 28D`;
-  byId('econRead').textContent = `${economics.cogs_pct_sales_t28 == null ? '—' : percent(economics.cogs_pct_sales_t28, { sign: false })} of sales. This excludes Amazon fees and advertising; it is not net contribution.`;
+  byId('econRead').textContent = `${economics.cogs_pct_sales_t28 == null ? '—' : percent(economics.cogs_pct_sales_t28, { sign: false })} of shopper spend incl. IVA. This excludes Amazon fees and advertising; it is not net contribution. Use Finance for ex-IVA accounting.`;
 }
 
 function renderVariationContext(profile, commercial, familyVariations) {
@@ -209,7 +209,7 @@ function renderAds(ads) {
 }
 
 function renderOrders(orders = []) {
-  byId('orderSummary').textContent = `${orders.length} recent order${orders.length === 1 ? '' : 's'} · evidence only`;
+  byId('orderSummary').textContent = `${orders.length} recent order${orders.length === 1 ? '' : 's'} · shopper spend incl. IVA · evidence only`;
   byId('orders').innerHTML = orders.length
     ? orders
         .map(order => `<div class="list-row">
