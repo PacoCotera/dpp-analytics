@@ -168,10 +168,7 @@ def main() -> None:
 
     next_listings_report = _next_due("amazon_reports", "merchant_listings_all_data", settings.listings_report_interval_seconds)
     next_settlements = _next_due("amazon_reports", "settlement_reports_v2", settings.settlement_reports_interval_seconds)
-
-    geography_due = _next_due("amazon_spapi", "orders_geography_v2026", ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS)
-    if geography_due == 0.0:
-        _run("order_geography_backfill", backfill_order_geography)
+    next_geography = _next_due("amazon_spapi", "orders_geography_v2026", ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS)
 
     catalog_role_ready = False
     if settings.catalog_enabled:
@@ -200,6 +197,10 @@ def main() -> None:
         if now >= next_orders:
             _run("orders", ingest_orders)
             next_orders = time.monotonic() + settings.orders_interval_seconds
+
+        if now >= next_geography:
+            _run("order_geography_backfill", backfill_order_geography)
+            next_geography = time.monotonic() + ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS
 
         if now >= next_inventory:
             _run("inventory", ingest_inventory)
