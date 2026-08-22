@@ -19,7 +19,9 @@ SOURCE = "amazon_ads"
 JOB = "sponsored_products_reporting_v3"
 AD_PRODUCT = "SPONSORED_PRODUCTS"
 ATTRIBUTION_WINDOW = "7d_seller_click"
+REPORT_TRANSPORT = "reporting_v3"
 MAX_BACKFILL_DAYS = 90
+REQUIRED_GRAINS = ("campaign", "product", "target", "search_term")
 
 
 def _num(row: dict[str, Any], *names: str) -> float:
@@ -126,6 +128,21 @@ def _upsert_account(profile,row):
         cur.execute("""INSERT INTO ads.account(account_id,marketplace_id,country_code,currency,timezone,account_name,account_type,status,last_discovered_at,metadata) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,now(),%s::jsonb) ON CONFLICT(account_id) DO UPDATE SET marketplace_id=COALESCE(EXCLUDED.marketplace_id,ads.account.marketplace_id),country_code=COALESCE(EXCLUDED.country_code,ads.account.country_code),currency=COALESCE(EXCLUDED.currency,ads.account.currency),timezone=COALESCE(EXCLUDED.timezone,ads.account.timezone),account_name=COALESCE(EXCLUDED.account_name,ads.account.account_name),account_type=COALESCE(EXCLUDED.account_type,ads.account.account_type),status=COALESCE(EXCLUDED.status,ads.account.status),last_discovered_at=now(),metadata=EXCLUDED.metadata""",(profile,settings.marketplace_id if country=="MX" else None,country,currency,row.get("timezone") or row.get("timeZone"),row.get("name") or row.get("accountName") or row.get("advertiserName") or info.get("name"),row.get("accountType") or row.get("type") or info.get("type"),row.get("status") or row.get("state"),_json(row)));conn.commit()
 
 
+def _ensure_required_grains(scope,start):
+    with db.connect() as conn,conn.cursor() as cur:
+        for grain in REQUIRED_GRAINS:
+            cur.execute("""INSERT INTO ads.required_report_grain(account_id,report_grain,ad_product,required,effective_from) VALUES(%s,%s,%s,true,%s) ON CONFLICT(account_id,report_grain,ad_product,effective_from) DO UPDATE SET required=true""",(scope,grain,AD_PRODUCT,start))
+        conn.commit()
+
+
+def _record_report_run(scope,report_id,grain,start,end,row_count,status_payload):
+    generated=status_payload.get("generatedAt") or status_payload.get("generated_at") or status_payload.get("createdAt") or status_payload.get("created_at")
+    metadata={"vendor_status":status_payload.get("status"),"report_type":status_payload.get("configuration",{}).get("reportTypeId") if isinstance(status_payload.get("configuration"),dict) else None}
+    with db.connect() as conn,conn.cursor() as cur:
+        cur.execute("""INSERT INTO ads.report_run(account_id,report_id,transport,report_grain,ad_product,start_date,end_date,requested_at,source_generated_at,ingested_at,status,row_count,metadata) VALUES(%s,%s,%s,%s,%s,%s,%s,NULL,%s,now(),'INGESTED',%s,%s::jsonb) ON CONFLICT(account_id,report_id) DO UPDATE SET transport=EXCLUDED.transport,report_grain=EXCLUDED.report_grain,ad_product=EXCLUDED.ad_product,start_date=EXCLUDED.start_date,end_date=EXCLUDED.end_date,source_generated_at=COALESCE(EXCLUDED.source_generated_at,ads.report_run.source_generated_at),ingested_at=now(),status='INGESTED',row_count=EXCLUDED.row_count,metadata=EXCLUDED.metadata""",(scope,report_id,REPORT_TRANSPORT,grain,AD_PRODUCT,start,end,generated,row_count,_json(metadata)))
+        conn.commit()
+
+
 def discover_scopes(client):
     if settings.ads_account_ids:
         for s in settings.ads_account_ids:_upsert_account(s,{"countryCode":"MX","currencyCode":"MXN","source":"configured"})
@@ -222,13 +239,14 @@ def ingest_ads():
         with db.ingestion_run(SOURCE,JOB,{"start":start.isoformat(),"end":end.isoformat(),**discovery}) as run:
             total_read=total_written=0;report_ids=[];grains={"campaign":_write_campaign_rows,"product":_write_product_rows,"target":_write_target_rows,"search_term":_write_search_term_rows}
             for scope in scopes:
-                _ensure_account(scope)
+                _ensure_account(scope);_ensure_required_grains(scope,start)
                 for grain,writer in grains.items():
                     rid=client.create_report(scope,start,end,grain=grain);report_ids.append(rid);status=client.wait_for_report(scope,rid);location=status.get("url") or status.get("location")
                     if not location:raise RuntimeError(f"Amazon Ads report {rid} completed without download URL: {status}")
-                    rows=client.download_report(str(location));total_read+=len(rows);total_written+=writer(scope,rows,rid)
+                    rows=client.download_report(str(location));total_read+=len(rows);written=writer(scope,rows,rid);total_written+=written
+                    _record_report_run(scope,rid,grain,start,end,len(rows),status)
                 _refresh_daily_account(scope,start,end)
             run["records_read"]=total_read;run["records_written"]=total_written
         db.set_cursor(SOURCE,JOB,end.isoformat(),"through_date")
-        return {"status":"success","start":start.isoformat(),"end":end.isoformat(),"accounts":len(scopes),"records_read":total_read,"records_written":total_written,"report_ids":report_ids,"grains":list(grains),"attribution_window":ATTRIBUTION_WINDOW}
+        return {"status":"success","start":start.isoformat(),"end":end.isoformat(),"accounts":len(scopes),"records_read":total_read,"records_written":total_written,"report_ids":report_ids,"grains":list(grains),"transport":REPORT_TRANSPORT,"attribution_window":ATTRIBUTION_WINDOW}
     finally:client.close()
