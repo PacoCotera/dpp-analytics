@@ -34,7 +34,7 @@
           <div>
             <div class="kicker">Management finance</div>
             <h1>Financial report</h1>
-            <p>Current period economics with immutable closed history. Cash timing and accounting closure remain separate.</p>
+            <p>Current period economics with immutable closed history. Revenue, withheld tax and payout cash remain separate.</p>
           </div>
           <div class="period-meta">
             <strong id="periodLabel">Current month</strong>
@@ -47,9 +47,9 @@
           <section class="report">
             <div class="section-label">Customer money</div>
             <div class="money-strip">
-              <div class="money-cell"><div class="eyebrow">Sales before IVA</div><div id="sales" class="big-money">—</div><div class="cell-note">Business revenue before 16% IVA.</div></div>
-              <div class="money-cell"><div class="eyebrow">IVA in customer price</div><div id="iva" class="big-money">—</div><div class="cell-note">Customer tax, not revenue we keep.</div></div>
-              <div class="money-cell"><div class="eyebrow">Customers paid</div><div id="gross" class="big-money">—</div><div class="cell-note">Product spend including IVA.</div></div>
+              <div class="money-cell"><div class="eyebrow">Net sales ex IVA</div><div id="sales" class="big-money">—</div><div class="cell-note">Management revenue before Mexico IVA.</div></div>
+              <div class="money-cell"><div class="eyebrow">IVA withheld</div><div id="iva" class="big-money">—</div><div class="cell-note">Included in the shopper price; Amazon withholds/remits it, so it is not DPP revenue or payout cash.</div></div>
+              <div class="money-cell"><div class="eyebrow">Gross customer spend</div><div id="gross" class="big-money">—</div><div class="cell-note">Customer-facing product spend including IVA.</div></div>
             </div>
 
             <div class="section-label">Current month bridge</div>
@@ -61,7 +61,8 @@
             <p id="statusCopy">OPEN is provisional. Amazon closure and seller COGS readiness are tracked independently.</p>
             <div class="rail-row"><span>Order releases</span><strong id="releaseCoverage">—</strong></div>
             <div class="rail-row"><span>Seller COGS coverage</span><strong id="cogsCoverage">—</strong></div>
-            <div class="rail-row cash"><span>Amazon cash transferred this month</span><strong id="cash">—</strong></div>
+            <div class="rail-row cash"><span>Amazon payout cash posted this month</span><strong id="cash">—</strong></div>
+            <p class="cell-note">Cash timing only. Amazon payout is after IVA withholding and settlement deductions; transfer dates can differ from the business month that generated the sale.</p>
             <div class="rail-row"><span>Management-closed months</span><strong id="closedCount">—</strong></div>
             <div class="rail-row"><span>Restated latest versions</span><strong id="restatedCount">—</strong></div>
             <details class="state-explainer">
@@ -147,7 +148,7 @@
         </section>
       </main>
 
-      <footer class="footer"><span>Finances v2024 · RELEASED only · immutable management closes · frozen seller COGS</span><span>Dirty Pawz Press Analytics</span></footer>
+      <footer class="footer"><span>Finances v2024 · RELEASED only · IVA withheld before payout · immutable management closes · frozen seller COGS</span><span>Dirty Pawz Press Analytics</span></footer>
     </div>
 
     <script type="module" src="/assets/finance.js"></script>
