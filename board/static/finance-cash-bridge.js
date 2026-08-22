@@ -1,6 +1,7 @@
 import { byId, fetchJson } from './ui-utils.js';
 
 const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const CASH_BASIS_LABEL = 'Cash settlement evidence, not sales-period P&L';
 
 function cashMoney(value) {
   if (value === null || value === undefined) return '—';
@@ -32,7 +33,7 @@ function renderCashBridge(payload) {
 
   if (!bridge.settlement_id) {
     state.textContent = 'NO SETTLEMENT DATA';
-    sub.textContent = bridge.note || 'No Amazon settlement report is available yet.';
+    sub.textContent = `${CASH_BASIS_LABEL} · ${bridge.note || 'No Amazon settlement report is available yet.'}`;
     body.innerHTML = '<div class="bridge-step final"><span>Payout bridge</span><strong>Not available</strong></div>';
     return;
   }
@@ -42,7 +43,7 @@ function renderCashBridge(payload) {
   const range = `${shortDate(bridge.settlement_start_date)}–${shortDate(bridge.settlement_end_date)}`;
   const deposit = shortDate(bridge.deposit_date);
   const delta = Number(bridge.reconciliation_delta || 0);
-  sub.textContent = `${range} settlement · deposit ${deposit} · ${bridge.line_count || 0} source lines · ${reconciled ? 'Amazon report total reconciled to the cent' : `reconciliation delta ${cashMoney(delta)}`}`;
+  sub.textContent = `${CASH_BASIS_LABEL} · ${range} settlement · deposit ${deposit} · ${bridge.line_count || 0} source lines · ${reconciled ? 'Amazon report total reconciled to the cent' : `reconciliation delta ${cashMoney(delta)}`}`;
 
   body.innerHTML = [
     step('Customer activity incl. IVA', bridge.customer_activity_incl_tax),
@@ -61,7 +62,7 @@ async function loadCashBridge() {
     const state = byId('cashBridgeState');
     const sub = byId('cashBridgeSub');
     if (state) state.textContent = 'UNAVAILABLE';
-    if (sub) sub.textContent = `Settlement cash bridge unavailable · ${error.message}`;
+    if (sub) sub.textContent = `${CASH_BASIS_LABEL} · Settlement cash bridge unavailable · ${error.message}`;
   }
 }
 
