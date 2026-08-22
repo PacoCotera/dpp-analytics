@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/assets/chart-system.css" />
     <link rel="stylesheet" href="/assets/today.css" />
     <link rel="stylesheet" href="/assets/today-layout.css" />
+    <link rel="stylesheet" href="/assets/today-operations.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
   <body class="today-app">
@@ -48,9 +49,12 @@
                   <strong id="dayHeadline">Reading today…</strong>
                   <p id="dayExplanation">Comparing the selected day with recent shopper-spend context.</p>
                 </div>
-                <div class="today-hero__metrics">
-                  <div class="today-hero__metric"><strong id="orders">—</strong><span>orders</span></div>
-                  <div class="today-hero__metric"><strong id="units">—</strong><span>units</span></div>
+              </div>
+              <div class="today-hero__metrics" aria-label="Today operating KPIs">
+                <div class="today-hero__metric"><strong id="orders">—</strong><span>orders</span></div>
+                <div class="today-hero__metric"><strong id="units">—</strong><span>units</span></div>
+                <div class="today-hero__metric">
+                  <strong id="openOrdersKpi">—</strong><span>open now</span><small id="openOrdersKpiNote">Amazon queue</small>
                 </div>
               </div>
             </section>
@@ -88,6 +92,19 @@
               </section>
             </section>
 
+            <section class="today-card today-panel order-flow-panel" id="orderFlowPanel">
+              <div class="today-panel__head">
+                <div>
+                  <div class="today-panel__title">Order queue</div>
+                  <div class="today-panel__sub">Current Amazon fulfillment state</div>
+                </div>
+              </div>
+              <div class="order-flow-grid" id="orderFlowGrid">
+                <div class="empty">Reading open orders…</div>
+              </div>
+              <div class="order-flow-foot" id="orderFlowFoot"></div>
+            </section>
+
             <section class="today-card today-panel">
               <div class="today-panel__head">
                 <div>
@@ -102,6 +119,16 @@
           </aside>
         </section>
 
+        <details class="today-card today-orders today-open-orders" id="openOrdersPanel">
+          <summary>
+            <span
+              ><strong>Open orders</strong
+              ><small id="openOrderSummary">Current pending and unshipped Amazon orders · no customer PII</small></span
+            ><b id="openOrderToggle">View ↓</b>
+          </summary>
+          <div class="order-grid operational-order-grid" id="openOrderGrid"></div>
+        </details>
+
         <details class="today-card today-orders" id="ordersPanel">
           <summary>
             <span
@@ -111,7 +138,7 @@
               ></span
             ><b id="orderToggle">View ↓</b>
           </summary>
-          <div class="order-grid" id="orderGrid"></div>
+          <div class="order-grid operational-order-grid" id="orderGrid"></div>
         </details>
       </main>
 
@@ -127,5 +154,6 @@
     <script src="/assets/vendor/d3.v7.min.js"></script>
     <script src="/assets/chart-system.js"></script>
     <script type="module" src="/assets/today.js"></script>
+    <script type="module" src="/assets/today-operations.js"></script>
   </body>
 </html>
