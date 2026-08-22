@@ -10,6 +10,11 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY dpp_analytics ./dpp_analytics
+# Preserve the mature close machinery under an explicit legacy module. Both the
+# scheduler and deployment close command route through the corrected tax-basis
+# entry point, so raw Sales & Traffic gross is never frozen as net revenue.
+RUN mv dpp_analytics/finance_close.py dpp_analytics/finance_close_legacy.py \
+    && mv dpp_analytics/finance_close_corrected.py dpp_analytics/finance_close.py
 
 # Fail the image build before replacing production if a scheduler dependency is
 # missing or a newly added collector has a syntax/import error.
