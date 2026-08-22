@@ -92,7 +92,7 @@ function renderDrivers(data, businessSales) {
         : 'stable';
     const share = businessSales > 0 ? (100 * Number(item.sales_t28 || 0)) / businessSales : null;
     const read = `${index === 0 ? 'Largest driver · ' : ''}${share == null ? 'share unavailable' : `${share.toFixed(0)}% of 28D sales`} · ${direction} ${percent(item.delta28_pct)}`;
-    return `<a class="driver" href="/product?sku=${encodeURIComponent(item.sku)}">${image}<div><div class="sku">${escapeHtml(item.sku)}</div><div class="name">${escapeHtml(item.product || item.sku)}</div><div class="read ${deltaTone}">${read}</div></div><div class="driver-value"><strong>${money(item.sales_t28)}</strong><small>28D sales</small></div></a>`;
+    return `<a class="driver" href="/product?sku=${encodeURIComponent(item.sku)}">${image}<div><div class="sku">${escapeHtml(item.sku)}</div><div class="name">${escapeHtml(item.product || item.sku)}</div><div class="read ${deltaTone}">${read}</div></div><div class="driver-value"><strong>${money(item.sales_t28)}</strong><small>Amazon 28D sales</small></div></a>`;
   }).join('');
 }
 
@@ -108,7 +108,7 @@ function render(data) {
   document.getElementById('stateHeadline').textContent = read.headline;
   document.getElementById('stateCopy').textContent = read.copy;
   document.getElementById('sales28').textContent = money(rolling.sales_t28);
-  document.getElementById('sales28Note').textContent = 'Last 28 days';
+  document.getElementById('sales28Note').textContent = 'Amazon Sales & Traffic';
 
   const momentum = document.getElementById('momentum');
   momentum.textContent = percent(rolling.delta28_pct);
@@ -116,7 +116,7 @@ function render(data) {
   document.getElementById('momentumNote').textContent = 'vs prior 28';
 
   document.getElementById('todaySales').textContent = money(today.sales_today);
-  document.getElementById('todayNote').textContent = `${integer(today.orders_today)} orders · ${integer(today.units_today)} units`;
+  document.getElementById('todayNote').textContent = `${integer(today.orders_today)} orders · ${integer(today.units_today)} units · incl. IVA`;
   document.getElementById('decisionCount').textContent = integer(decisionCount);
   document.getElementById('decisionNote').textContent = decisionCount === 1 ? 'decision needs attention' : 'decisions need attention';
   document.getElementById('attentionCount').textContent = integer(decisionCount);
@@ -124,7 +124,9 @@ function render(data) {
   renderAttention(data, decisionCount);
   renderDrivers(data, Number(rolling.sales_t28 || 0));
   if (window.DPPCharts?.homeRhythm) {
-    window.DPPCharts.homeRhythm('#spark', data.series, data.weekly_products);
+    const cutoff = String(rolling.business_date || '').slice(0, 10);
+    const reconciledSeries = (data.series || []).filter(row => !cutoff || String(row.business_date || '').slice(0, 10) <= cutoff);
+    window.DPPCharts.homeRhythm('#spark', reconciledSeries, data.weekly_products);
   }
 }
 
