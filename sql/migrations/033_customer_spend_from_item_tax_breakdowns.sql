@@ -25,14 +25,14 @@ SELECT
         THEN i.proceeds_item_amount
       ELSE COALESCE(i.proceeds_total_amount, i.unit_price_amount * i.quantity_ordered, 0)
     END::numeric(14,2) AS customer_spend,
+    COALESCE(o.fulfillment_status,'') AS fulfillment_status,
     CASE
       WHEN i.proceeds_item_amount IS NOT NULL AND i.proceeds_tax_amount IS NOT NULL THEN 'PROCEEDS_ITEM_PLUS_TAX'
       WHEN i.proceeds_item_amount IS NOT NULL THEN 'PROCEEDS_ITEM_TAX_EMBEDDED_OR_UNAVAILABLE'
       WHEN i.proceeds_total_amount IS NOT NULL THEN 'PROCEEDS_TOTAL_FALLBACK'
       WHEN i.unit_price_amount IS NOT NULL THEN 'UNIT_PRICE_FALLBACK'
       ELSE 'NO_AMOUNT'
-    END::text AS customer_spend_source,
-    COALESCE(o.fulfillment_status,'') AS fulfillment_status
+    END::text AS customer_spend_source
 FROM core.amazon_order_item i
 JOIN core.amazon_order o USING (amazon_order_id)
 JOIN core.marketplace m USING (marketplace_id)
@@ -85,8 +85,6 @@ SELECT business_date,marketplace_id,
 FROM mart.order_customer_spend
 GROUP BY business_date,marketplace_id;
 
--- seller-SKU operational velocity inherits the same customer-spend basis; its money
--- is not used as canonical reconciled commercial revenue.
 CREATE OR REPLACE VIEW mart.sku_daily AS
 WITH order_sku AS (
     SELECT x.business_date,x.marketplace_id,x.seller_sku,max(x.asin) AS asin,
