@@ -110,17 +110,17 @@ function renderDayRead() {
     headline = orders === 0 ? 'Too early to call today' : 'Today is still low-signal';
     const expected = Number.isFinite(pace) && pace > -99 && sales > 0 ? sales / (1 + pace / 100) : null;
     explanation = expected && expected > 0
-      ? `${orders} order${orders === 1 ? '' : 's'} so far. A typical ${day.toLowerCase()} would be around ${money(expected)} by this point, so wait for more volume before judging pace.`
+      ? `${orders} order${orders === 1 ? '' : 's'} so far. A typical ${day.toLowerCase()} would be around ${money(expected)} in shopper spend by this point, so wait for more volume before judging pace.`
       : `${orders} order${orders === 1 ? '' : 's'} so far. Wait for more volume before judging today against a typical ${day.toLowerCase()}.`;
   } else if (pace >= 15) {
     headline = `Ahead of a typical ${day}`;
-    explanation = `Sales are ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`;
+    explanation = `Shopper spend is ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`;
   } else if (pace <= -15) {
     headline = `Behind a typical ${day}`;
-    explanation = `Sales are ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`;
+    explanation = `Shopper spend is ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`;
   } else {
     headline = `Tracking near a typical ${day}`;
-    explanation = `Sales are ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`;
+    explanation = `Shopper spend is ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`;
   }
 
   byId('dayHeadline').textContent = headline;
@@ -140,16 +140,16 @@ function renderBusinessRead() {
 
   if (mtd >= 8 && last30 >= 5) {
     headline = 'The underlying business is strengthening';
-    explanation = `MTD is ${signedPercent0(mtd)} and the latest 30 days are ${signedPercent0(last30)}. ${live && orders < 3 ? 'Today is too early to override that broader read.' : ''}`;
+    explanation = `MTD shopper spend is ${signedPercent0(mtd)} and the latest 30 days are ${signedPercent0(last30)}. ${live && orders < 3 ? 'Today is too early to override that broader read.' : ''}`;
   } else if (mtd <= -8 && last30 <= -5) {
     headline = 'The underlying business is weakening';
-    explanation = `MTD is ${signedPercent0(mtd)} and the latest 30 days are ${signedPercent0(last30)}. ${live && orders < 3 ? 'Today is too early to change that broader read.' : ''}`;
+    explanation = `MTD shopper spend is ${signedPercent0(mtd)} and the latest 30 days are ${signedPercent0(last30)}. ${live && orders < 3 ? 'Today is too early to change that broader read.' : ''}`;
   } else if (Math.sign(mtd) !== Math.sign(last30) && Math.abs(mtd) >= 5 && Math.abs(last30) >= 5) {
     headline = 'Short and medium horizons disagree';
-    explanation = `MTD is ${signedPercent0(mtd)} while the latest 30 days are ${signedPercent0(last30)}. Treat the trend as mixed until the horizons converge.`;
+    explanation = `MTD shopper spend is ${signedPercent0(mtd)} while the latest 30 days are ${signedPercent0(last30)}. Treat the trend as mixed until the horizons converge.`;
   } else {
     headline = 'The broader business is broadly stable';
-    explanation = `MTD is ${signedPercent0(mtd)} and the latest 30 days are ${signedPercent0(last30)}. Today should be read as one operating day, not the whole trend.`;
+    explanation = `MTD shopper spend is ${signedPercent0(mtd)} and the latest 30 days are ${signedPercent0(last30)}. Today should be read as one operating day, not the whole trend.`;
   }
 
   byId('pulseHeadline').textContent = headline;
@@ -197,9 +197,9 @@ function renderRhythmInsight() {
   let text;
 
   if (Number.isFinite(delta) && Math.abs(delta) >= 10) {
-    text = `<strong>Recent demand is ${delta > 0 ? 'running stronger' : 'running softer'}.</strong> The latest 7 closed days average ${money(latestAverage)}, ${signedPercent0(delta)} versus the prior 7.`;
+    text = `<strong>Recent shopper spend is ${delta > 0 ? 'running stronger' : 'running softer'}.</strong> The latest 7 closed days average ${money(latestAverage)}, ${signedPercent0(delta)} versus the prior 7.`;
   } else {
-    text = `<strong>Recent demand is fairly steady.</strong> The latest 7 closed days average ${money(latestAverage)}${Number.isFinite(delta) ? `, ${signedPercent0(delta)} versus the prior 7` : ''}.`;
+    text = `<strong>Recent shopper spend is fairly steady.</strong> The latest 7 closed days average ${money(latestAverage)}${Number.isFinite(delta) ? `, ${signedPercent0(delta)} versus the prior 7` : ''}.`;
   }
   if (typical != null) text += ` A typical recent ${weekday(selected)} closed day is about ${money(typical)}.`;
   byId('rhythmInsight').innerHTML = text;
@@ -308,7 +308,7 @@ function drawChart() {
       if (width < 640) return;
       const hostRect = host.getBoundingClientRect();
       const barRect = this.getBoundingClientRect();
-      tooltip.innerHTML = `<strong>${d3.utcFormat('%a, %b %-d')(row.date)}</strong><span>Sales ${money(row.sales)}</span><span>${integer(row.orders)} orders · ${integer(row.units)} units</span>`;
+      tooltip.innerHTML = `<strong>${d3.utcFormat('%a, %b %-d')(row.date)}</strong><span>Shopper spend ${money(row.sales)}</span><span>${integer(row.orders)} orders · ${integer(row.units)} units</span><span>Includes IVA · Amazon Orders</span>`;
       tooltip.style.left = `${Math.min(hostRect.width - 90, Math.max(90, barRect.left - hostRect.left + barRect.width / 2))}px`;
       tooltip.style.top = `${Math.max(54, barRect.top - hostRect.top + 8)}px`;
       tooltip.classList.add('show');
@@ -319,10 +319,10 @@ function drawChart() {
   const closed = rows.filter(row => !(data.is_live && row.business_date === data.local_today));
   const average = d3.mean(closed, row => row.sales) || 0;
   const best = d3.max(closed, row => row.sales) || 0;
-  byId('rhythmRail').innerHTML = `<div class="rhythm-kpi"><div class="label">Sales</div><strong>${money(totalSales)}</strong><small>selected window</small></div><div class="rhythm-kpi"><div class="label">Closed-day pace</div><strong>${money(average)}</strong><small>average per closed day</small></div><div class="rhythm-kpi"><div class="label">Best day</div><strong>${money(best)}</strong><small>inside this window</small></div>`;
+  byId('rhythmRail').innerHTML = `<div class="rhythm-kpi"><div class="label">Shopper spend</div><strong>${money(totalSales)}</strong><small>selected window · incl. IVA</small></div><div class="rhythm-kpi"><div class="label">Closed-day pace</div><strong>${money(average)}</strong><small>average shopper spend</small></div><div class="rhythm-kpi"><div class="label">Best day</div><strong>${money(best)}</strong><small>inside this window</small></div>`;
   byId('rhythmSub').textContent = period === 'mtd'
-    ? `Daily sales · month through ${data.is_live ? 'today' : d3.utcFormat('%b %-d')(parseDate(data.selected_date))}`
-    : `Daily sales · ${rows.length} days`;
+    ? `Daily shopper spend · month through ${data.is_live ? 'today' : d3.utcFormat('%b %-d')(parseDate(data.selected_date))}`
+    : `Daily shopper spend · ${rows.length} days`;
 }
 
 function renderLatestOrder(latest, live) {
@@ -358,14 +358,14 @@ function renderProducts(products, totalSales, live) {
             <div class="meta">${integer(item.units)} units · ${integer(item.orders)} orders</div>
             <div class="share-track"><i style="width:${Math.max(2, Math.min(100, contribution))}%"></i></div>
           </div>
-          <div class="value">${money(item.sales)}<span class="share">${contribution.toFixed(0)}% of sales</span></div>
+          <div class="value">${money(item.sales)}<span class="share">${contribution.toFixed(0)}% of shopper spend</span></div>
         </a>`;
       }).join('')
     : `<div class="empty">${live ? 'Products will appear as orders arrive.' : 'No product sales recorded for this day.'}</div>`;
 }
 
 function renderOrders(orders, today, live) {
-  byId('orderSummary').textContent = `${integer(today.orders_today)} orders · ${integer(today.units_today)} units · ${money(today.sales_today)}`;
+  byId('orderSummary').textContent = `${integer(today.orders_today)} orders · ${integer(today.units_today)} units · ${money(today.sales_today)} shopper spend incl. IVA`;
   byId('orderGrid').innerHTML = orders.length
     ? orders.map(order => `<div class="today-order">
         <strong>${money(order.sales)}</strong>
@@ -382,12 +382,12 @@ function render(payload) {
   const live = Boolean(payload.is_live);
 
   renderDayPicker();
-  byId('salesLabel').textContent = live ? 'Sales today' : 'Closed-day sales';
+  byId('salesLabel').textContent = live ? 'Shopper spend today · incl. IVA' : 'Closed-day shopper spend · incl. IVA';
   byId('sales').textContent = integer(today.sales_today);
   byId('orders').textContent = integer(today.orders_today);
   byId('units').textContent = integer(today.units_today);
   byId('clock').textContent = live ? context.local_time || '--:--' : 'Closed';
-  byId('modeStatus').textContent = live ? 'Live orders' : 'Closed day';
+  byId('modeStatus').textContent = live ? 'Live Orders · shopper spend' : 'Closed day · shopper spend';
 
   renderDayRead();
   renderBusinessRead();
