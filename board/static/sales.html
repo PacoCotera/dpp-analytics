@@ -36,7 +36,7 @@
       </nav>
 
       <div class="notice" role="note" aria-label="Sales monetary basis">
-        <strong>Money basis:</strong> historical Sales &amp; Traffic = <strong>net sales ex IVA</strong>. Today and individual Orders = <strong>shopper spend incl. IVA</strong>. For the accounting bridge between them, use Finance.
+        <strong>Sales page basis:</strong> every sales amount is <strong>shopper spend incl. IVA</strong>. Historical periods use reconciled Amazon Sales &amp; Traffic; Today and order evidence use Amazon Orders. <strong>Net sales ex IVA live in Finance.</strong>
       </div>
 
       <main id="overview" class="view active">
@@ -45,8 +45,8 @@
             <div class="panel sales-chart-card">
               <div class="sales-chart-header">
                 <div>
-                  <div class="sales-chart-title" id="salesChartTitle">Monthly net sales ex IVA</div>
-                  <div class="sales-chart-subtitle" id="salesChartSub">12 months · Amazon Sales &amp; Traffic · net sales ex IVA · current month actual + run rate</div>
+                  <div class="sales-chart-title" id="salesChartTitle">Monthly shopper spend</div>
+                  <div class="sales-chart-subtitle" id="salesChartSub">12 months · incl. IVA · Amazon Sales &amp; Traffic · current month actual + run rate</div>
                 </div>
                 <div class="sales-range" role="group" aria-label="Sales chart time window">
                   <button type="button" data-range="full" aria-pressed="false">FULL</button>
@@ -61,8 +61,8 @@
           </div>
 
           <aside class="sales-state-rail" aria-label="Current sales signals">
-            <section class="sales-signal primary" data-window="mtd" title="Historical Sales & Traffic metric. Net sales ex IVA.">
-              <div class="sales-signal-label" id="mtdLabel">Month to date · net ex IVA</div>
+            <section class="sales-signal primary" data-window="mtd" title="Reconciled Amazon Sales & Traffic shopper spend including IVA.">
+              <div class="sales-signal-label" id="mtdLabel">Month to date · incl. IVA</div>
               <div class="sales-signal-value" id="mtdSales">—</div>
               <div class="sales-volume" id="mtdVolume">—</div>
               <div class="sales-signal-note" id="mtdNote">—</div>
@@ -73,15 +73,15 @@
             </section>
 
             <section class="sales-momentum-card" aria-label="Recent sales momentum">
-              <div class="sales-momentum-title">Net sales momentum · ex IVA</div>
-              <div class="sales-signal sales-momentum-row" data-window="t7" title="Reconciled Amazon Sales & Traffic · net sales ex IVA.">
-                <div class="sales-signal-label">7D · net ex IVA</div>
+              <div class="sales-momentum-title">Shopper-spend momentum · incl. IVA</div>
+              <div class="sales-signal sales-momentum-row" data-window="t7" title="Reconciled Amazon Sales & Traffic shopper spend including IVA.">
+                <div class="sales-signal-label">7D · incl. IVA</div>
                 <div class="sales-signal-value" id="t7Sales">—</div>
                 <div class="sales-volume" id="t7Volume">—</div>
                 <div class="sales-signal-note" id="t7Note">—</div>
               </div>
-              <div class="sales-signal sales-momentum-row" data-window="t28" title="Reconciled Amazon Sales & Traffic · net sales ex IVA.">
-                <div class="sales-signal-label">28D · net ex IVA</div>
+              <div class="sales-signal sales-momentum-row" data-window="t28" title="Reconciled Amazon Sales & Traffic shopper spend including IVA.">
+                <div class="sales-signal-label">28D · incl. IVA</div>
                 <div class="sales-signal-value" id="t28Sales">—</div>
                 <div class="sales-volume" id="t28Volume">—</div>
                 <div class="sales-signal-note" id="t28Note">—</div>
@@ -96,8 +96,8 @@
               <a href="/today" class="btn">Open Today →</a>
             </section>
 
-            <section class="sales-signal sales-utility-row sales-utility-ytd" data-window="ytd" title="Historical Sales & Traffic metric. Net sales ex IVA.">
-              <div class="sales-signal-label" id="ytdLabel">YTD · net ex IVA</div>
+            <section class="sales-signal sales-utility-row sales-utility-ytd" data-window="ytd" title="Reconciled Amazon Sales & Traffic shopper spend including IVA.">
+              <div class="sales-signal-label" id="ytdLabel">YTD · incl. IVA</div>
               <div class="sales-signal-value" id="ytdSales">—</div>
               <div class="sales-volume" id="ytdVolume">—</div>
               <div class="sales-signal-note">Year to date</div>
@@ -111,13 +111,13 @@
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Product performance</h2>
-              <div class="section-header__description">Last 28 days vs prior 28 · reconciled Amazon Sales &amp; Traffic · net sales ex IVA.</div>
+              <div class="section-header__description">Last 28 days vs prior 28 · reconciled Amazon Sales &amp; Traffic · shopper spend incl. IVA.</div>
             </div>
           </div>
           <div class="data-table-shell">
             <div class="data-table-scroll">
               <table class="data-table">
-                <thead><tr><th>Product</th><th class="num" title="Amazon orderedProductSales from Sales &amp; Traffic. Net sales ex IVA; not shopper spend or settlement proceeds.">28D net sales ex IVA</th><th class="num">Δ28</th><th class="num">Units</th><th>State</th></tr></thead>
+                <thead><tr><th>Product</th><th class="num" title="Amazon orderedProductSales from Sales &amp; Traffic. Shopper spend including IVA; not settlement proceeds or Finance net revenue.">28D shopper spend incl. IVA</th><th class="num">Δ28</th><th class="num">Units</th><th>State</th></tr></thead>
                 <tbody id="skuRows"></tbody>
               </table>
             </div>
@@ -144,7 +144,7 @@
         </section>
       </main>
 
-      <footer class="footer"><span>MXN · historical Sales = net sales ex IVA · Today/Orders = shopper spend incl. IVA</span><span>Finance = net sales ex IVA + IVA withheld + gross shopper spend + payout cash timing · Dirty Pawz Press Analytics</span></footer>
+      <footer class="footer"><span>MXN · Sales page = shopper spend incl. IVA throughout</span><span>Finance = net sales ex IVA + IVA withheld + gross shopper spend + payout cash timing · Dirty Pawz Press Analytics</span></footer>
     </div>
 
     <script src="/assets/vendor/d3.v7.min.js"></script>
