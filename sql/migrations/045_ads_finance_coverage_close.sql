@@ -118,10 +118,6 @@ SELECT marketplace_id,month,month_end,expected_ads_days,COALESCE(observed_ads_da
        CASE WHEN attributed_sales>0 THEN ads_api_accrual/attributed_sales END AS acos,
        attribution_method,attribution_window,ads_last_business_date,ads_through_date,
        ads_source_generated_at,ads_ingested_at,ads_calendar_complete,ads_attribution_mature,
-       COALESCE(configured_accounts,0) AS coverage_accounts,
-       COALESCE(minimum_account_coverage_days,0) AS minimum_account_coverage_days,
-       COALESCE(minimum_account_complete_days,0) AS minimum_account_complete_days,
-       COALESCE(missing_grains,ARRAY[]::text[]) AS missing_report_grains,
        COALESCE(bridge_events,0) AS bridge_events,bridge_amount AS product_ads_payment_bridge,
        bridge_first_posted_at,bridge_last_posted_at,
        CASE WHEN ads_calendar_complete AND ads_attribution_mature THEN 'ADS_API_ACCRUAL_READY'
@@ -137,8 +133,12 @@ SELECT marketplace_id,month,month_end,expected_ads_days,COALESCE(observed_ads_da
         AND ads_calendar_complete AND ads_attribution_mature) AS ads_api_restatement_available,
        attribution_window_days,
        CASE WHEN attribution_window_known THEN month_end+attribution_window_days END AS ads_mature_after_date,
-       CASE WHEN attribution_window_known THEN CASE WHEN ads_attribution_mature THEN 'MATURE' ELSE 'PROVISIONAL' END ELSE 'UNKNOWN' END AS ads_attribution_state
+       CASE WHEN attribution_window_known THEN CASE WHEN ads_attribution_mature THEN 'MATURE' ELSE 'PROVISIONAL' END ELSE 'UNKNOWN' END AS ads_attribution_state,
+       COALESCE(configured_accounts,0) AS coverage_accounts,
+       COALESCE(minimum_account_coverage_days,0) AS minimum_account_coverage_days,
+       COALESCE(minimum_account_complete_days,0) AS minimum_account_complete_days,
+       COALESCE(missing_grains,ARRAY[]::text[]) AS missing_report_grains
 FROM readiness;
 
 COMMENT ON VIEW mart.ads_finance_month_context IS
-'Finance-only monthly advertising reconciliation. Ads API close requires canonical report coverage plus attribution maturity. The following-month RELEASED ProductAdsPayment remains the temporary bridge. Closed months remain immutable.';
+'Finance-only monthly advertising reconciliation. Ads API close requires canonical report coverage plus attribution maturity. Coverage fields are appended to preserve the stable dependent-view column contract. The following-month RELEASED ProductAdsPayment remains the temporary bridge. Closed months remain immutable.';
