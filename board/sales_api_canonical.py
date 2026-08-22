@@ -3,20 +3,6 @@ from __future__ import annotations
 from sales_api_legacy import sales_payload as _legacy_sales_payload
 
 
-def _state(current: float, prior: float) -> str:
-    if current > 0 and prior == 0:
-        return "NEW"
-    if prior > 0 and current >= prior * 1.20:
-        return "ACCELERATING"
-    if prior > 0 and current >= prior * 1.05:
-        return "GROWING"
-    if prior > 0 and current <= prior * 0.80:
-        return "DECLINING"
-    if prior > 0 and current <= prior * 0.95:
-        return "COOLING"
-    return "STABLE"
-
-
 def sales_payload(connect, decorate_products, marketplace: str) -> dict:
     payload = _legacy_sales_payload(connect, decorate_products, marketplace)
     cutoff = (payload.get("headline") or {}).get("business_date")
@@ -29,8 +15,6 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
         market = cur.fetchone() or {}
 
         if cutoff:
-            # Historical Sales charts are reconciled Amazon Sales & Traffic only.
-            # Do not let an order-derived fallback silently enter a reconciled series.
             cur.execute(
                 """
                 SELECT business_date,sales,orders,units
@@ -44,43 +28,29 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
             )
             payload["series"] = list(cur.fetchall())
 
-            # Keep Product performance on the same reconciled Sales & Traffic basis
-            # as the Sales headline rather than the order/proceeds ledger.
+            # Production Data Kiosk demand is CHILD-ASIN grain. Catalog already
+            # owns the canonical offer mapping, so use that instead of pretending
+            # a seller-SKU Sales & Traffic fact is populated.
             cur.execute(
                 """
-                WITH c AS (SELECT %s::date AS d), x AS (
-                  SELECT seller_sku AS sku,max(asin) AS asin,
-                         COALESCE(sum(ordered_product_sales) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::numeric(14,2) AS sales_t28,
-                         COALESCE(sum(units_ordered) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint AS units_t28,
-                         COALESCE(sum(ordered_product_sales) FILTER (WHERE business_date BETWEEN c.d-55 AND c.d-28),0)::numeric(14,2) AS sales_prior_t28
-                  FROM core.sku_sales_traffic_daily,c
-                  WHERE marketplace_id=%s AND business_date BETWEEN c.d-55 AND c.d
-                  GROUP BY seller_sku
-                )
-                SELECT *,CASE WHEN sales_prior_t28>0 THEN round(100.0*(sales_t28-sales_prior_t28)/sales_prior_t28,1)
-                              WHEN sales_t28>0 THEN NULL ELSE 0::numeric END AS delta28_pct
-                FROM x ORDER BY sales_t28 DESC LIMIT 20
+                SELECT p.seller_sku AS sku,p.asin,p.title AS product,p.image_url,
+                       p.sales_t28,p.units_t28,p.sales_delta28_pct AS delta28_pct,
+                       COALESCE(m.state,CASE WHEN p.sales_t28>0 THEN 'STABLE' ELSE 'DORMANT' END) AS state,
+                       'AMAZON_ORDERED_PRODUCT_SALES'::text AS sales_basis
+                FROM mart.catalog_portfolio_product p
+                LEFT JOIN mart.catalog_movers_t28 m
+                  ON m.marketplace_id=p.marketplace_id AND m.seller_sku=p.seller_sku
+                WHERE p.marketplace_id=%s
+                  AND p.is_offer_owner
+                  AND p.product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE')
+                  AND p.sales_t28>0
+                ORDER BY p.sales_t28 DESC,p.seller_sku
+                LIMIT 20
                 """,
-                (cutoff, marketplace),
+                (marketplace,),
             )
-            product_values = {r["sku"]: r for r in cur.fetchall()}
-            for row in payload.get("skus") or []:
-                canonical = product_values.get(row.get("sku"))
-                if not canonical:
-                    continue
-                current = float(canonical.get("sales_t28") or 0)
-                prior = float(canonical.get("sales_prior_t28") or 0)
-                row.update(
-                    sales_t28=canonical.get("sales_t28"),
-                    units_t28=canonical.get("units_t28"),
-                    delta28_pct=canonical.get("delta28_pct"),
-                    state=_state(current, prior),
-                    sales_basis="AMAZON_ORDERED_PRODUCT_SALES",
-                )
-            payload["skus"] = sorted(payload.get("skus") or [], key=lambda r: -float(r.get("sales_t28") or 0))
+            payload["skus"] = decorate_products(list(cur.fetchall()))
 
-        # Recent Orders are shopper-spend evidence. Never fall back to settlement
-        # proceeds, which can be net of IVA in Mexico.
         cur.execute(
             """
             WITH items AS (
@@ -114,13 +84,19 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
             "source": "Sales & Traffic / Data Kiosk",
             "definition": "Reconciled operating sales. Settlement/proceeds amounts are excluded.",
         },
+        "product_sales": {
+            "id": "AMAZON_ORDERED_PRODUCT_SALES",
+            "label": "Amazon ordered-product sales",
+            "source": "CHILD-ASIN Sales & Traffic mapped to canonical offer owner",
+            "definition": "ASIN demand is attached exactly once to the canonical sellable offer; aliases and structural parents do not duplicate revenue.",
+        },
         "today_and_orders": {
             "id": "GROSS_CUSTOMER_SPEND",
             "label": "Shopper spend incl. IVA",
             "source": "Amazon Orders",
             "definition": "Order grand total with gross item price × quantity fallback.",
         },
-        "finance_boundary": "Finance is the accounting surface and separately reports net sales ex IVA, IVA, and gross customer spend.",
+        "finance_boundary": "Finance separately reports net sales ex IVA, IVA, and gross customer spend.",
     }
     if payload.get("today"):
         payload["today"]["sales_basis"] = "GROSS_CUSTOMER_SPEND"
