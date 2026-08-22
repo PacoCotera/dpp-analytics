@@ -4,9 +4,16 @@ ARG DEPLOY_SHA=dev
 COPY board/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY board/server.py .
-COPY board/sales_api.py .
-COPY board/today_api.py .
-COPY board/product_api.py .
+# Keep the mature API implementations as legacy readers and make the canonical
+# monetary-basis adapters the production module names imported by server.py.
+# The adapters remove proceeds/accounting amounts from operating sales evidence
+# while preserving the existing payload contracts.
+COPY board/sales_api.py ./sales_api_legacy.py
+COPY board/sales_api_canonical.py ./sales_api.py
+COPY board/today_api.py ./today_api_legacy.py
+COPY board/today_api_canonical.py ./today_api.py
+COPY board/product_api.py ./product_api_legacy.py
+COPY board/product_api_canonical.py ./product_api.py
 COPY board/ads_context.py .
 # finance_emergency.py is the current immutable-close implementation. Copy it
 # once under the module name imported by server.py; do not copy an older module
