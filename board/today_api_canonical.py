@@ -52,12 +52,10 @@ def _gross_daily(cur, marketplace: str, target: date, days: int = 61) -> list[di
     return list(cur.fetchall())
 
 
-def _context_from_gross(rows: list[dict], target: date, local_time: str, live: bool) -> dict:
+def _context_from_gross(rows: list[dict], target: date, local_time: str) -> dict:
     by_date = {r["business_date"]: float(r.get("sales") or 0) for r in rows}
-    current = by_date.get(target, 0.0)
     week_start = target - timedelta(days=target.weekday())
     month_start = target.replace(day=1)
-    year, month = target.year, target.month
     prev_month_end = month_start - timedelta(days=1)
     prev_month_start = prev_month_end.replace(day=1)
     prev_same_end = min(prev_month_end, prev_month_start + timedelta(days=target.day - 1))
@@ -157,8 +155,19 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
         row["selected"] = row["business_date"] == target
         row["sales_basis"] = "GROSS_CUSTOMER_SPEND"
     payload["recent_daily"] = last30
+
     local_time = (payload.get("context") or {}).get("local_time") or ""
-    payload["context"] = _context_from_gross(daily, target, local_time, bool(payload.get("is_live")))
+    context = _context_from_gross(daily, target, local_time)
+    payload["context"] = context
+
+    # Live same-time pace is already computed by mart.today_operating on the same
+    # shopper-spend basis. A selected closed day instead compares its full-day
+    # shopper spend with prior matching weekdays, also on that same basis.
+    if not payload.get("is_live"):
+        typical = context.get("typical_same_weekday_full_day")
+        current = float(today.get("sales_today") or 0)
+        today["pace_vs_same_weekday_pct"] = _pct(current, float(typical or 0))
+
     payload["metric_basis"] = basis
     payload["product_contribution_sales_basis"] = "GROSS_CUSTOMER_SPEND"
     return payload
