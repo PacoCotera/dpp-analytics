@@ -31,7 +31,7 @@
       <section class="catalog-top">
         <div class="catalog-title">
           <h1>Commercial portfolio</h1>
-          <p>Traffic → conversion → units and sales → availability → economics.</p>
+          <p>Traffic → conversion → units and Amazon sales → availability → economics.</p>
         </div>
         <div class="portfolio-summary" aria-label="Portfolio summary">
           <div><strong id="familyCount">—</strong><span>families</span></div>
@@ -44,7 +44,7 @@
       <section class="portfolio-read">
         <div class="funnel-read">
           <strong id="portfolioRead">Reading the portfolio…</strong>
-          <p id="portfolioBasis">28-day Data Kiosk demand + current FBA availability</p>
+          <p id="portfolioBasis">28-day Amazon SKU Sales &amp; Traffic + current FBA availability</p>
         </div>
         <div class="attention" id="attentionList">
           <div class="attention-empty">Checking commercial exceptions…</div>
@@ -81,18 +81,18 @@
       </section>
 
       <section class="portfolio-head" id="portfolioHead">
-        <span>Family / product</span><span>Commercial read</span><span>28D</span><span>Traffic → CVR</span><span>Units → stock</span><span>Economics</span><span></span>
+        <span>Family / product</span><span>Commercial read</span><span title="Amazon orderedProductSales from SKU Sales &amp; Traffic; not settlement proceeds.">28D Amazon sales</span><span>Traffic → CVR</span><span>Units → stock</span><span>Economics</span><span></span>
       </section>
       <section class="portfolio" id="portfolio"><div class="empty">Loading commercial portfolio…</div></section>
 
       <div class="portfolio-foot">
-        <span id="portfolioFootMain"><b>Family metrics</b> roll up sellable children. Traffic + conversion use the latest completed Data Kiosk day; inventory may be fresher.</span>
-        <span>Commercial and dimensional reads are diagnostic signals, not causal claims.</span>
+        <span id="portfolioFootMain"><b>Family metrics</b> roll up canonical sellable children. Sales, traffic and conversion use the latest completed Amazon Sales &amp; Traffic day; inventory may be fresher.</span>
+        <span><b>Ads:</b> attributed sales are Amazon attribution, not incremental sales. TACOS uses independent seller sales.</span>
       </div>
 
       <footer class="footer">
-        <span id="freshness">Seller listings + Data Kiosk + FBA inventory</span>
-        <span>Dirty Pawz Press Analytics</span>
+        <span id="freshness">MXN · sales = Amazon SKU Sales &amp; Traffic · seller listings + FBA inventory</span>
+        <span>Finance separately reports net sales ex IVA + IVA + gross spend · Dirty Pawz Press Analytics</span>
       </footer>
     </div>
     <script type="module" src="/assets/catalog.js"></script>
