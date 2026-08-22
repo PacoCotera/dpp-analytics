@@ -24,17 +24,14 @@
   }
 
   function catalog() {
+    // Catalog owns its live basis/freshness copy. Do not overwrite those fields here:
+    // catalog.js and its paid-media context need to compose one current source read.
     const head = document.getElementById('portfolioHead');
     setNodeText(head?.children?.[2], '28D shopper spend incl. IVA');
     const read = document.getElementById('portfolioRead');
     const title =
       'Portfolio amount is reconciled Amazon Sales & Traffic shopper spend including IVA. Net revenue ex IVA is in Finance.';
     if (read && read.getAttribute('title') !== title) read.setAttribute('title', title);
-    setText(
-      'portfolioBasis',
-      '28-day shopper spend incl. IVA · Amazon Sales & Traffic + current FBA availability',
-    );
-    setText('freshness', 'MXN · historical/product sales = shopper spend incl. IVA · Amazon Sales & Traffic');
     document.querySelectorAll('.child-head span:nth-child(3)').forEach((node) => {
       setNodeText(node, '28D shopper spend incl. IVA');
     });
