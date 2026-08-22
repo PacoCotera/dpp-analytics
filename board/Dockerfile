@@ -3,11 +3,13 @@ WORKDIR /app
 ARG DEPLOY_SHA=dev
 COPY board/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY board/server.py .
+# Keep the mature HTTP router as a stable legacy module. server_canonical.py
+# replaces only payload owners that need stronger canonical contracts.
+COPY board/server.py ./server_legacy.py
+COPY board/server_canonical.py ./server.py
+COPY board/home_api.py .
 # Keep the mature API implementations as legacy readers and make the canonical
-# monetary-basis adapters the production module names imported by server.py.
-# The adapters remove proceeds/accounting amounts from operating sales evidence
-# while preserving the existing payload contracts.
+# monetary-basis adapters the production module names imported by server_legacy.py.
 COPY board/sales_api.py ./sales_api_legacy.py
 COPY board/sales_api_canonical.py ./sales_api.py
 COPY board/today_api.py ./today_api_legacy.py
@@ -16,8 +18,7 @@ COPY board/product_api.py ./product_api_legacy.py
 COPY board/product_api_canonical.py ./product_api.py
 COPY board/ads_context.py .
 # finance_emergency.py is the current immutable-close implementation. Copy it
-# once under the module name imported by server.py; do not copy an older module
-# and overwrite it in the next layer.
+# once under the module name imported by the router.
 COPY board/finance_emergency.py ./finance_api.py
 COPY board/inventory_api.py .
 COPY board/catalog_api.py .
@@ -41,8 +42,6 @@ if not re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha):
 build_sha = raw_sha[:8] if re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha) else 'dev'
 footer_stamp = f'Dirty Pawz Press Analytics · main {build_sha}'
 
-# Frontend dependencies are source-controlled. The image build only adds a
-# visible deployment stamp; it no longer injects CSS, JavaScript or page logic.
 for page in static.glob('*.html'):
     page.write_text(page.read_text().replace('Dirty Pawz Press Analytics', footer_stamp))
 PY
