@@ -17,115 +17,29 @@
 <body class="home-page">
   <div class="app">
     <header class="topbar">
-      <div class="brand">
-        <div class="mark">DP</div>
-        <div class="brand-copy">
-          <div class="brand-title">DIRTY PAWZ PRESS</div>
-          <div class="brand-sub">Amazon Mexico · Operating Board</div>
-        </div>
-      </div>
+      <div class="brand"><div class="mark">DP</div><div class="brand-copy"><div class="brand-title">DIRTY PAWZ PRESS</div><div class="brand-sub">Amazon Mexico · Operating Board</div></div></div>
       <div class="top-meta"><strong id="clock">--:--</strong><span id="fresh">Loading live data</span></div>
     </header>
-
-    <nav class="primary-nav">
-      <a class="today-link" href="/today">Today</a>
-      <a class="active" href="/">Home</a>
-      <a href="/sales">Sales</a>
-      <a href="/catalog">Products</a>
-      <a href="/inventory">Inventory</a>
-      <a href="/finance">Finance</a>
-    </nav>
-
+    <nav class="primary-nav"><a class="today-link" href="/today">Today</a><a class="active" href="/">Home</a><a href="/sales">Sales</a><a href="/catalog">Products</a><a href="/inventory">Inventory</a><a href="/finance">Finance</a></nav>
     <main class="home-main">
       <header class="page-header">
-        <div>
-          <h1 class="page-header__title">Home</h1>
-          <p class="page-header__description">Business state, operating decisions and the drivers behind them.</p>
-        </div>
-        <div class="page-header__aside">
-          <div class="kpi-rail" aria-label="Business summary">
-            <div class="kpi" title="Reconciled Amazon Sales &amp; Traffic ordered-product sales. Net sales ex IVA; settlement proceeds are excluded.">
-              <strong class="kpi__value" id="sales28">$—</strong>
-              <span class="kpi__label">28D net sales</span>
-              <small class="kpi__note" id="sales28Note">ex IVA · Sales &amp; Traffic</small>
-            </div>
-            <div class="kpi">
-              <strong class="kpi__value" id="momentum">—</strong>
-              <span class="kpi__label">Momentum</span>
-              <small class="kpi__note" id="momentumNote">vs prior 28</small>
-            </div>
-            <div class="kpi" title="Live shopper spend from Amazon Orders. Includes IVA; settlement proceeds are not used.">
-              <strong class="kpi__value" id="todaySales">$—</strong>
-              <span class="kpi__label">Shopper spend</span>
-              <small class="kpi__note" id="todayNote">today · incl. IVA</small>
-            </div>
-            <div class="kpi">
-              <strong class="kpi__value" id="decisionCount">—</strong>
-              <span class="kpi__label">Attention</span>
-              <small class="kpi__note" id="decisionNote">operating decisions</small>
-            </div>
-          </div>
-        </div>
+        <div><h1 class="page-header__title">Home</h1><p class="page-header__description">Business state, operating decisions and the drivers behind them.</p></div>
+        <div class="page-header__aside"><div class="kpi-rail" aria-label="Business summary">
+          <div class="kpi" title="Reconciled Amazon Sales &amp; Traffic shopper spend including IVA. Net revenue ex IVA is shown in Finance."><strong class="kpi__value" id="sales28">$—</strong><span class="kpi__label">28D shopper spend</span><small class="kpi__note" id="sales28Note">incl. IVA · Sales &amp; Traffic</small></div>
+          <div class="kpi"><strong class="kpi__value" id="momentum">—</strong><span class="kpi__label">Momentum</span><small class="kpi__note" id="momentumNote">vs prior 28</small></div>
+          <div class="kpi" title="Live shopper spend from Amazon Orders. Includes IVA; settlement proceeds are not used."><strong class="kpi__value" id="todaySales">$—</strong><span class="kpi__label">Shopper spend</span><small class="kpi__note" id="todayNote">today · incl. IVA</small></div>
+          <div class="kpi"><strong class="kpi__value" id="decisionCount">—</strong><span class="kpi__label">Attention</span><small class="kpi__note" id="decisionNote">operating decisions</small></div>
+        </div></div>
       </header>
-
-      <section class="state-read" aria-label="Business state">
-        <div>
-          <div class="state-read__eyebrow">Business state</div>
-          <h2 class="state-read__title" id="stateHeadline">Reading the business…</h2>
-          <p class="state-read__copy" id="stateCopy">Comparing the last four weeks with the prior four and checking operating exceptions.</p>
-        </div>
-      </section>
-
+      <section class="state-read" aria-label="Business state"><div><div class="state-read__eyebrow">Business state</div><h2 class="state-read__title" id="stateHeadline">Reading the business…</h2><p class="state-read__copy" id="stateCopy">Comparing the last four weeks with the prior four and checking operating exceptions.</p></div></section>
       <section class="home-working">
-        <div class="panel rhythm-panel">
-          <div class="panel__header">
-            <div>
-              <h2 class="panel__title">Business rhythm</h2>
-              <div class="panel__description">13 weeks · net sales ex IVA · reconciled Amazon Sales &amp; Traffic · four-week signal · current week partial</div>
-            </div>
-            <a class="section-header__action" href="/sales">Open Sales →</a>
-          </div>
-          <div class="panel__body"><svg class="spark" id="spark" viewBox="0 0 960 320"></svg></div>
-        </div>
-
-        <aside class="panel attention-panel" aria-label="Attention and decisions">
-          <div class="panel__body">
-            <div class="attention-head">
-              <div>
-                <div class="attention-kicker">Attention</div>
-                <div class="attention-title" id="attentionTitle">Checking for decisions…</div>
-              </div>
-              <div class="attention-count" id="attentionCount">—</div>
-            </div>
-            <div class="attention-copy" id="attentionCopy">Inventory and operating exceptions that need a decision appear here.</div>
-            <div id="attention"></div>
-          </div>
-        </aside>
+        <div class="panel rhythm-panel"><div class="panel__header"><div><h2 class="panel__title">Business rhythm</h2><div class="panel__description">13 weeks · shopper spend incl. IVA · reconciled Amazon Sales &amp; Traffic · four-week signal · current week partial</div></div><a class="section-header__action" href="/sales">Open Sales →</a></div><div class="panel__body"><svg class="spark" id="spark" viewBox="0 0 960 320"></svg></div></div>
+        <aside class="panel attention-panel" aria-label="Attention and decisions"><div class="panel__body"><div class="attention-head"><div><div class="attention-kicker">Attention</div><div class="attention-title" id="attentionTitle">Checking for decisions…</div></div><div class="attention-count" id="attentionCount">—</div></div><div class="attention-copy" id="attentionCopy">Inventory and operating exceptions that need a decision appear here.</div><div id="attention"></div></div></aside>
       </section>
-
-      <section class="page-section drivers">
-        <div class="section-header">
-          <div>
-            <div class="driver-kicker">Drivers</div>
-            <h2 class="section-header__title">What is driving the change</h2>
-          </div>
-          <a class="section-header__action" href="/catalog">Open Products →</a>
-        </div>
-        <div class="drivers-grid" id="movers">
-          <div class="empty"><strong>Reading product momentum</strong>One moment.</div>
-        </div>
-      </section>
+      <section class="page-section drivers"><div class="section-header"><div><div class="driver-kicker">Drivers</div><h2 class="section-header__title">What is driving the change</h2></div><a class="section-header__action" href="/catalog">Open Products →</a></div><div class="drivers-grid" id="movers"><div class="empty"><strong>Reading product momentum</strong>One moment.</div></div></section>
     </main>
-
-    <footer class="footer home-footer">
-      <span>MXN · historical/product sales = net sales ex IVA · Today = shopper spend incl. IVA</span>
-      <span>Finance shows net sales ex IVA + IVA withheld + gross shopper spend · Dirty Pawz Press Analytics</span>
-    </footer>
+    <footer class="footer home-footer"><span>MXN · commercial sales = shopper spend incl. IVA</span><span>Net sales ex IVA and the IVA bridge live in Finance · Dirty Pawz Press Analytics</span></footer>
   </div>
-
-  <script src="/assets/vendor/d3.v7.min.js"></script>
-  <script src="/assets/chart-system.js"></script>
-  <script type="module" src="/assets/home.js"></script>
-  <script src="/assets/metric-basis-ui.js"></script>
+  <script src="/assets/vendor/d3.v7.min.js"></script><script src="/assets/chart-system.js"></script><script type="module" src="/assets/home.js"></script><script src="/assets/metric-basis-ui.js"></script>
 </body>
 </html>
