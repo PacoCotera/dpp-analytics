@@ -94,14 +94,17 @@ def ingest_orders(client: SpApiClient | None = None) -> dict[str, int]:
     if after >= safe_before:
         return {"records_read": 0, "records_written": 0}
 
+    # Orders v2026 defines includedData as one array query parameter. Swagger 2
+    # array query parameters use CSV serialization by default. Sending the same
+    # key repeatedly caused Amazon to return PROCEEDS while omitting FULFILLMENT,
+    # leaving every stored fulfillment_status blank even though Seller Central
+    # had current Pending orders.
     base_params: list[tuple[str, Any]] = [
         ("lastUpdatedAfter", _iso(after)),
         ("lastUpdatedBefore", _iso(safe_before)),
         ("marketplaceIds", settings.marketplace_id),
         ("maxResultsPerPage", 100),
-        ("includedData", "PROCEEDS"),
-        ("includedData", "FULFILLMENT"),
-        ("includedData", "PROMOTION"),
+        ("includedData", "PROCEEDS,FULFILLMENT,PROMOTION"),
     ]
 
     totals = {"records_read": 0, "records_written": 0}
