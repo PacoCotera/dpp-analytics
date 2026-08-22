@@ -10,6 +10,7 @@ This directory is the maintainer-facing map of the application. The goal is to m
 | I need to change or debug a page. Where do I start? | [`maintenance.md`](maintenance.md) |
 | Which frontend layer owns navigation, layout, charts or page-specific behavior? | [`frontend-architecture.md`](frontend-architecture.md) |
 | Which source is authoritative for Today, Sales, Finance, Ads, Catalog or Inventory? | [`data-model.md`](data-model.md) |
+| What exactly does a money number mean: shopper spend, Amazon sales, Finance net sales, payout or Ads attribution? | [`metric-basis.md`](metric-basis.md) |
 | How does production deploy and where do I inspect its health? | [`control-plane.md`](control-plane.md) |
 
 ## Documentation contract
@@ -19,6 +20,7 @@ Documentation is part of the application architecture. Update it in the same PR 
 - a served route or API endpoint;
 - the owning Python, HTML, CSS or JavaScript file for a workspace;
 - a source-of-truth or reconciliation rule;
+- a monetary basis, tax treatment or sales fallback;
 - a Finance close/accounting rule;
 - an ingestion source or schedule;
 - shared frontend ownership or framework choice;
@@ -31,8 +33,10 @@ Do not use documentation as a second implementation. Keep it focused on boundari
 
 - PostgreSQL is the system of record.
 - The worker ingests/reconciles data; the board reads and presents it.
-- Historical sales use reconciled Data Kiosk-backed daily data; Today is intentionally provisional.
-- Finance separates Amazon-side closure, seller COGS readiness and immutable management close.
+- Today/order evidence uses gross shopper spend from Orders; settlement/proceeds values are not operating-sales fallbacks.
+- Historical sales use reconciled Data Kiosk-backed Sales & Traffic data.
+- Finance separates net sales ex IVA, IVA, gross customer spend, Amazon-side closure, seller COGS readiness and immutable management close.
+- Ads-attributed sales are attribution, not incrementality; TACOS uses independently reconciled seller sales.
 - The browser does not redefine accounting, attribution or inventory-action semantics.
 - Each frontend workspace has one clear composition/style/runtime owner.
 - Shared navigation, layout, charts and utilities are centralized.
