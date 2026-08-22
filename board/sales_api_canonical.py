@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from geo_reference import postal_dictionary
 from sales_api_legacy import sales_payload as _legacy_sales_payload
 
 
@@ -15,9 +16,6 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
         market = cur.fetchone() or {}
 
         if cutoff:
-            # Recompute every historical headline from reconciled Sales & Traffic.
-            # The legacy API is retained only as a compatibility transport and may
-            # include order-derived gap rows in mart.business_daily.
             cur.execute(
                 """
                 WITH c AS (
@@ -109,6 +107,12 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
             (marketplace,),
         )
         payload["orders"] = list(cur.fetchall())
+
+    geography = payload.setdefault("geography", {})
+    geo_rows = list(geography.get("daily") or [])
+    codes = {str(row.get("postal_code") or "").strip().zfill(5) for row in geo_rows if row.get("postal_code")}
+    geography["postal_reference"] = postal_dictionary(codes)
+    geography["reference_source"] = "SEPOMEX textual catalog · open-mexico db_postal v1.2.0"
 
     payload["metric_basis"] = {
         "currency": market.get("currency") or "MXN",
