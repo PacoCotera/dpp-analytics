@@ -40,7 +40,7 @@ function pct(value) {
 function title(value) {
   return String(value || '')
     .replace(/_/g, ' ')
-    .replace(/\b\w/g, character => character.toUpperCase());
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function stateClass(value) {
@@ -49,7 +49,7 @@ function stateClass(value) {
 
 function members(family) {
   return (family.members || []).filter(
-    item => item.product_role !== 'STRUCTURAL_PARENT' && item.product_role !== 'SELLER_SKU_ALIAS',
+    (item) => item.product_role !== 'STRUCTURAL_PARENT' && item.product_role !== 'SELLER_SKU_ALIAS',
   );
 }
 
@@ -58,7 +58,7 @@ function stockTotal(row) {
 }
 
 function compactFamilyName(family) {
-  if (family.name && family.members?.some(item => item.family_name)) return family.name;
+  if (family.name && family.members?.some((item) => item.family_name)) return family.name;
 
   const parentName = String(family.parent?.product || '').trim();
   if (parentName) {
@@ -71,13 +71,15 @@ function compactFamilyName(family) {
 
 function dimensionSummary(family) {
   const dimensions = family.variation_dimensions || {};
-  const parts = Object.entries(dimensions).map(([key, values]) => `${title(key)}: ${(values || []).join(' / ')}`);
+  const parts = Object.entries(dimensions).map(
+    ([key, values]) => `${title(key)}: ${(values || []).join(' / ')}`,
+  );
   return parts.length ? ` · ${parts.join(' · ')}` : '';
 }
 
 function minCover(family) {
   const values = members(family)
-    .map(item => Number(item.days_cover_with_inbound ?? item.days_cover_on_hand))
+    .map((item) => Number(item.days_cover_with_inbound ?? item.days_cover_on_hand))
     .filter(Number.isFinite);
   return values.length ? Math.min(...values) : null;
 }
@@ -96,7 +98,8 @@ function economicsFamily(family) {
   const units = Number(family.units_t28 || 0);
   const knownUnits = Number(family.cogs_known_units || 0);
 
-  if (!cogs && knownUnits === 0) return '<strong>—</strong><span data-mobile-label="COGS">cost not set</span>';
+  if (!cogs && knownUnits === 0)
+    return '<strong>—</strong><span data-mobile-label="COGS">cost not set</span>';
   return `<strong>${money(cogs)}</strong><span data-mobile-label="COGS">28D COGS${knownUnits < units ? ' · partial' : ''}</span>`;
 }
 
@@ -105,49 +108,51 @@ function economicsChild(product) {
     return '<strong>—</strong><span data-mobile-label="COGS">cost not set</span>';
   }
 
-  const detail = product.estimated_cogs_t28 !== null && product.estimated_cogs_t28 !== undefined
-    ? `${money(product.estimated_cogs_t28)} 28D`
-    : 'standard cost';
+  const detail =
+    product.estimated_cogs_t28 !== null && product.estimated_cogs_t28 !== undefined
+      ? `${money(product.estimated_cogs_t28)} 28D`
+      : 'standard cost';
   return `<strong>${money(product.unit_cogs)}/u</strong><span data-mobile-label="COGS">${detail}</span>`;
 }
 
 function familyMatches(family) {
   const query = $('search').value.trim().toLowerCase();
   const familyMembers = members(family);
-  const haystack = `${compactFamilyName(family)} ${family.family_asin || ''} ${JSON.stringify(family.variation_dimensions || {})} ${familyMembers
-    .map(
-      item =>
-        `${item.product || ''} ${item.sku || ''} ${item.asin || ''} ${JSON.stringify(item.variation_attributes || {})}`,
-    )
-    .join(' ')}`.toLowerCase();
+  const haystack =
+    `${compactFamilyName(family)} ${family.family_asin || ''} ${JSON.stringify(family.variation_dimensions || {})} ${familyMembers
+      .map(
+        (item) =>
+          `${item.product || ''} ${item.sku || ''} ${item.asin || ''} ${JSON.stringify(item.variation_attributes || {})}`,
+      )
+      .join(' ')}`.toLowerCase();
 
   if (query && !haystack.includes(query)) return false;
   if (filter === 'attention' && !family.needs_attention) return false;
   if (
     filter === 'funnel' &&
     !FUNNEL_STATES.has(family.primary_state) &&
-    !familyMembers.some(item => FUNNEL_STATES.has(item.commercial_state))
+    !familyMembers.some((item) => FUNNEL_STATES.has(item.commercial_state))
   ) {
     return false;
   }
   if (
     filter === 'stock' &&
     family.primary_state !== 'INVENTORY_RISK' &&
-    !familyMembers.some(item => item.commercial_state === 'INVENTORY_RISK')
+    !familyMembers.some((item) => item.commercial_state === 'INVENTORY_RISK')
   ) {
     return false;
   }
   if (
     filter === 'dormant' &&
     !DORMANT_STATES.has(family.primary_state) &&
-    !familyMembers.some(item => DORMANT_STATES.has(item.commercial_state))
+    !familyMembers.some((item) => DORMANT_STATES.has(item.commercial_state))
   ) {
     return false;
   }
   if (
     filter === 'inactive' &&
     family.primary_state !== 'INACTIVE' &&
-    !familyMembers.some(item => item.commercial_state === 'INACTIVE')
+    !familyMembers.some((item) => item.commercial_state === 'INACTIVE')
   ) {
     return false;
   }
@@ -168,7 +173,10 @@ function familySorted() {
   const sort = $('sort').value;
   return DATA.families.filter(familyMatches).sort((a, b) => {
     if (sort === 'attention') {
-      return Number(b.needs_attention) - Number(a.needs_attention) || Number(b.sales_t28 || 0) - Number(a.sales_t28 || 0);
+      return (
+        Number(b.needs_attention) - Number(a.needs_attention) ||
+        Number(b.sales_t28 || 0) - Number(a.sales_t28 || 0)
+      );
     }
     return compareRows(sort, a, b, compactFamilyName(a), compactFamilyName(b));
   });
@@ -240,13 +248,16 @@ function comparativeRead(row) {
   const total = Number(DATA.summary?.sales_t28 || 0);
   const overall = Number(DATA.summary?.conversion_t28_pct || 0);
   const share = total > 0 ? (100 * Number(row.sales_t28 || 0)) / total : 0;
-  const conversion = row.conversion_t28_pct === null || row.conversion_t28_pct === undefined
-    ? null
-    : Number(row.conversion_t28_pct);
+  const conversion =
+    row.conversion_t28_pct === null || row.conversion_t28_pct === undefined
+      ? null
+      : Number(row.conversion_t28_pct);
   let headline = 'Portfolio comparison';
 
-  if (conversion !== null && overall > 0 && conversion >= overall * 1.2) headline = 'Converts above portfolio';
-  else if (conversion !== null && overall > 0 && conversion <= overall * 0.8) headline = 'Converts below portfolio';
+  if (conversion !== null && overall > 0 && conversion >= overall * 1.2)
+    headline = 'Converts above portfolio';
+  else if (conversion !== null && overall > 0 && conversion <= overall * 0.8)
+    headline = 'Converts below portfolio';
   else if (conversion !== null) headline = 'Near portfolio conversion';
 
   return [
@@ -276,16 +287,18 @@ function skuRows() {
   const query = $('search').value.trim().toLowerCase();
   const sort = $('sort').value;
   const rows = (DATA.products || [])
-    .filter(product => SELLABLE_ROLES.has(product.product_role))
+    .filter((product) => SELLABLE_ROLES.has(product.product_role))
     .filter(
-      product =>
+      (product) =>
         !query ||
         `${product.product || ''} ${product.sku || ''} ${product.asin || ''} ${JSON.stringify(product.variation_attributes || {})}`
           .toLowerCase()
           .includes(query),
     );
 
-  rows.sort((a, b) => compareRows(sort === 'attention' ? 'sales' : sort, a, b, a.product || a.sku, b.product || b.sku));
+  rows.sort((a, b) =>
+    compareRows(sort === 'attention' ? 'sales' : sort, a, b, a.product || a.sku, b.product || b.sku),
+  );
   return rows;
 }
 
@@ -308,36 +321,52 @@ function skuAnalysisRow(product) {
 
 function renderModes() {
   const dimensions = Object.keys(DATA.dimensions || {});
-  const buttons = [['family', 'Family'], ...dimensions.map(dimension => [`dimension:${dimension}`, title(dimension)])];
+  const buttons = [
+    ['family', 'Family'],
+    ...dimensions.map((dimension) => [`dimension:${dimension}`, title(dimension)]),
+  ];
 
   if ((DATA.dimension_pairs || []).length) {
-    const pairDimensions = [...new Set(DATA.dimension_pairs.flatMap(item => item.dimensions || []))];
-    buttons.push(['pair', pairDimensions.length === 2 ? pairDimensions.map(title).join(' × ') : 'Combinations']);
+    const pairDimensions = [...new Set(DATA.dimension_pairs.flatMap((item) => item.dimensions || []))];
+    buttons.push([
+      'pair',
+      pairDimensions.length === 2 ? pairDimensions.map(title).join(' × ') : 'Combinations',
+    ]);
   }
   buttons.push(['sku', 'SKU']);
 
   $('analysisModes').innerHTML = buttons
-    .map(([key, label]) => `<button class="mode ${key === mode ? 'active' : ''}" data-mode="${esc(key)}">${esc(label)}</button>`)
+    .map(
+      ([key, label]) =>
+        `<button class="mode ${key === mode ? 'active' : ''}" data-mode="${esc(key)}">${esc(label)}</button>`,
+    )
     .join('');
 
-  $('analysisModes').querySelectorAll('.mode').forEach(button => {
-    button.addEventListener('click', () => {
-      mode = button.dataset.mode;
-      filter = 'all';
-      document.querySelectorAll('.filter').forEach(item => item.classList.toggle('active', item.dataset.filter === 'all'));
-      renderModes();
-      renderPortfolio();
+  $('analysisModes')
+    .querySelectorAll('.mode')
+    .forEach((button) => {
+      button.addEventListener('click', () => {
+        mode = button.dataset.mode;
+        filter = 'all';
+        document
+          .querySelectorAll('.filter')
+          .forEach((item) => item.classList.toggle('active', item.dataset.filter === 'all'));
+        renderModes();
+        renderPortfolio();
+      });
     });
-  });
 }
 
 function setHead(first = 'Family / product') {
-  $('portfolioHead').innerHTML = `<span>${esc(first)}</span><span>Commercial read</span><span>28D</span><span>Traffic → CVR</span><span>Units → stock</span><span>Economics</span><span></span>`;
+  $('portfolioHead').innerHTML =
+    `<span>${esc(first)}</span><span>Commercial read</span><span>28D</span><span>Traffic → CVR</span><span>Units → stock</span><span>Economics</span><span></span>`;
 }
 
 function sortAnalysisRows(rows) {
   const sort = $('sort').value;
-  return [...rows].sort((a, b) => compareRows(sort === 'attention' ? 'sales' : sort, a, b, a.label || a.value, b.label || b.value));
+  return [...rows].sort((a, b) =>
+    compareRows(sort === 'attention' ? 'sales' : sort, a, b, a.label || a.value, b.label || b.value),
+  );
 }
 
 function renderPortfolio() {
@@ -347,7 +376,8 @@ function renderPortfolio() {
   if (mode === 'family') {
     setHead();
     $('modeSource').textContent = 'Family = child roll-up';
-    $('portfolioFootMain').innerHTML = '<b>Family metrics</b> roll up sellable children. Structural parents are containers, never selling/converting offers.';
+    $('portfolioFootMain').innerHTML =
+      '<b>Family metrics</b> roll up sellable children. Structural parents are containers, never selling/converting offers.';
     const rows = familySorted();
     $('portfolio').innerHTML = rows.length
       ? rows.map(familyRow).join('')
@@ -358,7 +388,8 @@ function renderPortfolio() {
   if (mode === 'sku') {
     setHead('Sellable SKU');
     $('modeSource').textContent = 'SKU = purchasable combination';
-    $('portfolioFootMain').innerHTML = '<b>SKU metrics</b> are child/standalone offer facts. Parent containers and operational aliases are excluded.';
+    $('portfolioFootMain').innerHTML =
+      '<b>SKU metrics</b> are child/standalone offer facts. Parent containers and operational aliases are excluded.';
     const rows = skuRows();
     $('portfolio').innerHTML = rows.length
       ? rows.map(skuAnalysisRow).join('')
@@ -380,21 +411,22 @@ function renderPortfolio() {
     $('modeSource').textContent = `${title(dimension)} = cross-family roll-up`;
   }
 
-  if (query) rows = rows.filter(row => JSON.stringify(row).toLowerCase().includes(query));
+  if (query) rows = rows.filter((row) => JSON.stringify(row).toLowerCase().includes(query));
   rows = sortAnalysisRows(rows);
 
   setHead(label);
-  $('portfolioFootMain').innerHTML = '<b>Dimensional metrics</b> recompute conversion from total units ÷ total sessions. Differences are descriptive signals, not proof that the variation attribute caused performance.';
+  $('portfolioFootMain').innerHTML =
+    '<b>Dimensional metrics</b> recompute conversion from total units ÷ total sessions. Differences are descriptive signals, not proof that the variation attribute caused performance.';
   $('portfolio').innerHTML = rows.length
-    ? rows.map(row => dimensionRow(row, mode === 'pair' ? 'pair' : 'dimension')).join('')
+    ? rows.map((row) => dimensionRow(row, mode === 'pair' ? 'pair' : 'dimension')).join('')
     : '<div class="empty">No variation data is available for this analysis.</div>';
 }
 
 function renderAttention() {
-  const attention = (DATA.families || []).filter(family => family.needs_attention).slice(0, 3);
+  const attention = (DATA.families || []).filter((family) => family.needs_attention).slice(0, 3);
   $('attentionList').innerHTML = attention.length
     ? attention
-        .map(family => {
+        .map((family) => {
           const state = family.primary_state || 'WATCH';
           const exceptions = Number(family.child_exception_count || 0);
           return `<div class="attention-item ${BAD_STATES.has(state) ? 'bad' : 'warn'}">
@@ -409,17 +441,20 @@ function renderAttention() {
 function render(data) {
   DATA = data;
   const summary = data.summary || {};
-  const familyAttention = (data.families || []).filter(family => family.needs_attention).length;
+  const familyAttention = (data.families || []).filter((family) => family.needs_attention).length;
 
   $('clock').textContent = data.local_time || '--:--';
   $('familyCount').textContent = num(summary.families);
   $('activeCount').textContent = num(summary.active_sellable);
   $('sellingCount').textContent = num(summary.selling_now);
   $('attentionCount').textContent = num(familyAttention);
-  $('portfolioRead').textContent = `${money(summary.sales_t28)} from ${num(summary.units_t28)} units on ${num(summary.sessions_t28)} sessions · ${pct(summary.conversion_t28_pct)} conversion`;
-  $('portfolioBasis').textContent = `28D through ${summary.traffic_through_date || 'latest completed day'} · ${summary.sellable_offers || 0} sellable offers across ${summary.families || 0} families · ${summary.amazon_dimension_coverage || 0} offers with Amazon variation metadata`;
+  $('portfolioRead').textContent =
+    `${money(summary.sales_t28)} from ${num(summary.units_t28)} units on ${num(summary.sessions_t28)} sessions · ${pct(summary.conversion_t28_pct)} conversion`;
+  $('portfolioBasis').textContent =
+    `28D through ${summary.traffic_through_date || 'latest completed day'} · ${summary.sellable_offers || 0} sellable offers across ${summary.families || 0} families · ${summary.amazon_dimension_coverage || 0} offers with Amazon variation metadata`;
   $('asof').textContent = `Demand through ${summary.traffic_through_date || '—'}`;
-  $('freshness').textContent = `Data Kiosk through ${summary.traffic_through_date || '—'} · listings ${String(summary.listings_fetched_at || '').slice(0, 10) || '—'} · FBA current`;
+  $('freshness').textContent =
+    `Data Kiosk through ${summary.traffic_through_date || '—'} · listings ${String(summary.listings_fetched_at || '').slice(0, 10) || '—'} · FBA current`;
 
   renderAttention();
   renderModes();
@@ -443,9 +478,9 @@ async function load() {
 function bindInteractions() {
   $('search').addEventListener('input', renderPortfolio);
   $('sort').addEventListener('change', renderPortfolio);
-  document.querySelectorAll('.filter').forEach(button => {
+  document.querySelectorAll('.filter').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('.filter').forEach(item => item.classList.remove('active'));
+      document.querySelectorAll('.filter').forEach((item) => item.classList.remove('active'));
       button.classList.add('active');
       filter = button.dataset.filter;
       renderPortfolio();

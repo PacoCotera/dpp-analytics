@@ -25,9 +25,7 @@ function statusInfo(action) {
 }
 
 function productMarkup(row) {
-  const image = row.image_url
-    ? `<img src="${escapeHtml(row.image_url)}" alt="" loading="lazy">`
-    : '';
+  const image = row.image_url ? `<img src="${escapeHtml(row.image_url)}" alt="" loading="lazy">` : '';
 
   return `${image}<div class="stock-product__copy"><div class="product-sku">${escapeHtml(row.sku)}</div><div class="product-name">${escapeHtml(row.product || row.sku)}</div></div>`;
 }
@@ -40,7 +38,7 @@ function daysCover(row) {
 function filteredRows() {
   const query = byId('search').value.trim().toLowerCase();
 
-  return state.rows.filter(row => {
+  return state.rows.filter((row) => {
     if (query && !`${row.product || ''} ${row.sku || ''}`.toLowerCase().includes(query)) return false;
     if (state.filter === 'attention' && !ATTENTION_ACTIONS.has(row.action)) return false;
     if (state.filter === 'ok' && row.action !== 'OK') return false;
@@ -56,7 +54,7 @@ function renderRows() {
 
   tableBody.innerHTML = rows.length
     ? rows
-        .map(row => {
+        .map((row) => {
           const [status, kind] = statusInfo(row.action);
           return `<tr>
             <td><a class="stock-product" href="/product?sku=${encodeURIComponent(row.sku)}">${productMarkup(row)}</a></td>
@@ -75,7 +73,7 @@ function renderRows() {
   cards.innerHTML = rows.length
     ? rows
         .map(
-          row => `<a class="inv-card" href="/product?sku=${encodeURIComponent(row.sku)}">
+          (row) => `<a class="inv-card" href="/product?sku=${encodeURIComponent(row.sku)}">
             <div class="stock-product">${productMarkup(row)}</div>
             <span class="${actionClass(row.action)}">${normalizeAction(row.action)}</span>
             <div class="inv-card-metrics">
@@ -90,13 +88,15 @@ function renderRows() {
 }
 
 function renderQueue() {
-  const queue = state.rows.filter(row => ATTENTION_ACTIONS.has(row.action));
+  const queue = state.rows.filter((row) => ATTENTION_ACTIONS.has(row.action));
   const queueElement = byId('queue');
 
   queueElement.innerHTML = queue.length
     ? queue
         .map(
-          row => `<a class="action-card ${URGENT_ACTIONS.has(row.action) ? 'urgent' : 'plan'}" href="/product?sku=${encodeURIComponent(row.sku)}">
+          (
+            row,
+          ) => `<a class="action-card ${URGENT_ACTIONS.has(row.action) ? 'urgent' : 'plan'}" href="/product?sku=${encodeURIComponent(row.sku)}">
             <div class="action-top">
               <div>
                 <div class="action-sku">${escapeHtml(row.sku)}</div>
@@ -117,14 +117,17 @@ function renderQueue() {
 function renderBands(bands) {
   byId('bands').innerHTML = bands
     .map(
-      band => `<div class="band"><strong>${integer(band.sku_count)}</strong><span>${escapeHtml(band.band)}</span></div>`,
+      (band) =>
+        `<div class="band"><strong>${integer(band.sku_count)}</strong><span>${escapeHtml(band.band)}</span></div>`,
     )
     .join('');
 }
 
 function render(data) {
   const summary = data.summary || {};
-  const snapshot = String(summary.latest_snapshot || '').slice(0, 16).replace('T', ' ');
+  const snapshot = String(summary.latest_snapshot || '')
+    .slice(0, 16)
+    .replace('T', ' ');
 
   state.rows = data.rows || [];
   setText('clock', data.local_time || '--:--');
@@ -149,9 +152,9 @@ function bindInteractions() {
   byId('howBtn').addEventListener('click', () => byId('how').classList.toggle('show'));
   byId('search').addEventListener('input', renderRows);
 
-  document.querySelectorAll('.filter').forEach(button => {
+  document.querySelectorAll('.filter').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('.filter').forEach(item => item.classList.remove('active'));
+      document.querySelectorAll('.filter').forEach((item) => item.classList.remove('active'));
       button.classList.add('active');
       state.filter = button.dataset.filter;
       renderRows();

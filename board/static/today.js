@@ -82,9 +82,11 @@ function renderDayPicker() {
     </button>`;
   }).join('');
 
-  byId('dayPicker').querySelectorAll('button').forEach(button => {
-    button.addEventListener('click', () => selectDay(button.dataset.date));
-  });
+  byId('dayPicker')
+    .querySelectorAll('button')
+    .forEach((button) => {
+      button.addEventListener('click', () => selectDay(button.dataset.date));
+    });
 }
 
 function selectDay(date) {
@@ -109,9 +111,10 @@ function renderDayRead() {
   if (live && orders < 3) {
     headline = orders === 0 ? 'Too early to call today' : 'Today is still low-signal';
     const expected = Number.isFinite(pace) && pace > -99 && sales > 0 ? sales / (1 + pace / 100) : null;
-    explanation = expected && expected > 0
-      ? `${orders} order${orders === 1 ? '' : 's'} so far. A typical ${day.toLowerCase()} would be around ${money(expected)} in shopper spend by this point, so wait for more volume before judging pace.`
-      : `${orders} order${orders === 1 ? '' : 's'} so far. Wait for more volume before judging today against a typical ${day.toLowerCase()}.`;
+    explanation =
+      expected && expected > 0
+        ? `${orders} order${orders === 1 ? '' : 's'} so far. A typical ${day.toLowerCase()} would be around ${money(expected)} in shopper spend by this point, so wait for more volume before judging pace.`
+        : `${orders} order${orders === 1 ? '' : 's'} so far. Wait for more volume before judging today against a typical ${day.toLowerCase()}.`;
   } else if (pace >= 15) {
     headline = `Ahead of a typical ${day}`;
     explanation = `Shopper spend is ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`;
@@ -161,10 +164,12 @@ function renderBusinessRead() {
     ['WTD', context.sales_week, context.week_delta_pct, 'vs same days prior week'],
   ];
   byId('contextList').innerHTML = rows
-    .map(([label, value, delta, note]) => `<div class="context-row">
+    .map(
+      ([label, value, delta, note]) => `<div class="context-row">
       <div><div class="label">${label}</div><small>${note}</small></div>
       <div class="value"><strong>${money(value)}</strong><span class="${tone(delta)}">${signedPercent0(delta)}</span></div>
-    </div>`)
+    </div>`,
+    )
     .join('');
 }
 
@@ -173,26 +178,28 @@ function periodRows() {
   if (period === '7') return rows.slice(-7);
   if (period === 'mtd') {
     const selected = data.selected_date || rows.at(-1)?.business_date || '';
-    return rows.filter(row => String(row.business_date).slice(0, 7) === String(selected).slice(0, 7));
+    return rows.filter((row) => String(row.business_date).slice(0, 7) === String(selected).slice(0, 7));
   }
   return rows.slice(-30);
 }
 
 function renderRhythmInsight() {
   const all = (data.recent_daily || [])
-    .map(row => ({ ...row, date: parseDate(row.business_date), sales: Number(row.sales || 0) }))
-    .filter(row => row.date);
-  const closed = all.filter(row => !(data.is_live && row.business_date === data.local_today));
+    .map((row) => ({ ...row, date: parseDate(row.business_date), sales: Number(row.sales || 0) }))
+    .filter((row) => row.date);
+  const closed = all.filter((row) => !(data.is_live && row.business_date === data.local_today));
   const last7 = closed.slice(-7);
   const prior7 = closed.slice(-14, -7);
-  const latestAverage = d3.mean(last7, row => row.sales) || 0;
-  const priorAverage = d3.mean(prior7, row => row.sales) || 0;
+  const latestAverage = d3.mean(last7, (row) => row.sales) || 0;
+  const priorAverage = d3.mean(prior7, (row) => row.sales) || 0;
   const delta = priorAverage > 0 ? (100 * (latestAverage - priorAverage)) / priorAverage : null;
   const selected = String(data.selected_date || data.local_today);
   const selectedDateObject = parseDate(selected);
   const comparable = closed
-    .filter(row => row.business_date !== selected && row.date.getUTCDay() === selectedDateObject.getUTCDay())
-    .map(row => row.sales);
+    .filter(
+      (row) => row.business_date !== selected && row.date.getUTCDay() === selectedDateObject.getUTCDay(),
+    )
+    .map((row) => row.sales);
   const typical = median(comparable);
   let text;
 
@@ -201,20 +208,21 @@ function renderRhythmInsight() {
   } else {
     text = `<strong>Recent shopper spend is fairly steady.</strong> The latest 7 closed days average ${money(latestAverage)}${Number.isFinite(delta) ? `, ${signedPercent0(delta)} versus the prior 7` : ''}.`;
   }
-  if (typical != null) text += ` A typical recent ${weekday(selected)} closed day is about ${money(typical)}.`;
+  if (typical != null)
+    text += ` A typical recent ${weekday(selected)} closed day is about ${money(typical)}.`;
   byId('rhythmInsight').innerHTML = text;
 }
 
 function drawChart() {
   const rows = periodRows()
-    .map(row => ({
+    .map((row) => ({
       ...row,
       date: parseDate(row.business_date),
       sales: Number(row.sales || 0),
       orders: Number(row.orders || 0),
       units: Number(row.units || 0),
     }))
-    .filter(row => row.date);
+    .filter((row) => row.date);
   const host = byId('rhythm').parentElement;
   const svg = d3.select('#rhythm');
 
@@ -235,33 +243,38 @@ function drawChart() {
   svg.attr('viewBox', `0 0 ${width} ${height}`);
 
   const group = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-  const x = d3.scaleBand()
-    .domain(rows.map(row => row.business_date))
+  const x = d3
+    .scaleBand()
+    .domain(rows.map((row) => row.business_date))
     .range([0, innerWidth])
     .padding(rows.length <= 8 ? 0.18 : 0.24);
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(rows, row => row.sales) || 1])
+  const y = d3
+    .scaleLinear()
+    .domain([0, d3.max(rows, (row) => row.sales) || 1])
     .nice(4)
     .range([innerHeight, 0]);
 
-  group.append('g')
+  group
+    .append('g')
     .attr('class', 'dpp-grid')
     .call(d3.axisLeft(y).ticks(4).tickSize(-innerWidth).tickFormat(''));
-  group.append('g')
+  group
+    .append('g')
     .attr('class', 'dpp-axis')
     .call(d3.axisLeft(y).ticks(4).tickSize(0).tickPadding(7).tickFormat(shortMoney))
-    .call(axis => axis.select('.domain').remove());
+    .call((axis) => axis.select('.domain').remove());
 
-  const bars = group.selectAll('rect')
+  const bars = group
+    .selectAll('rect')
     .data(rows)
     .join('rect')
     .attr('class', 'dpp-bar')
-    .attr('x', row => x(row.business_date))
+    .attr('x', (row) => x(row.business_date))
     .attr('width', x.bandwidth())
-    .attr('y', row => y(row.sales))
-    .attr('height', row => Math.max(1, innerHeight - y(row.sales)))
+    .attr('y', (row) => y(row.sales))
+    .attr('height', (row) => Math.max(1, innerHeight - y(row.sales)))
     .attr('rx', Math.min(4, x.bandwidth() / 4))
-    .attr('fill', row => {
+    .attr('fill', (row) => {
       const day = row.date.getUTCDay();
       if (data.is_live && row.business_date === data.local_today) return '#e58b1f';
       return day === 0 || day === 6 ? '#d8c09b' : '#b78b4d';
@@ -273,28 +286,47 @@ function drawChart() {
     const previous = rows[index - 1];
     const xx = x(row.business_date) - (x.step() - x.bandwidth()) / 2;
     if (row.date.getUTCMonth() !== previous.date.getUTCMonth()) {
-      dividers.append('line').attr('x1', xx).attr('x2', xx).attr('y1', 0).attr('y2', innerHeight).attr('stroke', '#e58b1f').attr('stroke-width', 1.4).attr('opacity', 0.82);
+      dividers
+        .append('line')
+        .attr('x1', xx)
+        .attr('x2', xx)
+        .attr('y1', 0)
+        .attr('y2', innerHeight)
+        .attr('stroke', '#e58b1f')
+        .attr('stroke-width', 1.4)
+        .attr('opacity', 0.82);
     } else if (row.date.getUTCDay() === 1) {
-      dividers.append('line').attr('x1', xx).attr('x2', xx).attr('y1', 0).attr('y2', innerHeight).attr('stroke', '#c9c0b4').attr('opacity', 0.48);
+      dividers
+        .append('line')
+        .attr('x1', xx)
+        .attr('x2', xx)
+        .attr('y1', 0)
+        .attr('y2', innerHeight)
+        .attr('stroke', '#c9c0b4')
+        .attr('opacity', 0.48);
     }
   });
 
   const targetTicks = rows.length <= 8 ? rows.length : width < 520 ? 4 : width < 850 ? 5 : 7;
   const tickStep = Math.max(1, Math.ceil(rows.length / targetTicks));
   const ticks = rows
-    .filter((row, index) => rows.length <= 8 || index === 0 || index === rows.length - 1 || index % tickStep === 0)
-    .map(row => row.business_date);
-  group.append('g')
+    .filter(
+      (row, index) => rows.length <= 8 || index === 0 || index === rows.length - 1 || index % tickStep === 0,
+    )
+    .map((row) => row.business_date);
+  group
+    .append('g')
     .attr('class', 'dpp-axis')
     .attr('transform', `translate(0,${innerHeight})`)
     .call(
-      d3.axisBottom(x)
+      d3
+        .axisBottom(x)
         .tickValues(ticks)
         .tickSize(0)
         .tickPadding(8)
-        .tickFormat(key => d3.utcFormat(rows.length <= 8 ? '%a' : '%-d')(parseDate(key))),
+        .tickFormat((key) => d3.utcFormat(rows.length <= 8 ? '%a' : '%-d')(parseDate(key))),
     )
-    .call(axis => axis.select('.domain').attr('stroke', '#cfc5b7'));
+    .call((axis) => axis.select('.domain').attr('stroke', '#cfc5b7'));
 
   let tooltip = host.querySelector('.dpp-chart-tooltip');
   if (!tooltip) {
@@ -315,19 +347,22 @@ function drawChart() {
     })
     .on('pointerleave', () => tooltip.classList.remove('show'));
 
-  const totalSales = d3.sum(rows, row => row.sales);
-  const closed = rows.filter(row => !(data.is_live && row.business_date === data.local_today));
-  const average = d3.mean(closed, row => row.sales) || 0;
-  const best = d3.max(closed, row => row.sales) || 0;
-  byId('rhythmRail').innerHTML = `<div class="rhythm-kpi"><div class="label">Shopper spend</div><strong>${money(totalSales)}</strong><small>selected window · incl. IVA</small></div><div class="rhythm-kpi"><div class="label">Closed-day pace</div><strong>${money(average)}</strong><small>average shopper spend</small></div><div class="rhythm-kpi"><div class="label">Best day</div><strong>${money(best)}</strong><small>inside this window</small></div>`;
-  byId('rhythmSub').textContent = period === 'mtd'
-    ? `Daily shopper spend · month through ${data.is_live ? 'today' : d3.utcFormat('%b %-d')(parseDate(data.selected_date))}`
-    : `Daily shopper spend · ${rows.length} days`;
+  const totalSales = d3.sum(rows, (row) => row.sales);
+  const closed = rows.filter((row) => !(data.is_live && row.business_date === data.local_today));
+  const average = d3.mean(closed, (row) => row.sales) || 0;
+  const best = d3.max(closed, (row) => row.sales) || 0;
+  byId('rhythmRail').innerHTML =
+    `<div class="rhythm-kpi"><div class="label">Shopper spend</div><strong>${money(totalSales)}</strong><small>selected window · incl. IVA</small></div><div class="rhythm-kpi"><div class="label">Closed-day pace</div><strong>${money(average)}</strong><small>average shopper spend</small></div><div class="rhythm-kpi"><div class="label">Best day</div><strong>${money(best)}</strong><small>inside this window</small></div>`;
+  byId('rhythmSub').textContent =
+    period === 'mtd'
+      ? `Daily shopper spend · month through ${data.is_live ? 'today' : d3.utcFormat('%b %-d')(parseDate(data.selected_date))}`
+      : `Daily shopper spend · ${rows.length} days`;
 }
 
 function renderLatestOrder(latest, live) {
   if (!latest) {
-    byId('latest').innerHTML = `<div class="empty">${live ? 'Waiting for today’s first order.' : 'No orders recorded for this day.'}</div>`;
+    byId('latest').innerHTML =
+      `<div class="empty">${live ? 'Waiting for today’s first order.' : 'No orders recorded for this day.'}</div>`;
     byId('latestAge').textContent = '';
     return;
   }
@@ -348,10 +383,12 @@ function renderLatestOrder(latest, live) {
 function renderProducts(products, totalSales, live) {
   byId('productsTitle').textContent = live ? 'What is driving today' : 'What drove that day';
   byId('products').innerHTML = products.length
-    ? products.slice(0, 6).map(item => {
-        const image = item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="">` : '';
-        const contribution = totalSales > 0 ? (100 * Number(item.sales || 0)) / totalSales : 0;
-        return `<a class="today-product" href="/product?sku=${encodeURIComponent(item.sku || '')}">
+    ? products
+        .slice(0, 6)
+        .map((item) => {
+          const image = item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="">` : '';
+          const contribution = totalSales > 0 ? (100 * Number(item.sales || 0)) / totalSales : 0;
+          return `<a class="today-product" href="/product?sku=${encodeURIComponent(item.sku || '')}">
           ${image}
           <div>
             <div class="name">${escapeHtml(item.product || item.sku)}</div>
@@ -360,18 +397,24 @@ function renderProducts(products, totalSales, live) {
           </div>
           <div class="value">${money(item.sales)}<span class="share">${contribution.toFixed(0)}% of shopper spend</span></div>
         </a>`;
-      }).join('')
+        })
+        .join('')
     : `<div class="empty">${live ? 'Products will appear as orders arrive.' : 'No product sales recorded for this day.'}</div>`;
 }
 
 function renderOrders(orders, today, live) {
-  byId('orderSummary').textContent = `${integer(today.orders_today)} orders · ${integer(today.units_today)} units · ${money(today.sales_today)} shopper spend incl. IVA`;
+  byId('orderSummary').textContent =
+    `${integer(today.orders_today)} orders · ${integer(today.units_today)} units · ${money(today.sales_today)} shopper spend incl. IVA`;
   byId('orderGrid').innerHTML = orders.length
-    ? orders.map(order => `<div class="today-order">
+    ? orders
+        .map(
+          (order) => `<div class="today-order">
         <strong>${money(order.sales)}</strong>
         <div class="name">${escapeHtml(order.product || order.sku || 'Order')}</div>
         <div class="meta">${escapeHtml(order.local_time || '')}${live ? ` · ${age(order.age_seconds)}` : ''}</div>
-      </div>`).join('')
+      </div>`,
+        )
+        .join('')
     : '<div class="empty">No orders recorded.</div>';
 }
 
@@ -382,7 +425,9 @@ function render(payload) {
   const live = Boolean(payload.is_live);
 
   renderDayPicker();
-  byId('salesLabel').textContent = live ? 'Shopper spend today · incl. IVA' : 'Closed-day shopper spend · incl. IVA';
+  byId('salesLabel').textContent = live
+    ? 'Shopper spend today · incl. IVA'
+    : 'Closed-day shopper spend · incl. IVA';
   byId('sales').textContent = integer(today.sales_today);
   byId('orders').textContent = integer(today.orders_today);
   byId('units').textContent = integer(today.units_today);
@@ -414,9 +459,9 @@ async function load() {
 }
 
 function bindInteractions() {
-  document.querySelectorAll('.period').forEach(button => {
+  document.querySelectorAll('.period').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('.period').forEach(item => item.classList.remove('active'));
+      document.querySelectorAll('.period').forEach((item) => item.classList.remove('active'));
       button.classList.add('active');
       period = button.dataset.period;
       drawChart();
@@ -433,7 +478,7 @@ function bindInteractions() {
   });
 
   if (window.ResizeObserver) {
-    new ResizeObserver(entries => {
+    new ResizeObserver((entries) => {
       const width = Math.round(entries[0]?.contentRect?.width || 0);
       if (data && width && Math.abs(width - lastWidth) > 12) {
         lastWidth = width;

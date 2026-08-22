@@ -566,7 +566,8 @@
 }
 
 .wall-mode body {
-  background: radial-gradient(circle at 78% 0%, rgb(255 170 55 / 18%), transparent 34%), linear-gradient(180deg, #18140f, #0f0e0c);
+  background: radial-gradient(circle at 78% 0%, rgb(255 170 55 / 18%), transparent 34%),
+    linear-gradient(180deg, #18140f, #0f0e0c);
   color: #fff8ed;
 }
 

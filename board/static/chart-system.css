@@ -1,44 +1,245 @@
 /* DPP chart system: shared visual grammar for every commercial dashboard chart. */
-.dpp-chart-host{position:relative}
-.dpp-chart{display:block;width:100%;height:auto;overflow:visible;touch-action:pan-y}
-.dpp-chart-scroll{overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
-.dpp-chart--wide{touch-action:pan-x pan-y}
-.dpp-chart .dpp-grid line{stroke:#ddd5c9;stroke-width:1;shape-rendering:crispEdges}
-.dpp-chart .dpp-grid path{display:none}
-.dpp-chart .dpp-axis path,.dpp-chart .dpp-axis line{stroke:#cfc5b7}
-.dpp-chart .dpp-axis text{fill:#746c62;font:600 11px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.dpp-chart .dpp-zero{stroke:#514b43;stroke-width:1.35;shape-rendering:crispEdges}
-.dpp-chart .dpp-label{fill:#302c27;font:750 11px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.dpp-chart .dpp-value{fill:#302c27;font:800 11px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
-.dpp-chart .dpp-muted{fill:#7b7369;font:650 10px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.dpp-chart .dpp-bar{transition:opacity .16s ease,filter .16s ease;outline:none}
-.dpp-chart .dpp-bar:hover,.dpp-chart .dpp-bar:focus{opacity:1;filter:brightness(.96)}
-.dpp-chart .dpp-line{fill:none;stroke:#26231f;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.dpp-chart .dpp-line-halo{fill:none;stroke:#f8f5ef;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
-.dpp-chart .dpp-dot{fill:#26231f;stroke:#f8f5ef;stroke-width:2}
-.dpp-chart .dpp-connector{stroke:#8e8579;stroke-width:1.25;stroke-dasharray:3 3}
-.dpp-chart .dpp-quadrant-line{stroke:#9f9588;stroke-width:1.2;stroke-dasharray:5 5}.dpp-chart .dpp-bubble{cursor:pointer}
-.dpp-chart .dpp-legend text{fill:#665f56;font:700 10px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-#monthChart line[stroke="#e58b1f"][y1="0"]{stroke-width:3.2!important;opacity:1!important}
-.dpp-chart-tooltip{position:absolute;z-index:8;min-width:150px;max-width:250px;padding:10px 12px;border:1px solid rgba(62,54,45,.18);border-radius:12px;background:rgba(30,28,25,.96);color:#fffaf1;box-shadow:0 12px 30px rgba(28,24,20,.18);font-size:11px;line-height:1.4;pointer-events:none;opacity:0;transform:translate(-50%,-100%) translateY(-10px);transition:opacity .12s ease;white-space:normal}
-.dpp-chart-tooltip.show{opacity:1}
-.dpp-chart-tooltip strong{display:block;margin-bottom:2px;font-size:12px}
-.dpp-chart-tooltip span{display:block;color:#d9d1c6}
-.dpp-chart-tooltip.home-week-tooltip{min-width:176px;max-width:210px;padding:11px 13px 10px}
-.dpp-chart-tooltip.home-week-tooltip strong{margin-bottom:6px;font-size:12.5px}
-.dpp-chart-tooltip.home-week-tooltip .home-tip-row{display:grid;grid-template-columns:42px 1fr;gap:8px;align-items:baseline;line-height:1.34}
-.dpp-chart-tooltip.home-week-tooltip .home-tip-label{color:#aaa198;font-weight:650}
-.dpp-chart-tooltip.home-week-tooltip .home-tip-value{color:#fffaf1;font-weight:790;font-variant-numeric:tabular-nums}
-.dpp-chart-tooltip.home-week-tooltip .home-tip-footer{margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,250,241,.11);color:#d9d1c6;font-size:10.5px;white-space:nowrap}
-.chart-status{display:flex;align-items:center;gap:7px;color:#746c62;font-size:10px;font-weight:750}
-.chart-status:before{content:"";width:7px;height:7px;border-radius:50%;background:#2f7d4f}
-.wall-mode .dpp-chart .dpp-grid line{stroke:#3a3127}.wall-mode .dpp-chart .dpp-axis text,.wall-mode .dpp-chart .dpp-muted{fill:#aa9d8d}.wall-mode .dpp-chart .dpp-axis path{stroke:#4b4035}.wall-mode .dpp-chart-tooltip{background:rgba(255,248,237,.97);color:#1b1712}.wall-mode .dpp-chart-tooltip span{color:#62584d}
-@media(max-width:640px){
-  .dpp-chart .dpp-axis text{font-size:11px}
-  .dpp-chart .dpp-value{font-size:11px}
-  .dpp-chart-scroll .dpp-chart--wide{min-width:720px}
-  .dpp-chart-tooltip{display:none}
+.dpp-chart-host {
+  position: relative;
 }
-@media(prefers-reduced-motion:reduce){
-  .dpp-chart .dpp-bar,.dpp-chart-tooltip{transition:none}
+.dpp-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: pan-y;
+}
+.dpp-chart-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.dpp-chart--wide {
+  touch-action: pan-x pan-y;
+}
+.dpp-chart .dpp-grid line {
+  stroke: #ddd5c9;
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.dpp-chart .dpp-grid path {
+  display: none;
+}
+.dpp-chart .dpp-axis path,
+.dpp-chart .dpp-axis line {
+  stroke: #cfc5b7;
+}
+.dpp-chart .dpp-axis text {
+  fill: #746c62;
+  font:
+    600 11px Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+.dpp-chart .dpp-zero {
+  stroke: #514b43;
+  stroke-width: 1.35;
+  shape-rendering: crispEdges;
+}
+.dpp-chart .dpp-label {
+  fill: #302c27;
+  font:
+    750 11px Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+.dpp-chart .dpp-value {
+  fill: #302c27;
+  font:
+    800 11px Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.dpp-chart .dpp-muted {
+  fill: #7b7369;
+  font:
+    650 10px Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+.dpp-chart .dpp-bar {
+  transition:
+    opacity 0.16s ease,
+    filter 0.16s ease;
+  outline: none;
+}
+.dpp-chart .dpp-bar:hover,
+.dpp-chart .dpp-bar:focus {
+  opacity: 1;
+  filter: brightness(0.96);
+}
+.dpp-chart .dpp-line {
+  fill: none;
+  stroke: #26231f;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dpp-chart .dpp-line-halo {
+  fill: none;
+  stroke: #f8f5ef;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dpp-chart .dpp-dot {
+  fill: #26231f;
+  stroke: #f8f5ef;
+  stroke-width: 2;
+}
+.dpp-chart .dpp-connector {
+  stroke: #8e8579;
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
+}
+.dpp-chart .dpp-quadrant-line {
+  stroke: #9f9588;
+  stroke-width: 1.2;
+  stroke-dasharray: 5 5;
+}
+.dpp-chart .dpp-bubble {
+  cursor: pointer;
+}
+.dpp-chart .dpp-legend text {
+  fill: #665f56;
+  font:
+    700 10px Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+#monthChart line[stroke='#e58b1f'][y1='0'] {
+  stroke-width: 3.2 !important;
+  opacity: 1 !important;
+}
+.dpp-chart-tooltip {
+  position: absolute;
+  z-index: 8;
+  min-width: 150px;
+  max-width: 250px;
+  padding: 10px 12px;
+  border: 1px solid rgba(62, 54, 45, 0.18);
+  border-radius: 12px;
+  background: rgba(30, 28, 25, 0.96);
+  color: #fffaf1;
+  box-shadow: 0 12px 30px rgba(28, 24, 20, 0.18);
+  font-size: 11px;
+  line-height: 1.4;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -100%) translateY(-10px);
+  transition: opacity 0.12s ease;
+  white-space: normal;
+}
+.dpp-chart-tooltip.show {
+  opacity: 1;
+}
+.dpp-chart-tooltip strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 12px;
+}
+.dpp-chart-tooltip span {
+  display: block;
+  color: #d9d1c6;
+}
+.dpp-chart-tooltip.home-week-tooltip {
+  min-width: 176px;
+  max-width: 210px;
+  padding: 11px 13px 10px;
+}
+.dpp-chart-tooltip.home-week-tooltip strong {
+  margin-bottom: 6px;
+  font-size: 12.5px;
+}
+.dpp-chart-tooltip.home-week-tooltip .home-tip-row {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  line-height: 1.34;
+}
+.dpp-chart-tooltip.home-week-tooltip .home-tip-label {
+  color: #aaa198;
+  font-weight: 650;
+}
+.dpp-chart-tooltip.home-week-tooltip .home-tip-value {
+  color: #fffaf1;
+  font-weight: 790;
+  font-variant-numeric: tabular-nums;
+}
+.dpp-chart-tooltip.home-week-tooltip .home-tip-footer {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 250, 241, 0.11);
+  color: #d9d1c6;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.chart-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #746c62;
+  font-size: 10px;
+  font-weight: 750;
+}
+.chart-status:before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2f7d4f;
+}
+.wall-mode .dpp-chart .dpp-grid line {
+  stroke: #3a3127;
+}
+.wall-mode .dpp-chart .dpp-axis text,
+.wall-mode .dpp-chart .dpp-muted {
+  fill: #aa9d8d;
+}
+.wall-mode .dpp-chart .dpp-axis path {
+  stroke: #4b4035;
+}
+.wall-mode .dpp-chart-tooltip {
+  background: rgba(255, 248, 237, 0.97);
+  color: #1b1712;
+}
+.wall-mode .dpp-chart-tooltip span {
+  color: #62584d;
+}
+@media (max-width: 640px) {
+  .dpp-chart .dpp-axis text {
+    font-size: 11px;
+  }
+  .dpp-chart .dpp-value {
+    font-size: 11px;
+  }
+  .dpp-chart-scroll .dpp-chart--wide {
+    min-width: 720px;
+  }
+  .dpp-chart-tooltip {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dpp-chart .dpp-bar,
+  .dpp-chart-tooltip {
+    transition: none;
+  }
 }

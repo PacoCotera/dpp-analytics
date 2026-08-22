@@ -1,17 +1,17 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta name="theme-color" content="#f4f0e8">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f0e8" />
     <title>Dirty Pawz Press · Sales</title>
-    <link rel="stylesheet" href="/assets/theme.css">
-    <link rel="stylesheet" href="/assets/mobile-ux.css">
-    <link rel="stylesheet" href="/assets/design-refine.css">
-    <link rel="stylesheet" href="/assets/nav-shell.css">
-    <link rel="stylesheet" href="/assets/layout-system.css">
-    <link rel="stylesheet" href="/assets/chart-system.css">
-    <link rel="stylesheet" href="/assets/sales.css">
+    <link rel="stylesheet" href="/assets/theme.css" />
+    <link rel="stylesheet" href="/assets/mobile-ux.css" />
+    <link rel="stylesheet" href="/assets/design-refine.css" />
+    <link rel="stylesheet" href="/assets/nav-shell.css" />
+    <link rel="stylesheet" href="/assets/layout-system.css" />
+    <link rel="stylesheet" href="/assets/chart-system.css" />
+    <link rel="stylesheet" href="/assets/sales.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
   <body class="sales-page">
@@ -37,13 +37,19 @@
       </header>
 
       <nav class="subnav tabs" aria-label="Sales views">
-        <button class="subnav__item active" type="button" data-view="overview" aria-selected="true">Overview</button>
-        <button class="subnav__item" type="button" data-view="products" aria-selected="false">Products</button>
+        <button class="subnav__item active" type="button" data-view="overview" aria-selected="true">
+          Overview
+        </button>
+        <button class="subnav__item" type="button" data-view="products" aria-selected="false">
+          Products
+        </button>
         <button class="subnav__item" type="button" data-view="orders" aria-selected="false">Orders</button>
       </nav>
 
       <div class="notice" role="note" aria-label="Sales monetary basis">
-        <strong>Sales page basis:</strong> every sales amount is <strong>shopper spend incl. IVA</strong>. Historical periods use reconciled Amazon Sales &amp; Traffic; Today and order evidence use Amazon Orders. <strong>Net sales ex IVA live in Finance.</strong>
+        <strong>Sales page basis:</strong> every sales amount is <strong>shopper spend incl. IVA</strong>.
+        Historical periods use reconciled Amazon Sales &amp; Traffic; Today and order evidence use Amazon
+        Orders. <strong>Net sales ex IVA live in Finance.</strong>
       </div>
 
       <main id="overview" class="view active">
@@ -53,7 +59,9 @@
               <div class="sales-chart-header">
                 <div>
                   <div class="sales-chart-title" id="salesChartTitle">Monthly shopper spend</div>
-                  <div class="sales-chart-subtitle" id="salesChartSub">12 months · incl. IVA · Amazon Sales &amp; Traffic · current month actual + run rate</div>
+                  <div class="sales-chart-subtitle" id="salesChartSub">
+                    12 months · incl. IVA · Amazon Sales &amp; Traffic · current month actual + run rate
+                  </div>
                 </div>
                 <div class="sales-range" role="group" aria-label="Sales chart time window">
                   <button type="button" data-range="full" aria-pressed="false">FULL</button>
@@ -62,32 +70,53 @@
                   <button type="button" data-range="28d" aria-pressed="false">28D</button>
                 </div>
               </div>
-              <svg class="chart" id="monthChart" viewBox="0 0 960 340" preserveAspectRatio="xMidYMid meet"></svg>
-              <div class="sales-chart-kpi-rail" id="salesChartKpiRail" aria-label="Selected sales period key metrics"></div>
+              <svg
+                class="chart"
+                id="monthChart"
+                viewBox="0 0 960 340"
+                preserveAspectRatio="xMidYMid meet"
+              ></svg>
+              <div
+                class="sales-chart-kpi-rail"
+                id="salesChartKpiRail"
+                aria-label="Selected sales period key metrics"
+              ></div>
             </div>
           </div>
 
           <aside class="sales-state-rail" aria-label="Current sales signals">
-            <section class="sales-signal primary" data-window="mtd" title="Reconciled Amazon Sales & Traffic shopper spend including IVA.">
+            <section
+              class="sales-signal primary"
+              data-window="mtd"
+              title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
+            >
               <div class="sales-signal-label" id="mtdLabel">Month to date · incl. IVA</div>
               <div class="sales-signal-value" id="mtdSales">—</div>
               <div class="sales-volume" id="mtdVolume">—</div>
               <div class="sales-signal-note" id="mtdNote">—</div>
               <div class="sales-run-rate">
                 <div><span>Run rate</span><strong id="salesRunRate">—</strong></div>
-                <small>Directional<br>not a forecast</small>
+                <small>Directional<br />not a forecast</small>
               </div>
             </section>
 
             <section class="sales-momentum-card" aria-label="Recent sales momentum">
               <div class="sales-momentum-title">Shopper-spend momentum · incl. IVA</div>
-              <div class="sales-signal sales-momentum-row" data-window="t7" title="Reconciled Amazon Sales & Traffic shopper spend including IVA.">
+              <div
+                class="sales-signal sales-momentum-row"
+                data-window="t7"
+                title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
+              >
                 <div class="sales-signal-label">7D · incl. IVA</div>
                 <div class="sales-signal-value" id="t7Sales">—</div>
                 <div class="sales-volume" id="t7Volume">—</div>
                 <div class="sales-signal-note" id="t7Note">—</div>
               </div>
-              <div class="sales-signal sales-momentum-row" data-window="t28" title="Reconciled Amazon Sales & Traffic shopper spend including IVA.">
+              <div
+                class="sales-signal sales-momentum-row"
+                data-window="t28"
+                title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
+              >
                 <div class="sales-signal-label">28D · incl. IVA</div>
                 <div class="sales-signal-value" id="t28Sales">—</div>
                 <div class="sales-volume" id="t28Volume">—</div>
@@ -95,7 +124,11 @@
               </div>
             </section>
 
-            <section class="sales-utility-row sales-utility-today" data-window="today" title="Live shopper spend from Amazon Orders. Includes IVA; settlement proceeds are not used.">
+            <section
+              class="sales-utility-row sales-utility-today"
+              data-window="today"
+              title="Live shopper spend from Amazon Orders. Includes IVA; settlement proceeds are not used."
+            >
               <span class="live-label">Shopper spend today · incl. IVA</span>
               <span class="live-sales" id="todaySales">$—</span>
               <span class="live-meta" id="todayMeta">— orders · — units</span>
@@ -103,7 +136,11 @@
               <a href="/today" class="btn">Open Today →</a>
             </section>
 
-            <section class="sales-signal sales-utility-row sales-utility-ytd" data-window="ytd" title="Reconciled Amazon Sales & Traffic shopper spend including IVA.">
+            <section
+              class="sales-signal sales-utility-row sales-utility-ytd"
+              data-window="ytd"
+              title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
+            >
               <div class="sales-signal-label" id="ytdLabel">YTD · incl. IVA</div>
               <div class="sales-signal-value" id="ytdSales">—</div>
               <div class="sales-volume" id="ytdVolume">—</div>
@@ -118,13 +155,28 @@
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Product performance</h2>
-              <div class="section-header__description">Last 28 days vs prior 28 · reconciled Amazon Sales &amp; Traffic · shopper spend incl. IVA.</div>
+              <div class="section-header__description">
+                Last 28 days vs prior 28 · reconciled Amazon Sales &amp; Traffic · shopper spend incl. IVA.
+              </div>
             </div>
           </div>
           <div class="data-table-shell">
             <div class="data-table-scroll">
               <table class="data-table">
-                <thead><tr><th>Product</th><th class="num" title="Amazon orderedProductSales from Sales &amp; Traffic. Shopper spend including IVA; not settlement proceeds or Finance net revenue.">28D shopper spend incl. IVA</th><th class="num">Δ28</th><th class="num">Units</th><th>State</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th
+                      class="num"
+                      title="Amazon orderedProductSales from Sales &amp; Traffic. Shopper spend including IVA; not settlement proceeds or Finance net revenue."
+                    >
+                      28D shopper spend incl. IVA
+                    </th>
+                    <th class="num">Δ28</th>
+                    <th class="num">Units</th>
+                    <th>State</th>
+                  </tr>
+                </thead>
                 <tbody id="skuRows"></tbody>
               </table>
             </div>
@@ -137,13 +189,29 @@
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Recent orders</h2>
-              <div class="section-header__description">Order evidence · shopper spend includes IVA · no customer PII.</div>
+              <div class="section-header__description">
+                Order evidence · shopper spend includes IVA · no customer PII.
+              </div>
             </div>
           </div>
           <div class="data-table-shell">
             <div class="data-table-scroll">
               <table class="data-table">
-                <thead><tr><th>Age</th><th>Time</th><th>Order</th><th>Items</th><th class="num" title="Customer-facing order amount including IVA. Settlement/proceeds amounts are excluded.">Shopper spend incl. IVA</th><th>Status</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Age</th>
+                    <th>Time</th>
+                    <th>Order</th>
+                    <th>Items</th>
+                    <th
+                      class="num"
+                      title="Customer-facing order amount including IVA. Settlement/proceeds amounts are excluded."
+                    >
+                      Shopper spend incl. IVA
+                    </th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
                 <tbody id="orderRows"></tbody>
               </table>
             </div>
@@ -151,7 +219,13 @@
         </section>
       </main>
 
-      <footer class="footer"><span>MXN · Sales page = shopper spend incl. IVA throughout</span><span>Finance = net sales ex IVA + IVA withheld + gross shopper spend + payout cash timing · Dirty Pawz Press Analytics</span></footer>
+      <footer class="footer">
+        <span>MXN · Sales page = shopper spend incl. IVA throughout</span
+        ><span
+          >Finance = net sales ex IVA + IVA withheld + gross shopper spend + payout cash timing · Dirty Pawz
+          Press Analytics</span
+        >
+      </footer>
     </div>
 
     <script src="/assets/vendor/d3.v7.min.js"></script>

@@ -15,7 +15,8 @@ function draw() {
   if (!data || !window.DPPCharts) return;
   const rows = (data.series || []).slice(-days);
   window.DPPCharts.productDemand('#chart', rows);
-  byId('chartSub').textContent = `Shopper spend incl. IVA · reconciled Amazon Sales & Traffic · last ${days} days`;
+  byId('chartSub').textContent =
+    `Shopper spend incl. IVA · reconciled Amazon Sales & Traffic · last ${days} days`;
 }
 
 function renderHealth(payload) {
@@ -47,7 +48,9 @@ function renderHealth(payload) {
     reasons.push(`${percent(delta)} sales versus the prior 28 days.`);
   } else if (Number(performance.units_t28 || 0) > 0) {
     headline = 'Product is selling without a major exception.';
-    reasons.push(delta == null ? 'Recent sales are active.' : `${percent(delta)} sales versus the prior 28 days.`);
+    reasons.push(
+      delta == null ? 'Recent sales are active.' : `${percent(delta)} sales versus the prior 28 days.`,
+    );
   } else if (Number(traffic.sessions_t28 || 0) > 0) {
     headline = 'Traffic is arriving, but units are not.';
     reasons.push(`${integer(traffic.sessions_t28)} sessions produced no recent units.`);
@@ -55,7 +58,10 @@ function renderHealth(payload) {
     headline = 'There is little recent demand signal.';
   }
 
-  if (conversion != null) reasons.push(`${percent(conversion, { sign: false })} conversion from ${integer(traffic.sessions_t28)} sessions.`);
+  if (conversion != null)
+    reasons.push(
+      `${percent(conversion, { sign: false })} conversion from ${integer(traffic.sessions_t28)} sessions.`,
+    );
   if (cover != null) reasons.push(`${cover.toFixed(0)} days cover including inbound.`);
 
   byId('healthHeadline').textContent = headline;
@@ -67,7 +73,8 @@ function renderHero(profile) {
   const image = profile.image_url
     ? `<img class="hero-img" src="${escapeHtml(profile.image_url)}" alt="${escapeHtml(profile.product || profile.sku || '')}">`
     : '<div class="hero-img" aria-hidden="true"></div>';
-  const actionTone = action === 'OK' ? 'good' : action === 'STOCKOUT' || action === 'PRODUCE' ? 'bad' : 'warn';
+  const actionTone =
+    action === 'OK' ? 'good' : action === 'STOCKOUT' || action === 'PRODUCE' ? 'bad' : 'warn';
   const chips = [
     action ? `<span class="chip ${actionTone}">${escapeHtml(action)}</span>` : '',
     profile.listing_status ? `<span class="chip">${escapeHtml(profile.listing_status)}</span>` : '',
@@ -106,10 +113,18 @@ function renderListingAndInventory(profile, commercial, ads) {
 
   const action = profile.inventory_action || '—';
   byId('inventoryState').textContent = action;
-  byId('inventoryState').className = action === 'OK' ? 'good' : action === 'PLAN' ? 'warn' : action === 'PRODUCE' || action === 'STOCKOUT' ? 'bad' : '';
-  byId('inventoryNote').textContent = profile.days_cover_with_inbound == null
-    ? 'cover unavailable'
-    : `${Number(profile.days_cover_with_inbound).toFixed(0)} days cover`;
+  byId('inventoryState').className =
+    action === 'OK'
+      ? 'good'
+      : action === 'PLAN'
+        ? 'warn'
+        : action === 'PRODUCE' || action === 'STOCKOUT'
+          ? 'bad'
+          : '';
+  byId('inventoryNote').textContent =
+    profile.days_cover_with_inbound == null
+      ? 'cover unavailable'
+      : `${Number(profile.days_cover_with_inbound).toFixed(0)} days cover`;
 
   const adsReady = ads.status === 'ready';
   byId('adsState').textContent = adsReady ? 'Available' : 'Pending';
@@ -119,17 +134,18 @@ function renderListingAndInventory(profile, commercial, ads) {
 function renderMetrics(profile, performance, traffic, economics) {
   byId('sales28').textContent = money(performance.sales_t28);
   byId('units28').textContent = integer(performance.units_t28);
-  byId('delta28').textContent = performance.delta28_pct == null
-    ? 'no prior baseline'
-    : `${percent(performance.delta28_pct)} vs prior`;
+  byId('delta28').textContent =
+    performance.delta28_pct == null ? 'no prior baseline' : `${percent(performance.delta28_pct)} vs prior`;
   byId('sessions28').textContent = integer(traffic.sessions_t28);
   byId('cvr28').textContent = traffic.cvr_t28 == null ? '—' : percent(traffic.cvr_t28, { sign: false });
   byId('stockRead').textContent = `${integer(profile.available)} + ${integer(profile.inbound)}`;
-  byId('cover').textContent = profile.days_cover_with_inbound == null ? '—' : Number(profile.days_cover_with_inbound).toFixed(0);
+  byId('cover').textContent =
+    profile.days_cover_with_inbound == null ? '—' : Number(profile.days_cover_with_inbound).toFixed(0);
   byId('cogsRead').textContent = economics.unit_cogs == null ? '—' : `${money(economics.unit_cogs)}/unit`;
-  byId('economicsNote').textContent = economics.estimated_cogs_t28 == null
-    ? 'standard COGS missing'
-    : `${money(economics.estimated_cogs_t28)} estimated 28D COGS`;
+  byId('economicsNote').textContent =
+    economics.estimated_cogs_t28 == null
+      ? 'standard COGS missing'
+      : `${money(economics.estimated_cogs_t28)} estimated 28D COGS`;
 }
 
 function renderInventoryDecision(profile) {
@@ -166,7 +182,8 @@ function renderEconomicsDecision(economics) {
   }
 
   byId('econDecision').textContent = `${money(economics.estimated_cogs_t28)} estimated COGS · 28D`;
-  byId('econRead').textContent = `${economics.cogs_pct_sales_t28 == null ? '—' : percent(economics.cogs_pct_sales_t28, { sign: false })} of shopper spend incl. IVA. This excludes Amazon fees and advertising; it is not net contribution. Use Finance for ex-IVA accounting.`;
+  byId('econRead').textContent =
+    `${economics.cogs_pct_sales_t28 == null ? '—' : percent(economics.cogs_pct_sales_t28, { sign: false })} of shopper spend incl. IVA. This excludes Amazon fees and advertising; it is not net contribution. Use Finance for ex-IVA accounting.`;
 }
 
 function renderVariationContext(profile, commercial, familyVariations) {
@@ -182,37 +199,45 @@ function renderVariationContext(profile, commercial, familyVariations) {
     .join('');
 
   const siblings = familyVariations || [];
-  byId('siblings').innerHTML = siblings.length > 1
-    ? siblings
-        .filter(item => item.sku !== profile.sku)
-        .slice(0, 4)
-        .map(item => `<a class="sibling" href="/product?sku=${encodeURIComponent(item.sku)}">
+  byId('siblings').innerHTML =
+    siblings.length > 1
+      ? siblings
+          .filter((item) => item.sku !== profile.sku)
+          .slice(0, 4)
+          .map(
+            (item) => `<a class="sibling" href="/product?sku=${encodeURIComponent(item.sku)}">
           <div>
             <strong>${escapeHtml(item.product || item.sku)}</strong>
             <span>${integer(item.units_t28)} units · ${integer(item.sessions_t28)} sessions · ${item.conversion_t28_pct == null ? '—' : percent(item.conversion_t28_pct, { sign: false })} CVR</span>
           </div>
           <b>${money(item.sales_t28)}</b>
-        </a>`)
-        .join('')
-    : '<div class="product-wait">No sibling variations to compare.</div>';
+        </a>`,
+          )
+          .join('')
+      : '<div class="product-wait">No sibling variations to compare.</div>';
 }
 
 function renderAds(ads) {
   if (ads.status === 'ready') {
-    byId('adsDecision').textContent = `${money(ads.spend_t28)} spend · ${ads.roas_t28 == null ? '—' : `${Number(ads.roas_t28).toFixed(2)}×`} ROAS`;
-    byId('adsRead').textContent = `TACOS ${ads.tacos_t28 == null ? '—' : percent(100 * Number(ads.tacos_t28), { sign: false })}. Attributed sales are not exact incremental or organic sales.`;
+    byId('adsDecision').textContent =
+      `${money(ads.spend_t28)} spend · ${ads.roas_t28 == null ? '—' : `${Number(ads.roas_t28).toFixed(2)}×`} ROAS`;
+    byId('adsRead').textContent =
+      `TACOS ${ads.tacos_t28 == null ? '—' : percent(100 * Number(ads.tacos_t28), { sign: false })}. Attributed sales are not exact incremental or organic sales.`;
     return;
   }
 
   byId('adsDecision').textContent = 'Paid-support context pending';
-  byId('adsRead').textContent = 'Seller demand remains readable without Ads. Paid attribution will appear here when the Ads feed is available.';
+  byId('adsRead').textContent =
+    'Seller demand remains readable without Ads. Paid attribution will appear here when the Ads feed is available.';
 }
 
 function renderOrders(orders = []) {
-  byId('orderSummary').textContent = `${orders.length} recent order${orders.length === 1 ? '' : 's'} · shopper spend incl. IVA · evidence only`;
+  byId('orderSummary').textContent =
+    `${orders.length} recent order${orders.length === 1 ? '' : 's'} · shopper spend incl. IVA · evidence only`;
   byId('orders').innerHTML = orders.length
     ? orders
-        .map(order => `<div class="list-row">
+        .map(
+          (order) => `<div class="list-row">
           <div class="order-age">${age(order.age_seconds)}</div>
           <div>
             <div class="row-title">${escapeHtml(order.local_time || '')}</div>
@@ -222,7 +247,8 @@ function renderOrders(orders = []) {
             <strong>${money(order.sales)}</strong>
             <small>${integer(order.units)} units · ${escapeHtml(order.status || '')}</small>
           </div>
-        </div>`)
+        </div>`,
+        )
         .join('')
     : '<div class="empty"><strong>No recent orders.</strong></div>';
 }
@@ -253,9 +279,9 @@ function render(payload) {
 }
 
 function bindInteractions() {
-  document.querySelectorAll('[data-days]').forEach(button => {
+  document.querySelectorAll('[data-days]').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('[data-days]').forEach(item => {
+      document.querySelectorAll('[data-days]').forEach((item) => {
         item.classList.remove('active');
         item.setAttribute('aria-selected', 'false');
       });
@@ -275,14 +301,16 @@ async function start() {
   bindInteractions();
 
   if (!sku) {
-    byId('hero').innerHTML = '<div class="empty"><strong>No SKU selected.</strong> Open a product from Catalog, Sales or Inventory.</div>';
+    byId('hero').innerHTML =
+      '<div class="empty"><strong>No SKU selected.</strong> Open a product from Catalog, Sales or Inventory.</div>';
     return;
   }
 
   try {
     render(await fetchJson(`/api/product?sku=${encodeURIComponent(sku)}`));
   } catch (error) {
-    byId('hero').innerHTML = `<div class="empty"><strong>Product unavailable.</strong> ${escapeHtml(error.message)}</div>`;
+    byId('hero').innerHTML =
+      `<div class="empty"><strong>Product unavailable.</strong> ${escapeHtml(error.message)}</div>`;
     byId('asof').textContent = 'Feed unavailable';
   }
 }
