@@ -19,11 +19,11 @@ The stack is defined in `compose.yml`. Production configuration and secrets live
 
 | Route | Decision surface | Backend owner |
 | --- | --- | --- |
-| `/today` | Live operating pulse and recent order evidence | `board/today_api.py` |
+| `/today` | Live operating pulse and recent order evidence | canonical Today adapter over `board/today_api.py` |
 | `/` / `/home` | Business state and priority decisions | `board/server.py` (`home_payload`) |
-| `/sales` | Revenue, momentum, run rate, products and orders | `board/sales_api.py` |
+| `/sales` | Revenue, momentum, run rate, products and orders | canonical Sales adapter over `board/sales_api.py` |
 | `/catalog` | Portfolio, family/variation analysis and commercial health | `board/catalog_api.py` |
-| `/product?sku=...` | Single-product workspace | `board/product_api.py` |
+| `/product?sku=...` | Single-product workspace | canonical Product adapter over `board/product_api.py` |
 | `/inventory` | Stock, cover and production/replenishment actions | `board/inventory_api.py` |
 | `/ads` | Paid demand, efficiency, campaigns, targets and search terms | `board/ads_api.py` |
 | `/finance` | Current economics, immutable closes and accounting evidence | production Finance implementation described in `docs/maintenance.md` |
@@ -31,6 +31,17 @@ The stack is defined in `compose.yml`. Production configuration and secrets live
 | `/data-health` | Source freshness, coverage and trust | `board/health_api.py` |
 
 The frontend intentionally uses native HTML, CSS Grid/Flexbox and ES modules rather than a framework. See `docs/frontend-architecture.md` before introducing a new frontend dependency or ownership layer.
+
+## Monetary basis
+
+**A money value is not fully defined until its basis is known.** DPP Analytics deliberately separates shopper spend, reconciled Amazon operating sales, Finance accounting sales and Ads attribution.
+
+- **Today and order evidence:** shopper spend from Amazon Orders. In Mexico this is the customer-facing amount including IVA. Order grand total is preferred; item price × quantity is the only fallback.
+- **Historical operating Sales / Catalog / Product / Trajectory:** reconciled Amazon Sales & Traffic `orderedProductSales`. Settlement/proceeds values are not operating-sales fallbacks.
+- **Finance:** net sales ex IVA, IVA and gross customer spend are shown separately. Amazon payout remains cash timing.
+- **Ads:** attributed sales are Amazon attribution, not incremental sales. TACOS uses independently reconciled seller sales.
+
+The canonical definitions, source ownership and presentation rules are in [`docs/metric-basis.md`](docs/metric-basis.md). Any code that changes a monetary source or fallback must update that document in the same change.
 
 ## Repository map
 
@@ -49,13 +60,14 @@ The frontend intentionally uses native HTML, CSS Grid/Flexbox and ES modules rat
 ## Non-negotiable data rules
 
 1. PostgreSQL owns business truth; browser code should render, not redefine accounting or reconciliation rules.
-2. Intraday Today data is provisional. Reconciled historical sales and trajectory use Data Kiosk-backed daily data.
-3. Cash movement and economic contribution are separate concepts.
-4. Closed Finance months are immutable snapshots. Corrections require an explicit restatement, never a silent rewrite.
-5. Amazon Ads attributed sales are not subtracted from total seller sales to manufacture an “organic sales” number.
-6. Customer PII is not intentionally collected or exposed in the operating board.
-7. Secrets and production tokens never live in Git.
-8. A frontend workspace has one semantic HTML owner, one page stylesheet and one page runtime. Docker does not inject page behavior.
+2. Intraday Today data is provisional and uses gross shopper spend from Orders. Reconciled historical sales and trajectory use Data Kiosk-backed Sales & Traffic data.
+3. Settlement/proceeds amounts are accounting evidence and must never silently substitute for shopper-facing operating sales.
+4. Cash movement and economic contribution are separate concepts.
+5. Closed Finance months are immutable snapshots. Corrections require an explicit restatement, never a silent rewrite.
+6. Amazon Ads attributed sales are not subtracted from total seller sales to manufacture an “organic sales” number.
+7. Customer PII is not intentionally collected or exposed in the operating board.
+8. Secrets and production tokens never live in Git.
+9. A frontend workspace has one semantic HTML owner, one page stylesheet and one page runtime. Docker does not inject page behavior.
 
 ## Development and quality
 
@@ -82,6 +94,7 @@ Start here instead of reverse-engineering the repository:
 - [`docs/maintenance.md`](docs/maintenance.md) — maintainer map, page/API ownership, change recipes, production QA and operational traps.
 - [`docs/frontend-architecture.md`](docs/frontend-architecture.md) — frontend ownership, layout/chart systems and framework decision gate.
 - [`docs/data-model.md`](docs/data-model.md) — source-of-truth layers, current Amazon sources and KPI/reconciliation policy.
+- [`docs/metric-basis.md`](docs/metric-basis.md) — canonical shopper-spend, operating-sales, Finance and Ads monetary definitions.
 - [`docs/control-plane.md`](docs/control-plane.md) — deployment workflow, self-hosted runner and production heartbeat.
 
 When architecture, source ownership, a route, a data definition or deployment behavior changes, update the corresponding documentation in the same PR.
