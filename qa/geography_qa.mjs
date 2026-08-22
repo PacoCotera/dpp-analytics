@@ -12,6 +12,11 @@ const errors = [];
 page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
 page.on('console', msg => { if (msg.type() === 'error') errors.push(`console: ${msg.text()}`); });
 
+const isOrdered = (values, direction) => values.every((value, index) => {
+  if (!index) return true;
+  return direction === 'desc' ? values[index - 1] >= value : values[index - 1] <= value;
+});
+
 try {
   const response = await page.goto(`${baseUrl}/sales`, { waitUntil: 'domcontentloaded', timeout: 20000 });
   if (!response?.ok()) throw new Error(`Sales navigation returned ${response?.status() || 'no response'}`);
@@ -58,12 +63,19 @@ try {
 
   const national = await page.evaluate(() => {
     const scroll = document.querySelector('.geo-ranked-panel .data-table-scroll');
+    const table = document.querySelector('.geo-table');
+    const firstRow = document.querySelector('#geoRankedRows tr');
+    const widths = firstRow ? [...firstRow.children].map(cell => cell.getBoundingClientRect().width) : [];
+    const tableWidth = table?.getBoundingClientRect().width || 0;
     return {
       coverage: document.getElementById('geoCoverage')?.textContent?.trim() || '',
       rankedRows: document.querySelectorAll('#geoRankedRows tr').length,
       stateShapes: document.querySelectorAll('#geoMap path.state-shape').length,
       kpis: [...document.querySelectorAll('#geoKpis .geo-kpi strong')].map(x => x.textContent?.trim() || ''),
       headerColumns: document.querySelectorAll('.geo-table thead th').length,
+      sortableColumns: document.querySelectorAll('.geo-table thead th[data-geo-sort] button').length,
+      widths,
+      tableWidth,
       tableOverflow: scroll ? scroll.scrollWidth - scroll.clientWidth : 999,
       pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
     };
@@ -71,44 +83,146 @@ try {
   if (!national.coverage.includes('orders geocoded')) throw new Error(`Coverage copy not rendered: ${national.coverage}`);
   if (national.rankedRows <= 0 || national.stateShapes < 30) throw new Error(`Geography rendering incomplete: ${JSON.stringify(national)}`);
   if (national.kpis.length !== 4) throw new Error(`Expected four geography KPIs, got ${national.kpis.length}`);
-  if (national.headerColumns !== 5) throw new Error(`Expected five compact geography columns, got ${national.headerColumns}`);
+  if (national.headerColumns !== 5 || national.sortableColumns !== 5) throw new Error(`Expected five sortable geography columns: ${JSON.stringify(national)}`);
+  if (national.widths.length !== 5 || national.tableWidth <= 0) throw new Error(`Geography column sizing unavailable: ${JSON.stringify(national)}`);
+  const ratios = national.widths.map(width => width / national.tableWidth);
+  if (!(ratios[0] > .42 && ratios[0] < .50 && ratios[1] > .15 && ratios[1] < .21 && ratios[2] > .10 && ratios[2] < .16 && ratios[3] > .08 && ratios[3] < .14 && ratios[4] > .09 && ratios[4] < .16)) {
+    throw new Error(`Geography columns do not use the assigned space: ${JSON.stringify(ratios)}`);
+  }
   if (national.tableOverflow > 1) throw new Error(`Geography ranked table horizontally overflows by ${national.tableOverflow}px`);
   if (national.pageOverflow > 1) throw new Error(`Geography page horizontally overflows by ${national.pageOverflow}px`);
 
+  const defaultSales = await page.locator('#geoRankedRows tr td:nth-child(2)').evaluateAll(cells => cells.map(cell => Number(cell.dataset.value || 0)));
+  if (!isOrdered(defaultSales, 'desc')) throw new Error(`Default Spend sort is not descending: ${defaultSales.join(',')}`);
+
+  await page.locator('th[data-geo-sort="orders"] button').click();
+  const orderSort = await page.evaluate(() => ({
+    aria: document.querySelector('th[data-geo-sort="orders"]')?.getAttribute('aria-sort'),
+    values: [...document.querySelectorAll('#geoRankedRows tr td:nth-child(3)')].map(cell => Number(cell.dataset.value || 0)),
+    status: document.getElementById('geoSortStatus')?.textContent?.trim() || '',
+  }));
+  if (orderSort.aria !== 'descending' || !isOrdered(orderSort.values, 'desc')) throw new Error(`Orders descending sort failed: ${JSON.stringify(orderSort)}`);
+
+  await page.locator('th[data-geo-sort="orders"] button').click();
+  const orderSortAsc = await page.evaluate(() => ({
+    aria: document.querySelector('th[data-geo-sort="orders"]')?.getAttribute('aria-sort'),
+    values: [...document.querySelectorAll('#geoRankedRows tr td:nth-child(3)')].map(cell => Number(cell.dataset.value || 0)),
+  }));
+  if (orderSortAsc.aria !== 'ascending' || !isOrdered(orderSortAsc.values, 'asc')) throw new Error(`Orders ascending sort failed: ${JSON.stringify(orderSortAsc)}`);
+
+  await page.locator('th[data-geo-sort="sales"] button').click();
   await page.screenshot({ path: path.join(outDir, 'sales-geography-desktop.png'), fullPage: true });
 
-  const firstState = page.locator('#geoRankedRows tr[data-state]').first();
-  if (!(await firstState.count())) throw new Error('No mapped state is available for postal drill-down');
-  await firstState.click();
+  const postalResponsePromise = page.waitForResponse(
+    r => r.url().includes('/api/geography/postal-geometry?') && r.request().method() === 'GET',
+    { timeout: 60000 },
+  );
+  await page.locator('#geoStateSelect').selectOption('15');
+  const postalResponse = await postalResponsePromise;
+  if (!postalResponse.ok()) throw new Error(`Postal geometry endpoint returned ${postalResponse.status()}`);
+  const postalPayload = await postalResponse.json();
+  if (!String(postalPayload.geometry_contract || '').includes('D3 clockwise exterior rings')) {
+    throw new Error(`Postal geometry contract is missing D3 winding normalization: ${JSON.stringify(postalPayload.geometry_contract)}`);
+  }
+  if (!Array.isArray(postalPayload.features) || !postalPayload.features.length) throw new Error('Estado de México postal geometry is empty');
+
+  const windingAudit = page.evaluate(payload => {
+    const area = ring => {
+      let total = 0;
+      for (let i = 0; i < ring.length - 1; i += 1) total += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+      return total / 2;
+    };
+    const polygons = [];
+    for (const feature of payload.features || []) {
+      const geometry = feature?.geometry || {};
+      if (geometry.type === 'Polygon') polygons.push(geometry.coordinates);
+      else if (geometry.type === 'MultiPolygon') polygons.push(...(geometry.coordinates || []));
+    }
+    const outerAreas = polygons.map(polygon => area(polygon[0] || []));
+    const holeAreas = polygons.flatMap(polygon => (polygon || []).slice(1).map(area));
+    const positions = [];
+    const collect = value => {
+      if (!Array.isArray(value)) return;
+      if (value.length >= 2 && Number.isFinite(Number(value[0])) && Number.isFinite(Number(value[1]))) {
+        positions.push([Number(value[0]), Number(value[1])]);
+        return;
+      }
+      value.forEach(collect);
+    };
+    (payload.features || []).forEach(feature => collect(feature?.geometry?.coordinates));
+    return {
+      polygonCount: polygons.length,
+      badOuter: outerAreas.filter(value => !(value < 0)).length,
+      badHoles: holeAreas.filter(value => !(value > 0)).length,
+      badPositions: positions.filter(([lon, lat]) => lon < -120 || lon > -85 || lat < 10 || lat > 35).length,
+    };
+  }, postalPayload);
+  if (windingAudit.polygonCount <= 0 || windingAudit.badOuter || windingAudit.badHoles || windingAudit.badPositions) {
+    throw new Error(`Postal geometry winding/coordinate audit failed: ${JSON.stringify(windingAudit)}`);
+  }
+
   await page.locator('#geoMap path.postal-shape').first().waitFor({ state: 'visible', timeout: 60000 });
   await page.waitForFunction(() => /active postal polygons mapped/.test(document.getElementById('geoMapStatus')?.textContent || ''), null, { timeout: 60000 });
   await page.locator('#geoRankedRows .geo-area-cell small').first().waitFor({ state: 'visible', timeout: 8000 });
 
   const postal = await page.evaluate(() => {
     const scroll = document.querySelector('.geo-ranked-panel .data-table-scroll');
+    const svg = document.getElementById('geoMap');
+    const vb = svg?.viewBox?.baseVal;
+    const paths = [...document.querySelectorAll('#geoMap path.postal-shape')];
+    const boxes = paths.map(path => {
+      const box = path.getBBox();
+      return { x: box.x, y: box.y, width: box.width, height: box.height };
+    });
     const label = document.querySelector('#geoRankedRows .geo-area-cell small')?.textContent?.trim() || '';
     const status = document.getElementById('geoMapStatus')?.textContent?.trim() || '';
     const match = status.match(/(\d+)\/(\d+) active postal polygons mapped/);
+    const invalidBoxes = vb ? boxes.filter(box =>
+      ![box.x, box.y, box.width, box.height].every(Number.isFinite) ||
+      box.x < -vb.width * .1 || box.y < -vb.height * .1 ||
+      box.x + box.width > vb.width * 1.1 || box.y + box.height > vb.height * 1.1 ||
+      box.width > vb.width * .9 || box.height > vb.height * .9
+    ) : boxes;
     return {
       status,
       matched: match ? Number(match[1]) : 0,
       requested: match ? Number(match[2]) : 0,
-      postalShapes: document.querySelectorAll('#geoMap path.postal-shape').length,
+      postalShapes: paths.length,
       contextShapes: document.querySelectorAll('#geoMap path.geo-state-context').length,
       placeLabel: label,
+      invalidBoxes: invalidBoxes.length,
+      svgOverflow: svg ? getComputedStyle(svg).overflow : '',
       tableOverflow: scroll ? scroll.scrollWidth - scroll.clientWidth : 999,
       pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
     };
   });
   if (postal.matched <= 0 || postal.postalShapes <= 0) throw new Error(`Postal polygons did not map: ${JSON.stringify(postal)}`);
+  if (postal.invalidBoxes) throw new Error(`Postal polygons escape or dominate the state viewport: ${JSON.stringify(postal)}`);
+  if (postal.svgOverflow !== 'hidden') throw new Error(`Postal SVG overflow is not contained: ${postal.svgOverflow}`);
   if (!postal.placeLabel || /^CP\s*\d+$/i.test(postal.placeLabel)) throw new Error(`Postal place dictionary did not render a useful label: ${JSON.stringify(postal.placeLabel)}`);
   if (postal.tableOverflow > 1) throw new Error(`Postal ranked table horizontally overflows by ${postal.tableOverflow}px`);
   if (postal.pageOverflow > 1) throw new Error(`Postal drill-down page horizontally overflows by ${postal.pageOverflow}px`);
   if (errors.length) throw new Error(errors.join('; '));
 
   await page.screenshot({ path: path.join(outDir, 'sales-geography-postal-desktop.png'), fullPage: true });
-  await fs.writeFile(path.join(outDir, 'geography-summary.json'), JSON.stringify({ ok: true, coverage, referenceCount: references.length, national, postal }, null, 2));
-  console.log(JSON.stringify({ ok: true, coverage, referenceCount: references.length, national, postal }));
+  await fs.writeFile(path.join(outDir, 'geography-summary.json'), JSON.stringify({
+    ok: true,
+    coverage,
+    referenceCount: references.length,
+    national,
+    orderSort,
+    orderSortAsc,
+    postalGeometry: {
+      requested: postalPayload.requested_codes,
+      matched: postalPayload.matched_codes,
+      missing: postalPayload.missing_codes,
+      invalid: postalPayload.invalid_codes,
+      rewoundRingCount: postalPayload.rewound_ring_count,
+      windingAudit,
+    },
+    postal,
+  }, null, 2));
+  console.log(JSON.stringify({ ok: true, coverage, referenceCount: references.length, national, windingAudit, postal }));
 } catch (err) {
   await page.screenshot({ path: path.join(outDir, 'sales-geography-error.png'), fullPage: true }).catch(() => {});
   await fs.writeFile(path.join(outDir, 'geography-summary.json'), JSON.stringify({ ok: false, error: err.message, errors }, null, 2));
