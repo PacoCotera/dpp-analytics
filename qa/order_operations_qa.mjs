@@ -9,6 +9,25 @@ await fs.mkdir(outDir, { recursive: true });
 const PENDING = new Set(['PENDING', 'PENDING_AVAILABILITY', 'INVOICE_UNCONFIRMED']);
 const OPEN = new Set([...PENDING, 'UNSHIPPED', 'PARTIALLY_SHIPPED']);
 const upper = value => String(value || '').toUpperCase();
+const COUNT_KEYS = [
+  'open_orders',
+  'pending_orders',
+  'unshipped_orders',
+  'partially_shipped_orders',
+  'fba_open_orders',
+  'fbm_open_orders',
+  'unknown_fulfillment_open_orders',
+  'problem_orders',
+  'shipped_today',
+];
+
+function sameCounts(label, actual, expected) {
+  for (const key of COUNT_KEYS) {
+    if (Number(actual?.[key] || 0) !== Number(expected?.[key] || 0)) {
+      throw new Error(`${label} ${key} mismatch: ${actual?.[key]} vs ${expected?.[key]}`);
+    }
+  }
+}
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
@@ -35,12 +54,22 @@ try {
   if (payloads.todayStatus !== 200) throw new Error(`Today API ${payloads.todayStatus}`);
   if (payloads.salesStatus !== 200) throw new Error(`Sales API ${payloads.salesStatus}`);
 
-  const flow = payloads.today?.today?.order_flow;
-  const openOrders = payloads.today?.today?.open_orders;
+  // The renderer consumes the top-level queue. Validate that source directly,
+  // then require the nested mart-backed copy and Sales to agree with it.
+  const flow = payloads.today?.order_flow;
+  const openOrders = payloads.today?.open_orders;
   if (!flow || flow.basis !== 'CURRENT_FULFILLMENT_STATE') {
-    throw new Error(`Today does not expose current fulfillment-state basis: ${JSON.stringify(flow)}`);
+    throw new Error(`Today renderer source does not expose current fulfillment-state basis: ${JSON.stringify(flow)}`);
   }
-  if (!Array.isArray(openOrders)) throw new Error('Today current open-order detail is not an array');
+  if (!Array.isArray(openOrders)) throw new Error('Today renderer current open-order detail is not an array');
+
+  const nestedFlow = payloads.today?.today?.order_flow;
+  const nestedOpenOrders = payloads.today?.today?.open_orders;
+  if (!nestedFlow || nestedFlow.basis !== 'CURRENT_FULFILLMENT_STATE') {
+    throw new Error('Today mart-backed current order-state queue is missing');
+  }
+  if (!Array.isArray(nestedOpenOrders)) throw new Error('Today mart-backed open-order detail is not an array');
+  sameCounts('Today top-level/mart', flow, nestedFlow);
 
   const derivedOpen = openOrders.filter(order => OPEN.has(upper(order.status)));
   const derivedPending = openOrders.filter(order => PENDING.has(upper(order.status)));
@@ -64,7 +93,7 @@ try {
   }
 
   for (const order of openOrders) {
-    if (!OPEN.has(upper(order.status))) throw new Error(`Closed status leaked into open queue: ${order.status}`);
+    if (!OPEN.has(upper(order.status))) throw new Error(`Closed/problem status leaked into open queue: ${order.status}`);
     if (!order.order_id) throw new Error('Open order missing Amazon order ID');
     if (!Array.isArray(order.items)) throw new Error(`Open order ${order.order_id} missing item detail array`);
   }
@@ -73,11 +102,7 @@ try {
   if (!salesFlow || salesFlow.basis !== 'CURRENT_FULFILLMENT_STATE') {
     throw new Error('Sales does not share the canonical current order-state queue');
   }
-  for (const key of ['open_orders', 'pending_orders', 'unshipped_orders', 'partially_shipped_orders', 'fba_open_orders', 'fbm_open_orders']) {
-    if (Number(salesFlow[key] || 0) !== Number(flow[key] || 0)) {
-      throw new Error(`Sales/Today ${key} mismatch: ${salesFlow[key]} vs ${flow[key]}`);
-    }
-  }
+  sameCounts('Sales/Today', salesFlow, flow);
 
   await page.waitForFunction(
     expected => document.getElementById('orderFlowGrid')?.textContent?.includes(String(expected)),
@@ -114,6 +139,7 @@ try {
   };
   await fs.writeFile(path.join(outDir, 'order-operations-summary.json'), JSON.stringify(summary, null, 2));
   await page.screenshot({ path: path.join(outDir, 'today-order-operations.png'), fullPage: true });
+  console.log(`ORDER_OPERATIONS current pending=${Number(flow.pending_orders || 0)} open=${Number(flow.open_orders || 0)} older_pending=${olderPending}`);
   console.log(JSON.stringify(summary));
 } catch (error) {
   await page.screenshot({ path: path.join(outDir, 'today-order-operations-error.png'), fullPage: true }).catch(() => {});
