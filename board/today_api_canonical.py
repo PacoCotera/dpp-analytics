@@ -21,8 +21,8 @@ def _basis(cur, marketplace: str) -> dict:
         "operating_sales": {
             "id": "GROSS_CUSTOMER_SPEND",
             "label": "Shopper spend incl. IVA",
-            "source": "Amazon Orders",
-            "definition": "Order grand total; item price × quantity is the only fallback. Settlement/proceeds amounts are never used.",
+            "source": "Amazon Orders item price",
+            "definition": "Item price × quantity is authoritative whenever item detail exists; order grand total is only a temporary fallback before item detail arrives. Settlement/proceeds amounts are never used.",
         },
     }
 
@@ -133,7 +133,8 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
                 product.update(sales=row["sales"], units=row["units"], orders=row["orders"])
             product["sales_basis"] = "GROSS_CUSTOMER_SPEND"
 
-        # Order evidence uses order grand total with gross item fallback.
+        # Order evidence uses authoritative item shopper spend when item detail is
+        # available; order grand total is only a temporary completeness fallback.
         cur.execute(
             """
             SELECT amazon_order_id,customer_spend
