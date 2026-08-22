@@ -41,11 +41,28 @@ static = Path('static')
 raw_sha = os.getenv('DEPLOY_SHA', '').strip()
 if not re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha):
     raw_sha = Path('.build_main_ref').read_text().strip()
-build_sha = raw_sha[:8] if re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha) else 'dev'
-footer_stamp = f'Dirty Pawz Press Analytics · main {build_sha}'
+build_sha = raw_sha[:8].lower() if re.fullmatch(r'[0-9a-fA-F]{40}', raw_sha) else 'dev'
+
+# Every operating page owns its page-specific basis/source copy, but the shell
+# identity and deployed revision are one shared footer contract.  Do not depend
+# on an exact prose phrase being present: inject the revision structurally into
+# every footer so new pages cannot silently omit it.
+footer_re = re.compile(r'(<footer\b[^>]*class=["\'][^"\']*\bfooter\b[^"\']*["\'][^>]*>)(.*?)(</footer>)', re.I | re.S)
+old_stamp_re = re.compile(r'\s*·\s*main\s+[0-9a-fA-F]{7,40}\b', re.I)
 
 for page in static.glob('*.html'):
-    page.write_text(page.read_text().replace('Dirty Pawz Press Analytics', footer_stamp))
+    text = old_stamp_re.sub('', page.read_text())
+
+    def stamp(match):
+        opening, body, closing = match.groups()
+        # Strip a prior dedicated stamp if a locally-built file is rebuilt.
+        body = re.sub(r'\s*<span\s+class=["\']footer-build["\'][^>]*>.*?</span>\s*', '\n', body, flags=re.I | re.S)
+        return f'{opening}{body}\n        <span class="footer-build">main {build_sha}</span>\n      {closing}'
+
+    text, count = footer_re.subn(stamp, text, count=1)
+    if count != 1:
+        raise RuntimeError(f'{page}: expected exactly one .footer element, found {count}')
+    page.write_text(text)
 PY
 RUN python -c "import server; print('board import smoke test: ok')"
 EXPOSE 8080
