@@ -41,7 +41,7 @@ async function catalogSemantic(page) {
     const unmappedSkus = data.summary?.taxonomy_unmapped_skus || [];
     if (unmappedSkus.length) errors.push(`sellable SKUs missing seller taxonomy: ${unmappedSkus.join(', ')}`);
     for (const family of data.families || []) {
-      if (/\\b(actual|archivo)\\b/i.test(String(family.name || ''))) errors.push(`${family.family_asin}: raw Amazon lifecycle label leaked into family name`);
+      if (/\b(actual|archivo)\b/i.test(String(family.name || ''))) errors.push(`${family.family_asin}: raw Amazon lifecycle label leaked into family name`);
       const members = (family.members || []).filter(x => ['SELLABLE_VARIATION', 'SELLABLE_STANDALONE'].includes(x.product_role));
       if (!members.length) continue;
       const sum = key => members.reduce((n, x) => n + Number(x[key] || 0), 0);
