@@ -53,7 +53,7 @@
         </section>
 
         <section class="kpi-rail product-kpi-rail" aria-label="Product key metrics">
-          <div class="kpi product-kpi"><div class="label">28D demand</div><strong id="sales28">—</strong><span><b id="units28">—</b> units · <span id="delta28">—</span></span></div>
+          <div class="kpi product-kpi" title="Reconciled Amazon SKU Sales &amp; Traffic ordered-product sales. Settlement proceeds are excluded."><div class="label">28D Amazon sales</div><strong id="sales28">—</strong><span><b id="units28">—</b> units · <span id="delta28">—</span></span></div>
           <div class="kpi product-kpi"><div class="label">Traffic → CVR</div><strong id="sessions28">—</strong><span>sessions · <b id="cvr28">—</b> CVR</span></div>
           <div class="kpi product-kpi"><div class="label">Stock → cover</div><strong id="stockRead">—</strong><span><b id="cover">—</b> days incl. inbound</span></div>
           <div class="kpi product-kpi"><div class="label">Economics</div><strong id="cogsRead">—</strong><span id="economicsNote">standard COGS</span></div>
@@ -64,7 +64,7 @@
             <div class="panel__header">
               <div>
                 <h2 class="panel__title">Demand rhythm</h2>
-                <div class="panel__description" id="chartSub">Daily sales and seven-day signal</div>
+                <div class="panel__description" id="chartSub">Reconciled Amazon ordered-product sales · daily + seven-day signal</div>
               </div>
               <div class="segmented-control product-range" role="group" aria-label="Demand chart range">
                 <button class="segmented-control__item active" type="button" data-days="28" aria-selected="true">28D</button>
@@ -85,19 +85,19 @@
                 <div><b id="velocity">—</b><span>units/day</span></div>
               </div>
             </div>
-            <div class="decision-block"><div class="decision-label">Economics</div><strong id="econDecision">—</strong><p id="econRead">Standard COGS context.</p></div>
+            <div class="decision-block"><div class="decision-label">Economics</div><strong id="econDecision">—</strong><p id="econRead">Standard COGS against reconciled Amazon product sales.</p></div>
             <div class="decision-block"><div class="decision-label">Variation context</div><strong id="familyRead">—</strong><div class="variation-chips" id="variationChips"></div><div class="sibling-list" id="siblings"></div></div>
             <div class="decision-block"><div class="decision-label">Advertising</div><strong id="adsDecision">—</strong><p id="adsRead">Paid-support context is separate from seller demand.</p></div>
           </aside>
         </section>
 
         <details class="evidence" id="ordersPanel">
-          <summary><span><strong>Order evidence</strong><small id="orderSummary">Recent orders containing this SKU</small></span><b id="orderToggle">View ↓</b></summary>
+          <summary><span><strong>Order evidence</strong><small id="orderSummary">Recent orders · shopper spend incl. IVA</small></span><b id="orderToggle">View ↓</b></summary>
           <div class="order-list"><div class="list" id="orders"></div></div>
         </details>
       </main>
 
-      <footer class="footer"><span>Product workspace · Amazon Mexico</span><span>Dirty Pawz Press Analytics</span></footer>
+      <footer class="footer"><span>MXN · product performance = Amazon Sales &amp; Traffic · order evidence = shopper spend incl. IVA</span><span>Ads attribution ≠ incremental sales · Dirty Pawz Press Analytics</span></footer>
     </div>
 
     <script src="/assets/vendor/d3.v7.min.js"></script>
