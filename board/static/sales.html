@@ -42,7 +42,7 @@
               <div class="sales-chart-header">
                 <div>
                   <div class="sales-chart-title" id="salesChartTitle">Monthly sales</div>
-                  <div class="sales-chart-subtitle" id="salesChartSub">12 months · current month actual + run rate</div>
+                  <div class="sales-chart-subtitle" id="salesChartSub">12 months · Amazon Sales &amp; Traffic · current month actual + run rate</div>
                 </div>
                 <div class="sales-range" role="group" aria-label="Sales chart time window">
                   <button type="button" data-range="full" aria-pressed="false">FULL</button>
@@ -84,8 +84,8 @@
               </div>
             </section>
 
-            <section class="sales-utility-row sales-utility-today" data-window="today">
-              <span class="live-label">Today · live</span>
+            <section class="sales-utility-row sales-utility-today" data-window="today" title="Live shopper spend from Amazon Orders. Includes IVA; settlement proceeds are not used.">
+              <span class="live-label">Today spend · live</span>
               <span class="live-sales" id="todaySales">$—</span>
               <span class="live-meta" id="todayMeta">— orders · — units</span>
               <span class="live-pace" id="todayPace">Reading pace</span>
@@ -107,13 +107,13 @@
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Product performance</h2>
-              <div class="section-header__description">Last 28 days vs prior 28. Open a product for its connected workspace.</div>
+              <div class="section-header__description">Last 28 days vs prior 28 · reconciled Amazon SKU Sales &amp; Traffic.</div>
             </div>
           </div>
           <div class="data-table-shell">
             <div class="data-table-scroll">
               <table class="data-table">
-                <thead><tr><th>Product</th><th class="num">Sales</th><th class="num">Δ28</th><th class="num">Units</th><th>State</th></tr></thead>
+                <thead><tr><th>Product</th><th class="num" title="Amazon orderedProductSales from SKU Sales &amp; Traffic; not settlement proceeds.">Amazon sales</th><th class="num">Δ28</th><th class="num">Units</th><th>State</th></tr></thead>
                 <tbody id="skuRows"></tbody>
               </table>
             </div>
@@ -126,13 +126,13 @@
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Recent orders</h2>
-              <div class="section-header__description">Age tells you what is fresh. No customer PII.</div>
+              <div class="section-header__description">Order evidence · shopper spend includes IVA · no customer PII.</div>
             </div>
           </div>
           <div class="data-table-shell">
             <div class="data-table-scroll">
               <table class="data-table">
-                <thead><tr><th>Age</th><th>Time</th><th>Order</th><th>Items</th><th class="num">Sales</th><th>Status</th></tr></thead>
+                <thead><tr><th>Age</th><th>Time</th><th>Order</th><th>Items</th><th class="num" title="Order grand total with gross item-price fallback. Settlement/proceeds amounts are excluded.">Shopper spend</th><th>Status</th></tr></thead>
                 <tbody id="orderRows"></tbody>
               </table>
             </div>
@@ -140,7 +140,7 @@
         </section>
       </main>
 
-      <footer class="footer"><span>MXN · today provisional / historical reconciled</span><span>Dirty Pawz Press Analytics</span></footer>
+      <footer class="footer"><span>MXN · Sales = Amazon Sales &amp; Traffic · live/order evidence = shopper spend incl. IVA</span><span>Finance separates net sales ex IVA + IVA + gross spend · Dirty Pawz Press Analytics</span></footer>
     </div>
 
     <script src="/assets/vendor/d3.v7.min.js"></script>
