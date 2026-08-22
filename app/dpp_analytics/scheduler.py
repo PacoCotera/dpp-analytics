@@ -13,7 +13,7 @@ from .finance_close_tax_corrected import close_ready_months
 from .finances import ingest_finances
 from .inventory import ingest_inventory
 from .listings_report import ingest_listings_report
-from .orders import ingest_orders
+from .orders import backfill_order_geography, ingest_orders
 from .product_roles_probe import probe as product_roles_probe
 from .production_probe import probe as production_probe
 from .sandbox_probe import probe as sandbox_probe
@@ -28,6 +28,7 @@ log = logging.getLogger("dpp.scheduler")
 
 STOP = False
 FINANCE_CLOSE_INTERVAL_SECONDS = 3600
+ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS = 86400
 
 
 def _stop(signum: int, frame: object) -> None:
@@ -167,6 +168,10 @@ def main() -> None:
 
     next_listings_report = _next_due("amazon_reports", "merchant_listings_all_data", settings.listings_report_interval_seconds)
     next_settlements = _next_due("amazon_reports", "settlement_reports_v2", settings.settlement_reports_interval_seconds)
+
+    geography_due = _next_due("amazon_spapi", "orders_geography_v2026", ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS)
+    if geography_due == 0.0:
+        _run("order_geography_backfill", backfill_order_geography)
 
     catalog_role_ready = False
     if settings.catalog_enabled:
