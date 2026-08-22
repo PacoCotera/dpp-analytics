@@ -75,19 +75,20 @@ jobs:
             try { audit = JSON.parse(raw); } catch (_) { audit = {status:'ERROR',failures:['audit output was not valid JSON']}; }
             try { basis = JSON.parse(basisRaw); } catch (_) { basis = {classification:'ERROR'}; }
             try { finance = JSON.parse(financeRaw); } catch (_) { finance = {status:'ERROR',failures:['Finance basis audit output was not valid JSON']}; }
-            try { cash = JSON.parse(cashRaw); } catch (_) { cash = {summary:{error:'Finance cash probe output was not valid JSON'}}; }
+            try { cash = JSON.parse(cashRaw); } catch (_) { cash = {status:'ERROR',failures:['Finance cash probe output was not valid JSON'],summary:{}}; }
             const ev = audit.evidence || {};
             const combinedFailures = [
               ...(audit.failures || []),
               ...(finance.failures || []).map(x => `Finance basis: ${x}`),
+              ...(cash.failures || []).map(x => `Finance cash: ${x}`),
             ];
-            const overall = audit.status === 'PASS' && finance.status === 'PASS' ? 'PASS' : 'FAIL';
+            const overall = audit.status === 'PASS' && finance.status === 'PASS' && cash.status === 'PASS' ? 'PASS' : 'FAIL';
             const lines = [
               '# DPP Analytics production number audit',
               '',
               `**Deployed commit:** \`${process.env.DEPLOY_SHA || 'unknown'}\``,
               `**Status:** **${overall}**`,
-              `**Marketplace:** \`${audit.marketplace || finance.marketplace || 'unknown'}\``,
+              `**Marketplace:** \`${audit.marketplace || finance.marketplace || cash.marketplace || 'unknown'}\``,
               `**Local date:** \`${audit.local_date || 'unknown'}\``,
               '',
               '## Failures',
