@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from decimal import Decimal
 
 import httpx
 
@@ -46,28 +45,21 @@ def audit(board_url: str) -> dict:
         market = cur.fetchone() or {}
         timezone = market.get('timezone') or 'America/Mexico_City'
 
-        cur.execute(
-            f"SELECT (CURRENT_TIMESTAMP AT TIME ZONE %s)::date AS d",
-            (timezone,),
-        )
+        cur.execute("SELECT (CURRENT_TIMESTAMP AT TIME ZONE %s)::date AS d", (timezone,))
         local_today = cur.fetchone()['d']
 
         cur.execute(
-            """
-            SELECT max(business_date) AS d
-            FROM mart.business_daily
-            WHERE marketplace_id=%s AND reconciled_daily_report
-            """,
+            """SELECT max(business_date) AS d FROM mart.business_daily
+               WHERE marketplace_id=%s AND reconciled_daily_report""",
             (settings.marketplace_id,),
         )
         cutoff = (cur.fetchone() or {}).get('d')
 
-        # Raw/current order-money evidence. This is deliberately verbose: it lets us
-        # prove which Amazon field is tax-inclusive instead of inferring from labels.
+        # Raw/current order-money evidence. This is deliberately verbose: it proves
+        # which Amazon fields compose the customer-facing amount in production.
         cur.execute(
             """
-            SELECT o.amazon_order_id,
-                   right(o.amazon_order_id,9) AS order_short,
+            SELECT o.amazon_order_id,right(o.amazon_order_id,9) AS order_short,
                    o.grand_total_amount,
                    COALESCE(sum(i.unit_price_amount*i.quantity_ordered),0)::numeric(14,2) AS unit_price_x_qty,
                    COALESCE(sum(i.proceeds_item_amount),0)::numeric(14,2) AS proceeds_item,
@@ -77,6 +69,7 @@ def audit(board_url: str) -> dict:
                    COALESCE(sum(sl.price*i.quantity_ordered),0)::numeric(14,2) AS listing_price_x_qty,
                    max(ocs.customer_spend) AS canonical_customer_spend,
                    max(ocs.customer_spend_source) AS canonical_source,
+                   string_agg(DISTINCT oics.customer_spend_source,',' ORDER BY oics.customer_spend_source) AS item_sources,
                    COALESCE(sum(i.quantity_ordered),0)::bigint AS units
             FROM core.amazon_order o
             JOIN core.marketplace mp USING(marketplace_id)
@@ -85,6 +78,9 @@ def audit(board_url: str) -> dict:
               ON sl.marketplace_id=o.marketplace_id AND sl.seller_sku=i.seller_sku
             LEFT JOIN mart.order_customer_spend ocs
               ON ocs.marketplace_id=o.marketplace_id AND ocs.amazon_order_id=o.amazon_order_id
+            LEFT JOIN mart.order_item_customer_spend oics
+              ON oics.marketplace_id=o.marketplace_id AND oics.amazon_order_id=o.amazon_order_id
+             AND oics.seller_sku=i.seller_sku
             WHERE o.marketplace_id=%s
               AND (o.created_time AT TIME ZONE mp.timezone)::date=%s
               AND o.fulfillment_status IS DISTINCT FROM 'CANCELLED'
@@ -97,12 +93,10 @@ def audit(board_url: str) -> dict:
         evidence['today_order_money'] = raw_today
 
         cur.execute(
-            """
-            SELECT COALESCE(sum(customer_spend),0)::numeric(14,2) AS sales,
-                   count(*)::int AS orders,COALESCE(sum(units),0)::bigint AS units
-            FROM mart.order_customer_spend
-            WHERE marketplace_id=%s AND business_date=%s
-            """,
+            """SELECT COALESCE(sum(customer_spend),0)::numeric(14,2) AS sales,
+                      count(*)::int AS orders,COALESCE(sum(units),0)::bigint AS units
+               FROM mart.order_customer_spend
+               WHERE marketplace_id=%s AND business_date=%s""",
             (settings.marketplace_id, local_today),
         )
         canonical_today = cur.fetchone() or {}
@@ -111,13 +105,26 @@ def audit(board_url: str) -> dict:
         if cutoff:
             cur.execute(
                 """
-                SELECT COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN %s::date-27 AND %s::date),0)::numeric(14,2) AS t28,
-                       COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN %s::date-6 AND %s::date),0)::numeric(14,2) AS t7,
-                       COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN %s::date-55 AND %s::date-28),0)::numeric(14,2) AS prior_t28
-                FROM mart.business_daily
+                WITH c AS (
+                  SELECT %s::date AS d,date_trunc('month',%s::date)::date AS month_start,
+                         date_trunc('year',%s::date)::date AS year_start
+                )
+                SELECT
+                  COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::numeric(14,2) AS t28,
+                  COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-55 AND c.d-28),0)::numeric(14,2) AS prior_t28,
+                  COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-6 AND c.d),0)::numeric(14,2) AS t7,
+                  COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-13 AND c.d-7),0)::numeric(14,2) AS prior_t7,
+                  COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-55 AND c.d),0)::numeric(14,2) AS t56,
+                  COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.d-89 AND c.d),0)::numeric(14,2) AS t90,
+                  COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.month_start AND c.d),0)::numeric(14,2) AS mtd,
+                  COALESCE(sum(sales) FILTER (WHERE business_date BETWEEN c.year_start AND c.d),0)::numeric(14,2) AS ytd,
+                  COALESCE(sum(orders) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint AS orders_t28,
+                  COALESCE(sum(units) FILTER (WHERE business_date BETWEEN c.d-27 AND c.d),0)::bigint AS units_t28
+                FROM mart.business_daily,c
                 WHERE marketplace_id=%s AND reconciled_daily_report
+                  AND business_date BETWEEN least(c.year_start,c.d-89) AND c.d
                 """,
-                (cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, settings.marketplace_id),
+                (cutoff, cutoff, cutoff, settings.marketplace_id),
             )
             reconciled = cur.fetchone() or {}
         else:
@@ -141,41 +148,35 @@ def audit(board_url: str) -> dict:
         evidence['canonical_portfolio'] = portfolio
 
         cur.execute(
-            """
-            SELECT count(*)::int AS duplicate_owner_asins FROM (
-              SELECT asin FROM mart.catalog_portfolio_product
-              WHERE marketplace_id=%s AND is_offer_owner GROUP BY asin HAVING count(*)>1
-            ) x
-            """,
+            """SELECT count(*)::int AS duplicate_owner_asins FROM (
+                 SELECT asin FROM mart.catalog_portfolio_product
+                 WHERE marketplace_id=%s AND is_offer_owner GROUP BY asin HAVING count(*)>1
+               ) x""",
             (settings.marketplace_id,),
         )
         duplicate_owner_asins = int((cur.fetchone() or {}).get('duplicate_owner_asins') or 0)
 
         cur.execute(
-            """
-            SELECT count(*)::int AS bad_nonowners
-            FROM mart.catalog_portfolio_product
-            WHERE marketplace_id=%s AND (product_role='STRUCTURAL_PARENT' OR product_role='SELLER_SKU_ALIAS')
-              AND (COALESCE(sales_t28,0)<>0 OR COALESCE(units_t28,0)<>0 OR COALESCE(sessions_t28,0)<>0)
-            """,
+            """SELECT count(*)::int AS bad_nonowners
+               FROM mart.catalog_portfolio_product
+               WHERE marketplace_id=%s AND (product_role='STRUCTURAL_PARENT' OR product_role='SELLER_SKU_ALIAS')
+                 AND (COALESCE(sales_t28,0)<>0 OR COALESCE(units_t28,0)<>0 OR COALESCE(sessions_t28,0)<>0)""",
             (settings.marketplace_id,),
         )
         bad_nonowners = int((cur.fetchone() or {}).get('bad_nonowners') or 0)
 
         cur.execute(
-            """
-            SELECT count(*)::int AS rows,COALESCE(sum(available),0)::bigint AS available,
-                   COALESCE(sum(inbound),0)::bigint AS inbound,
-                   count(*) FILTER (WHERE action IN ('STOCKOUT','PRODUCE','PLAN'))::int AS needs_action
-            FROM mart.inventory_attention a LEFT JOIN core.sku s ON s.sku=a.seller_sku
-            WHERE a.marketplace_id=%s AND COALESCE(s.active,true)
-            """,
+            """SELECT count(*)::int AS rows,COALESCE(sum(available),0)::bigint AS available,
+                      COALESCE(sum(inbound),0)::bigint AS inbound,
+                      count(*) FILTER (WHERE action IN ('STOCKOUT','PRODUCE','PLAN'))::int AS needs_action
+               FROM mart.inventory_attention a LEFT JOIN core.sku s ON s.sku=a.seller_sku
+               WHERE a.marketplace_id=%s AND COALESCE(s.active,true)""",
             (settings.marketplace_id,),
         )
         inv_db = cur.fetchone() or {}
         evidence['inventory_db'] = inv_db
 
-    # Cross-surface live Today must be exactly one number/basis.
+    # Cross-surface Today is exactly one amount and one tax basis.
     today_sales = _money((today.get('today') or {}).get('sales_today'))
     canonical_sales = _money(canonical_today.get('sales'))
     home_today = _money((home.get('today') or {}).get('sales_today'))
@@ -189,20 +190,43 @@ def audit(board_url: str) -> dict:
     if raw_today and not _close(product_sum, canonical_sales):
         failures.append(f'Today product contribution {product_sum} != headline {canonical_sales}')
 
-    # Every fully-described order should reconcile order-level and item-level shopper spend.
     api_orders = {str(r.get('order_short')): r for r in (today.get('recent_orders') or [])}
     for row in raw_today:
         short = str(row.get('order_short') or '')
         api = api_orders.get(short)
         if api and not _close(api.get('sales'), row.get('canonical_customer_spend')):
             failures.append(f'Today order {short} API amount != canonical amount')
+        source = str(row.get('canonical_source') or '')
+        if 'UNKNOWN' in source or source == 'NO_AMOUNT':
+            failures.append(f'Today order {short} has unknown tax basis: {source}')
+
+        # Listing price is independent seller-owned evidence for the current offer.
+        # A difference can be legitimate after a promotion, so only require agreement
+        # when Orders itself has no completed proceeds total/tax yet. This is the exact
+        # transient state that previously mixed MX$279 and MX$240.52.
+        listing = _money(row.get('listing_price_x_qty'))
+        canonical = _money(row.get('canonical_customer_spend'))
+        completed_order_money = _money(row.get('proceeds_total')) > 0 or _money(row.get('proceeds_tax')) > 0
+        if not completed_order_money and listing > 0 and not _close(canonical, listing):
+            failures.append(
+                f"Today order {short}: provisional canonical {canonical} != current offer price {listing}; tax basis is inconsistent"
+            )
 
     # Historical business values are reconciled Sales & Traffic only.
+    h = sales.get('headline') or {}
+    for api_key, db_key in (
+        ('sales_t28','t28'),('sales_t7','t7'),('sales_mtd','mtd'),('sales_ytd','ytd'),
+        ('orders_t28','orders_t28'),('units_t28','units_t28'),
+    ):
+        if not _close(h.get(api_key), reconciled.get(db_key)):
+            failures.append(f'Sales {api_key} != reconciled {db_key}')
+
     t28 = _money(reconciled.get('t28'))
-    if not _close((sales.get('headline') or {}).get('sales_t28'), t28): failures.append('Sales T28 != reconciled T28')
     if not _close((home.get('rolling') or {}).get('sales_t28'), t28): failures.append('Home T28 != reconciled T28')
-    h28 = next((r for r in (trajectory.get('horizons') or []) if r.get('label') == '28D'), {})
-    if not _close(h28.get('sales'), t28): failures.append('Trajectory 28D != reconciled T28')
+    horizon_map = {str(r.get('label')): r for r in (trajectory.get('horizons') or [])}
+    for label, db_key in (('28D','t28'),('56D','t56'),('90D','t90')):
+        if not _close((horizon_map.get(label) or {}).get('sales'), reconciled.get(db_key)):
+            failures.append(f'Trajectory {label} != reconciled {db_key}')
 
     # Portfolio identity and additive totals.
     if duplicate_owner_asins: failures.append(f'{duplicate_owner_asins} ASINs have multiple canonical offer owners')
@@ -229,21 +253,6 @@ def audit(board_url: str) -> dict:
         if row.get('advertising_final') and row.get('advertising') is not None and float(row.get('advertising')) > 0:
             failures.append(f"Finance {row.get('month')}: advertising candidate has positive income sign")
 
-    # Diagnose the tax basis instead of assuming it. For an itemized order, listing
-    # price and ITEM+TAX are useful independent checks against the stored unit price.
-    for row in raw_today:
-        if float(row.get('unit_price_x_qty') or 0) <= 0:
-            continue
-        item_plus_tax = _money(row.get('proceeds_item')) + _money(row.get('proceeds_tax')) + _money(row.get('proceeds_shipping'))
-        listing = _money(row.get('listing_price_x_qty'))
-        canonical = _money(row.get('canonical_customer_spend'))
-        candidates = [v for v in (item_plus_tax, listing) if v > 0]
-        if candidates and all(not _close(canonical, v) for v in candidates):
-            warnings.append(
-                f"order {row.get('order_short')}: canonical {canonical} disagrees with gross candidates "
-                f"item+tax+shipping={item_plus_tax}, listing={listing}"
-            )
-
     return {
         'status': 'PASS' if not failures else 'FAIL',
         'marketplace': settings.marketplace_id,
@@ -258,6 +267,8 @@ def audit(board_url: str) -> dict:
             'home_today_sales': home_today,
             'sales_today_sales': sales_today,
             'reconciled_t28': t28,
+            'sales_mtd': _money(h.get('sales_mtd')),
+            'sales_ytd': _money(h.get('sales_ytd')),
             'catalog_sales_t28': _money(cat_summary.get('sales_t28')),
             'trajectory_portfolio_sales_t28': _money(traj_port.get('portfolio_sales_t28')),
         },
