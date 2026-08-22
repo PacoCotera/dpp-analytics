@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from statistics import median
 
 from today_api_legacy import today_payload as _legacy_today_payload
+
+
+TERMINAL_ORDER_STATUSES = {"SHIPPED", "CANCELLED"}
 
 
 def _pct(current: float, prior: float):
@@ -66,10 +70,12 @@ def _context_from_gross(rows: list[dict], target: date, local_time: str) -> dict
         return round(sum(v for d, v in by_date.items() if start <= d <= end), 2)
 
     same_weekdays = [
-        v for d, v in by_date.items()
+        v
+        for d, v in by_date.items()
         if target - timedelta(days=56) <= d < target and d.weekday() == target.weekday()
     ]
     typical = round(sum(same_weekdays) / len(same_weekdays), 2) if same_weekdays else None
+    typical_median = round(float(median(same_weekdays)), 2) if same_weekdays else None
     best = round(max(same_weekdays), 2) if same_weekdays else None
     sales_week = total(week_start, target)
     sales_mtd = total(month_start, target)
@@ -82,6 +88,7 @@ def _context_from_gross(rows: list[dict], target: date, local_time: str) -> dict
         "local_date": target.strftime("%A, %B %d").replace(" 0", " "),
         "local_hour": None if not local_time else int(str(local_time).split(":", 1)[0]),
         "typical_same_weekday_full_day": typical,
+        "median_same_weekday_full_day": typical_median,
         "best_same_weekday_full_day": best,
         "sales_week": sales_week,
         "sales_mtd": sales_mtd,
@@ -95,6 +102,157 @@ def _context_from_gross(rows: list[dict], target: date, local_time: str) -> dict
         "sales_basis": "GROSS_CUSTOMER_SPEND",
         "comparison_note": "All Today comparisons use shopper spend from Orders on the same basis.",
     }
+
+
+def _attach_order_detail(cur, orders: list[dict]) -> list[dict]:
+    order_ids = [str(row.get("order_id")) for row in orders if row.get("order_id")]
+    if not order_ids:
+        return orders
+
+    cur.execute(
+        """
+        SELECT o.amazon_order_id AS order_id,
+               COALESCE(o.fulfillment_status,'') AS status,
+               COALESCE(o.fulfilled_by,'') AS fulfilled_by,
+               COALESCE(o.channel_name,'') AS channel_name,
+               COALESCE(o.quantity_fulfilled,0)::bigint AS quantity_fulfilled,
+               COALESCE(o.quantity_unfulfilled,0)::bigint AS quantity_unfulfilled,
+               to_char(o.created_time AT TIME ZONE mp.timezone,'FMMon DD · HH24:MI') AS local_time,
+               greatest(0,extract(epoch FROM (CURRENT_TIMESTAMP-o.created_time)))::bigint AS age_seconds,
+               cs.customer_spend::numeric(14,2) AS sales
+        FROM core.amazon_order o
+        JOIN core.marketplace mp USING (marketplace_id)
+        LEFT JOIN mart.order_customer_spend cs
+          ON cs.marketplace_id=o.marketplace_id AND cs.amazon_order_id=o.amazon_order_id
+        WHERE o.amazon_order_id=ANY(%s)
+        """,
+        (order_ids,),
+    )
+    metadata = {row["order_id"]: row for row in cur.fetchall()}
+
+    cur.execute(
+        """
+        SELECT i.amazon_order_id AS order_id,
+               i.order_item_id,
+               i.seller_sku AS sku,
+               i.asin,
+               COALESCE(sl.item_name,s.title,i.title,i.seller_sku,'Item') AS product,
+               COALESCE(sl.image_url,ci.image_url) AS image_url,
+               COALESCE(i.quantity_ordered,0)::bigint AS quantity_ordered,
+               COALESCE(i.quantity_fulfilled,0)::bigint AS quantity_fulfilled,
+               COALESCE(i.quantity_unfulfilled,0)::bigint AS quantity_unfulfilled
+        FROM core.amazon_order_item i
+        JOIN core.amazon_order o USING (amazon_order_id)
+        LEFT JOIN core.sku s ON s.sku=i.seller_sku
+        LEFT JOIN core.seller_listing sl
+          ON sl.marketplace_id=o.marketplace_id AND sl.seller_sku=i.seller_sku
+        LEFT JOIN core.catalog_item ci
+          ON ci.marketplace_id=o.marketplace_id AND ci.asin=COALESCE(i.asin,s.asin)
+        WHERE i.amazon_order_id=ANY(%s)
+        ORDER BY i.amazon_order_id,i.order_item_id
+        """,
+        (order_ids,),
+    )
+    items: dict[str, list[dict]] = {}
+    for item in cur.fetchall():
+        items.setdefault(item["order_id"], []).append(dict(item))
+
+    for order in orders:
+        order_id = str(order.get("order_id") or "")
+        detail = metadata.get(order_id) or {}
+        for key in (
+            "status",
+            "fulfilled_by",
+            "channel_name",
+            "quantity_fulfilled",
+            "quantity_unfulfilled",
+            "local_time",
+            "age_seconds",
+            "sales",
+        ):
+            if detail.get(key) is not None:
+                order[key] = detail[key]
+        order["fulfillment_model"] = (
+            "FBA"
+            if str(order.get("fulfilled_by") or "").upper() == "AMAZON"
+            else "FBM"
+            if str(order.get("fulfilled_by") or "").upper() == "MERCHANT"
+            else "—"
+        )
+        order["items"] = items.get(order_id, [])
+        order["item_count"] = len(order["items"])
+    return orders
+
+
+def _current_order_queue(cur, marketplace: str) -> tuple[dict, list[dict]]:
+    cur.execute(
+        """
+        WITH q AS (
+          SELECT o.*,
+                 upper(COALESCE(o.fulfillment_status,'')) AS status_norm,
+                 upper(COALESCE(o.fulfilled_by,'')) AS fulfilled_by_norm,
+                 mp.timezone
+          FROM core.amazon_order o
+          JOIN core.marketplace mp USING (marketplace_id)
+          WHERE o.marketplace_id=%s
+        )
+        SELECT
+          count(*) FILTER (
+            WHERE status_norm<>'' AND status_norm NOT IN ('SHIPPED','CANCELLED')
+          )::bigint AS open_orders,
+          count(*) FILTER (
+            WHERE status_norm IN ('PENDING','PENDING_AVAILABILITY','INVOICE_UNCONFIRMED')
+          )::bigint AS pending_orders,
+          count(*) FILTER (WHERE status_norm='UNSHIPPED')::bigint AS unshipped_orders,
+          count(*) FILTER (WHERE status_norm='PARTIALLY_SHIPPED')::bigint AS partially_shipped_orders,
+          count(*) FILTER (WHERE status_norm='UNFULFILLABLE')::bigint AS problem_orders,
+          count(*) FILTER (
+            WHERE status_norm<>'' AND status_norm NOT IN ('SHIPPED','CANCELLED')
+              AND fulfilled_by_norm='AMAZON'
+          )::bigint AS fba_open_orders,
+          count(*) FILTER (
+            WHERE status_norm<>'' AND status_norm NOT IN ('SHIPPED','CANCELLED')
+              AND fulfilled_by_norm='MERCHANT'
+          )::bigint AS fbm_open_orders,
+          count(*) FILTER (
+            WHERE status_norm='SHIPPED'
+              AND (COALESCE(o.last_updated_time,o.created_time) AT TIME ZONE timezone)::date
+                  =(CURRENT_TIMESTAMP AT TIME ZONE timezone)::date
+          )::bigint AS shipped_today
+        FROM q o
+        """,
+        (marketplace,),
+    )
+    flow = dict(cur.fetchone() or {})
+
+    cur.execute(
+        """
+        SELECT o.amazon_order_id AS order_id,
+               right(o.amazon_order_id,9) AS order_short,
+               COALESCE(o.fulfillment_status,'') AS status,
+               COALESCE(o.fulfilled_by,'') AS fulfilled_by,
+               COALESCE(o.channel_name,'') AS channel_name,
+               to_char(o.created_time AT TIME ZONE mp.timezone,'FMMon DD · HH24:MI') AS local_time,
+               greatest(0,extract(epoch FROM (CURRENT_TIMESTAMP-o.created_time)))::bigint AS age_seconds,
+               cs.customer_spend::numeric(14,2) AS sales,
+               COALESCE(cs.units,COALESCE(o.quantity_fulfilled,0)+COALESCE(o.quantity_unfulfilled,0),0)::bigint AS units
+        FROM core.amazon_order o
+        JOIN core.marketplace mp USING (marketplace_id)
+        LEFT JOIN mart.order_customer_spend cs
+          ON cs.marketplace_id=o.marketplace_id AND cs.amazon_order_id=o.amazon_order_id
+        WHERE o.marketplace_id=%s
+          AND upper(COALESCE(o.fulfillment_status,''))<>''
+          AND upper(COALESCE(o.fulfillment_status,'')) NOT IN ('SHIPPED','CANCELLED')
+        ORDER BY o.created_time DESC
+        LIMIT 20
+        """,
+        (marketplace,),
+    )
+    orders = [dict(row) for row in cur.fetchall()]
+    _attach_order_detail(cur, orders)
+    for order in orders:
+        order["sales_basis"] = "GROSS_CUSTOMER_SPEND"
+    return flow, orders
 
 
 def today_payload(connect, decorate_products, marketplace: str, selected_date: str | None = None) -> dict:
@@ -133,22 +291,15 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
                 product.update(sales=row["sales"], units=row["units"], orders=row["orders"])
             product["sales_basis"] = "GROSS_CUSTOMER_SPEND"
 
-        # Order evidence uses authoritative item shopper spend when item detail is
-        # available; order grand total is only a temporary completeness fallback.
-        cur.execute(
-            """
-            SELECT amazon_order_id,customer_spend
-            FROM mart.order_customer_spend
-            WHERE marketplace_id=%s AND business_date=%s
-            """,
-            (marketplace, target),
-        )
-        order_values = {r["amazon_order_id"]: r["customer_spend"] for r in cur.fetchall()}
-        for order in payload.get("recent_orders") or []:
-            if order.get("order_id") in order_values:
-                order["sales"] = order_values[order["order_id"]]
+        recent_orders = payload.get("recent_orders") or []
+        _attach_order_detail(cur, recent_orders)
+        for order in recent_orders:
             order["sales_basis"] = "GROSS_CUSTOMER_SPEND"
-        payload["latest_order"] = (payload.get("recent_orders") or [None])[0]
+        payload["latest_order"] = (recent_orders or [None])[0]
+
+        flow, open_orders = _current_order_queue(cur, marketplace)
+        payload["order_flow"] = flow
+        payload["open_orders"] = open_orders
 
     last30 = [r for r in daily if r["business_date"] >= target - timedelta(days=29)]
     for row in last30:
@@ -171,4 +322,5 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
 
     payload["metric_basis"] = basis
     payload["product_contribution_sales_basis"] = "GROSS_CUSTOMER_SPEND"
+    payload["order_operations_basis"] = "CURRENT_AMAZON_FULFILLMENT_STATE"
     return payload
