@@ -101,6 +101,115 @@
   }
 }
 
+@media (max-width: 640px) {
+  .today-workspace .today-hero {
+    padding: 12px 14px 0;
+  }
+
+  .today-workspace .today-hero__top {
+    display: grid;
+    gap: 8px;
+  }
+
+  .today-workspace .day-picker {
+    display: flex;
+    width: auto;
+    max-width: none;
+    gap: 5px;
+    margin: 0 -14px;
+    padding: 0 14px 7px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .today-workspace .day-picker::-webkit-scrollbar {
+    display: none;
+  }
+
+  .today-workspace .day-choice {
+    flex: 0 0 43px;
+    width: 43px;
+    height: 36px;
+    min-height: 36px;
+    padding: 2px 3px;
+    border-radius: 10px;
+    scroll-snap-align: start;
+  }
+
+  .today-workspace .day-choice.live {
+    flex-basis: 62px;
+    width: 62px;
+  }
+
+  .today-workspace .day-choice b {
+    font-size: 10px;
+  }
+
+  .today-workspace .day-choice span {
+    margin-top: 2px;
+    font-size: 9px;
+  }
+
+  .today-workspace .today-hero__value {
+    margin: 8px 0 7px;
+    font-size: 68px;
+  }
+
+  .today-workspace .today-hero__read {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .today-workspace .today-hero__copy {
+    padding-bottom: 2px;
+  }
+
+  .today-workspace .today-hero__copy strong {
+    font-size: 19px;
+  }
+
+  .today-workspace .today-hero__copy p {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.38;
+  }
+
+  .today-workspace .today-hero__metrics {
+    display: grid;
+    width: calc(100% + 28px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin: 0 -14px;
+    border-top: 1px solid var(--line);
+    background: #faf6ef;
+  }
+
+  .today-workspace .today-hero__metric {
+    min-width: 0;
+    padding: 10px 14px 11px;
+  }
+
+  .today-workspace .today-hero__metric + .today-hero__metric {
+    border-left: 1px solid var(--line);
+  }
+
+  .today-workspace .today-hero__metric strong {
+    font-size: 23px;
+  }
+
+  .today-workspace .today-hero__metric span {
+    margin-top: 3px;
+    font-size: 10px;
+    font-weight: 760;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}
+
 .wall-mode .today-workspace {
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.3fr);
 }
