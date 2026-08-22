@@ -6,6 +6,7 @@ COPY visual_qa.mjs ./
 COPY nav_qa.mjs ./
 COPY numeric_ui_qa.mjs ./
 COPY geography_qa.mjs ./
+COPY footer_qa.mjs ./
 COPY entrypoint.sh ./
 RUN chmod +x /qa/entrypoint.sh
 ENTRYPOINT ["/qa/entrypoint.sh"]
