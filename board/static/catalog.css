@@ -860,9 +860,9 @@
     display: none;
   }
 
-  .family > summary > .economics,
-  .analysis-row > .economics,
-  .child > .economics {
+  body.catalog-shell .family > summary > .economics,
+  body.catalog-shell .analysis-row > .economics,
+  body.catalog-shell .child > .economics {
     display: none !important;
   }
 
