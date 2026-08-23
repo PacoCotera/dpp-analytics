@@ -264,13 +264,39 @@ async function verifyFinanceEvidence(page) {
   await wait(page, '#events .event-row');
 }
 
+async function verifySalesOrders(page) {
+  await page.locator('button[data-view="orders"]').click();
+  await wait(page, '#orderRows tr');
+  const state = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#orderRows tr')];
+    const control = document.getElementById('ordersMore');
+    return {
+      mobile: window.innerWidth <= 720,
+      total: rows.length,
+      visible: rows.filter(row => getComputedStyle(row).display !== 'none').length,
+      controlVisible: Boolean(control && getComputedStyle(control).display !== 'none'),
+      expanded: control?.getAttribute('aria-expanded'),
+    };
+  });
+  if (
+    state.mobile &&
+    state.total > 10 &&
+    (state.visible !== 10 || !state.controlVisible || state.expanded !== 'false')
+  ) {
+    throw new Error(`Sales Orders mobile density mismatch: ${JSON.stringify(state)}`);
+  }
+  if (!state.mobile && state.visible !== state.total) {
+    throw new Error(`Sales Orders desktop rows hidden: ${JSON.stringify(state)}`);
+  }
+}
+
 const scenarios = [
   ['today', '/today', ['mobile', 'desktop'], async p => { await wait(p, '#rhythm .dpp-bar'); await wait(p, '#dayPicker .day-choice'); }],
   ['today-wall', '/today?wall=1', ['desktop']],
   ['home', '/', ['mobile', 'tablet', 'desktop']],
   ['sales-overview', '/sales', ['mobile', 'tablet', 'desktop'], verifySalesOverview],
   ['sales-products', '/sales', ['mobile', 'desktop'], async p => { await p.locator('button[data-view="products"]').click(); await wait(p, '#skuRows tr'); }],
-  ['sales-orders', '/sales', ['mobile', 'desktop'], async p => { await p.locator('button[data-view="orders"]').click(); await wait(p, '#orderRows tr'); }],
+  ['sales-orders', '/sales', ['mobile', 'desktop'], verifySalesOrders],
   ['catalog', '/catalog', ['mobile', 'tablet', 'desktop'], verifyCatalog],
   ['catalog-design', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'dimension:design')],
   ['catalog-ruling', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'dimension:ruling')],
