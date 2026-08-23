@@ -233,14 +233,27 @@ function renderJobs() {
   byId('jobs').innerHTML = rows
     .map(
       (item) => `<div class="health-job">
-      <div>
+      <div class="health-job__identity">
         <div class="health-job__name">${escapeHtml(item.label || item.job_name || '')}</div>
         <div class="health-job__source">${escapeHtml(item.operation || item.source || '')}</div>
+        <div class="health-job__purpose">${escapeHtml(item.purpose || '')}</div>
       </div>
-      <div><span class="health-status ${jobState(item)}">${stateLabel(jobState(item))}</span></div>
-      <div class="health-job__age">${duration(item.age_seconds)}<small>${timestamp(item.last_success_at)}</small></div>
-      <div class="health-job__cadence">${duration(item.expected_interval_seconds)}<small>${scheduleCopy(item)}</small></div>
-      <div class="health-job__rows">${item.records_read == null ? '—' : integer(item.records_read)} read · ${item.records_written == null ? '—' : integer(item.records_written)} stored</div>
+      <div class="health-job__status"><span class="health-status ${jobState(item)}">${stateLabel(jobState(item))}</span></div>
+      <div class="health-job__age health-job__metric">
+        <span class="health-job__metric-label">Last successful run</span>
+        <strong>${duration(item.age_seconds)} old</strong>
+        <small>Last success ${timestamp(item.last_success_at)}</small>
+      </div>
+      <div class="health-job__cadence health-job__metric">
+        <span class="health-job__metric-label">Frequency</span>
+        <strong>Every ${duration(item.expected_interval_seconds)}</strong>
+        <small>${scheduleCopy(item)}</small>
+      </div>
+      <div class="health-job__rows health-job__metric">
+        <span class="health-job__metric-label">Last API fetch</span>
+        <strong>${item.records_read == null ? '—' : integer(item.records_read)} read · ${item.records_written == null ? '—' : integer(item.records_written)} stored</strong>
+        <small>Attempt ${timestamp(item.last_started_at)}</small>
+      </div>
     </div>`,
     )
     .join('');
