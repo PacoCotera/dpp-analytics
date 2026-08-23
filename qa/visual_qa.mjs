@@ -32,6 +32,11 @@ async function verifySalesOverview(page) {
 
 async function verifyDataHealth(page) {
   await wait(page, '.health-summary');
+  const mobile = await page.evaluate(() => window.innerWidth <= 640);
+  if (mobile) {
+    await page.locator('#toggle').click();
+    await wait(page, '#jobs .health-job');
+  }
   const state = await page.evaluate(async () => {
     const response = await fetch('/api/data-health', { cache: 'no-store' });
     const payload = await response.json();
@@ -73,6 +78,17 @@ async function verifyDataHealth(page) {
       warehouseClosed: !document.querySelector('.warehouse-reference')?.hasAttribute('open'),
       genericRingRemoved: !document.getElementById('ring'),
       refreshCopy: document.getElementById('healthUpdated')?.textContent || '',
+      mobilePipelineMetrics:
+        window.innerWidth > 640 ||
+        ([...document.querySelectorAll('#jobs .health-job')].length === jobs.length &&
+          [...document.querySelectorAll('#jobs .health-job')].every(row =>
+            [
+              row.querySelector('.health-job__age'),
+              row.querySelector('.health-job__cadence'),
+              row.querySelector('.health-job__rows'),
+              row.querySelector('.health-job__purpose'),
+            ].every(metric => metric && window.getComputedStyle(metric).display !== 'none')
+          )),
     };
   });
   if (
@@ -83,6 +99,7 @@ async function verifyDataHealth(page) {
     !state.compactCoverage ||
     !state.warehouseClosed ||
     !state.genericRingRemoved ||
+    !state.mobilePipelineMetrics ||
     !state.refreshCopy.includes('refreshes every 60s') ||
     state.attentionVisible !== Boolean(state.problems) ||
     state.incidents !== state.problems ||
