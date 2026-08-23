@@ -2,10 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#f4f0e8" />
     <title>Dirty Pawz Press · Today</title>
     <script src="/assets/today-bootstrap.js"></script>
@@ -30,9 +27,7 @@
             <div class="brand-sub">Today · Amazon Mexico</div>
           </div>
         </div>
-        <div class="top-meta">
-          <strong id="clock">--:--</strong><span id="modeStatus">Loading</span>
-        </div>
+        <div class="top-meta"><strong id="clock">--:--</strong><span id="modeStatus">Loading</span></div>
       </header>
 
       <nav class="primary-nav"></nav>
@@ -45,36 +40,21 @@
               title="Shopper-facing product spend including IVA. Amazon ITEM + TAX is used when complete; provisional tax-exclusive item values are normalized to the marketplace IVA basis. Settlement proceeds and Amazon fees are excluded."
             >
               <div class="today-hero__top">
-                <div class="today-eyebrow" id="salesLabel">
-                  Shopper spend today · incl. IVA
-                </div>
+                <div class="today-eyebrow" id="salesLabel">Shopper spend today · incl. IVA</div>
                 <div class="day-picker" id="dayPicker" data-no-swipe></div>
               </div>
-              <div class="today-hero__value">
-                <span class="currency">$</span><span id="sales">—</span>
-              </div>
+              <div class="today-hero__value"><span class="currency">$</span><span id="sales">—</span></div>
               <div class="today-hero__read">
                 <div class="today-hero__copy">
                   <strong id="dayHeadline">Reading today…</strong>
-                  <p id="dayExplanation">
-                    Comparing the selected day with recent shopper-spend
-                    context.
-                  </p>
+                  <p id="dayExplanation">Comparing the selected day with recent shopper-spend context.</p>
                 </div>
               </div>
-              <div
-                class="today-hero__metrics"
-                aria-label="Today operating KPIs"
-              >
+              <div class="today-hero__metrics" aria-label="Today operating KPIs">
+                <div class="today-hero__metric"><strong id="orders">—</strong><span>orders</span></div>
+                <div class="today-hero__metric"><strong id="units">—</strong><span>units</span></div>
                 <div class="today-hero__metric">
-                  <strong id="orders">—</strong><span>orders</span>
-                </div>
-                <div class="today-hero__metric">
-                  <strong id="units">—</strong><span>units</span>
-                </div>
-                <div class="today-hero__metric">
-                  <strong id="pendingOrdersKpi">—</strong
-                  ><span>Amazon processing</span
+                  <strong id="pendingOrdersKpi">—</strong><span>Amazon processing</span
                   ><small id="pendingOrdersKpiNote">current Amazon state</small>
                 </div>
               </div>
@@ -85,25 +65,16 @@
                 <div>
                   <div class="today-panel__title">Recent rhythm</div>
                   <div class="today-panel__sub" id="rhythmSub">
-                    Same shopper-spend incl.-IVA basis across the selected
-                    window
+                    Same shopper-spend incl.-IVA basis across the selected window
                   </div>
                 </div>
                 <div class="periods" data-no-swipe>
-                  <button class="period" type="button" data-period="7">
-                    7D
-                  </button>
-                  <button class="period" type="button" data-period="mtd">
-                    MTD
-                  </button>
-                  <button class="period active" type="button" data-period="30">
-                    30D
-                  </button>
+                  <button class="period" type="button" data-period="7">7D</button>
+                  <button class="period" type="button" data-period="mtd">MTD</button>
+                  <button class="period active" type="button" data-period="30">30D</button>
                 </div>
               </div>
-              <div class="rhythm-insight" id="rhythmInsight">
-                Reading recent demand…
-              </div>
+              <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
               <div class="rhythm-host">
                 <svg id="rhythm" class="rhythm" viewBox="0 0 900 190"></svg>
               </div>
@@ -115,14 +86,10 @@
             <section class="today-card today-read-panel">
               <div class="today-eyebrow">Business read</div>
               <h2 id="pulseHeadline">Reading the business…</h2>
-              <p id="pulseExplanation">
-                Separating today’s signal from the broader trend.
-              </p>
+              <p id="pulseExplanation">Separating today’s signal from the broader trend.</p>
               <div class="context-list" id="contextList"></div>
               <section class="latest">
-                <div class="latest-title">
-                  Latest sale · shopper spend incl. IVA
-                </div>
+                <div class="latest-title">Latest sale · shopper spend incl. IVA</div>
                 <div id="latest">
                   <div class="empty">Waiting for today’s first order.</div>
                 </div>
@@ -130,16 +97,11 @@
               </section>
             </section>
 
-            <section
-              class="today-card today-panel order-flow-panel"
-              id="orderFlowPanel"
-            >
+            <section class="today-card today-panel order-flow-panel" id="orderFlowPanel">
               <div class="today-panel__head">
                 <div>
                   <div class="today-panel__title">Order queue</div>
-                  <div class="today-panel__sub">
-                    Current Amazon fulfillment state
-                  </div>
+                  <div class="today-panel__sub">Current Amazon fulfillment state</div>
                 </div>
               </div>
               <div class="order-flow-grid" id="orderFlowGrid">
@@ -151,12 +113,8 @@
             <section class="today-card today-panel">
               <div class="today-panel__head">
                 <div>
-                  <div class="today-panel__title" id="productsTitle">
-                    What is driving today
-                  </div>
-                  <div class="today-panel__sub">
-                    Ranked shopper-spend contribution · incl. IVA
-                  </div>
+                  <div class="today-panel__title" id="productsTitle">What is driving today</div>
+                  <div class="today-panel__sub">Ranked shopper-spend contribution · incl. IVA</div>
                 </div>
               </div>
               <div class="today-products" id="products">
@@ -166,23 +124,16 @@
           </aside>
         </section>
 
-        <details
-          class="today-card today-orders today-open-orders"
-          id="openOrdersPanel"
-        >
+        <details class="today-card today-orders today-open-orders" id="openOrdersPanel">
           <summary>
             <span
               ><strong>Open orders</strong
               ><small id="openOrderSummary"
-                >Current Amazon-processing, unshipped and partial orders · no
-                customer PII</small
+                >Current Amazon-processing, unshipped and partial orders · no customer PII</small
               ></span
             ><b id="openOrderToggle">View ↓</b>
           </summary>
-          <div
-            class="order-grid operational-order-grid"
-            id="openOrderGrid"
-          ></div>
+          <div class="order-grid operational-order-grid" id="openOrderGrid"></div>
         </details>
 
         <details class="today-card today-orders" id="ordersPanel">
@@ -190,8 +141,7 @@
             <span
               ><strong>Order evidence</strong
               ><small id="orderSummary"
-                >Shopper spend incl. IVA for the selected day · no customer
-                PII</small
+                >Shopper spend incl. IVA for the selected day · no customer PII</small
               ></span
             ><b id="orderToggle">View ↓</b>
           </summary>
@@ -200,12 +150,10 @@
       </main>
 
       <footer class="footer">
-        <span
-          >MXN · shopper spend incl. IVA · Amazon Orders · sync about every 3
-          minutes</span
+        <span>MXN · shopper spend incl. IVA · Amazon Orders · sync about every 3 minutes</span
         ><span
-          >Historical Sales/Home = reconciled shopper spend incl. IVA; net sales
-          ex IVA live in Finance · Dirty Pawz Press Analytics</span
+          >Historical Sales/Home = reconciled shopper spend incl. IVA; net sales ex IVA live in Finance ·
+          Dirty Pawz Press Analytics</span
         >
       </footer>
     </div>
