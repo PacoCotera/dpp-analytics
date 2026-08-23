@@ -844,11 +844,10 @@
     column-gap: 0;
     row-gap: 0;
     padding: 0;
-    border: 1px solid #cfc3b4;
-    border-top: 3px solid var(--accent);
+    border: 1px solid var(--line);
     border-radius: 14px;
     background: #fffdf9;
-    box-shadow: 0 2px 8px rgb(77 60 40 / 6%);
+    box-shadow: 0 4px 14px rgb(28 26 23 / 7%);
   }
 
   #orders .data-table-shell {
@@ -860,7 +859,7 @@
 
   #orderRows {
     display: grid;
-    gap: 12px;
+    gap: 14px;
   }
 
   #orders:not(.orders-expanded) #orderRows .order-reference-row {
@@ -918,8 +917,9 @@
     align-self: start;
     height: 100%;
     padding: 12px 14px;
-    border-bottom: 1px solid #cfc3b4;
-    background: #e5dacd;
+    border-bottom: 1px solid #e4ddd3;
+    background: #fffdf9;
+    box-shadow: inset 3px 0 0 var(--accent);
   }
 
   #orderRows td:nth-child(2) {
@@ -932,8 +932,8 @@
     align-self: start;
     height: 100%;
     padding: 12px 14px;
-    border-bottom: 1px solid #cfc3b4;
-    background: #e5dacd;
+    border-bottom: 1px solid #e4ddd3;
+    background: #fffdf9;
     text-align: right;
   }
 
@@ -944,8 +944,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 9px 14px;
-    border-top: 1px solid #d8cec1;
-    background: #f1ebe3;
+    border-top: 1px solid #e4ddd3;
+    background: #faf7f2;
   }
 
   #orderRows .order-status-cell__label {
@@ -955,7 +955,6 @@
 
   #orderRows .order-moment__label {
     display: block;
-    color: var(--accent-ink);
   }
 
   .sales-order-item {
