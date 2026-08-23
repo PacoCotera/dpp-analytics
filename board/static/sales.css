@@ -859,7 +859,7 @@
 
   #orderRows {
     display: grid;
-    gap: 14px;
+    gap: 18px;
   }
 
   #orders:not(.orders-expanded) #orderRows .order-reference-row {
