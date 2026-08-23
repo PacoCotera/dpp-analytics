@@ -295,12 +295,31 @@ async function verifySalesOrders(page) {
     const rows = [...document.querySelectorAll('#orderRows tr')];
     const apiOrders = Array.isArray(payload.orders) ? payload.orders : [];
     const control = document.getElementById('ordersMore');
+    const mobile = window.innerWidth <= 720;
     return {
-      mobile: window.innerWidth <= 720,
+      mobile,
       total: rows.length,
       visible: rows.filter(row => getComputedStyle(row).display !== 'none').length,
       controlVisible: Boolean(control && getComputedStyle(control).display !== 'none'),
       expanded: control?.getAttribute('aria-expanded'),
+      orderGap: Number.parseFloat(
+        getComputedStyle(document.getElementById('orderRows')).rowGap || '0'
+      ),
+      cardBoundaries: rows.every(row => {
+        const style = getComputedStyle(row);
+        return (
+          !mobile ||
+          (
+            Number.parseFloat(style.borderTopWidth) >= 1 &&
+            Number.parseFloat(style.borderTopLeftRadius) >= 12
+          )
+        );
+      }),
+      orderLabels: rows.every(
+        row =>
+          row.querySelector('.order-moment__label')?.textContent?.trim() === 'Order' &&
+          row.querySelector('.order-status-cell__label')?.textContent?.trim() === 'Fulfillment'
+      ),
       structured: rows.every(row =>
         row.querySelector('.order-moment') &&
         row.querySelector('.sales-order-items') &&
@@ -349,6 +368,12 @@ async function verifySalesOrders(page) {
   });
   if (!state.structured || !state.itemRows || !state.namedItems) {
     throw new Error(`Sales Orders structure mismatch: ${JSON.stringify(state)}`);
+  }
+  if (
+    state.mobile &&
+    (!state.cardBoundaries || state.orderGap < 10 || !state.orderLabels)
+  ) {
+    throw new Error(`Sales Orders mobile boundaries mismatch: ${JSON.stringify(state)}`);
   }
   const brokenItems = state.itemContracts.filter(
     contract =>
