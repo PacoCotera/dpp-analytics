@@ -68,7 +68,7 @@ async function catalogSemantic(page) {
 }
 
 async function verifyCatalog(page) {
-  await wait(page, '.family');
+  await page.locator('.family').first().waitFor({ state: 'visible', timeout: 15000 });
   const semantic = await catalogSemantic(page);
   if (semantic.errors?.length) throw new Error(`Catalog semantic QA: ${semantic.errors.join('; ')}`);
   const openCount = await page.locator('.family[open]').count();
