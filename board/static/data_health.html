@@ -39,19 +39,30 @@
         </header>
 
         <section class="page-section trust-overview">
-          <div class="panel">
-            <div class="panel__body health-control">
-              <div class="health-ring" id="ring"><strong id="score">—</strong></div>
-              <div>
-                <div class="health-eyebrow">Decision-critical coverage</div>
-                <h2 class="health-title" id="healthTitle">Checking decision coverage…</h2>
+          <div class="panel health-summary">
+            <div class="panel__body health-summary__body">
+              <div class="health-summary__count" id="summaryCount">—</div>
+              <div class="health-summary__copy">
+                <div class="health-eyebrow" id="summaryEyebrow">Checking streams</div>
+                <h2 class="health-title" id="healthTitle">Checking source freshness…</h2>
                 <p class="health-copy" id="healthCopy">
-                  Mapping source freshness to the business surfaces that depend on it.
+                  Comparing every source with its own collection schedule and grace period.
                 </p>
               </div>
             </div>
           </div>
-          <div class="notice trust-note" id="trustNote">Loading trust assessment.</div>
+        </section>
+
+        <section class="page-section attention-section" id="attentionSection" hidden>
+          <div class="section-header">
+            <div>
+              <h2 class="section-header__title">Needs attention</h2>
+              <div class="section-header__description">
+                The affected stream, why it matters, how late it is and what the last attempt reported.
+              </div>
+            </div>
+          </div>
+          <div class="attention-list" id="attention" aria-live="polite"></div>
         </section>
 
         <section class="page-section">
@@ -59,26 +70,11 @@
             <div>
               <h2 class="section-header__title">Decision coverage</h2>
               <div class="section-header__description">
-                The status that matters: which operating decisions are supported right now.
+                A compact view of the business surfaces that are ready, cautioned or unavailable.
               </div>
             </div>
           </div>
-          <div class="domain-grid" id="domains" aria-live="polite"></div>
-        </section>
-
-        <section class="page-section coverage-section">
-          <div class="section-header">
-            <div>
-              <h2 class="section-header__title">Warehouse coverage</h2>
-              <div class="section-header__description">Scale checks for the core seller record.</div>
-            </div>
-          </div>
-          <div class="source-grid">
-            <div class="source"><strong id="orders">—</strong><span>orders captured</span></div>
-            <div class="source"><strong id="finance">—</strong><span>finance transactions</span></div>
-            <div class="source"><strong id="listings">—</strong><span>seller listings</span></div>
-            <div class="source"><strong id="snapshots">—</strong><span>inventory snapshots</span></div>
-          </div>
+          <div class="domain-summary" id="domains" aria-live="polite"></div>
         </section>
 
         <section class="page-section">
@@ -86,7 +82,7 @@
             <div>
               <h2 class="section-header__title">Pipeline detail</h2>
               <div class="section-header__description">
-                Problems first. Expand the full source list only for technical investigation.
+                Exceptions first. Expand the complete source list only for technical investigation.
               </div>
             </div>
             <button class="btn" id="toggle" type="button" aria-pressed="false">Show all jobs</button>
@@ -97,12 +93,30 @@
                 <div>Job</div>
                 <div>Status</div>
                 <div>Freshness</div>
-                <div>Rows</div>
-                <div>Diagnostic</div>
+                <div>Cadence</div>
+                <div>Last fetch</div>
               </div>
               <div id="jobs"></div>
             </div>
           </div>
+        </section>
+
+        <section class="page-section coverage-section">
+          <details class="warehouse-reference">
+            <summary>
+              <span>
+                <strong>Warehouse scale</strong>
+                <small>Reference totals, not a freshness diagnostic</small>
+              </span>
+              <span class="warehouse-reference__action">Show</span>
+            </summary>
+            <div class="source-grid">
+              <div class="source"><strong id="orders">—</strong><span>orders captured</span></div>
+              <div class="source"><strong id="finance">—</strong><span>finance transactions</span></div>
+              <div class="source"><strong id="listings">—</strong><span>seller listings</span></div>
+              <div class="source"><strong id="snapshots">—</strong><span>inventory snapshots</span></div>
+            </div>
+          </details>
         </section>
       </main>
 

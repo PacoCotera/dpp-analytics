@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 
 def _one(cur, sql: str, params=()):
     cur.execute(sql, params)
@@ -11,25 +13,195 @@ def _all(cur, sql: str, params=()):
     return list(cur.fetchall())
 
 
+def _seconds(name: str, default: int) -> int:
+    return max(1, int(os.getenv(name, str(default))))
+
+
+JOB_DEFINITIONS = {
+    ("amazon_spapi", "orders_v2026"): {
+        "label": "Orders",
+        "operation": "Amazon SP-API · Orders v2026-01-01",
+        "purpose": "Powers Today sales, recent-order evidence and fulfillment status.",
+        "domain": "Today",
+        "interval_seconds": lambda: _seconds("ORDERS_INTERVAL_SECONDS", 180),
+        "grace_seconds": 420,
+    },
+    ("amazon_spapi", "fba_inventory_v1"): {
+        "label": "FBA inventory",
+        "operation": "Amazon SP-API · FBA Inventory v1",
+        "purpose": "Powers stock position, cover and replenishment decisions.",
+        "domain": "Inventory",
+        "interval_seconds": lambda: _seconds("INVENTORY_INTERVAL_SECONDS", 1800),
+        "grace_seconds": 1800,
+    },
+    ("amazon_spapi", "finances_v2024"): {
+        "label": "Finance transactions",
+        "operation": "Amazon SP-API · Finances v2024-06-19",
+        "purpose": "Powers Amazon posting evidence and open-period contribution.",
+        "domain": "Finance",
+        "interval_seconds": lambda: _seconds("FINANCES_INTERVAL_SECONDS", 14400),
+        "grace_seconds": 7200,
+    },
+    ("amazon_reports", "settlement_reports_v2"): {
+        "label": "Settlement reports",
+        "operation": "Amazon SP-API · Reports settlement feed",
+        "purpose": "Provides payout and settlement evidence for Finance.",
+        "domain": "Finance",
+        "interval_seconds": lambda: _seconds("SETTLEMENT_REPORTS_INTERVAL_SECONDS", 21600),
+        "grace_seconds": 21600,
+    },
+    ("amazon_data_kiosk", "sales_traffic_2024_04_24"): {
+        "label": "Sales & Traffic",
+        "operation": "Amazon Data Kiosk · Sales and Traffic",
+        "purpose": "Powers historical sales, traffic, conversion and product contribution.",
+        "domain": "Sales",
+        "interval_seconds": lambda: _seconds("DATA_KIOSK_INTERVAL_SECONDS", 43200),
+        "grace_seconds": 21600,
+    },
+    ("amazon_reports", "merchant_listings_all_data"): {
+        "label": "Seller listings",
+        "operation": "Amazon SP-API · Merchant Listings report",
+        "purpose": "Provides seller SKU identity, offer state, titles and listing images.",
+        "domain": "Products",
+        "interval_seconds": lambda: _seconds("LISTINGS_REPORT_INTERVAL_SECONDS", 21600),
+        "grace_seconds": 21600,
+    },
+    ("amazon_spapi", "catalog_items_2022_04_01"): {
+        "label": "Catalog enrichment",
+        "operation": "Amazon SP-API · Catalog Items 2022-04-01",
+        "purpose": "Enriches product identity, variation structure and marketplace media.",
+        "domain": "Products",
+        "interval_seconds": lambda: _seconds("CATALOG_INTERVAL_SECONDS", 86400),
+        "grace_seconds": 86400,
+    },
+    ("amazon_spapi", "orders_geography_v2026"): {
+        "label": "Order geography",
+        "operation": "Amazon SP-API · Orders geography backfill",
+        "purpose": "Enriches historical orders for Sales geography decisions.",
+        "domain": "Sales",
+        "interval_seconds": lambda: 86400,
+        "grace_seconds": 86400,
+    },
+    ("dpp_finance", "month_close"): {
+        "label": "Finance month close",
+        "operation": "DPP accounting · close-state evaluator",
+        "purpose": "Evaluates whether historical Finance periods are ready to close.",
+        "domain": "Finance",
+        "interval_seconds": lambda: 3600,
+        "grace_seconds": 3600,
+    },
+    ("amazon_ads", "sponsored_products_reporting_v3"): {
+        "label": "Sponsored Products",
+        "operation": "Amazon Ads · Reporting v3",
+        "purpose": "Powers paid-media efficiency and attributed advertising decisions.",
+        "domain": "Ads",
+        "interval_seconds": lambda: _seconds("AMAZON_ADS_REPORTING_INTERVAL_SECONDS", 21600),
+        "grace_seconds": 21600,
+    },
+}
+
+
+def _decorate_job(row: dict) -> dict:
+    definition = JOB_DEFINITIONS.get((row.get("source"), row.get("job_name")), {})
+    interval_factory = definition.get("interval_seconds", lambda: 86400)
+    interval_seconds = int(interval_factory())
+    stale_after_seconds = interval_seconds + int(definition.get("grace_seconds", interval_seconds))
+    age_seconds = max(0, int(row.get("age_seconds") or 0))
+    latest_status = row.get("latest_status") or "unknown"
+    return {
+        **row,
+        "label": definition.get("label")
+        or (row.get("job_name") or "Unknown stream").replace("_", " ").title(),
+        "operation": definition.get("operation") or row.get("source") or "Unknown source",
+        "purpose": definition.get("purpose")
+        or "Supports the operating warehouse and its dependent dashboards.",
+        "domain": definition.get("domain") or "Warehouse",
+        "expected_interval_seconds": interval_seconds,
+        "stale_after_seconds": stale_after_seconds,
+        "next_due_in_seconds": max(0, interval_seconds - age_seconds),
+        "overdue_by_seconds": max(0, age_seconds - interval_seconds),
+        "stale_by_seconds": max(0, age_seconds - stale_after_seconds),
+        "is_stale": age_seconds > stale_after_seconds,
+        "waiting_for": (
+            "current run to finish"
+            if latest_status == "running"
+            else "a successful retry"
+            if latest_status in ("error", "interrupted")
+            else "the next scheduled collection"
+        ),
+    }
+
+
 def health_board_payload(connect, marketplace: str) -> dict:
     with connect() as conn, conn.cursor() as cur:
-        jobs = _all(
-            cur,
-            """
-            SELECT source, job_name, latest_status,
-                   extract(epoch from age)::bigint AS age_seconds,
-                   records_read, records_written,
-                   error_message
-            FROM ops.data_health
-            ORDER BY CASE latest_status WHEN 'error' THEN 0 WHEN 'running' THEN 1 ELSE 2 END,
-                     age DESC, source, job_name
-            """,
-        )
+        jobs = [
+            _decorate_job(row)
+            for row in _all(
+                cur,
+                """
+                WITH latest AS (
+                    SELECT DISTINCT ON (source, job_name)
+                        source, job_name, started_at, finished_at, status,
+                        records_read, records_written, error_message
+                    FROM ops.ingestion_runs
+                    ORDER BY source, job_name, started_at DESC
+                ), last_success AS (
+                    SELECT DISTINCT ON (source, job_name)
+                        source, job_name, finished_at AS last_success_at,
+                        records_read AS success_records_read,
+                        records_written AS success_records_written
+                    FROM ops.ingestion_runs
+                    WHERE status='success' AND finished_at IS NOT NULL
+                    ORDER BY source, job_name, finished_at DESC
+                ), last_error AS (
+                    SELECT DISTINCT ON (source, job_name)
+                        source, job_name, started_at AS last_error_at,
+                        error_message AS last_error_message
+                    FROM ops.ingestion_runs
+                    WHERE status='error'
+                    ORDER BY source, job_name, started_at DESC
+                )
+                SELECT
+                    l.source,
+                    l.job_name,
+                    CASE
+                        WHEN l.status='interrupted' AND s.last_success_at IS NOT NULL THEN 'success'
+                        ELSE l.status
+                    END AS latest_status,
+                    l.status AS latest_attempt_status,
+                    l.started_at AS last_started_at,
+                    l.finished_at AS last_finished_at,
+                    s.last_success_at,
+                    extract(epoch from (CURRENT_TIMESTAMP - COALESCE(s.last_success_at, l.finished_at, l.started_at)))::bigint AS age_seconds,
+                    extract(epoch from (CURRENT_TIMESTAMP - l.started_at))::bigint AS attempt_age_seconds,
+                    l.records_read,
+                    l.records_written,
+                    s.success_records_read,
+                    s.success_records_written,
+                    l.error_message,
+                    e.last_error_at,
+                    e.last_error_message
+                FROM latest l
+                LEFT JOIN last_success s USING (source, job_name)
+                LEFT JOIN last_error e USING (source, job_name)
+                ORDER BY
+                    CASE l.status WHEN 'error' THEN 0 WHEN 'running' THEN 1 ELSE 2 END,
+                    age_seconds DESC,
+                    l.source,
+                    l.job_name
+                """,
+            )
+        ]
         summary = {
             "jobs": len(jobs),
-            "healthy": sum(1 for row in jobs if row.get("latest_status") in ("success", "running")),
-            "errors": sum(1 for row in jobs if row.get("latest_status") == "error"),
-            "stale": sum(1 for row in jobs if (row.get("age_seconds") or 0) > 86400),
+            "healthy": sum(
+                1
+                for row in jobs
+                if row.get("latest_status") in ("success", "running")
+                and not row.get("is_stale")
+            ),
+            "errors": sum(1 for row in jobs if row.get("latest_attempt_status") == "error"),
+            "stale": sum(1 for row in jobs if row.get("is_stale")),
         }
         warehouse = _one(
             cur,
@@ -69,12 +241,18 @@ def health_board_payload(connect, marketplace: str) -> dict:
         )
         ads_summary = {
             "accounts": len(ads_quality),
-            "healthy_accounts": sum(1 for row in ads_quality if row.get("quality_state") == "HEALTHY"),
-            "attention_accounts": sum(1 for row in ads_quality if row.get("quality_state") == "ATTENTION"),
+            "healthy_accounts": sum(
+                1 for row in ads_quality if row.get("quality_state") == "HEALTHY"
+            ),
+            "attention_accounts": sum(
+                1 for row in ads_quality if row.get("quality_state") == "ATTENTION"
+            ),
             "issue_days": sum(int(row.get("issue_days") or 0) for row in ads_quality),
             "state": (
-                "AWAITING_DATA" if not ads_quality
-                else "ATTENTION" if any(row.get("quality_state") == "ATTENTION" for row in ads_quality)
+                "AWAITING_DATA"
+                if not ads_quality
+                else "ATTENTION"
+                if any(row.get("quality_state") == "ATTENTION" for row in ads_quality)
                 else "HEALTHY"
             ),
         }
