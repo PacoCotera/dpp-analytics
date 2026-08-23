@@ -962,6 +962,10 @@
     display: none;
   }
 
+  .catalog-reference-disclosure:not([open]) > .portfolio-refinement-list {
+    display: none;
+  }
+
   .catalog-reference-disclosure > summary::before {
     color: var(--muted);
     font-size: 18px;
