@@ -149,6 +149,29 @@ async function verifyProductWorkspace(page) {
     if (adsState !== 'Ads access pending' || adsDecision !== 'Ads integration ready')
       throw new Error(`Product Ads pending language mismatch: ${adsState} / ${adsDecision}`);
   }
+
+  await page.locator('#ordersPanel > summary').click();
+  await wait(page, '.product-order');
+  const orderEvidence = await page.evaluate(() => {
+    const orders = [...document.querySelectorAll('.product-order')];
+    return {
+      count: orders.length,
+      structured: orders.every(order =>
+        order.querySelector('.product-order__moment') &&
+        order.querySelectorAll('.product-order__metric').length === 2 &&
+        order.querySelector('.product-order__fulfillment') &&
+        order.querySelector('.order-status-pill')
+      ),
+      statuses: orders.map(order => order.querySelector('.order-status-pill')?.textContent || ''),
+    };
+  });
+  if (!orderEvidence.count || !orderEvidence.structured)
+    throw new Error(`Product order evidence structure mismatch: ${JSON.stringify(orderEvidence)}`);
+  const leakedOrderPending = orderEvidence.statuses.filter(status =>
+    /^pending(?:_availability)?$/i.test(status.trim())
+  );
+  if (leakedOrderPending.length)
+    throw new Error(`Product order evidence leaked raw pending language: ${JSON.stringify(leakedOrderPending)}`);
 }
 
 async function verifyInventory(page) {
@@ -276,9 +299,21 @@ async function verifySalesOrders(page) {
       visible: rows.filter(row => getComputedStyle(row).display !== 'none').length,
       controlVisible: Boolean(control && getComputedStyle(control).display !== 'none'),
       expanded: control?.getAttribute('aria-expanded'),
-      statuses: rows.map(row => row.querySelector('.status')?.textContent?.trim() || ''),
+      structured: rows.every(row =>
+        row.querySelector('.order-moment') &&
+        row.querySelector('.sales-order-items') &&
+        row.querySelector('.order-spend') &&
+        row.querySelector('.order-status-pill')
+      ),
+      itemRows: document.querySelectorAll('.sales-order-item').length,
+      namedItems: [...document.querySelectorAll('.sales-order-item strong')]
+        .every(item => item.textContent.trim().length > 0),
+      statuses: rows.map(row => row.querySelector('.order-status-pill')?.textContent?.trim() || ''),
     };
   });
+  if (!state.structured || !state.itemRows || !state.namedItems) {
+    throw new Error(`Sales Orders structure mismatch: ${JSON.stringify(state)}`);
+  }
   if (
     state.mobile &&
     state.total > 10 &&

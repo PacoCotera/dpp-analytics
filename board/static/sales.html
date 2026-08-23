@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/assets/nav-shell.css" />
     <link rel="stylesheet" href="/assets/layout-system.css" />
     <link rel="stylesheet" href="/assets/chart-system.css" />
-    <link rel="stylesheet" href="/assets/sales.css?v=20260823-orders-density" />
+    <link rel="stylesheet" href="/assets/sales.css" />
     <link rel="stylesheet" href="/assets/sales-geography.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
@@ -203,8 +203,6 @@
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Age</th>
-                    <th>Time</th>
                     <th>Order</th>
                     <th>Items</th>
                     <th
@@ -213,7 +211,7 @@
                     >
                       Shopper spend incl. IVA
                     </th>
-                    <th>Status</th>
+                    <th>Fulfillment</th>
                   </tr>
                 </thead>
                 <tbody id="orderRows"></tbody>
@@ -307,9 +305,7 @@
                   </colgroup>
                   <thead>
                     <tr>
-                      <th data-geo-sort="area" aria-sort="none">
-                        <button type="button">Area</button>
-                      </th>
+                      <th data-geo-sort="area" aria-sort="none"><button type="button">Area</button></th>
                       <th class="num" data-geo-sort="sales" aria-sort="descending">
                         <button type="button">Spend</button>
                       </th>
@@ -349,7 +345,7 @@
 
     <script src="/assets/vendor/d3.v7.min.js"></script>
     <script src="/assets/chart-system.js"></script>
-    <script src="/assets/sales-canonical.js?v=20260823-orders-status"></script>
+    <script src="/assets/sales-canonical.js"></script>
     <script src="/assets/sales-geography.js"></script>
     <script src="/assets/sales-basis-ui.js"></script>
   </body>

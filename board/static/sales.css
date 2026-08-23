@@ -496,26 +496,117 @@
   color: var(--warn);
 }
 
-.order-id {
+.order-moment strong,
+.order-moment span,
+.order-moment code,
+.order-spend strong,
+.order-spend span {
+  display: block;
+}
+
+.order-moment strong {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.order-moment span,
+.order-spend span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.order-moment code {
+  margin-top: 4px;
+  color: var(--faint);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+}
+
+.sales-order-items {
+  display: grid;
+  gap: 7px;
+}
+
+.sales-order-item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.sales-order-item img,
+.sales-order-item__placeholder {
+  width: 32px;
+  height: 38px;
+  border: 1px solid #e8e0d5;
+  border-radius: 7px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.sales-order-item strong,
+.sales-order-item span {
+  display: block;
+}
+
+.sales-order-item strong {
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.sales-order-item span {
+  margin-top: 3px;
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 8.5px;
 }
 
-.age {
-  font-weight: 800;
-}
-
-.order-items {
-  overflow: hidden;
-  max-width: 520px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.status {
+.sales-order-item b {
   color: var(--muted);
-  font-size: 11px;
-  font-weight: 760;
+  font-size: 10px;
+}
+
+.order-spend {
+  text-align: right;
+}
+
+.order-spend strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-status-pill {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid #d8cec0;
+  border-radius: 999px;
+  background: #f2ece3;
+  color: #5f574d;
+  font-size: 8.5px;
+  font-weight: 820;
+  letter-spacing: 0.035em;
+  line-height: 1.1;
+}
+
+.order-status-pill.waiting {
+  border-color: #e3c688;
+  background: #fff4d7;
+  color: #7c560a;
+}
+
+.order-status-pill.active {
+  border-color: #bcd3c4;
+  background: #edf7f0;
+  color: #286342;
+}
+
+.order-status-pill.problem {
+  border-color: #e0b6b0;
+  background: #fbefed;
+  color: #8b3d34;
 }
 
 .orders-more {
@@ -716,13 +807,13 @@
   #orderRows tr {
     display: grid;
     grid-template-areas:
-      'age item sales'
-      'time item status'
-      'order order status';
-    grid-template-columns: auto minmax(0, 1fr) auto;
+      'moment spend'
+      'items items'
+      'status status';
+    grid-template-columns: minmax(0, 1fr) auto;
     column-gap: 12px;
-    row-gap: 4px;
-    padding: 13px 14px;
+    row-gap: 10px;
+    padding: 14px;
     border-bottom: 1px solid var(--line);
   }
 
@@ -776,51 +867,44 @@
   }
 
   #orderRows td:nth-child(1) {
-    grid-area: age;
+    grid-area: moment;
     align-self: start;
-    font-size: 16px;
   }
 
   #orderRows td:nth-child(2) {
-    grid-area: time;
-    color: var(--muted);
-    font-size: 11px;
+    grid-area: items;
+    padding-top: 9px;
+    border-top: 1px solid var(--line);
   }
 
   #orderRows td:nth-child(3) {
-    grid-area: order;
-    color: var(--faint);
-    font-size: 9px;
+    grid-area: spend;
+    align-self: start;
+    text-align: right;
   }
 
   #orderRows td:nth-child(4) {
-    grid-area: item;
-    align-self: start;
-    overflow: visible;
-    font-weight: 720;
-    line-height: 1.25;
-    white-space: normal;
-  }
-
-  #orderRows td:nth-child(5) {
-    grid-area: sales;
-    align-self: start;
-    font-size: 17px;
-    text-align: right;
-  }
-
-  #orderRows td:nth-child(6) {
     grid-area: status;
-    align-self: end;
-    color: var(--muted);
-    font-size: 10px;
-    text-align: right;
+    justify-self: start;
   }
-}
 
-@media (max-width: 640px) {
-  .order-items {
-    max-width: 300px;
+  .sales-order-item {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+  }
+
+  .sales-order-item img,
+  .sales-order-item__placeholder {
+    width: 36px;
+    height: 43px;
+  }
+
+  .sales-order-item strong {
+    font-size: 11.5px;
+  }
+
+  .order-status-pill {
+    min-height: 27px;
+    font-size: 9px;
   }
 }
 
