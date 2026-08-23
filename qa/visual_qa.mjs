@@ -290,8 +290,10 @@ async function verifyFinanceEvidence(page) {
 async function verifySalesOrders(page) {
   await page.locator('button[data-view="orders"]').click();
   await wait(page, '#orderRows tr');
-  const state = await page.evaluate(() => {
+  const state = await page.evaluate(async () => {
+    const payload = await (await fetch('/api/sales', { cache: 'no-store' })).json();
     const rows = [...document.querySelectorAll('#orderRows tr')];
+    const apiOrders = Array.isArray(payload.orders) ? payload.orders : [];
     const control = document.getElementById('ordersMore');
     return {
       mobile: window.innerWidth <= 720,
@@ -308,11 +310,61 @@ async function verifySalesOrders(page) {
       itemRows: document.querySelectorAll('.sales-order-item').length,
       namedItems: [...document.querySelectorAll('.sales-order-item strong')]
         .every(item => item.textContent.trim().length > 0),
+      multiItemOrders: apiOrders.filter(
+        order => Array.isArray(order.order_items) && order.order_items.length > 1
+      ).length,
+      itemContracts: rows.map((row, index) => {
+        const expected = Array.isArray(apiOrders[index]?.order_items)
+          ? apiOrders[index].order_items
+          : [];
+        const rendered = [...row.querySelectorAll('.sales-order-item')];
+        const renderedNames = rendered.map(
+          item => item.querySelector('strong')?.textContent?.trim() || ''
+        );
+        const expectedNames = expected.map(item =>
+          String(item.product || item.sku || item.asin || 'Item').trim()
+        );
+        const quantitiesMatch = rendered.every(
+          (item, itemIndex) =>
+            item.querySelector('b')?.textContent?.trim() ===
+            `×${Number(expected[itemIndex]?.quantity_ordered ?? expected[itemIndex]?.quantity ?? 0).toLocaleString('en-US')}`
+        );
+        const thumbnailsMatch = rendered.every((item, itemIndex) =>
+          expected[itemIndex]?.image_url
+            ? Boolean(item.querySelector('img'))
+            : Boolean(item.querySelector('.sales-order-item__placeholder'))
+        );
+        return {
+          order: apiOrders[index]?.order_short || '',
+          expected: expected.length,
+          rendered: rendered.length,
+          namesMatch: JSON.stringify(renderedNames) === JSON.stringify(expectedNames),
+          quantitiesMatch,
+          thumbnailsMatch,
+          fallbackVisible: Boolean(row.querySelector('.sales-order-items__empty')),
+        };
+      }),
       statuses: rows.map(row => row.querySelector('.order-status-pill')?.textContent?.trim() || ''),
     };
   });
   if (!state.structured || !state.itemRows || !state.namedItems) {
     throw new Error(`Sales Orders structure mismatch: ${JSON.stringify(state)}`);
+  }
+  const brokenItems = state.itemContracts.filter(
+    contract =>
+      contract.expected !== contract.rendered ||
+      !contract.namesMatch ||
+      !contract.quantitiesMatch ||
+      !contract.thumbnailsMatch ||
+      (contract.expected > 0 && contract.fallbackVisible)
+  );
+  if (brokenItems.length) {
+    throw new Error(
+      `Sales Orders item contract mismatch: ${JSON.stringify(brokenItems.slice(0, 5))}`
+    );
+  }
+  if (!state.multiItemOrders) {
+    throw new Error('Sales Orders QA has no multi-item order to verify');
   }
   if (
     state.mobile &&

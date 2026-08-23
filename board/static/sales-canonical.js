@@ -126,28 +126,35 @@
     if (!out) return;
     out.innerHTML = rows
       .map((r, index) => {
-        const details = r.item_details || [];
+        const details = Array.isArray(r.order_items)
+          ? r.order_items
+          : Array.isArray(r.item_details)
+            ? r.item_details
+            : [];
+        const unitCount = details.reduce(
+          (total, item) => total + Number(item.quantity_ordered ?? item.quantity ?? 0),
+          0,
+        );
         const items = details.length
-          ? details
+          ? `<div class="sales-order-items__summary">${nf.format(details.length)} line item${details.length === 1 ? '' : 's'} · ${nf.format(unitCount)} unit${unitCount === 1 ? '' : 's'}</div>${details
               .map((item) => {
+                const name = item.product || item.sku || item.asin || 'Item';
                 const image = item.image_url
-                  ? `<img src="${esc(item.image_url)}" alt="" loading="lazy">`
+                  ? `<img src="${esc(item.image_url)}" alt="${esc(name)}" loading="lazy">`
                   : '<span class="sales-order-item__placeholder"></span>';
-                const quantity = Number(item.quantity || 0);
+                const quantity = Number(item.quantity_ordered ?? item.quantity ?? 0);
+                const identity = [item.sku, item.asin].filter(Boolean).join(' · ');
                 return `<div class="sales-order-item">
                   ${image}
                   <div>
-                    <strong>${esc(item.product || item.sku || item.asin || 'Item')}</strong>
-                    <span>${esc(item.sku || item.asin || 'Identity unavailable')}</span>
+                    <strong>${esc(name)}</strong>
+                    <span>${esc(identity || 'Identity unavailable')}</span>
                   </div>
                   <b>×${nf.format(quantity)}</b>
                 </div>`;
               })
-              .join('')
-          : `<div class="sales-order-item sales-order-item--fallback">
-              <span class="sales-order-item__placeholder"></span>
-              <div><strong>${esc(r.items || 'Order item')}</strong><span>Item detail unavailable</span></div>
-            </div>`;
+              .join('')}`
+          : '<div class="sales-order-items__empty">Item details unavailable for this order.</div>';
         return `<tr${index >= ORDER_MOBILE_LIMIT ? ' class="order-reference-row"' : ''}>
           <td class="order-moment">
             <strong>${age(r.age_seconds)}</strong>
