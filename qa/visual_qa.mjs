@@ -310,10 +310,14 @@ async function verifySalesOrders(page) {
         return (
           !mobile ||
           (
-            Number.parseFloat(style.borderTopWidth) >= 1 &&
+            Number.parseFloat(style.borderTopWidth) >= 3 &&
             Number.parseFloat(style.borderTopLeftRadius) >= 12
           )
         );
+      }),
+      headerContrast: rows.every(row => {
+        const style = getComputedStyle(row.children[0]);
+        return !mobile || style.backgroundColor !== 'rgba(0, 0, 0, 0)';
       }),
       orderLabels: rows.every(
         row =>
@@ -371,7 +375,12 @@ async function verifySalesOrders(page) {
   }
   if (
     state.mobile &&
-    (!state.cardBoundaries || state.orderGap < 10 || !state.orderLabels)
+    (
+      !state.cardBoundaries ||
+      !state.headerContrast ||
+      state.orderGap < 10 ||
+      !state.orderLabels
+    )
   ) {
     throw new Error(`Sales Orders mobile boundaries mismatch: ${JSON.stringify(state)}`);
   }

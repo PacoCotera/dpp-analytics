@@ -844,7 +844,8 @@
     column-gap: 0;
     row-gap: 0;
     padding: 0;
-    border: 1px solid #d7cdc0;
+    border: 1px solid #cfc3b4;
+    border-top: 3px solid var(--accent);
     border-radius: 14px;
     background: #fffdf9;
     box-shadow: 0 2px 8px rgb(77 60 40 / 6%);
@@ -917,8 +918,8 @@
     align-self: start;
     height: 100%;
     padding: 12px 14px;
-    border-bottom: 1px solid #ddd4c8;
-    background: #f4eee6;
+    border-bottom: 1px solid #cfc3b4;
+    background: #e5dacd;
   }
 
   #orderRows td:nth-child(2) {
@@ -931,8 +932,8 @@
     align-self: start;
     height: 100%;
     padding: 12px 14px;
-    border-bottom: 1px solid #ddd4c8;
-    background: #f4eee6;
+    border-bottom: 1px solid #cfc3b4;
+    background: #e5dacd;
     text-align: right;
   }
 
@@ -943,8 +944,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 9px 14px;
-    border-top: 1px solid #e3dbd1;
-    background: #faf6f0;
+    border-top: 1px solid #d8cec1;
+    background: #f1ebe3;
   }
 
   #orderRows .order-status-cell__label {
@@ -954,6 +955,7 @@
 
   #orderRows .order-moment__label {
     display: block;
+    color: var(--accent-ink);
   }
 
   .sales-order-item {
