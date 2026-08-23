@@ -571,6 +571,10 @@
     padding: 0 7px 7px;
   }
 
+  .inventory-reference:not([open]) > .inventory-reference__list {
+    display: none;
+  }
+
   .inventory-reference__list .inv-card {
     border-color: rgb(214 205 193 / 72%);
   }
