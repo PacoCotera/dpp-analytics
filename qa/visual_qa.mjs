@@ -30,6 +30,64 @@ async function verifySalesOverview(page) {
   await page.locator('button[data-range="12m"]').click();
 }
 
+async function verifyDataHealth(page) {
+  await wait(page, '.health-summary');
+  const state = await page.evaluate(async () => {
+    const response = await fetch('/api/data-health', { cache: 'no-store' });
+    const payload = await response.json();
+    const jobs = Array.isArray(payload.jobs) ? payload.jobs : [];
+    const problem = job =>
+      job.latest_status === 'error' ||
+      job.latest_status === 'interrupted' ||
+      job.is_stale ||
+      !['success', 'running'].includes(job.latest_status);
+    const problems = jobs.filter(problem);
+    const attention = document.getElementById('attentionSection');
+    const incidents = [...document.querySelectorAll('.incident')];
+    return {
+      apiOk: response.ok,
+      jobs: jobs.length,
+      contractComplete: jobs.every(job =>
+        job.label &&
+        job.operation &&
+        job.purpose &&
+        job.domain &&
+        Number(job.expected_interval_seconds) > 0 &&
+        Number(job.stale_after_seconds) >= Number(job.expected_interval_seconds) &&
+        typeof job.is_stale === 'boolean' &&
+        'records_read' in job &&
+        'records_written' in job &&
+        'last_success_at' in job &&
+        'error_message' in job
+      ),
+      problems: problems.length,
+      attentionVisible: Boolean(attention && !attention.hidden),
+      incidents: incidents.length,
+      incidentStructure: incidents.every(incident =>
+        incident.querySelector('.incident__purpose') &&
+        incident.querySelectorAll('.incident__metrics > div').length === 4 &&
+        incident.querySelector('.incident__diagnostic')
+      ),
+      compactCoverage: Boolean(document.querySelector('.domain-summary .domain-chip')),
+      warehouseClosed: !document.querySelector('.warehouse-reference')?.hasAttribute('open'),
+      genericRingRemoved: !document.getElementById('ring'),
+    };
+  });
+  if (
+    !state.apiOk ||
+    !state.jobs ||
+    !state.contractComplete ||
+    !state.compactCoverage ||
+    !state.warehouseClosed ||
+    !state.genericRingRemoved ||
+    state.attentionVisible !== Boolean(state.problems) ||
+    state.incidents !== state.problems ||
+    (state.problems > 0 && !state.incidentStructure)
+  ) {
+    throw new Error(`Data Health diagnostic contract mismatch: ${JSON.stringify(state)}`);
+  }
+}
+
 async function catalogSemantic(page) {
   return page.evaluate(async () => {
     const response = await fetch('/api/catalog', { cache: 'no-store' });
@@ -386,7 +444,7 @@ async function verifySalesOrders(page) {
     (
       !state.cardBoundaries ||
       !state.headerHierarchy ||
-      state.orderGap < 10 ||
+      state.orderGap < 16 ||
       !state.orderLabels
     )
   ) {
@@ -444,7 +502,7 @@ const scenarios = [
   ['finance-closed', '/finance', ['mobile', 'tablet', 'desktop'], verifyFinanceClosed],
   ['finance-ledger', '/finance', ['mobile', 'desktop'], verifyFinanceEvidence],
   ['trajectory', '/trajectory', ['mobile', 'desktop']],
-  ['data-health', '/data-health', ['mobile', 'desktop']],
+  ['data-health', '/data-health', ['mobile', 'desktop'], verifyDataHealth],
 ].map(([name, url, views, action]) => ({ name, url, views, action }));
 
 await fs.mkdir(outDir, { recursive: true });
