@@ -509,6 +509,17 @@
   line-height: 1;
 }
 
+.order-moment .order-moment__label,
+.order-status-cell__label {
+  display: none;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .order-moment span,
 .order-spend span {
   margin-top: 5px;
@@ -757,8 +768,7 @@
     border-bottom: 1px solid var(--line);
   }
 
-  #skuRows tr:last-child,
-  #orderRows tr:last-child {
+  #skuRows tr:last-child {
     border-bottom: 0;
   }
 
@@ -830,10 +840,26 @@
       'items items'
       'status status';
     grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: 12px;
-    row-gap: 10px;
-    padding: 14px;
-    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+    column-gap: 0;
+    row-gap: 0;
+    padding: 0;
+    border: 1px solid #d7cdc0;
+    border-radius: 14px;
+    background: #fffdf9;
+    box-shadow: 0 2px 8px rgb(77 60 40 / 6%);
+  }
+
+  #orders .data-table-shell {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  #orderRows {
+    display: grid;
+    gap: 12px;
   }
 
   #orders:not(.orders-expanded) #orderRows .order-reference-row {
@@ -848,9 +874,10 @@
     justify-content: space-between;
     gap: 12px;
     padding: 0 14px;
-    border: 0;
-    border-top: 1px solid var(--line);
-    background: transparent;
+    margin-top: 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fffdf9;
     color: var(--ink);
     font: inherit;
     font-size: 11px;
@@ -888,23 +915,45 @@
   #orderRows td:nth-child(1) {
     grid-area: moment;
     align-self: start;
+    height: 100%;
+    padding: 12px 14px;
+    border-bottom: 1px solid #ddd4c8;
+    background: #f4eee6;
   }
 
   #orderRows td:nth-child(2) {
     grid-area: items;
-    padding-top: 9px;
-    border-top: 1px solid var(--line);
+    padding: 12px 14px;
   }
 
   #orderRows td:nth-child(3) {
     grid-area: spend;
     align-self: start;
+    height: 100%;
+    padding: 12px 14px;
+    border-bottom: 1px solid #ddd4c8;
+    background: #f4eee6;
     text-align: right;
   }
 
   #orderRows td:nth-child(4) {
+    display: flex;
     grid-area: status;
-    justify-self: start;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    border-top: 1px solid #e3dbd1;
+    background: #faf6f0;
+  }
+
+  #orderRows .order-status-cell__label {
+    display: block;
+    margin: 0;
+  }
+
+  #orderRows .order-moment__label {
+    display: block;
   }
 
   .sales-order-item {
