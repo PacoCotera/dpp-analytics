@@ -528,11 +528,30 @@
   gap: 7px;
 }
 
+.sales-order-items__summary {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .sales-order-item {
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+}
+
+.sales-order-item + .sales-order-item {
+  padding-top: 7px;
+  border-top: 1px solid #eee7de;
+}
+
+.sales-order-items__empty {
+  padding: 8px 0;
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .sales-order-item img,
