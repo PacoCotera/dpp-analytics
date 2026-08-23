@@ -255,6 +255,7 @@ function render(payload) {
   const problems = problemJobs();
 
   byId('clock').textContent = payload.local_time || '--:--';
+  byId('healthUpdated').textContent = `Health checked ${timestamp(payload.checked_at)} · refreshes every 60s`;
   byId('summaryCount').textContent = String(problems.length);
   byId('summaryCount').dataset.state = problems.some((item) => jobState(item) === 'failed')
     ? 'failed'
@@ -302,9 +303,7 @@ function bindInteractions() {
   });
 }
 
-async function start() {
-  bindInteractions();
-
+async function refresh() {
   try {
     render(await fetchJson('/api/data-health'));
   } catch (error) {
@@ -313,7 +312,14 @@ async function start() {
     byId('summaryEyebrow').textContent = 'Health API unavailable';
     byId('healthTitle').textContent = 'Data health unavailable';
     byId('healthCopy').textContent = error.message;
+    byId('healthUpdated').textContent = 'Automatic refresh will retry in 60s.';
   }
+}
+
+function start() {
+  bindInteractions();
+  refresh();
+  window.setInterval(refresh, 60_000);
 }
 
 start();
