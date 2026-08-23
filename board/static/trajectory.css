@@ -183,10 +183,10 @@
   color: var(--accent-ink);
   font-size: 12px;
   font-weight: 700;
-  content: "Show history";
+  content: 'Show history';
 }
 .week-disclosure[open] summary::after {
-  content: "Hide history";
+  content: 'Hide history';
 }
 .week-timeline {
   padding: 0 16px;
@@ -194,10 +194,9 @@
 }
 .week-row {
   display: grid;
-  grid-template-columns: minmax(180px, 0.9fr) minmax(140px, 0.75fr) minmax(
-      110px,
-      0.55fr
-    ) minmax(130px, 0.7fr);
+  grid-template-columns:
+    minmax(180px, 0.9fr) minmax(140px, 0.75fr) minmax(110px, 0.55fr)
+    minmax(130px, 0.7fr);
   gap: 18px;
   align-items: center;
   padding: 17px 4px;
@@ -235,7 +234,7 @@
   height: 7px;
   border-radius: 50%;
   background: #a69c90;
-  content: "";
+  content: '';
 }
 .week-kicker.current::before {
   background: var(--accent);
