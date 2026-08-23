@@ -281,6 +281,10 @@
   grid-column: 1 / -1;
 }
 
+.finance-mobile-disclosure > summary {
+  display: none;
+}
+
 .finance-read__head {
   display: flex;
   align-items: start;
@@ -665,6 +669,11 @@
     font-size: 12px;
   }
 
+  .money-strip .cell-note,
+  .finance-line__note {
+    display: none;
+  }
+
   .finance-line__name {
     font-size: 15px;
   }
@@ -683,11 +692,60 @@
   }
 
   .status-rail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
     padding-top: 10px;
   }
 
-  .rail-row.cash strong {
+  .status-rail > h2,
+  .status-rail > p,
+  .rail-row--history {
+    display: none;
+  }
+
+  .status-rail .rail-row {
+    display: block;
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgb(255 253 249 / 70%);
+  }
+
+  .status-rail .rail-row span {
+    display: block;
+    font-size: 10px;
+    font-weight: 820;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .status-rail .rail-row strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 17px;
+  }
+
+  .status-rail .rail-row--cash {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+  }
+
+  .status-rail .rail-row--cash strong {
+    margin-top: 0;
     font-size: 22px;
+  }
+
+  .status-rail .state-explainer {
+    grid-column: 1 / -1;
+    margin-top: 0;
+    padding: 10px 11px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
   }
 
   .bridge {
@@ -700,7 +758,56 @@
   }
 
   .finance-reads {
-    margin-top: 20px;
+    margin-top: 14px;
+  }
+
+  .finance-read--current-summary {
+    display: none;
+  }
+
+  .finance-mobile-disclosure > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    padding: 2px 0;
+    font-size: 16px;
+    font-weight: 830;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .finance-mobile-disclosure > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .finance-mobile-disclosure > summary::before {
+    content: '›';
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: 22px;
+    transform: rotate(0deg);
+    transition: transform 120ms ease;
+  }
+
+  .finance-mobile-disclosure[open] > summary::before {
+    transform: rotate(90deg);
+  }
+
+  .finance-mobile-disclosure > summary span {
+    flex: 1 1 auto;
+  }
+
+  .finance-mobile-disclosure > summary strong {
+    flex: 0 0 auto;
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .finance-mobile-disclosure__body {
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
   }
 
   .finance-read__title {
