@@ -6,7 +6,7 @@
     "lint": "npm run lint:js && npm run lint:css",
     "lint:js": "eslint static/**/*.js --no-warn-ignored",
     "lint:css": "stylelint 'static/**/*.css'",
-    "format:check": "prettier --write 'static/**/*.{css,html,js}' && git diff -- static/finance.html && exit 1",
+    "format:check": "prettier --check 'static/**/*.{css,html,js}'",
     "format": "prettier --write 'static/**/*.{css,html,js}'",
     "quality": "npm run lint && npm run format:check"
   },
