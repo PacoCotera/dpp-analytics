@@ -49,6 +49,15 @@
     if (sec < 86400) return (sec / 3600).toFixed(sec < 10800 ? 1 : 0) + 'h';
     return (sec / 86400).toFixed(sec < 259200 ? 1 : 0) + 'd';
   }
+  function orderStatus(status) {
+    const key = String(status || '')
+      .trim()
+      .toUpperCase();
+    if (key === 'PENDING') return 'Amazon processing';
+    if (key === 'PENDING_AVAILABILITY') return 'Amazon processing · availability';
+    if (key === 'INVOICE_UNCONFIRMED') return 'Amazon processing · invoice';
+    return String(status || '—');
+  }
   function monthName(s) {
     const d = parseDate(s);
     return d ? new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' }).format(d) : 'Month';
@@ -109,7 +118,7 @@
     out.innerHTML = rows
       .map(
         (r, index) =>
-          `<tr${index >= ORDER_MOBILE_LIMIT ? ' class="order-reference-row"' : ''}><td class="age">${age(r.age_seconds)}</td><td>${esc(r.local_time || '')}</td><td class="order-id">${esc(r.order_short || '')}</td><td class="order-items" title="${esc(r.items || '')}">${esc(r.items || '')}</td><td class="num"><strong>${money(r.sales)}</strong></td><td class="status">${esc(r.status || '—')}</td></tr>`,
+          `<tr${index >= ORDER_MOBILE_LIMIT ? ' class="order-reference-row"' : ''}><td class="age">${age(r.age_seconds)}</td><td>${esc(r.local_time || '')}</td><td class="order-id">${esc(r.order_short || '')}</td><td class="order-items" title="${esc(r.items || '')}">${esc(r.items || '')}</td><td class="num"><strong>${money(r.sales)}</strong></td><td class="status">${esc(orderStatus(r.status))}</td></tr>`,
       )
       .join('');
     document.getElementById('orders')?.classList.toggle('orders-expanded', ORDERS_EXPANDED);
