@@ -7,6 +7,7 @@ const SELLABLE_ROLES = new Set(['SELLABLE_VARIATION', 'SELLABLE_STANDALONE']);
 const BAD_STATES = new Set(['INVENTORY_RISK', 'TRAFFIC_NOT_CONVERTING', 'DECLINING']);
 const FUNNEL_STATES = new Set(['TRAFFIC_NOT_CONVERTING', 'CONVERTS_NEEDS_TRAFFIC']);
 const DORMANT_STATES = new Set(['DORMANT', 'WATCH']);
+const MOBILE_ROW_LIMIT = 6;
 
 const labels = {
   INVENTORY_RISK: 'Inventory risk',
@@ -368,6 +369,25 @@ function sortAnalysisRows(rows) {
   );
 }
 
+function analysisRows(rows, renderRow, label) {
+  const query = $('search').value.trim();
+  if (query || rows.length <= MOBILE_ROW_LIMIT) return rows.map(renderRow).join('');
+
+  const primary = rows.slice(0, MOBILE_ROW_LIMIT);
+  const additional = rows.slice(MOBILE_ROW_LIMIT);
+  const open = window.matchMedia('(max-width: 720px)').matches ? '' : ' open';
+  const noun = additional.length === 1 ? label : `${label}s`;
+
+  return `${primary.map(renderRow).join('')}
+    <details class="catalog-reference-disclosure" data-catalog-overflow-count="${additional.length}"${open}>
+      <summary>
+        <span><span class="catalog-reference-show">Show</span><span class="catalog-reference-hide">Hide</span> ${additional.length} additional ${esc(noun)}</span>
+        <strong>Reference</strong>
+      </summary>
+      <div class="catalog-reference-rows">${additional.map(renderRow).join('')}</div>
+    </details>`;
+}
+
 function renderPortfolio() {
   const query = $('search').value.trim().toLowerCase();
   $('filters').classList.toggle('hidden', mode !== 'family');
@@ -391,7 +411,7 @@ function renderPortfolio() {
       '<b>SKU metrics</b> are child/standalone offer facts. Parent containers and operational aliases are excluded.';
     const rows = skuRows();
     $('portfolio').innerHTML = rows.length
-      ? rows.map(skuAnalysisRow).join('')
+      ? analysisRows(rows, skuAnalysisRow, 'SKU')
       : '<div class="empty">No sellable SKUs match this view.</div>';
     return;
   }
@@ -417,7 +437,11 @@ function renderPortfolio() {
   $('portfolioFootMain').innerHTML =
     '<b>Dimensional metrics</b> recompute conversion from total units ÷ total sessions. Differences are descriptive signals, not proof that the variation attribute caused performance.';
   $('portfolio').innerHTML = rows.length
-    ? rows.map((row) => dimensionRow(row, mode === 'pair' ? 'pair' : 'dimension')).join('')
+    ? analysisRows(
+        rows,
+        (row) => dimensionRow(row, mode === 'pair' ? 'pair' : 'dimension'),
+        mode === 'pair' ? 'combination' : `${label.toLowerCase()} entry`,
+      )
     : '<div class="empty">No variation data is available for this analysis.</div>';
 }
 
