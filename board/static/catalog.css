@@ -915,4 +915,154 @@
     display: block;
     margin-top: 3px;
   }
+
+  /* Keep the mobile portfolio decision-first instead of repeating desktop detail vertically. */
+  .catalog-title {
+    display: none;
+  }
+
+  .attention {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .attention::-webkit-scrollbar {
+    display: none;
+  }
+
+  .attention-item {
+    flex: 0 0 min(76vw, 270px);
+  }
+
+  .attention-empty {
+    flex: 1 1 auto;
+    text-align: left;
+  }
+
+  .family > summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 20px;
+    row-gap: 7px;
+    align-items: stretch;
+  }
+
+  .identity {
+    grid-column: 1 / 4;
+  }
+
+  .family > summary > .signal {
+    grid-column: 1 / -1;
+    margin-top: 0;
+    padding-left: 0;
+  }
+
+  .family > summary > .cell,
+  .analysis-row > .cell,
+  .child > .cell {
+    display: block;
+    grid-column: auto;
+    min-width: 0;
+    padding: 8px 7px;
+    border-radius: 10px;
+    background: #f3eee6;
+  }
+
+  .family > summary > .cell::before,
+  .analysis-row > .cell::before,
+  .child > .cell::before {
+    display: block;
+    color: #8d8377;
+    font-size: 7.5px;
+    font-weight: 820;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    content: attr(data-mobile-title);
+  }
+
+  .family > summary > .cell strong,
+  .analysis-row > .cell strong,
+  .child > .cell strong {
+    overflow: hidden;
+    margin-top: 4px;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .family > summary > .cell span,
+  .analysis-row > .cell span,
+  .child > .cell span {
+    overflow: hidden;
+    margin-top: 3px;
+    font-size: 8.7px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .metric-funnel > strong,
+  .metric-stock > strong {
+    display: none !important;
+  }
+
+  .metric-funnel > span,
+  .metric-stock > span {
+    margin-top: 4px !important;
+    color: var(--ink);
+    font-size: 10.5px !important;
+    font-weight: 760;
+  }
+
+  .family > summary > .cell span::before,
+  .analysis-row > .cell span::before,
+  .child > .cell span::before {
+    display: none;
+  }
+
+  .family > summary > .economics,
+  .analysis-row > .economics,
+  .child > .economics {
+    display: none !important;
+  }
+
+  .chev {
+    grid-column: 4;
+  }
+
+  .child {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .child-identity,
+  .child > .signal {
+    grid-column: 1 / -1;
+  }
+
+  .analysis-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 18px;
+    row-gap: 7px;
+    align-items: stretch;
+  }
+
+  .analysis-identity {
+    grid-column: 1 / 4;
+  }
+
+  .analysis-row > .signal {
+    grid-column: 1 / -1;
+  }
+
+  .analysis-open {
+    grid-column: 4;
+  }
+
+  .signal span {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
 }
