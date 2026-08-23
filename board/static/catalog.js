@@ -202,9 +202,9 @@ function childRow(product) {
       <strong>${esc(labels[product.commercial_state] || product.commercial_state || 'Product')}</strong>
       <span>${esc(product.commercial_explanation || '')}</span>
     </div>
-    <div class="cell"><strong>${money(product.sales_t28)}</strong><span data-mobile-label="28D">${num(product.units_t28)} units${delta === null || delta === undefined ? '' : ` · ${Number(delta) >= 0 ? '+' : ''}${Number(delta).toFixed(0)}%`}</span></div>
-    <div class="cell"><strong>${num(product.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(product.conversion_t28_pct)}</b> CVR${product.sessions_delta28_pct === null || product.sessions_delta28_pct === undefined ? '' : ` · traffic ${Number(product.sessions_delta28_pct) >= 0 ? '+' : ''}${Number(product.sessions_delta28_pct).toFixed(0)}%`}</span></div>
-    <div class="cell"><strong>${num(product.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock${cover === null || cover === undefined ? '' : ` · ${Number(cover).toFixed(0)}d cover`}</span></div>
+    <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(product.sales_t28)}</strong><span data-mobile-label="28D">${num(product.units_t28)} units${delta === null || delta === undefined ? '' : ` · ${Number(delta) >= 0 ? '+' : ''}${Number(delta).toFixed(0)}%`}</span></div>
+    <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(product.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(product.conversion_t28_pct)}</b> CVR${product.sessions_delta28_pct === null || product.sessions_delta28_pct === undefined ? '' : ` · traffic ${Number(product.sessions_delta28_pct) >= 0 ? '+' : ''}${Number(product.sessions_delta28_pct).toFixed(0)}%`}</span></div>
+    <div class="cell metric-stock" data-mobile-title="Available"><strong>${num(product.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock${cover === null || cover === undefined ? '' : ` · ${Number(cover).toFixed(0)}d cover`}</span></div>
     <div class="cell economics">${economicsChild(product)}</div>
   </a>`;
 }
@@ -229,9 +229,9 @@ function familyRow(family) {
         </div>
       </div>
       <div class="signal ${stateClass(state)}"><strong>${esc(labels[state] || state)}</strong><span>${esc(explanation(family))}</span></div>
-      <div class="cell"><strong>${money(family.sales_t28)}</strong><span data-mobile-label="28D">${num(family.units_t28)} units</span></div>
-      <div class="cell"><strong>${num(family.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(family.conversion_t28_pct)}</b> CVR</span></div>
-      <div class="cell"><strong>${num(family.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock${cover === null ? '' : ` · ${cover.toFixed(0)}d cover`}</span></div>
+      <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(family.sales_t28)}</strong><span data-mobile-label="28D">${num(family.units_t28)} units</span></div>
+      <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(family.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(family.conversion_t28_pct)}</b> CVR</span></div>
+      <div class="cell metric-stock" data-mobile-title="Available"><strong>${num(family.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock${cover === null ? '' : ` · ${cover.toFixed(0)}d cover`}</span></div>
       <div class="cell economics">${economicsFamily(family)}</div>
       <span class="chev">›</span>
     </summary>
@@ -274,9 +274,9 @@ function dimensionRow(row, kind) {
   return `<div class="analysis-row">
     <div class="analysis-identity"><strong><span class="analysis-mark"></span>${esc(name)}</strong><span>${esc(scope)} · ${row.sku_count || 0} SKUs · ${row.active_sku_count || 0} active</span></div>
     <div class="signal"><strong>${esc(read[0])}</strong><span>${esc(read[1])}</span></div>
-    <div class="cell"><strong>${money(row.sales_t28)}</strong><span data-mobile-label="28D">${num(row.units_t28)} units</span></div>
-    <div class="cell"><strong>${num(row.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(row.conversion_t28_pct)}</b> CVR</span></div>
-    <div class="cell"><strong>${num(row.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock</span></div>
+    <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(row.sales_t28)}</strong><span data-mobile-label="28D">${num(row.units_t28)} units</span></div>
+    <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(row.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(row.conversion_t28_pct)}</b> CVR</span></div>
+    <div class="cell metric-stock" data-mobile-title="Available"><strong>${num(row.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock</span></div>
     <div class="cell economics"><strong>${row.estimated_cogs_t28 === null || row.estimated_cogs_t28 === undefined ? '—' : money(row.estimated_cogs_t28)}</strong><span data-mobile-label="COGS">28D COGS</span></div>
     <span class="analysis-open">·</span>
   </div>`;
@@ -310,9 +310,9 @@ function skuAnalysisRow(product) {
   return `<a class="analysis-row analysis-link" href="/product?sku=${encodeURIComponent(product.sku || '')}">
     <div class="analysis-identity"><strong>${esc(product.product || product.sku || product.asin)}</strong><span>${esc(product.sku || '')} · ${esc(attributes || 'standalone')}</span></div>
     <div class="signal ${stateClass(product.commercial_state)}"><strong>${esc(labels[product.commercial_state] || product.commercial_state || 'Product')}</strong><span>${esc(product.commercial_explanation || '')}</span></div>
-    <div class="cell"><strong>${money(product.sales_t28)}</strong><span data-mobile-label="28D">${num(product.units_t28)} units</span></div>
-    <div class="cell"><strong>${num(product.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(product.conversion_t28_pct)}</b> CVR</span></div>
-    <div class="cell"><strong>${num(product.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock</span></div>
+    <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(product.sales_t28)}</strong><span data-mobile-label="28D">${num(product.units_t28)} units</span></div>
+    <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(product.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(product.conversion_t28_pct)}</b> CVR</span></div>
+    <div class="cell metric-stock" data-mobile-title="Available"><strong>${num(product.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock</span></div>
     <div class="cell economics">${economicsChild(product)}</div>
     <span class="analysis-open">›</span>
   </a>`;
