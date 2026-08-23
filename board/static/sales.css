@@ -518,6 +518,10 @@
   font-weight: 760;
 }
 
+.orders-more {
+  display: none;
+}
+
 @media (max-width: 980px) {
   .sales-operating-grid {
     grid-template-columns: minmax(0, 1fr) 275px;
@@ -720,6 +724,55 @@
     row-gap: 4px;
     padding: 13px 14px;
     border-bottom: 1px solid var(--line);
+  }
+
+  #orders:not(.orders-expanded) #orderRows .order-reference-row {
+    display: none;
+  }
+
+  .orders-more {
+    display: flex;
+    width: 100%;
+    min-height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 14px;
+    border: 0;
+    border-top: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .orders-more[hidden] {
+    display: none;
+  }
+
+  .orders-more::before {
+    color: var(--muted);
+    font-size: 18px;
+    content: '›';
+    transition: transform 120ms ease;
+  }
+
+  .orders-more span {
+    flex: 1 1 auto;
+    text-align: left;
+  }
+
+  .orders-more strong {
+    color: var(--muted);
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .orders-more[aria-expanded='true']::before {
+    transform: rotate(90deg);
   }
 
   #orderRows td:nth-child(1) {
