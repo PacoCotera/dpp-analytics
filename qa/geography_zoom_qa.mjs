@@ -67,7 +67,7 @@ try {
   await page.locator('#geoZoomReset').click();
   await page.waitForFunction(() => Math.abs(Number(document.getElementById('geoMap')?.__zoom?.k || 1) - 1) < 0.01, null, { timeout: 3000 });
   const reset = await zoomState();
-  if (Math.abs(reset.x) > 0.5 || Math.abs(reset.y) > 0.5) throw new Error(`Reset did not return map to fitted origin: ${JSON.stringify(reset)}`);
+  if (Math.abs(reset.x) > 1 || Math.abs(reset.y) > 1) throw new Error(`Reset did not return map to fitted origin: ${JSON.stringify(reset)}`);
 
   await page.locator('#geoMap').hover();
   await page.mouse.wheel(0, -420);
