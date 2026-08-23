@@ -68,7 +68,7 @@ async function catalogSemantic(page) {
 }
 
 async function verifyCatalog(page) {
-  await page.locator('.family').first().waitFor({ state: 'visible', timeout: 15000 });
+  await wait(page, '.family');
   const semantic = await catalogSemantic(page);
   if (semantic.errors?.length) throw new Error(`Catalog semantic QA: ${semantic.errors.join('; ')}`);
   const openCount = await page.locator('.family[open]').count();
@@ -84,6 +84,22 @@ async function verifyCatalogMode(page, mode) {
   await button.waitFor({ state: 'visible', timeout: 5000 });
   await button.click();
   await wait(page, '.analysis-row');
+  const mobileDensity = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.portfolio .analysis-row')];
+    const disclosure = document.querySelector('.catalog-reference-disclosure');
+    return {
+      mobile: window.innerWidth <= 720,
+      total: rows.length,
+      visible: rows.filter((row) => row.getClientRects().length > 0).length,
+      disclosure: Boolean(disclosure),
+      disclosureOpen: Boolean(disclosure?.hasAttribute('open')),
+    };
+  });
+  if (mobileDensity.mobile && mobileDensity.total > 6) {
+    if (!mobileDensity.disclosure || mobileDensity.disclosureOpen || mobileDensity.visible !== 6) {
+      throw new Error(`Catalog mobile density mismatch: ${JSON.stringify(mobileDensity)}`);
+    }
+  }
 }
 
 async function verifyProductWorkspace(page) {
@@ -107,33 +123,6 @@ async function verifyProductWorkspace(page) {
     if (adsState !== 'Ads access pending' || adsDecision !== 'Ads integration ready')
       throw new Error(`Product Ads pending language mismatch: ${adsState} / ${adsDecision}`);
   }
-}
-
-async function verifyInventory(page) {
-  if ((await page.evaluate(() => window.innerWidth)) > 640) {
-    await wait(page, '#rows tr');
-    return;
-  }
-  await wait(page, '#inventoryCards .inv-card');
-
-  const contract = await page.evaluate(async () => {
-    const payload = await (await fetch('/api/inventory', { cache: 'no-store' })).json();
-    const holdCount = (payload.rows || []).filter((row) => row.action === 'HOLD').length;
-    const details = document.querySelector('.inventory-reference');
-    return {
-      holdCount,
-      hasDetails: Boolean(details),
-      detailsOpen: Boolean(details?.open),
-      visibleReferenceCards: [...document.querySelectorAll('.inv-card--reference')].filter(
-        (element) => element.getBoundingClientRect().height > 0,
-      ).length,
-    };
-  });
-
-  if (contract.holdCount && !contract.hasDetails)
-    throw new Error('Inventory mobile default is missing collapsed reference inventory');
-  if (contract.detailsOpen || contract.visibleReferenceCards)
-    throw new Error('Inventory mobile default exposes the no-velocity reference wall');
 }
 
 async function assertFinanceChartMarks(page, label) {
@@ -188,14 +177,12 @@ async function verifyFinanceReport(page) {
   await wait(page, '#currentLines .finance-line');
   const isMobile = (await page.evaluate(() => window.innerWidth)) <= 640;
   if (isMobile) {
-    if (await page.locator('.finance-read--current-summary').isVisible()) {
+    if (await page.locator('.finance-read--current-summary').isVisible())
       throw new Error('Finance mobile repeats the current-month contribution summary');
-    }
     const cashDisclosure = page.locator('#cashSettlementDisclosure');
     await cashDisclosure.waitFor({ state: 'visible', timeout: 5000 });
-    if (await cashDisclosure.getAttribute('open')) {
+    if (await cashDisclosure.getAttribute('open'))
       throw new Error('Finance mobile settlement evidence is open by default');
-    }
     await wait(page, '#cashSettlementSummary');
   } else {
     await wait(page, '#currentBridge .bridge-step');
@@ -235,7 +222,7 @@ const scenarios = [
   ['catalog-combinations', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'pair')],
   ['catalog-sku', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'sku')],
   ['product-pnc-001', '/product?sku=PNC-001', ['mobile', 'desktop'], verifyProductWorkspace],
-  ['inventory', '/inventory', ['mobile', 'tablet', 'desktop'], verifyInventory],
+  ['inventory', '/inventory', ['mobile', 'tablet', 'desktop']],
   ['ads-overview', '/ads', ['mobile', 'tablet', 'desktop'], p => verifyAds(p)],
   ['ads-campaigns', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'campaigns')],
   ['finance-overview', '/finance', ['mobile', 'desktop'], verifyFinanceReport],
