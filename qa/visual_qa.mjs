@@ -110,8 +110,11 @@ async function verifyProductWorkspace(page) {
 }
 
 async function verifyInventory(page) {
+  if ((await page.evaluate(() => window.innerWidth)) > 640) {
+    await wait(page, '#rows tr');
+    return;
+  }
   await wait(page, '#inventoryCards .inv-card');
-  if ((await page.evaluate(() => window.innerWidth)) > 640) return;
 
   const contract = await page.evaluate(async () => {
     const payload = await (await fetch('/api/inventory', { cache: 'no-store' })).json();
