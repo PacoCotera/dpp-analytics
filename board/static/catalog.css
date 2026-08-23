@@ -519,6 +519,10 @@
   display: none;
 }
 
+.catalog-reference-disclosure:not([open]) > .catalog-reference-rows {
+  display: none;
+}
+
 .portfolio-foot {
   display: flex;
   justify-content: space-between;
