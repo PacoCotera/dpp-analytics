@@ -258,7 +258,10 @@ def health_board_payload(connect, marketplace: str) -> dict:
         }
         local_clock = _one(
             cur,
-            "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time",
+            """
+            SELECT CURRENT_TIMESTAMP AS checked_at,
+                   to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') AS local_time
+            """,
         )
     return {
         "summary": summary,
@@ -277,4 +280,5 @@ def health_board_payload(connect, marketplace: str) -> dict:
         },
         "jobs": jobs,
         "local_time": local_clock.get("local_time"),
+        "checked_at": local_clock.get("checked_at"),
     }
