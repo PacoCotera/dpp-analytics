@@ -364,17 +364,17 @@
   justify-content: flex-end;
 }
 
-.geo-table th[data-geo-sort][aria-sort="ascending"] button::after {
-  content: "↑";
+.geo-table th[data-geo-sort][aria-sort='ascending'] button::after {
+  content: '↑';
   color: var(--ink);
 }
 
-.geo-table th[data-geo-sort][aria-sort="descending"] button::after {
-  content: "↓";
+.geo-table th[data-geo-sort][aria-sort='descending'] button::after {
+  content: '↓';
   color: var(--ink);
 }
 
-.geo-table th[data-geo-sort][aria-sort]:not([aria-sort="none"]) button {
+.geo-table th[data-geo-sort][aria-sort]:not([aria-sort='none']) button {
   color: var(--ink);
 }
 
