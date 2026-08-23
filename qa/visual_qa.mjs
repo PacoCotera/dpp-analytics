@@ -310,14 +310,22 @@ async function verifySalesOrders(page) {
         return (
           !mobile ||
           (
-            Number.parseFloat(style.borderTopWidth) >= 3 &&
-            Number.parseFloat(style.borderTopLeftRadius) >= 12
+            Number.parseFloat(style.borderTopWidth) >= 1 &&
+            Number.parseFloat(style.borderTopLeftRadius) >= 12 &&
+            style.boxShadow !== 'none'
           )
         );
       }),
-      headerContrast: rows.every(row => {
-        const style = getComputedStyle(row.children[0]);
-        return !mobile || style.backgroundColor !== 'rgba(0, 0, 0, 0)';
+      headerHierarchy: rows.every(row => {
+        const rowStyle = getComputedStyle(row);
+        const headerStyle = getComputedStyle(row.children[0]);
+        return (
+          !mobile ||
+          (
+            headerStyle.backgroundColor === rowStyle.backgroundColor &&
+            headerStyle.boxShadow !== 'none'
+          )
+        );
       }),
       orderLabels: rows.every(
         row =>
@@ -377,7 +385,7 @@ async function verifySalesOrders(page) {
     state.mobile &&
     (
       !state.cardBoundaries ||
-      !state.headerContrast ||
+      !state.headerHierarchy ||
       state.orderGap < 10 ||
       !state.orderLabels
     )
