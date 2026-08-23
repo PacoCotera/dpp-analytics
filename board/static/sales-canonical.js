@@ -58,6 +58,15 @@
     if (key === 'INVOICE_UNCONFIRMED') return 'Amazon processing · invoice';
     return String(status || '—');
   }
+  function orderStatusTone(status) {
+    const key = String(status || '')
+      .trim()
+      .toUpperCase();
+    if (['PENDING', 'PENDING_AVAILABILITY', 'INVOICE_UNCONFIRMED'].includes(key)) return 'waiting';
+    if (['SHIPPED', 'UNSHIPPED', 'PARTIALLY_SHIPPED'].includes(key)) return 'active';
+    if (['CANCELLED', 'CANCELED', 'UNFULFILLABLE'].includes(key)) return 'problem';
+    return 'neutral';
+  }
   function monthName(s) {
     const d = parseDate(s);
     return d ? new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' }).format(d) : 'Month';
@@ -116,10 +125,45 @@
       hiddenCount = Math.max(0, rows.length - ORDER_MOBILE_LIMIT);
     if (!out) return;
     out.innerHTML = rows
-      .map(
-        (r, index) =>
-          `<tr${index >= ORDER_MOBILE_LIMIT ? ' class="order-reference-row"' : ''}><td class="age">${age(r.age_seconds)}</td><td>${esc(r.local_time || '')}</td><td class="order-id">${esc(r.order_short || '')}</td><td class="order-items" title="${esc(r.items || '')}">${esc(r.items || '')}</td><td class="num"><strong>${money(r.sales)}</strong></td><td class="status">${esc(orderStatus(r.status))}</td></tr>`,
-      )
+      .map((r, index) => {
+        const details = r.item_details || [];
+        const items = details.length
+          ? details
+              .map((item) => {
+                const image = item.image_url
+                  ? `<img src="${esc(item.image_url)}" alt="" loading="lazy">`
+                  : '<span class="sales-order-item__placeholder"></span>';
+                const quantity = Number(item.quantity || 0);
+                return `<div class="sales-order-item">
+                  ${image}
+                  <div>
+                    <strong>${esc(item.product || item.sku || item.asin || 'Item')}</strong>
+                    <span>${esc(item.sku || item.asin || 'Identity unavailable')}</span>
+                  </div>
+                  <b>×${nf.format(quantity)}</b>
+                </div>`;
+              })
+              .join('')
+          : `<div class="sales-order-item sales-order-item--fallback">
+              <span class="sales-order-item__placeholder"></span>
+              <div><strong>${esc(r.items || 'Order item')}</strong><span>Item detail unavailable</span></div>
+            </div>`;
+        return `<tr${index >= ORDER_MOBILE_LIMIT ? ' class="order-reference-row"' : ''}>
+          <td class="order-moment">
+            <strong>${age(r.age_seconds)}</strong>
+            <span>${esc(r.local_time || '')}</span>
+            <code>${esc(r.order_short || '')}</code>
+          </td>
+          <td><div class="sales-order-items">${items}</div></td>
+          <td class="order-spend">
+            <strong>${money(r.sales)}</strong>
+            <span>shopper spend incl. IVA</span>
+          </td>
+          <td class="order-status-cell">
+            <span class="order-status-pill ${orderStatusTone(r.status)}">${esc(orderStatus(r.status))}</span>
+          </td>
+        </tr>`;
+      })
       .join('');
     document.getElementById('orders')?.classList.toggle('orders-expanded', ORDERS_EXPANDED);
     if (!control) return;
