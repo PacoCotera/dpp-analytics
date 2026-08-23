@@ -746,18 +746,19 @@
     font-size: 9.5px;
   }
 
-  .family > summary {
+  body.catalog-shell .family > summary {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) 20px;
-    gap: 8px;
-    row-gap: 7px;
-    align-items: stretch;
-    padding: 11px 3px;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 20px !important;
+    gap: 8px !important;
+    row-gap: 7px !important;
+    align-items: stretch !important;
+    padding: 11px 3px !important;
   }
 
-  .identity {
-    grid-column: 1 / 4;
-    grid-template-columns: 48px minmax(0, 1fr);
+  body.catalog-shell .family > summary > .identity {
+    grid-column: 1 / 4 !important;
+    grid-row: 1 !important;
+    grid-template-columns: 48px minmax(0, 1fr) !important;
   }
 
   .identity img,
@@ -779,10 +780,11 @@
     font-size: 9px;
   }
 
-  .family > summary > .signal {
-    grid-column: 1 / -1;
-    margin-top: 0;
-    padding-left: 0;
+  body.catalog-shell .family > summary > .signal {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
   }
 
   .signal strong {
@@ -854,6 +856,21 @@
     font-weight: 760;
   }
 
+  body.catalog-shell .family > summary > .metric-sales {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+  }
+
+  body.catalog-shell .family > summary > .metric-funnel {
+    grid-column: 2 !important;
+    grid-row: 3 !important;
+  }
+
+  body.catalog-shell .family > summary > .metric-stock {
+    grid-column: 3 !important;
+    grid-row: 3 !important;
+  }
+
   .family > summary > .cell span::before,
   .analysis-row > .cell span::before,
   .child > .cell span::before {
@@ -866,9 +883,9 @@
     display: none !important;
   }
 
-  .chev {
-    grid-row: 1;
-    grid-column: 4;
+  body.catalog-shell .family > summary > .chev {
+    grid-row: 1 !important;
+    grid-column: 4 !important;
   }
 
   .children {
