@@ -157,6 +157,7 @@
           : '<div class="sales-order-items__empty">Item details unavailable for this order.</div>';
         return `<tr${index >= ORDER_MOBILE_LIMIT ? ' class="order-reference-row"' : ''}>
           <td class="order-moment">
+            <span class="order-moment__label">Order</span>
             <strong>${age(r.age_seconds)}</strong>
             <span>${esc(r.local_time || '')}</span>
             <code>${esc(r.order_short || '')}</code>
@@ -167,6 +168,7 @@
             <span>shopper spend incl. IVA</span>
           </td>
           <td class="order-status-cell">
+            <span class="order-status-cell__label">Fulfillment</span>
             <span class="order-status-pill ${orderStatusTone(r.status)}">${esc(orderStatus(r.status))}</span>
           </td>
         </tr>`;
