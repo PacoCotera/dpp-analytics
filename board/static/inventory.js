@@ -47,6 +47,48 @@ function filteredRows() {
   });
 }
 
+function inventoryCardMarkup(row) {
+  const action = normalizeAction(row.action);
+  const reference = action === 'HOLD';
+
+  return `<a class="inv-card${reference ? ' inv-card--reference' : ''}" href="/product?sku=${encodeURIComponent(row.sku)}">
+    <div class="inv-card__top">
+      <div class="stock-product">${productMarkup(row)}</div>
+      <span class="${actionClass(action)}">${action}</span>
+    </div>
+    ${
+      reference
+        ? `<div class="inv-reference-note"><strong>${integer(row.available)}</strong> available · no recent 28D velocity</div>`
+        : `<div class="inv-card-metrics">
+            <div class="inv-card-metric"><strong>${integer(row.available)}</strong><span>Available</span></div>
+            <div class="inv-card-metric"><strong>${integer(row.units_t28)}</strong><span>28D units</span></div>
+            <div class="inv-card-metric"><strong>${daysCover(row)}</strong><span>Days cover</span></div>
+          </div>`
+    }
+  </a>`;
+}
+
+function mobileInventoryMarkup(rows) {
+  if (!rows.length) return '<div class="empty"><strong>No matching SKUs.</strong></div>';
+
+  const query = byId('search').value.trim();
+  if (state.filter !== 'all' || query) return rows.map(inventoryCardMarkup).join('');
+
+  const operatingRows = rows.filter((row) => normalizeAction(row.action) !== 'HOLD');
+  const referenceRows = rows.filter((row) => normalizeAction(row.action) === 'HOLD');
+  const operatingMarkup = operatingRows.length
+    ? operatingRows.map(inventoryCardMarkup).join('')
+    : '<div class="empty"><strong>No active inventory.</strong></div>';
+  const referenceMarkup = referenceRows.length
+    ? `<details class="inventory-reference">
+        <summary><span>Reference inventory</span><strong>${referenceRows.length} no-velocity SKUs</strong></summary>
+        <div class="inventory-reference__list">${referenceRows.map(inventoryCardMarkup).join('')}</div>
+      </details>`
+    : '';
+
+  return `${operatingMarkup}${referenceMarkup}`;
+}
+
 function renderRows() {
   const rows = filteredRows();
   const tableBody = byId('rows');
@@ -70,21 +112,7 @@ function renderRows() {
         .join('')
     : '<tr><td colspan="8"><div class="empty"><strong>No matching SKUs.</strong> Try another filter.</div></td></tr>';
 
-  cards.innerHTML = rows.length
-    ? rows
-        .map(
-          (row) => `<a class="inv-card" href="/product?sku=${encodeURIComponent(row.sku)}">
-            <div class="stock-product">${productMarkup(row)}</div>
-            <span class="${actionClass(row.action)}">${normalizeAction(row.action)}</span>
-            <div class="inv-card-metrics">
-              <div class="inv-card-metric"><strong>${integer(row.available)}</strong><span>Available</span></div>
-              <div class="inv-card-metric"><strong>${integer(row.units_t28)}</strong><span>28D units</span></div>
-              <div class="inv-card-metric"><strong>${daysCover(row)}</strong><span>Days cover</span></div>
-            </div>
-          </a>`,
-        )
-        .join('')
-    : '<div class="empty"><strong>No matching SKUs.</strong></div>';
+  cards.innerHTML = mobileInventoryMarkup(rows);
 }
 
 function renderQueue() {
