@@ -30,8 +30,10 @@
     MUTED = '#7b7369',
     RUNBG = '#f3dfc4',
     WEEKLINE = '#bfb7ac';
+  const ORDER_MOBILE_LIMIT = 10;
   let DATA = null,
     RANGE = '12m',
+    ORDERS_EXPANDED = false,
     resizeTimer = null;
 
   function set(id, text, tone = '') {
@@ -99,14 +101,26 @@
       .join('');
   }
   function renderOrders() {
-    const out = document.getElementById('orderRows');
+    const out = document.getElementById('orderRows'),
+      control = document.getElementById('ordersMore'),
+      rows = DATA?.orders || [],
+      hiddenCount = Math.max(0, rows.length - ORDER_MOBILE_LIMIT);
     if (!out) return;
-    out.innerHTML = (DATA?.orders || [])
+    out.innerHTML = rows
       .map(
-        (r) =>
-          `<tr><td class="age">${age(r.age_seconds)}</td><td>${esc(r.local_time || '')}</td><td class="order-id">${esc(r.order_short || '')}</td><td class="order-items" title="${esc(r.items || '')}">${esc(r.items || '')}</td><td class="num"><strong>${money(r.sales)}</strong></td><td class="status">${esc(r.status || '—')}</td></tr>`,
+        (r, index) =>
+          `<tr${index >= ORDER_MOBILE_LIMIT ? ' class="order-reference-row"' : ''}><td class="age">${age(r.age_seconds)}</td><td>${esc(r.local_time || '')}</td><td class="order-id">${esc(r.order_short || '')}</td><td class="order-items" title="${esc(r.items || '')}">${esc(r.items || '')}</td><td class="num"><strong>${money(r.sales)}</strong></td><td class="status">${esc(r.status || '—')}</td></tr>`,
       )
       .join('');
+    document.getElementById('orders')?.classList.toggle('orders-expanded', ORDERS_EXPANDED);
+    if (!control) return;
+    control.hidden = hiddenCount === 0;
+    control.setAttribute('aria-expanded', ORDERS_EXPANDED ? 'true' : 'false');
+    set('ordersMoreLabel', ORDERS_EXPANDED ? 'Show fewer orders' : 'Show all recent orders');
+    set(
+      'ordersMoreCount',
+      ORDERS_EXPANDED ? `${nf.format(rows.length)} shown` : `${nf.format(hiddenCount)} more`,
+    );
   }
 
   function ensureTip(host) {
@@ -742,6 +756,10 @@
         x.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
       renderChart();
+    });
+    document.getElementById('ordersMore')?.addEventListener('click', () => {
+      ORDERS_EXPANDED = !ORDERS_EXPANDED;
+      renderOrders();
     });
     const host = document.querySelector('.sales-chart-card');
     if ('ResizeObserver' in window && host) {
