@@ -45,7 +45,9 @@
           Products
         </button>
         <button class="subnav__item" type="button" data-view="orders" aria-selected="false">Orders</button>
-        <button class="subnav__item" type="button" data-view="geography" aria-selected="false">Geography</button>
+        <button class="subnav__item" type="button" data-view="geography" aria-selected="false">
+          Geography
+        </button>
       </nav>
 
       <div class="notice" role="note" aria-label="Sales monetary basis">
@@ -249,11 +251,15 @@
               </label>
               <label class="geo-control geo-product-control">
                 <span>Product</span>
-                <select id="geoProduct"><option value="all">All products</option></select>
+                <select id="geoProduct">
+                  <option value="all">All products</option>
+                </select>
               </label>
               <label class="geo-control">
                 <span>Area</span>
-                <select id="geoStateSelect"><option value="all">Mexico</option></select>
+                <select id="geoStateSelect">
+                  <option value="all">Mexico</option>
+                </select>
               </label>
             </div>
           </div>
@@ -269,9 +275,15 @@
                 </div>
                 <button class="geo-back" id="geoBack" type="button" hidden>← Mexico</button>
               </div>
-              <svg id="geoMap" class="geo-map" viewBox="0 0 960 520" preserveAspectRatio="xMidYMid meet"></svg>
+              <svg
+                id="geoMap"
+                class="geo-map"
+                viewBox="0 0 960 520"
+                preserveAspectRatio="xMidYMid meet"
+              ></svg>
               <div class="geo-map-source">
-                Postal labels: SEPOMEX · polygon source: open-mexico / SEPOMEX · geometry is filtered server-side to postal codes present in the selected demand slice.
+                Postal labels: SEPOMEX · polygon source: open-mexico / SEPOMEX · geometry is filtered
+                server-side to postal codes present in the selected demand slice.
               </div>
             </section>
 
@@ -291,11 +303,21 @@
                   </colgroup>
                   <thead>
                     <tr>
-                      <th data-geo-sort="area" aria-sort="none"><button type="button">Area</button></th>
-                      <th class="num" data-geo-sort="sales" aria-sort="descending"><button type="button">Spend</button></th>
-                      <th class="num" data-geo-sort="orders" aria-sort="none"><button type="button">Orders</button></th>
-                      <th class="num" data-geo-sort="units" aria-sort="none"><button type="button">Units</button></th>
-                      <th class="num" data-geo-sort="aov" aria-sort="none"><button type="button">AOV</button></th>
+                      <th data-geo-sort="area" aria-sort="none">
+                        <button type="button">Area</button>
+                      </th>
+                      <th class="num" data-geo-sort="sales" aria-sort="descending">
+                        <button type="button">Spend</button>
+                      </th>
+                      <th class="num" data-geo-sort="orders" aria-sort="none">
+                        <button type="button">Orders</button>
+                      </th>
+                      <th class="num" data-geo-sort="units" aria-sort="none">
+                        <button type="button">Units</button>
+                      </th>
+                      <th class="num" data-geo-sort="aov" aria-sort="none">
+                        <button type="button">AOV</button>
+                      </th>
                     </tr>
                   </thead>
                   <tbody id="geoRankedRows"></tbody>
@@ -305,8 +327,9 @@
           </div>
 
           <div class="geo-privacy-note">
-            <strong>Privacy boundary:</strong> reporting stores only destination country, state/region and postal code.
-            Recipient name, street address, city, phone, delivery instructions and the raw recipient object are discarded before warehouse persistence.
+            <strong>Privacy boundary:</strong> reporting stores only destination country, state/region and
+            postal code. Recipient name, street address, city, phone, delivery instructions and the raw
+            recipient object are discarded before warehouse persistence.
           </div>
         </section>
       </main>

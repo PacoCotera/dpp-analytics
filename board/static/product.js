@@ -12,9 +12,7 @@ function age(seconds) {
 }
 
 function ratioPercent(value) {
-  return value === null || value === undefined
-    ? '—'
-    : percent(100 * Number(value), { sign: false });
+  return value === null || value === undefined ? '—' : percent(100 * Number(value), { sign: false });
 }
 
 function decimal(value, digits = 2) {
@@ -150,7 +148,8 @@ function renderListingAndInventory(profile, commercial, ads) {
   } else {
     byId('adsState').textContent = 'Review';
     byId('adsState').className = 'warn';
-    byId('adsNote').textContent = `${String(ads.coverage_state || 'partial').toLowerCase()} · ${String(ads.attribution_state || 'provisional').toLowerCase()}`;
+    byId('adsNote').textContent =
+      `${String(ads.coverage_state || 'partial').toLowerCase()} · ${String(ads.attribution_state || 'provisional').toLowerCase()}`;
   }
 }
 
@@ -256,8 +255,7 @@ function renderAds(ads) {
   const spend = Number(ads.spend || 0);
   const trusted = Boolean(ads.trusted_for_operating_decisions);
   const trust = trusted ? 'Decision-grade' : 'Review';
-  const attribution =
-    ads.attribution_state || (mature >= observed ? 'MATURE' : 'PROVISIONAL');
+  const attribution = ads.attribution_state || (mature >= observed ? 'MATURE' : 'PROVISIONAL');
   byId('adsDecision').textContent =
     `${money(spend)} spend · ${decimal(ads.roas)}× ROAS · ${ratioPercent(ads.tacos)} TACOS`;
   byId('adsRead').textContent =
@@ -265,8 +263,7 @@ function renderAds(ads) {
 
   const healthRead = byId('healthRead');
   if (healthRead && spend > 0 && !healthRead.textContent.includes('Paid support is active')) {
-    healthRead.textContent +=
-      ` Paid support is active at ${money(spend)} over 28D, with ${ratioPercent(ads.tacos)} TACOS and ${decimal(ads.roas)}× attributed ROAS; this is context, not proof of causality.`;
+    healthRead.textContent += ` Paid support is active at ${money(spend)} over 28D, with ${ratioPercent(ads.tacos)} TACOS and ${decimal(ads.roas)}× attributed ROAS; this is context, not proof of causality.`;
   }
 }
 

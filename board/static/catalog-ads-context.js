@@ -50,7 +50,9 @@ function decorate(payload) {
     appendOnce(basis, ' · Paid support awaiting Amazon Ads data', 'adsSummary');
   }
 
-  const families = new Map((payload.families || []).map((family) => [String(family.family_asin || ''), family]));
+  const families = new Map(
+    (payload.families || []).map((family) => [String(family.family_asin || ''), family]),
+  );
   document.querySelectorAll('.family[data-family]').forEach((row) => {
     const family = families.get(String(row.dataset.family || ''));
     if (!family) return;
@@ -58,13 +60,15 @@ function decorate(payload) {
   });
 
   const products = new Map((payload.products || []).map((product) => [String(product.sku || ''), product]));
-  document.querySelectorAll('a.child[href^="/product?sku="], a.analysis-link[href^="/product?sku="]').forEach((row) => {
-    const url = new URL(row.getAttribute('href'), window.location.origin);
-    const product = products.get(url.searchParams.get('sku') || '');
-    if (!product) return;
-    const meta = row.querySelector('.child-meta') || row.querySelector('.analysis-identity span');
-    appendOnce(meta, productPaidRead(product), 'adsRead');
-  });
+  document
+    .querySelectorAll('a.child[href^="/product?sku="], a.analysis-link[href^="/product?sku="]')
+    .forEach((row) => {
+      const url = new URL(row.getAttribute('href'), window.location.origin);
+      const product = products.get(url.searchParams.get('sku') || '');
+      if (!product) return;
+      const meta = row.querySelector('.child-meta') || row.querySelector('.analysis-identity span');
+      appendOnce(meta, productPaidRead(product), 'adsRead');
+    });
 }
 
 function attach(payload) {

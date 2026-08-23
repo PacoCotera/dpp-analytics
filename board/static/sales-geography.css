@@ -62,7 +62,7 @@
   color: var(--muted);
   font-size: 8.5px;
   font-weight: 800;
-  letter-spacing: .08em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -115,14 +115,14 @@
 .geo-kpi span {
   font-size: 8.5px;
   font-weight: 820;
-  letter-spacing: .08em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .geo-kpi strong {
   font-size: 21px;
   line-height: 1.05;
-  letter-spacing: -.025em;
+  letter-spacing: -0.025em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -132,7 +132,7 @@
 
 .geo-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(390px, .65fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(390px, 0.65fr);
   gap: 14px;
   align-items: start;
   min-width: 0;
@@ -216,19 +216,21 @@
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
   cursor: pointer;
-  transition: opacity .12s ease, stroke-width .12s ease;
+  transition:
+    opacity 0.12s ease,
+    stroke-width 0.12s ease;
 }
 
 .geo-shape:hover,
 .geo-shape:focus-visible {
-  opacity: .82;
+  opacity: 0.82;
   stroke: #201d19;
   stroke-width: 1.5;
   outline: none;
 }
 
 .postal-shape {
-  stroke-width: .65;
+  stroke-width: 0.65;
 }
 
 .geo-map-fallback {
@@ -362,17 +364,17 @@
   justify-content: flex-end;
 }
 
-.geo-table th[data-geo-sort][aria-sort="ascending"] button::after {
-  content: "↑";
+.geo-table th[data-geo-sort][aria-sort='ascending'] button::after {
+  content: '↑';
   color: var(--ink);
 }
 
-.geo-table th[data-geo-sort][aria-sort="descending"] button::after {
-  content: "↓";
+.geo-table th[data-geo-sort][aria-sort='descending'] button::after {
+  content: '↓';
   color: var(--ink);
 }
 
-.geo-table th[data-geo-sort][aria-sort]:not([aria-sort="none"]) button {
+.geo-table th[data-geo-sort][aria-sort]:not([aria-sort='none']) button {
   color: var(--ink);
 }
 

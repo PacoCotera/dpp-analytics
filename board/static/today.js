@@ -29,7 +29,10 @@ function dayLetter(date) {
 }
 
 function weekday(value) {
-  return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(parseDate(value));
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    timeZone: 'UTC',
+  }).format(parseDate(value));
 }
 
 function shortMoney(value) {
@@ -191,7 +194,11 @@ function periodRows() {
 
 function renderRhythmInsight() {
   const all = (data.recent_daily || [])
-    .map((row) => ({ ...row, date: parseDate(row.business_date), sales: Number(row.sales || 0) }))
+    .map((row) => ({
+      ...row,
+      date: parseDate(row.business_date),
+      sales: Number(row.sales || 0),
+    }))
     .filter((row) => row.date);
   const closed = all.filter((row) => !(data.is_live && row.business_date === data.local_today));
   const last7 = closed.slice(-7);

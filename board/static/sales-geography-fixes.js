@@ -83,7 +83,9 @@
     const direction = controls.querySelector('#geoSortDirection');
 
     function activeSort() {
-      const active = document.querySelector('.geo-table th[data-geo-sort][aria-sort="ascending"], .geo-table th[data-geo-sort][aria-sort="descending"]');
+      const active = document.querySelector(
+        '.geo-table th[data-geo-sort][aria-sort="ascending"], .geo-table th[data-geo-sort][aria-sort="descending"]',
+      );
       return {
         field: active?.dataset.geoSort || 'sales',
         direction: active?.getAttribute('aria-sort') === 'ascending' ? 'asc' : 'desc',
@@ -94,7 +96,10 @@
       const current = activeSort();
       select.value = current.field;
       direction.textContent = current.direction === 'asc' ? '↑' : '↓';
-      direction.setAttribute('aria-label', `Sort ${current.direction === 'asc' ? 'descending' : 'ascending'}`);
+      direction.setAttribute(
+        'aria-label',
+        `Sort ${current.direction === 'asc' ? 'descending' : 'ascending'}`,
+      );
       direction.title = current.direction === 'asc' ? 'Sort descending' : 'Sort ascending';
     }
 
@@ -125,7 +130,12 @@
     });
 
     const head = document.querySelector('.geo-table thead');
-    if (head) new MutationObserver(sync).observe(head, { attributes: true, subtree: true, attributeFilter: ['aria-sort'] });
+    if (head)
+      new MutationObserver(sync).observe(head, {
+        attributes: true,
+        subtree: true,
+        attributeFilter: ['aria-sort'],
+      });
     sync();
   }
 
@@ -221,10 +231,17 @@
       const svg = d3.select(svgNode);
       svg.on('.zoom', null);
 
-      const behavior = d3.zoom()
+      const behavior = d3
+        .zoom()
         .scaleExtent([1, maxScale])
-        .extent([[0, 0], [width, height]])
-        .translateExtent([[0, 0], [width, height]])
+        .extent([
+          [0, 0],
+          [width, height],
+        ])
+        .translateExtent([
+          [0, 0],
+          [width, height],
+        ])
         .clickDistance(5)
         .filter((event) => {
           if (event.type === 'wheel') return true;
@@ -272,7 +289,16 @@
     // Postal drill-down covers one state only. A planar lon/lat projection is
     // deliberately used here so ring winding can never be interpreted as the
     // spherical complement of a small postal polygon.
-    const projection = d3.geoIdentity().reflectY(true).fitExtent([[22, 18], [width - 22, height - 20]], target);
+    const projection = d3
+      .geoIdentity()
+      .reflectY(true)
+      .fitExtent(
+        [
+          [22, 18],
+          [width - 22, height - 20],
+        ],
+        target,
+      );
     const path = d3.geoPath(projection);
 
     contextNode.setAttribute('d', path(context) || '');

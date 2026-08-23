@@ -29,7 +29,9 @@ function statusLabel(status) {
       SHIPPED: 'Shipped',
       CANCELLED: 'Cancelled',
       UNFULFILLABLE: 'Unfulfillable',
-    }[key] || key.replaceAll('_', ' ').toLowerCase() || 'Unknown'
+    }[key] ||
+    key.replaceAll('_', ' ').toLowerCase() ||
+    'Unknown'
   );
 }
 
@@ -77,12 +79,17 @@ function renderOrderCard(order) {
   const status = statusLabel(rawStatus);
   const fulfillment = fulfillmentLabel(order);
   const total = order.sales === null || order.sales === undefined ? '—' : money(order.sales);
-  const timing = [order.local_time || '', order.age_seconds !== null && order.age_seconds !== undefined ? age(order.age_seconds) : '']
+  const timing = [
+    order.local_time || '',
+    order.age_seconds !== null && order.age_seconds !== undefined ? age(order.age_seconds) : '',
+  ]
     .filter(Boolean)
     .join(' · ');
   const fulfilled = Number(order.quantity_fulfilled || 0);
   const unfulfilled = Number(order.quantity_unfulfilled || 0);
-  const units = Number(order.units || items.reduce((sum, item) => sum + Number(item.quantity_ordered || 0), 0));
+  const units = Number(
+    order.units || items.reduce((sum, item) => sum + Number(item.quantity_ordered || 0), 0),
+  );
   const unitLabel = `${integer(units)} unit${units === 1 ? '' : 's'}`;
   const fulfillmentState = AMAZON_PROCESSING.has(rawStatus)
     ? `${unitLabel} · fulfillment not started`
@@ -114,10 +121,12 @@ function renderOrderFlow(payload) {
   if (!flow) {
     byId('pendingOrdersKpi').textContent = '—';
     byId('pendingOrdersKpiNote').textContent = 'current queue';
-    byId('orderFlowGrid').innerHTML = '<div class="empty ops-owned">Current order queue is shown on live Today.</div>';
+    byId('orderFlowGrid').innerHTML =
+      '<div class="empty ops-owned">Current order queue is shown on live Today.</div>';
     byId('orderFlowFoot').textContent = 'Operational status is current state, not selected-day history.';
     byId('openOrderSummary').textContent = 'Current order queue is not attached to historical day views';
-    byId('openOrderGrid').innerHTML = '<div class="empty ops-owned">Open orders are available on live Today.</div>';
+    byId('openOrderGrid').innerHTML =
+      '<div class="empty ops-owned">Open orders are available on live Today.</div>';
     return;
   }
 
@@ -146,7 +155,10 @@ function renderOrderFlow(payload) {
       <div class="order-flow-stat"><strong>${integer(partial)}</strong><span>Partial</span></div>
     </div>`;
 
-  const notes = [`Shipped today ${integer(flow.shipped_today || 0)}`, `Open fulfillment · FBA ${fba} · FBM ${fbm}${unknown ? ` · ${unknown} other` : ''}`];
+  const notes = [
+    `Shipped today ${integer(flow.shipped_today || 0)}`,
+    `Open fulfillment · FBA ${fba} · FBM ${fbm}${unknown ? ` · ${unknown} other` : ''}`,
+  ];
   if (Number(flow.problem_orders || 0)) notes.push(`${integer(flow.problem_orders)} needs attention`);
   byId('orderFlowFoot').textContent = notes.join(' · ');
 
@@ -154,13 +166,15 @@ function renderOrderFlow(payload) {
   if (!open) {
     byId('openOrderSummary').textContent = 'No open Amazon orders';
   } else if (open === pending && unshipped === 0 && partial === 0) {
-    byId('openOrderSummary').textContent = `${open} open · all awaiting Amazon processing · current fulfillment state`;
+    byId('openOrderSummary').textContent =
+      `${open} open · all awaiting Amazon processing · current fulfillment state`;
   } else {
     const components = [];
     if (pending) components.push(`${pending} Amazon processing`);
     if (unshipped) components.push(`${unshipped} unshipped`);
     if (partial) components.push(`${partial} partial`);
-    byId('openOrderSummary').textContent = `${open} open · ${components.join(' · ')} · current fulfillment state`;
+    byId('openOrderSummary').textContent =
+      `${open} open · ${components.join(' · ')} · current fulfillment state`;
   }
   byId('openOrderGrid').innerHTML = openOrders.length
     ? openOrders.map(renderOrderCard).join('')
@@ -170,7 +184,8 @@ function renderOrderFlow(payload) {
 function renderSelectedOrders(payload) {
   const orders = payload.recent_orders || [];
   const today = payload.today || {};
-  byId('orderSummary').textContent = `${integer(today.orders_today || 0)} orders · ${integer(today.units_today || 0)} units · ${money(today.sales_today || 0)} shopper spend incl. IVA`;
+  byId('orderSummary').textContent =
+    `${integer(today.orders_today || 0)} orders · ${integer(today.units_today || 0)} units · ${money(today.sales_today || 0)} shopper spend incl. IVA`;
   byId('orderGrid').innerHTML = orders.length
     ? orders.map(renderOrderCard).join('')
     : '<div class="empty ops-owned">No orders recorded for this day.</div>';
@@ -222,7 +237,8 @@ async function loadOperations() {
     lastQuery = key;
     renderAll();
   } catch (error) {
-    if (byId('orderFlowFoot')) byId('orderFlowFoot').textContent = `Order operations unavailable: ${error.message}`;
+    if (byId('orderFlowFoot'))
+      byId('orderFlowFoot').textContent = `Order operations unavailable: ${error.message}`;
   } finally {
     loadingQuery = null;
   }

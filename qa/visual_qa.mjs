@@ -109,6 +109,30 @@ async function verifyProductWorkspace(page) {
   }
 }
 
+async function verifyInventory(page) {
+  await wait(page, '#inventoryCards .inv-card');
+  if ((await page.evaluate(() => window.innerWidth)) > 640) return;
+
+  const contract = await page.evaluate(async () => {
+    const payload = await (await fetch('/api/inventory', { cache: 'no-store' })).json();
+    const holdCount = (payload.rows || []).filter((row) => row.action === 'HOLD').length;
+    const details = document.querySelector('.inventory-reference');
+    return {
+      holdCount,
+      hasDetails: Boolean(details),
+      detailsOpen: Boolean(details?.open),
+      visibleReferenceCards: [...document.querySelectorAll('.inv-card--reference')].filter(
+        (element) => element.getBoundingClientRect().height > 0,
+      ).length,
+    };
+  });
+
+  if (contract.holdCount && !contract.hasDetails)
+    throw new Error('Inventory mobile default is missing collapsed reference inventory');
+  if (contract.detailsOpen || contract.visibleReferenceCards)
+    throw new Error('Inventory mobile default exposes the no-velocity reference wall');
+}
+
 async function assertFinanceChartMarks(page, label) {
   await wait(page, '#progression');
   const marks = await page.locator('#progression rect, #progression path, #progression line').count();
@@ -195,7 +219,7 @@ const scenarios = [
   ['catalog-combinations', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'pair')],
   ['catalog-sku', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'sku')],
   ['product-pnc-001', '/product?sku=PNC-001', ['mobile', 'desktop'], verifyProductWorkspace],
-  ['inventory', '/inventory', ['mobile', 'tablet', 'desktop']],
+  ['inventory', '/inventory', ['mobile', 'tablet', 'desktop'], verifyInventory],
   ['ads-overview', '/ads', ['mobile', 'tablet', 'desktop'], p => verifyAds(p)],
   ['ads-campaigns', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'campaigns')],
   ['finance-overview', '/finance', ['mobile', 'desktop'], verifyFinanceReport],
