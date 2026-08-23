@@ -186,7 +186,20 @@ async function verifyFinanceWindows(page) {
 
 async function verifyFinanceReport(page) {
   await wait(page, '#currentLines .finance-line');
-  await wait(page, '#currentBridge .bridge-step');
+  const isMobile = (await page.evaluate(() => window.innerWidth)) <= 640;
+  if (isMobile) {
+    if (await page.locator('.finance-read--current-summary').isVisible()) {
+      throw new Error('Finance mobile repeats the current-month contribution summary');
+    }
+    const cashDisclosure = page.locator('#cashSettlementDisclosure');
+    await cashDisclosure.waitFor({ state: 'visible', timeout: 5000 });
+    if (await cashDisclosure.getAttribute('open')) {
+      throw new Error('Finance mobile settlement evidence is open by default');
+    }
+    await wait(page, '#cashSettlementSummary');
+  } else {
+    await wait(page, '#currentBridge .bridge-step');
+  }
   await wait(page, '#ytdBridge .bridge-step');
   await assertFinanceChartMarks(page, 'progression');
   await verifyFinanceWindows(page);
