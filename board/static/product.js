@@ -11,6 +11,27 @@ function age(seconds) {
   return `${(value / 86400).toFixed(value < 259200 ? 1 : 0)}d`;
 }
 
+function orderStatus(status) {
+  const raw = String(status || '').trim();
+  const normalized = raw.toUpperCase().replaceAll(' ', '_');
+  if (['PENDING', 'PENDING_AVAILABILITY', 'INVOICE_UNCONFIRMED'].includes(normalized)) {
+    return 'Amazon processing';
+  }
+  return raw || 'Status unavailable';
+}
+
+function orderStatusTone(status) {
+  const normalized = String(status || '')
+    .toUpperCase()
+    .replaceAll(' ', '_');
+  if (['PENDING', 'PENDING_AVAILABILITY', 'INVOICE_UNCONFIRMED'].includes(normalized)) {
+    return 'waiting';
+  }
+  if (['SHIPPED', 'UNSHIPPED', 'PARTIALLY_SHIPPED'].includes(normalized)) return 'active';
+  if (['CANCELLED', 'CANCELED'].includes(normalized)) return 'problem';
+  return 'neutral';
+}
+
 function ratioPercent(value) {
   return value === null || value === undefined ? '—' : percent(100 * Number(value), { sign: false });
 }
@@ -273,17 +294,25 @@ function renderOrders(orders = []) {
   byId('orders').innerHTML = orders.length
     ? orders
         .map(
-          (order) => `<div class="list-row">
-          <div class="order-age">${age(order.age_seconds)}</div>
-          <div>
-            <div class="row-title">${escapeHtml(order.local_time || '')}</div>
-            <div class="order-id">${escapeHtml(order.order_short || '')}</div>
+          (order) => `<article class="product-order">
+          <div class="product-order__moment">
+            <strong>${age(order.age_seconds)} ago</strong>
+            <span>${escapeHtml(order.local_time || '')}</span>
+            <code>${escapeHtml(order.order_short || '')}</code>
           </div>
-          <div class="row-value">
+          <div class="product-order__metric">
+            <span>Units</span>
+            <strong>${integer(order.units)}</strong>
+          </div>
+          <div class="product-order__metric product-order__spend">
+            <span>Shopper spend incl. IVA</span>
             <strong>${money(order.sales)}</strong>
-            <small>${integer(order.units)} units · ${escapeHtml(order.status || '')}</small>
           </div>
-        </div>`,
+          <div class="product-order__fulfillment">
+            <span>Fulfillment</span>
+            <strong class="order-status-pill ${orderStatusTone(order.status)}">${escapeHtml(orderStatus(order.status))}</strong>
+          </div>
+        </article>`,
         )
         .join('')
     : '<div class="empty"><strong>No recent orders.</strong></div>';
