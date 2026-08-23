@@ -141,11 +141,10 @@ def _label_file(path: Path) -> dict[str, dict]:
 
 
 def product_labels() -> dict[str, dict]:
-    """Canonical repo names plus persistent host media/link overrides.
+    """Return the configured SKU display-name map and optional media overrides.
 
-    Product names are an application-wide contract, so a stale host seed must
-    never mask a corrected repo mapping. Host values remain authoritative for
-    optional image and Amazon-link overrides, and may name unknown future SKUs.
+    The repository file is the seed. The persistent host file is the live
+    seller-owned mapping and therefore wins when it contains an override.
     """
     defaults = _label_file(DEFAULT_LABELS_PATH)
     overrides = {} if LABELS_PATH == DEFAULT_LABELS_PATH else _label_file(LABELS_PATH)
@@ -153,10 +152,18 @@ def product_labels() -> dict[str, dict]:
     for sku in defaults.keys() | overrides.keys():
         merged = dict(defaults.get(sku, {}))
         merged.update(overrides.get(sku, {}))
-        if defaults.get(sku, {}).get("name"):
-            merged["name"] = defaults[sku]["name"]
         labels[sku] = merged
     return labels
+
+
+def resolve_product_name(sku: str, upstream_name, labels: dict[str, dict]) -> tuple[object, str]:
+    """Use a configured short name or preserve the upstream name verbatim."""
+    mapped_name = labels.get(sku, {}).get("name")
+    if isinstance(mapped_name, str) and mapped_name.strip():
+        return mapped_name, "mapping"
+    if upstream_name is not None and str(upstream_name).strip():
+        return upstream_name, "data_stream"
+    return sku, "sku_fallback"
 
 
 def decorate_products(rows: list[dict]) -> list[dict]:
@@ -164,13 +171,12 @@ def decorate_products(rows: list[dict]) -> list[dict]:
     for row in rows:
         sku = str(row.get("sku") or "")
         override = labels.get(sku, {})
-        raw_title = row.get("product") or sku
+        upstream_name = row.get("product")
         asin = row.get("asin")
-        row["catalog_title"] = raw_title
-        row["product"] = override.get("name") or raw_title
+        row["catalog_title"] = upstream_name
+        row["product"], row["label_source"] = resolve_product_name(sku, upstream_name, labels)
         row["amazon_url"] = override.get("amazon_url") or (f"{AMAZON_MX_DP}{asin}" if asin else None)
         row["image_url"] = override.get("image_url") or row.get("image_url")
-        row["label_source"] = "override" if override.get("name") else "catalog"
     return rows
 
 
@@ -370,7 +376,7 @@ class Handler(BaseHTTPRequestHandler):
             self.json_endpoint(lambda: build_finance_payload(connect, MARKETPLACE))
             return
         if path == "/api/ads":
-            self.json_endpoint(lambda: build_ads_payload(connect, MARKETPLACE))
+            self.json_endpoint(lambda: build_ads_payload(connect, MARKETPLACE, decorate_products))
             return
         if path == "/api/product":
             sku = (query.get("sku") or [""])[0]

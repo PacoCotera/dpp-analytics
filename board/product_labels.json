@@ -1,52 +1,16 @@
 {
   "_meta": {
-    "description": "Canonical SKU display names for every operating surface. Host configuration may override image_url and amazon_url, while these names remain the shared naming contract.",
+    "description": "Short SKU display names used on every operating surface. Missing SKUs preserve the complete product name from the upstream data stream.",
     "fields": {
-      "name": "Canonical seller-facing product name used throughout the board",
-      "image_url": "Optional host-side manual image override; normally populated from Amazon Catalog Items",
-      "amazon_url": "Optional host-side product-page override; otherwise built from the ASIN"
+      "name": "Mapped short display name used throughout the board",
+      "image_url": "Optional manual image override; normally populated automatically from Amazon Catalog Items",
+      "amazon_url": "Optional manual product-page override; otherwise built from the SKU's ASIN"
     }
   },
-  "PNC-001": {
-    "name": "Pack de 3 Libretas de Bolsillo · Naturaleza · Cuadrícula Punteada"
-  },
-  "PNC-001B": {
-    "name": "Pack de 3 Libretas de Bolsillo · Naturaleza · Páginas Blancas"
-  },
-  "PNC-004": {
-    "name": "Pack de 3 Libretas de Bolsillo · Pequeños Momentos · Cuadrícula Punteada"
-  },
-  "PNC-004B": {
-    "name": "Pack de 3 Libretas de Bolsillo · Pequeños Momentos · Páginas Blancas"
-  },
-  "PNC-005": {
-    "name": "Pack de 3 Libretas de Bolsillo · Sobremesa · Cuadrícula Punteada"
-  },
-  "PNC-005B": {
-    "name": "Pack de 3 Libretas de Bolsillo · Sobremesa · Páginas Blancas"
-  },
-  "PNC-002": {
-    "name": "Pack de 3 Libretas de Bolsillo · Espeluznante · Cuadrícula Punteada"
-  },
-  "PCN-003": {
-    "name": "Pack de 3 Libretas de Bolsillo · Día de Muertos · Cuadrícula Punteada"
-  },
-  "COL-ST-01": {
-    "name": "Libreta de Tela · Buen Presagio · Cuadrícula Punteada"
-  },
-  "COL-ST-02": {
-    "name": "Libreta de Tela · Frenchie Azul · Cuadrícula Punteada"
-  },
-  "COL-ST-03": {
-    "name": "Libreta de Tela · Guardián del Bosque · Cuadrícula Punteada"
-  },
-  "SN-001": {
-    "name": "Libreta de Tela · Abrazo Nocturno · Cuadrícula Punteada"
-  },
-  "CP-X19V-4AFR": {
-    "name": "Pack de 3 Libretas de Tela Ilustradas · Stray Thoughts"
-  },
-  "BLC-001": {
-    "name": "Kit magnético · Súper + Pendientes"
-  }
+  "PNC-001": {"name": "Naturaleza · 3-pack pocket"},
+  "PNC-001B": {"name": "Naturaleza · 3-pack pocket"},
+  "PNC-004": {"name": "Pequeños Momentos · 3-pack pocket"},
+  "PNC-004B": {"name": "Pequeños Momentos · 3-pack pocket"},
+  "PNC-005": {"name": "Sobremesa · 3-pack pocket"},
+  "BLC-001": {"name": "Kit magnético · Súper + Pendientes"}
 }

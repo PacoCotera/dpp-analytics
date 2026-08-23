@@ -8,6 +8,7 @@ COPY numeric_ui_qa.mjs ./
 COPY geography_qa.mjs ./
 COPY geography_zoom_qa.mjs ./
 COPY order_operations_qa.mjs ./
+COPY product_naming_qa.mjs ./
 COPY ads_surface_qa.mjs ./
 COPY footer_qa.mjs ./
 COPY entrypoint.sh ./

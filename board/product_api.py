@@ -155,6 +155,7 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
     commercial['family_asin']=commercial.get('family_asin') or asin
     commercial['parent_asin']=commercial.get('parent_asin') or None
 
-    return {'profile':decorate_products([profile])[0],'commercial':commercial,'performance':performance,'traffic':traffic,
+    decorated_commercial = decorate_products([commercial])[0] if commercial else commercial
+    return {'profile':decorate_products([profile])[0],'commercial':decorated_commercial,'performance':performance,'traffic':traffic,
             'economics':economics,'ads':ads,'family_variations':decorate_products(siblings),'taxonomy_warnings':taxonomy_warnings,
             'series':series,'recent_orders':recent_orders,'inventory_history':inventory_history,'business_date':cutoff,'local_time':local_clock.get('local_time')}

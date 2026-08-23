@@ -37,20 +37,20 @@ function validateDecoratedItems(label, orders, key = 'items') {
     for (const item of items) {
       count += 1;
       if (!item.sku) continue;
-      if (!['override', 'catalog'].includes(String(item.label_source || ''))) {
+      if (!['mapping', 'data_stream', 'sku_fallback'].includes(String(item.label_source || ''))) {
         throw new Error(`${label} SKU ${item.sku} did not pass through product-label decorator`);
       }
-      if (!String(item.catalog_title || '').trim()) {
+      if (item.label_source !== 'sku_fallback' && !String(item.catalog_title || '').trim()) {
         throw new Error(`${label} SKU ${item.sku} missing catalog_title provenance`);
       }
       const productName = String(item.product || '').trim();
       if (!productName) {
         throw new Error(`${label} SKU ${item.sku} missing display product name`);
       }
-      if (/\b(actual|archivo)\b/i.test(productName) || /Pocket\s*-\s*/i.test(productName)) {
-        throw new Error(`${label} SKU ${item.sku} leaked raw catalog naming: ${productName}`);
+      if (item.label_source === 'data_stream' && item.product !== item.catalog_title) {
+        throw new Error(`${label} SKU ${item.sku} altered its upstream fallback name`);
       }
-      if (item.label_source === 'override') overrides += 1;
+      if (item.label_source === 'mapping') overrides += 1;
     }
   }
   return { count, overrides };

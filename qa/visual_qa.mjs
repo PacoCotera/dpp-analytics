@@ -91,8 +91,7 @@ async function verifyProductWorkspace(page) {
   const payload = await page.evaluate(async () =>
     (await (await fetch('/api/product?sku=PNC-001', { cache: 'no-store' })).json()),
   );
-  const expected =
-    'Pack de 3 Libretas de Bolsillo · Naturaleza · Cuadrícula Punteada';
+  const expected = 'Naturaleza · 3-pack pocket';
   if (payload.profile?.product !== expected)
     throw new Error(`Product canonical name mismatch: ${payload.profile?.product || 'blank'}`);
   const renderedName = (await page.locator('.hero-name').textContent() || '').trim();

@@ -59,14 +59,13 @@ function stockTotal(row) {
 
 function compactFamilyName(family) {
   if (family.name && family.members?.some((item) => item.family_name)) return family.name;
-
-  const parentName = String(family.parent?.product || '').trim();
-  if (parentName) {
-    const first = parentName.split(/\s[-–]\s/)[0].trim();
-    if (first.length >= 6 && first.length <= 52) return first;
-  }
-
-  return family.name || members(family)[0]?.product || family.family_asin || 'Product family';
+  return (
+    family.parent?.product ||
+    family.name ||
+    members(family)[0]?.product ||
+    family.family_asin ||
+    'Product family'
+  );
 }
 
 function dimensionSummary(family) {
