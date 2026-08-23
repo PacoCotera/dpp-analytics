@@ -511,6 +511,14 @@
   font-size: 14px;
 }
 
+.catalog-reference-disclosure > summary {
+  display: none;
+}
+
+.catalog-reference-hide {
+  display: none;
+}
+
 .portfolio-foot {
   display: flex;
   justify-content: space-between;
@@ -902,6 +910,55 @@
   .analysis-open {
     grid-row: 1;
     grid-column: 2;
+  }
+
+  .catalog-reference-disclosure > summary {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 3px;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 800;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .catalog-reference-disclosure > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .catalog-reference-disclosure > summary::before {
+    color: var(--muted);
+    font-size: 18px;
+    content: '›';
+    transition: transform 120ms ease;
+  }
+
+  .catalog-reference-disclosure > summary > span {
+    flex: 1 1 auto;
+  }
+
+  .catalog-reference-disclosure > summary > strong {
+    color: var(--muted);
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .catalog-reference-disclosure[open] > summary::before {
+    transform: rotate(90deg);
+  }
+
+  .catalog-reference-disclosure[open] .catalog-reference-show {
+    display: none;
+  }
+
+  .catalog-reference-disclosure[open] .catalog-reference-hide {
+    display: inline;
   }
 
   .portfolio-foot {
