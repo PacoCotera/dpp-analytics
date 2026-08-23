@@ -276,6 +276,7 @@ async function verifySalesOrders(page) {
       visible: rows.filter(row => getComputedStyle(row).display !== 'none').length,
       controlVisible: Boolean(control && getComputedStyle(control).display !== 'none'),
       expanded: control?.getAttribute('aria-expanded'),
+      statuses: rows.map(row => row.querySelector('.status')?.textContent?.trim() || ''),
     };
   });
   if (
@@ -287,6 +288,10 @@ async function verifySalesOrders(page) {
   }
   if (!state.mobile && state.visible !== state.total) {
     throw new Error(`Sales Orders desktop rows hidden: ${JSON.stringify(state)}`);
+  }
+  const leakedPending = state.statuses.filter(status => /\bpending(?:_availability)?\b/i.test(status));
+  if (leakedPending.length) {
+    throw new Error(`Sales Orders leaked raw pending language: ${JSON.stringify(leakedPending)}`);
   }
 }
 
