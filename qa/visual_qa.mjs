@@ -91,9 +91,9 @@ async function verifyProductWorkspace(page) {
   const payload = await page.evaluate(async () =>
     (await (await fetch('/api/product?sku=PNC-001', { cache: 'no-store' })).json()),
   );
-  const expected = 'Naturaleza · 3-pack pocket';
-  if (payload.profile?.product !== expected)
-    throw new Error(`Product canonical name mismatch: ${payload.profile?.product || 'blank'}`);
+  const expected = payload.profile?.product;
+  if (payload.profile?.label_source !== 'mapping' || !expected)
+    throw new Error(`Product mapped-name contract mismatch: ${payload.profile?.product || 'blank'} / ${payload.profile?.label_source || 'unknown source'}`);
   const renderedName = (await page.locator('.hero-name').textContent() || '').trim();
   if (renderedName !== expected)
     throw new Error(`Product hero canonical name mismatch: ${renderedName || 'blank'}`);

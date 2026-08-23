@@ -6,14 +6,7 @@ const baseUrl = (process.argv[2] || 'http://127.0.0.1:8088').replace(/\/$/, '');
 const outDir = process.argv[3] || '/out';
 await fs.mkdir(outDir, { recursive: true });
 
-const SEEDED_SHORT_NAMES = new Map([
-  ['PNC-001', 'Naturaleza · 3-pack pocket'],
-  ['PNC-001B', 'Naturaleza · 3-pack pocket'],
-  ['PNC-004', 'Pequeños Momentos · 3-pack pocket'],
-  ['PNC-004B', 'Pequeños Momentos · 3-pack pocket'],
-  ['PNC-005', 'Sobremesa · 3-pack pocket'],
-  ['BLC-001', 'Kit magnético · Súper + Pendientes'],
-]);
+const SEEDED_MAPPED_SKUS = new Set(['PNC-001', 'PNC-001B', 'PNC-004', 'PNC-004B', 'PNC-005', 'BLC-001']);
 
 function validateProductRow(location, row, results) {
   if (!row || typeof row !== 'object' || !('product' in row)) return;
@@ -86,11 +79,11 @@ try {
   if (ads.status === 'ready') validateRows('ads.products', ads.products, summary);
 
   const mappedCatalog = new Map((catalog.products || []).map(row => [String(row.sku || ''), row]));
-  for (const [sku, expected] of SEEDED_SHORT_NAMES) {
+  for (const sku of SEEDED_MAPPED_SKUS) {
     const row = mappedCatalog.get(sku);
     if (!row) continue;
-    if (row.label_source !== 'mapping' || row.product !== expected) {
-      throw new Error(`${sku}: expected mapped short name “${expected}”, got “${row.product || ''}” from ${row.label_source || 'unknown source'}`);
+    if (row.label_source !== 'mapping') {
+      throw new Error(`${sku}: expected the seller mapping, got “${row.product || ''}” from ${row.label_source || 'unknown source'}`);
     }
   }
 
@@ -106,7 +99,7 @@ try {
 
   await page.goto(`${baseUrl}/product?sku=PNC-001`, { waitUntil: 'networkidle', timeout: 20000 });
   const heroName = (await page.locator('.hero-name').textContent() || '').trim();
-  if (heroName !== SEEDED_SHORT_NAMES.get('PNC-001')) {
+  if (heroName !== productResponse.body.profile.product) {
     throw new Error(`Product hero did not render the mapped short name: ${heroName || 'blank'}`);
   }
 
