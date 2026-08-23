@@ -7,46 +7,59 @@ const DOMAIN_DEFINITIONS = [
   {
     key: 'today',
     label: 'Today',
-    affects: 'Live sales, orders and day-state decisions',
     terms: ['orders'],
     critical: true,
   },
   {
     key: 'sales',
     label: 'Sales',
-    affects: 'Historical sales, momentum and product contribution',
     terms: ['data_kiosk', 'data kiosk'],
     critical: true,
   },
   {
     key: 'products',
     label: 'Products',
-    affects: 'Catalog identity, offer state and product drill-down',
     terms: ['catalog', 'seller_listings', 'seller listings'],
     critical: true,
   },
   {
     key: 'inventory',
     label: 'Inventory',
-    affects: 'Stock position, cover and replenishment actions',
     terms: ['inventory'],
     critical: true,
   },
   {
     key: 'finance',
     label: 'Finance',
-    affects: 'Accounting periods, Amazon postings and contribution',
     terms: ['finance', 'settlement'],
     critical: true,
   },
 ];
 
-function age(seconds) {
-  const value = Number(seconds || 0);
+function duration(seconds, compact = false) {
+  const value = Math.max(0, Number(seconds || 0));
   if (value < 60) return `${Math.round(value)}s`;
   if (value < 3600) return `${Math.round(value / 60)}m`;
-  if (value < 86400) return `${(value / 3600).toFixed(value < 10800 ? 1 : 0)}h`;
-  return `${(value / 86400).toFixed(value < 259200 ? 1 : 0)}d`;
+  if (value < 86400) {
+    const hours = Math.floor(value / 3600);
+    const minutes = Math.floor((value % 3600) / 60);
+    return compact || !minutes ? `${hours}h` : `${hours}h ${minutes}m`;
+  }
+  const days = Math.floor(value / 86400);
+  const hours = Math.floor((value % 86400) / 3600);
+  return compact || !hours ? `${days}d` : `${days}d ${hours}h`;
+}
+
+function timestamp(value) {
+  if (!value) return 'No successful run recorded';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('en-MX', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function normalizedJobText(item) {
@@ -56,8 +69,8 @@ function normalizedJobText(item) {
 function jobState(item) {
   const status = item.latest_status || 'unknown';
   if (status === 'error') return 'failed';
+  if (item.is_stale) return 'stale';
   if (status === 'interrupted') return 'degraded';
-  if (Number(item.age_seconds || 0) > 86400) return 'stale';
   if (status === 'success' || status === 'running') return 'healthy';
   return 'degraded';
 }
@@ -84,7 +97,6 @@ function buildDomains(payload) {
   core.push({
     key: 'ads',
     label: 'Ads',
-    affects: 'Paid-media efficiency and attributed advertising decisions',
     state: adsState,
     jobs: [],
     critical: false,
@@ -104,31 +116,109 @@ function stateLabel(state) {
   );
 }
 
-function stateCopy(domain) {
-  if (domain.state === 'healthy') return 'Decision-ready';
-  if (domain.state === 'stale') return 'Source is older than expected';
-  if (domain.state === 'failed') return 'Wait before relying on this domain';
-  if (domain.state === 'degraded') return 'Use with caution';
-  return domain.critical ? 'Required source not detected' : 'Optional domain unavailable';
-}
-
 function renderDomains(domains) {
-  byId('domains').innerHTML = domains
-    .map(
-      (domain) => `<article class="domain-card domain-card--${domain.state}">
-      <div class="domain-card__head">
-        <strong>${escapeHtml(domain.label)}</strong>
-        <span class="domain-state domain-state--${domain.state}">${stateLabel(domain.state)}</span>
+  const caution = domains.filter((domain) => domain.critical && domain.state !== 'healthy');
+  const ready = domains.filter((domain) => domain.critical && domain.state === 'healthy');
+  const optional = domains.filter((domain) => !domain.critical);
+  const group = (label, state, rows) => {
+    if (!rows.length) return '';
+    return `<div class="domain-group domain-group--${state}">
+      <span class="domain-group__label">${escapeHtml(label)}</span>
+      <div class="domain-chips">
+        ${rows
+          .map(
+            (domain) => `<span class="domain-chip domain-chip--${domain.state}">
+              <strong>${escapeHtml(domain.label)}</strong>
+              <small>${stateLabel(domain.state)}</small>
+            </span>`,
+          )
+          .join('')}
       </div>
-      <p>${escapeHtml(domain.affects)}</p>
-      <small>${escapeHtml(stateCopy(domain))}</small>
-    </article>`,
-    )
-    .join('');
+    </div>`;
+  };
+  byId('domains').innerHTML = [
+    group('Needs caution', 'attention', caution),
+    group('Decision-ready', 'ready', ready),
+    group('Optional', 'optional', optional),
+  ].join('');
 }
 
 function problemJobs() {
-  return jobs.filter((item) => jobState(item) !== 'healthy').slice(0, 8);
+  return jobs.filter((item) => jobState(item) !== 'healthy');
+}
+
+function scheduleCopy(item) {
+  if (item.latest_status === 'running') return `Running for ${duration(item.attempt_age_seconds)}`;
+  if (Number(item.next_due_in_seconds || 0) > 0) {
+    return `Next due in ${duration(item.next_due_in_seconds)}`;
+  }
+  return `Overdue by ${duration(item.overdue_by_seconds)}`;
+}
+
+function latestDiagnostic(item) {
+  if (item.error_message) return item.error_message;
+  if (item.latest_attempt_status === 'interrupted') {
+    return 'The last attempt was interrupted by a worker restart. A prior successful result is still available.';
+  }
+  if (item.is_stale) {
+    return 'No API error was recorded. The last successful fetch is older than this stream’s cadence and grace period.';
+  }
+  return 'No API error recorded on the latest attempt.';
+}
+
+function renderAttention() {
+  const problems = problemJobs();
+  byId('attentionSection').hidden = !problems.length;
+  if (!problems.length) {
+    byId('attention').innerHTML = '';
+    return;
+  }
+
+  byId('attention').innerHTML = problems
+    .map((item) => {
+      const state = jobState(item);
+      const rowsRead = item.records_read == null ? '—' : integer(item.records_read);
+      const rowsWritten = item.records_written == null ? '—' : integer(item.records_written);
+      return `<article class="incident incident--${state}">
+        <header class="incident__header">
+          <div>
+            <span class="incident__operation">${escapeHtml(item.operation || item.source || '')}</span>
+            <h3>${escapeHtml(item.label || item.job_name || '')}</h3>
+          </div>
+          <span class="health-status ${state}">${stateLabel(state)}</span>
+        </header>
+        <p class="incident__purpose">${escapeHtml(item.purpose || '')}</p>
+        <div class="incident__impact">Impacts <strong>${escapeHtml(item.domain || 'Warehouse')}</strong></div>
+        <dl class="incident__metrics">
+          <div>
+            <dt>Data age</dt>
+            <dd>${duration(item.age_seconds)} old</dd>
+            <small>Last success ${timestamp(item.last_success_at)}</small>
+          </div>
+          <div>
+            <dt>Expected cadence</dt>
+            <dd>Every ${duration(item.expected_interval_seconds)}</dd>
+            <small>Stale after ${duration(item.stale_after_seconds)}</small>
+          </div>
+          <div>
+            <dt>Current wait</dt>
+            <dd>${scheduleCopy(item)}</dd>
+            <small>Waiting for ${escapeHtml(item.waiting_for || 'the next collection')}</small>
+          </div>
+          <div>
+            <dt>Last fetch</dt>
+            <dd>${rowsRead} read · ${rowsWritten} stored</dd>
+            <small>Attempt ${timestamp(item.last_started_at)}</small>
+          </div>
+        </dl>
+        <div class="incident__diagnostic ${item.error_message ? 'incident__diagnostic--error' : ''}">
+          <span>${item.error_message ? 'Latest API / ingestion error' : 'Diagnostic'}</span>
+          <strong>${escapeHtml(latestDiagnostic(item))}</strong>
+          ${item.last_error_at && !item.error_message ? `<small>Previous error ${timestamp(item.last_error_at)}: ${escapeHtml(item.last_error_message || 'No message')}</small>` : ''}
+        </div>
+      </article>`;
+    })
+    .join('');
 }
 
 function renderJobs() {
@@ -136,7 +226,7 @@ function renderJobs() {
 
   if (!rows.length && !expanded) {
     byId('jobs').innerHTML =
-      '<div class="empty"><strong>No pipeline exceptions.</strong> Technical source detail is quiet because no tracked job needs attention.</div>';
+      '<div class="empty"><strong>No pipeline exceptions.</strong> Every tracked stream is inside its own cadence and grace period.</div>';
     return;
   }
 
@@ -144,13 +234,13 @@ function renderJobs() {
     .map(
       (item) => `<div class="health-job">
       <div>
-        <div class="health-job__name">${escapeHtml(item.job_name || '')}</div>
-        <div class="health-job__source">${escapeHtml(item.source || '')}</div>
+        <div class="health-job__name">${escapeHtml(item.label || item.job_name || '')}</div>
+        <div class="health-job__source">${escapeHtml(item.operation || item.source || '')}</div>
       </div>
       <div><span class="health-status ${jobState(item)}">${stateLabel(jobState(item))}</span></div>
-      <div class="health-job__age">${age(item.age_seconds)}</div>
-      <div class="health-job__rows">${item.records_written == null ? '—' : integer(item.records_written)}</div>
-      <div class="health-job__error" title="${escapeHtml(item.error_message || '')}">${escapeHtml(item.error_message || '—')}</div>
+      <div class="health-job__age">${duration(item.age_seconds)}<small>${timestamp(item.last_success_at)}</small></div>
+      <div class="health-job__cadence">${duration(item.expected_interval_seconds)}<small>${scheduleCopy(item)}</small></div>
+      <div class="health-job__rows">${item.records_read == null ? '—' : integer(item.records_read)} read · ${item.records_written == null ? '—' : integer(item.records_written)} stored</div>
     </div>`,
     )
     .join('');
@@ -161,39 +251,33 @@ function render(payload) {
   const warehouse = payload.warehouse || {};
   const domains = buildDomains(payload);
   const critical = domains.filter((domain) => domain.critical);
-  const healthyCritical = critical.filter((domain) => domain.state === 'healthy').length;
-  const ratio = critical.length ? healthyCritical / critical.length : 0;
-  const score = Math.round(ratio * 100);
-  const blocked = critical.filter((domain) => ['failed', 'disconnected'].includes(domain.state));
-  const caution = critical.filter((domain) => ['stale', 'degraded'].includes(domain.state));
-  const optionalUnavailable = domains.filter((domain) => !domain.critical && domain.state !== 'healthy');
+  const caution = critical.filter((domain) => domain.state !== 'healthy');
+  const problems = problemJobs();
 
   byId('clock').textContent = payload.local_time || '--:--';
-  byId('score').textContent = `${score}%`;
-  byId('ring').style.setProperty('--angle', `${ratio * 360}deg`);
-  byId('ring').dataset.state = blocked.length ? 'failed' : caution.length ? 'degraded' : 'healthy';
+  byId('summaryCount').textContent = String(problems.length);
+  byId('summaryCount').dataset.state = problems.some((item) => jobState(item) === 'failed')
+    ? 'failed'
+    : problems.length
+      ? 'degraded'
+      : 'healthy';
 
-  if (blocked.length) {
+  if (problems.length) {
+    byId('summaryEyebrow').textContent =
+      `${problems.length} stream${problems.length === 1 ? '' : 's'} outside contract`;
     byId('healthTitle').textContent =
-      `${blocked.length} decision domain${blocked.length === 1 ? ' is' : 's are'} not ready.`;
-    byId('healthCopy').textContent =
-      `${healthyCritical} of ${critical.length} decision-critical domains are healthy. ${blocked.map((domain) => domain.label).join(', ')} should not be treated as decision-ready.`;
-    byId('trustNote').textContent =
-      'Use healthy domains normally. Wait on the affected business surface until its required source recovers.';
-  } else if (caution.length) {
-    byId('healthTitle').textContent = 'Core decisions are available with caveats.';
-    byId('healthCopy').textContent =
-      `${healthyCritical} of ${critical.length} decision-critical domains are fully healthy; ${caution.map((domain) => domain.label).join(', ')} ${caution.length === 1 ? 'needs' : 'need'} caution.`;
-    byId('trustNote').textContent =
-      'The board is usable, but inspect the affected domain before making a time-sensitive decision.';
+      `${problems.length} data stream${problems.length === 1 ? ' needs' : 's need'} attention.`;
+    byId('healthCopy').textContent = caution.length
+      ? `${caution.map((domain) => domain.label).join(', ')} ${caution.length === 1 ? 'is' : 'are'} affected. The exact source condition and last API attempt are below.`
+      : 'The affected stream is not currently blocking a decision-critical business surface.';
   } else {
-    byId('healthTitle').textContent = 'Core seller decisions are supported.';
+    byId('summaryEyebrow').textContent = 'All streams inside contract';
+    byId('healthTitle').textContent = 'Decision-critical data is current.';
     byId('healthCopy').textContent =
-      `All ${critical.length} decision-critical domains are healthy.${optionalUnavailable.length ? ` ${optionalUnavailable.map((domain) => domain.label).join(', ')} is optional and currently unavailable.` : ''}`;
-    byId('trustNote').textContent =
-      'Today remains provisional by design; historical Sales and Finance retain their own reconciliation and close-state semantics.';
+      `All ${critical.length} decision surfaces are supported within each source’s own cadence and grace period.`;
   }
 
+  renderAttention();
   renderDomains(domains);
 
   const warehouseKeys = [
@@ -224,9 +308,11 @@ async function start() {
   try {
     render(await fetchJson('/api/data-health'));
   } catch (error) {
+    byId('summaryCount').textContent = '!';
+    byId('summaryCount').dataset.state = 'failed';
+    byId('summaryEyebrow').textContent = 'Health API unavailable';
     byId('healthTitle').textContent = 'Data health unavailable';
     byId('healthCopy').textContent = error.message;
-    byId('score').textContent = '—';
   }
 }
 
