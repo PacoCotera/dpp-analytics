@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/assets/nav-shell.css" />
     <link rel="stylesheet" href="/assets/layout-system.css" />
     <link rel="stylesheet" href="/assets/chart-system.css" />
-    <link rel="stylesheet" href="/assets/sales.css" />
+    <link rel="stylesheet" href="/assets/sales.css?v=20260823-orders-density" />
     <link rel="stylesheet" href="/assets/sales-geography.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
@@ -219,6 +219,10 @@
                 <tbody id="orderRows"></tbody>
               </table>
             </div>
+            <button class="orders-more" id="ordersMore" type="button" aria-expanded="false" hidden>
+              <span id="ordersMoreLabel">Show all recent orders</span>
+              <strong id="ordersMoreCount"></strong>
+            </button>
           </div>
         </section>
       </main>
@@ -345,7 +349,7 @@
 
     <script src="/assets/vendor/d3.v7.min.js"></script>
     <script src="/assets/chart-system.js"></script>
-    <script src="/assets/sales-canonical.js"></script>
+    <script src="/assets/sales-canonical.js?v=20260823-orders-density"></script>
     <script src="/assets/sales-geography.js"></script>
     <script src="/assets/sales-basis-ui.js"></script>
   </body>
