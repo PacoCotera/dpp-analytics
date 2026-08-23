@@ -46,6 +46,7 @@ async function verifyDataHealth(page) {
     const incidents = [...document.querySelectorAll('.incident')];
     return {
       apiOk: response.ok,
+      checkedAt: payload.checked_at,
       jobs: jobs.length,
       contractComplete: jobs.every(job =>
         job.label &&
@@ -71,15 +72,18 @@ async function verifyDataHealth(page) {
       compactCoverage: Boolean(document.querySelector('.domain-summary .domain-chip')),
       warehouseClosed: !document.querySelector('.warehouse-reference')?.hasAttribute('open'),
       genericRingRemoved: !document.getElementById('ring'),
+      refreshCopy: document.getElementById('healthUpdated')?.textContent || '',
     };
   });
   if (
     !state.apiOk ||
+    !state.checkedAt ||
     !state.jobs ||
     !state.contractComplete ||
     !state.compactCoverage ||
     !state.warehouseClosed ||
     !state.genericRingRemoved ||
+    !state.refreshCopy.includes('refreshes every 60s') ||
     state.attentionVisible !== Boolean(state.problems) ||
     state.incidents !== state.problems ||
     (state.problems > 0 && !state.incidentStructure)
