@@ -73,6 +73,32 @@ async function verifyCatalog(page) {
   if (semantic.errors?.length) throw new Error(`Catalog semantic QA: ${semantic.errors.join('; ')}`);
   const openCount = await page.locator('.family[open]').count();
   if (openCount) throw new Error(`Catalog default comparison view has ${openCount} family expansions open`);
+
+  if ((await page.evaluate(() => window.innerWidth)) <= 720) {
+    const mobile = await page.evaluate(() => {
+      const summary = document.querySelector('.family > summary');
+      const metrics = summary
+        ? [...summary.querySelectorAll(':scope > .metric-sales, :scope > .metric-funnel, :scope > .metric-stock')]
+        : [];
+      const tops = metrics.map((metric) => Math.round(metric.getBoundingClientRect().top));
+      const economics = summary?.querySelector(':scope > .economics');
+      return {
+        duplicateTitleVisible: Boolean(
+          document.querySelector('.catalog-title') &&
+            getComputedStyle(document.querySelector('.catalog-title')).display !== 'none',
+        ),
+        economicsVisible: Boolean(economics && getComputedStyle(economics).display !== 'none'),
+        metricCount: metrics.length,
+        metricTopSpread: tops.length ? Math.max(...tops) - Math.min(...tops) : null,
+      };
+    });
+    if (mobile.duplicateTitleVisible) throw new Error('Catalog mobile repeats the portfolio title');
+    if (mobile.economicsVisible) throw new Error('Catalog mobile exposes desktop economics in the family summary');
+    if (mobile.metricCount !== 3 || mobile.metricTopSpread > 2)
+      throw new Error(
+        `Catalog mobile metrics are not a compact three-column strip: ${mobile.metricCount} / ${mobile.metricTopSpread}`,
+      );
+  }
 }
 
 async function verifyCatalogMode(page, mode) {
