@@ -110,6 +110,22 @@ async function verifyCatalogMode(page, mode) {
   await button.waitFor({ state: 'visible', timeout: 5000 });
   await button.click();
   await wait(page, '.analysis-row');
+  const mobileDensity = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.portfolio .analysis-row')];
+    const disclosure = document.querySelector('.catalog-reference-disclosure');
+    return {
+      mobile: window.innerWidth <= 720,
+      total: rows.length,
+      visible: rows.filter((row) => row.getClientRects().length > 0).length,
+      disclosure: Boolean(disclosure),
+      disclosureOpen: Boolean(disclosure?.hasAttribute('open')),
+    };
+  });
+  if (mobileDensity.mobile && mobileDensity.total > 6) {
+    if (!mobileDensity.disclosure || mobileDensity.disclosureOpen || mobileDensity.visible !== 6) {
+      throw new Error(`Catalog mobile density mismatch: ${JSON.stringify(mobileDensity)}`);
+    }
+  }
 }
 
 async function verifyProductWorkspace(page) {
