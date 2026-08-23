@@ -263,6 +263,7 @@ jobs:
 
       - name: Upload production browser QA artifacts
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: dpp-production-visual-qa-${{ github.run_id }}
