@@ -79,19 +79,23 @@
             <p id="statusCopy">
               OPEN is provisional. Amazon closure and seller COGS readiness are tracked independently.
             </p>
-            <div class="rail-row"><span>Order releases</span><strong id="releaseCoverage">—</strong></div>
-            <div class="rail-row"><span>Seller COGS coverage</span><strong id="cogsCoverage">—</strong></div>
-            <div class="rail-row cash">
+            <div class="rail-row rail-row--release">
+              <span>Order releases</span><strong id="releaseCoverage">—</strong>
+            </div>
+            <div class="rail-row rail-row--cogs">
+              <span>Seller COGS coverage</span><strong id="cogsCoverage">—</strong>
+            </div>
+            <div class="rail-row rail-row--cash cash">
               <span>Amazon payout cash posted this month</span><strong id="cash">—</strong>
             </div>
             <p class="cell-note">
               Cash timing only. Amazon payout is after IVA withholding and settlement deductions; transfer
               dates can differ from the business month that generated the sale.
             </p>
-            <div class="rail-row">
+            <div class="rail-row rail-row--history">
               <span>Management-closed months</span><strong id="closedCount">—</strong>
             </div>
-            <div class="rail-row">
+            <div class="rail-row rail-row--history">
               <span>Restated latest versions</span><strong id="restatedCount">—</strong>
             </div>
             <details class="state-explainer">
@@ -119,7 +123,7 @@
         </div>
 
         <section class="finance-reads">
-          <article class="finance-read">
+          <article class="finance-read finance-read--current-summary">
             <div class="finance-read__head">
               <div>
                 <div class="finance-read__title">Current month contribution</div>
@@ -144,22 +148,30 @@
           </article>
 
           <article class="finance-read wide" id="cashSettlementCard">
-            <div class="finance-read__head">
-              <div>
-                <div class="finance-read__title">Latest Amazon settlement → payout</div>
-                <div id="cashBridgeSub" class="finance-read__sub">
-                  Cash settlement evidence, not sales-period P&amp;L. Loading latest reconciled settlement.
+            <details id="cashSettlementDisclosure" class="finance-mobile-disclosure" open>
+              <summary>
+                <span>Latest Amazon settlement → payout</span><strong id="cashSettlementSummary">—</strong>
+              </summary>
+              <div class="finance-mobile-disclosure__body">
+                <div class="finance-read__head">
+                  <div>
+                    <div class="finance-read__title">Latest Amazon settlement → payout</div>
+                    <div id="cashBridgeSub" class="finance-read__sub">
+                      Cash settlement evidence, not sales-period P&amp;L. Loading latest reconciled
+                      settlement.
+                    </div>
+                  </div>
+                  <div id="cashBridgeState" class="finance-read__state">CASH TIMING</div>
                 </div>
+                <div id="cashSettlementBridge" class="bridge"></div>
+                <p class="finance-read__sub">
+                  The settlement starts with customer activity inside that settlement, including IVA and any
+                  refunds Amazon settled there. IVA withheld never reaches DPP cash. Detailed selling/FBA fee
+                  subtypes remain grouped until separately validated; the signed settlement total must still
+                  reconcile exactly to payout.
+                </p>
               </div>
-              <div id="cashBridgeState" class="finance-read__state">CASH TIMING</div>
-            </div>
-            <div id="cashSettlementBridge" class="bridge"></div>
-            <p class="finance-read__sub">
-              The settlement starts with customer activity inside that settlement, including IVA and any
-              refunds Amazon settled there. IVA withheld never reaches DPP cash. Detailed selling/FBA fee
-              subtypes remain grouped until separately validated; the signed settlement total must still
-              reconcile exactly to payout.
-            </p>
+            </details>
           </article>
 
           <article class="finance-read wide">

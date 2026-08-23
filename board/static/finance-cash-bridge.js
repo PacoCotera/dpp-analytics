@@ -31,6 +31,7 @@ function renderCashBridge(payload) {
   const state = byId('cashBridgeState');
   const sub = byId('cashBridgeSub');
   const body = byId('cashSettlementBridge');
+  const summary = byId('cashSettlementSummary');
   if (!card || !state || !sub || !body) return;
 
   if (!bridge.settlement_id) {
@@ -38,8 +39,11 @@ function renderCashBridge(payload) {
     sub.textContent = `${CASH_BASIS_LABEL} · ${bridge.note || 'No Amazon settlement report is available yet.'}`;
     body.innerHTML =
       '<div class="bridge-step final"><span>Payout bridge</span><strong>Not available</strong></div>';
+    if (summary) summary.textContent = 'Not available';
     return;
   }
+
+  if (summary) summary.textContent = cashMoney(bridge.payout);
 
   const reconciled = bridge.status === 'RECONCILED';
   state.textContent = reconciled ? 'RECONCILED CASH' : 'CHECK RECONCILIATION';
@@ -59,12 +63,17 @@ function renderCashBridge(payload) {
 }
 
 async function loadCashBridge() {
+  const disclosure = byId('cashSettlementDisclosure');
+  if (disclosure && window.matchMedia('(max-width: 640px)').matches) disclosure.open = false;
+
   try {
     renderCashBridge(await fetchJson('/api/finance'));
   } catch (error) {
     const state = byId('cashBridgeState');
     const sub = byId('cashBridgeSub');
+    const summary = byId('cashSettlementSummary');
     if (state) state.textContent = 'UNAVAILABLE';
+    if (summary) summary.textContent = 'Unavailable';
     if (sub) sub.textContent = `${CASH_BASIS_LABEL} · Settlement cash bridge unavailable · ${error.message}`;
   }
 }
