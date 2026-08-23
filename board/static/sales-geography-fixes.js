@@ -1,13 +1,13 @@
 /* Geography rendering hardening: planar postal projection + explicit sort controls + local map zoom. */
 (() => {
-  'use strict';
+  "use strict";
   const d3 = window.d3;
   if (!d3) return;
 
   let ACTIVE_MAP_ZOOM = null;
   let zoomInstalling = false;
 
-  const style = document.createElement('style');
+  const style = document.createElement("style");
   style.textContent = `
     .geo-ranked-header { align-items: flex-end; }
     .geo-ranked-heading { min-width: 0; }
@@ -49,21 +49,24 @@
   document.head.appendChild(style);
 
   function ensureSortControls() {
-    const header = document.querySelector('.geo-ranked-header');
-    if (!header || header.querySelector('.geo-sort-controls')) return;
+    const header = document.querySelector(".geo-ranked-header");
+    if (!header || header.querySelector(".geo-sort-controls")) return;
 
-    const title = header.querySelector('#geoRankedTitle');
-    const status = header.querySelector('#geoSortStatus');
-    if (title && !title.parentElement?.classList.contains('geo-ranked-heading')) {
-      const heading = document.createElement('div');
-      heading.className = 'geo-ranked-heading';
+    const title = header.querySelector("#geoRankedTitle");
+    const status = header.querySelector("#geoSortStatus");
+    if (
+      title &&
+      !title.parentElement?.classList.contains("geo-ranked-heading")
+    ) {
+      const heading = document.createElement("div");
+      heading.className = "geo-ranked-heading";
       header.insertBefore(heading, title);
       heading.appendChild(title);
       if (status) heading.appendChild(status);
     }
 
-    const controls = document.createElement('div');
-    controls.className = 'geo-sort-controls';
+    const controls = document.createElement("div");
+    controls.className = "geo-sort-controls";
     controls.innerHTML = `
       <label class="geo-sort-control">
         <span>Order by</span>
@@ -79,30 +82,39 @@
     `;
     header.appendChild(controls);
 
-    const select = controls.querySelector('#geoOrderBy');
-    const direction = controls.querySelector('#geoSortDirection');
+    const select = controls.querySelector("#geoOrderBy");
+    const direction = controls.querySelector("#geoSortDirection");
 
     function activeSort() {
-      const active = document.querySelector('.geo-table th[data-geo-sort][aria-sort="ascending"], .geo-table th[data-geo-sort][aria-sort="descending"]');
+      const active = document.querySelector(
+        '.geo-table th[data-geo-sort][aria-sort="ascending"], .geo-table th[data-geo-sort][aria-sort="descending"]',
+      );
       return {
-        field: active?.dataset.geoSort || 'sales',
-        direction: active?.getAttribute('aria-sort') === 'ascending' ? 'asc' : 'desc',
+        field: active?.dataset.geoSort || "sales",
+        direction:
+          active?.getAttribute("aria-sort") === "ascending" ? "asc" : "desc",
       };
     }
 
     function sync() {
       const current = activeSort();
       select.value = current.field;
-      direction.textContent = current.direction === 'asc' ? '↑' : '↓';
-      direction.setAttribute('aria-label', `Sort ${current.direction === 'asc' ? 'descending' : 'ascending'}`);
-      direction.title = current.direction === 'asc' ? 'Sort descending' : 'Sort ascending';
+      direction.textContent = current.direction === "asc" ? "↑" : "↓";
+      direction.setAttribute(
+        "aria-label",
+        `Sort ${current.direction === "asc" ? "descending" : "ascending"}`,
+      );
+      direction.title =
+        current.direction === "asc" ? "Sort descending" : "Sort ascending";
     }
 
     function clickField(field) {
-      document.querySelector(`.geo-table th[data-geo-sort="${field}"] button`)?.click();
+      document
+        .querySelector(`.geo-table th[data-geo-sort="${field}"] button`)
+        ?.click();
     }
 
-    function setSort(field, wantedDirection = 'desc') {
+    function setSort(field, wantedDirection = "desc") {
       let current = activeSort();
       if (current.field !== field) {
         clickField(field);
@@ -112,41 +124,51 @@
       requestAnimationFrame(sync);
     }
 
-    select.addEventListener('change', () => setSort(select.value, select.value === 'area' ? 'asc' : 'desc'));
-    direction.addEventListener('click', () => {
+    select.addEventListener("change", () =>
+      setSort(select.value, select.value === "area" ? "asc" : "desc"),
+    );
+    direction.addEventListener("click", () => {
       const current = activeSort();
       clickField(current.field);
       requestAnimationFrame(sync);
     });
 
-    document.getElementById('geoMetric')?.addEventListener('change', (event) => {
-      const field = event.target.value;
-      if (['sales', 'orders', 'units', 'aov'].includes(field)) setSort(field, 'desc');
-    });
+    document
+      .getElementById("geoMetric")
+      ?.addEventListener("change", (event) => {
+        const field = event.target.value;
+        if (["sales", "orders", "units", "aov"].includes(field))
+          setSort(field, "desc");
+      });
 
-    const head = document.querySelector('.geo-table thead');
-    if (head) new MutationObserver(sync).observe(head, { attributes: true, subtree: true, attributeFilter: ['aria-sort'] });
+    const head = document.querySelector(".geo-table thead");
+    if (head)
+      new MutationObserver(sync).observe(head, {
+        attributes: true,
+        subtree: true,
+        attributeFilter: ["aria-sort"],
+      });
     sync();
   }
 
   function ensureMapControls() {
-    const header = document.querySelector('.geo-map-header');
-    if (!header || header.querySelector('.geo-map-zoom')) return;
+    const header = document.querySelector(".geo-map-header");
+    if (!header || header.querySelector(".geo-map-zoom")) return;
 
-    let actions = header.querySelector('.geo-map-actions');
+    let actions = header.querySelector(".geo-map-actions");
     if (!actions) {
-      actions = document.createElement('div');
-      actions.className = 'geo-map-actions';
+      actions = document.createElement("div");
+      actions.className = "geo-map-actions";
       header.appendChild(actions);
     }
 
-    const back = header.querySelector('#geoBack');
+    const back = header.querySelector("#geoBack");
     if (back && back.parentElement !== actions) actions.appendChild(back);
 
-    const controls = document.createElement('div');
-    controls.className = 'geo-map-zoom';
-    controls.setAttribute('role', 'group');
-    controls.setAttribute('aria-label', 'Map zoom controls');
+    const controls = document.createElement("div");
+    controls.className = "geo-map-zoom";
+    controls.setAttribute("role", "group");
+    controls.setAttribute("aria-label", "Map zoom controls");
     controls.innerHTML = `
       <button id="geoZoomOut" type="button" aria-label="Zoom out" title="Zoom out">−</button>
       <button id="geoZoomReset" class="geo-map-reset" type="button" aria-label="Reset map view" title="Reset map view">Reset</button>
@@ -154,9 +176,15 @@
     `;
     actions.appendChild(controls);
 
-    controls.querySelector('#geoZoomIn')?.addEventListener('click', () => zoomBy(1.6));
-    controls.querySelector('#geoZoomOut')?.addEventListener('click', () => zoomBy(1 / 1.6));
-    controls.querySelector('#geoZoomReset')?.addEventListener('click', resetZoom);
+    controls
+      .querySelector("#geoZoomIn")
+      ?.addEventListener("click", () => zoomBy(1.6));
+    controls
+      .querySelector("#geoZoomOut")
+      ?.addEventListener("click", () => zoomBy(1 / 1.6));
+    controls
+      .querySelector("#geoZoomReset")
+      ?.addEventListener("click", resetZoom);
     updateZoomControls(1, 8);
   }
 
@@ -169,14 +197,17 @@
   }
 
   function updateZoomControls(scale = 1, maxScale = 8) {
-    const zoomOut = document.getElementById('geoZoomOut');
-    const zoomIn = document.getElementById('geoZoomIn');
-    const reset = document.getElementById('geoZoomReset');
+    const zoomOut = document.getElementById("geoZoomOut");
+    const zoomIn = document.getElementById("geoZoomIn");
+    const reset = document.getElementById("geoZoomReset");
     if (zoomOut) zoomOut.disabled = scale <= 1.001;
     if (zoomIn) zoomIn.disabled = scale >= maxScale - 0.001;
     if (reset) {
       reset.disabled = scale <= 1.001;
-      reset.title = scale <= 1.001 ? 'Map is fitted to view' : `Reset map view · ${Math.round(scale * 100)}%`;
+      reset.title =
+        scale <= 1.001
+          ? "Map is fitted to view"
+          : `Reset map view · ${Math.round(scale * 100)}%`;
     }
   }
 
@@ -189,18 +220,22 @@
   function resetZoom() {
     if (!ACTIVE_MAP_ZOOM) return;
     const { svg, behavior } = ACTIVE_MAP_ZOOM;
-    svg.interrupt().transition().duration(190).call(behavior.transform, d3.zoomIdentity);
+    svg
+      .interrupt()
+      .transition()
+      .duration(190)
+      .call(behavior.transform, d3.zoomIdentity);
   }
 
   function installZoomLayer() {
-    const svgNode = document.getElementById('geoMap');
+    const svgNode = document.getElementById("geoMap");
     if (!svgNode || zoomInstalling) return;
-    const existing = svgNode.querySelector(':scope > g.geo-map-zoom-layer');
+    const existing = svgNode.querySelector(":scope > g.geo-map-zoom-layer");
     if (existing) return;
 
     const candidates = [...svgNode.children].filter((node) => {
-      const tag = String(node.tagName || '').toLowerCase();
-      return tag !== 'defs' && !node.classList?.contains('geo-map-zoom-layer');
+      const tag = String(node.tagName || "").toLowerCase();
+      return tag !== "defs" && !node.classList?.contains("geo-map-zoom-layer");
     });
     if (!candidates.length) {
       ACTIVE_MAP_ZOOM = null;
@@ -210,46 +245,53 @@
 
     zoomInstalling = true;
     try {
-      const layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      layer.setAttribute('class', 'geo-map-zoom-layer');
+      const layer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      layer.setAttribute("class", "geo-map-zoom-layer");
       svgNode.insertBefore(layer, candidates[0]);
       candidates.forEach((node) => layer.appendChild(node));
 
       const { width, height } = svgSize(svgNode);
-      const postalMode = Boolean(layer.querySelector('.postal-shape'));
+      const postalMode = Boolean(layer.querySelector(".postal-shape"));
       const maxScale = postalMode ? 12 : 8;
       const svg = d3.select(svgNode);
-      svg.on('.zoom', null);
+      svg.on(".zoom", null);
 
-      const behavior = d3.zoom()
+      const behavior = d3
+        .zoom()
         .scaleExtent([1, maxScale])
-        .extent([[0, 0], [width, height]])
-        .translateExtent([[0, 0], [width, height]])
+        .extent([
+          [0, 0],
+          [width, height],
+        ])
+        .translateExtent([
+          [0, 0],
+          [width, height],
+        ])
         .clickDistance(5)
         .filter((event) => {
-          if (event.type === 'wheel') return true;
-          if (event.type === 'mousedown') return event.button === 0;
-          if (event.type.startsWith('touch')) return true;
+          if (event.type === "wheel") return true;
+          if (event.type === "mousedown") return event.button === 0;
+          if (event.type.startsWith("touch")) return true;
           return !event.button;
         })
-        .on('start', () => {
+        .on("start", () => {
           hideTip();
-          svgNode.classList.add('geo-map--panning');
+          svgNode.classList.add("geo-map--panning");
         })
-        .on('zoom', (event) => {
-          layer.setAttribute('transform', event.transform.toString());
+        .on("zoom", (event) => {
+          layer.setAttribute("transform", event.transform.toString());
           updateZoomControls(event.transform.k, maxScale);
         })
-        .on('end', (event) => {
-          svgNode.classList.remove('geo-map--panning');
+        .on("end", (event) => {
+          svgNode.classList.remove("geo-map--panning");
           updateZoomControls(event.transform.k, maxScale);
         });
 
-      svg.call(behavior).on('dblclick.zoom', null);
+      svg.call(behavior).on("dblclick.zoom", null);
       svg.call(behavior.transform, d3.zoomIdentity);
       ACTIVE_MAP_ZOOM = { svg, behavior, layer, maxScale, postalMode };
-      svgNode.dataset.zoomReady = '1';
-      svgNode.dataset.zoomMode = postalMode ? 'postal' : 'national';
+      svgNode.dataset.zoomReady = "1";
+      svgNode.dataset.zoomMode = postalMode ? "postal" : "national";
       updateZoomControls(1, maxScale);
     } finally {
       zoomInstalling = false;
@@ -257,10 +299,10 @@
   }
 
   function fixPostalProjection() {
-    const svg = document.getElementById('geoMap');
+    const svg = document.getElementById("geoMap");
     if (!svg) return;
-    const contextNode = svg.querySelector('.geo-state-context');
-    const postalNodes = [...svg.querySelectorAll('path.postal-shape')];
+    const contextNode = svg.querySelector(".geo-state-context");
+    const postalNodes = [...svg.querySelectorAll("path.postal-shape")];
     if (!contextNode || !postalNodes.length) return;
 
     const context = contextNode.__data__;
@@ -268,25 +310,34 @@
     if (!context || !features.length) return;
 
     const { width, height } = svgSize(svg);
-    const target = { type: 'FeatureCollection', features: [context] };
+    const target = { type: "FeatureCollection", features: [context] };
     // Postal drill-down covers one state only. A planar lon/lat projection is
     // deliberately used here so ring winding can never be interpreted as the
     // spherical complement of a small postal polygon.
-    const projection = d3.geoIdentity().reflectY(true).fitExtent([[22, 18], [width - 22, height - 20]], target);
+    const projection = d3
+      .geoIdentity()
+      .reflectY(true)
+      .fitExtent(
+        [
+          [22, 18],
+          [width - 22, height - 20],
+        ],
+        target,
+      );
     const path = d3.geoPath(projection);
 
-    contextNode.setAttribute('d', path(context) || '');
+    contextNode.setAttribute("d", path(context) || "");
     postalNodes.forEach((node) => {
       const d = path(node.__data__);
-      if (d) node.setAttribute('d', d);
+      if (d) node.setAttribute("d", d);
     });
-    svg.dataset.postalProjection = 'planar';
+    svg.dataset.postalProjection = "planar";
   }
 
   function hardenPostalPaths() {
-    const svg = document.getElementById('geoMap');
+    const svg = document.getElementById("geoMap");
     if (!svg) return;
-    const postalNodes = [...svg.querySelectorAll('path.postal-shape')];
+    const postalNodes = [...svg.querySelectorAll("path.postal-shape")];
     if (!postalNodes.length) return;
     fixPostalProjection();
 
@@ -297,9 +348,11 @@
     postalNodes.forEach((node) => {
       try {
         const box = node.getBBox();
-        const coversViewport = box.width > width * 0.96 && box.height > height * 0.96;
-        node.style.display = coversViewport ? 'none' : '';
-        if (coversViewport) node.dataset.geometryRejected = 'viewport-complement';
+        const coversViewport =
+          box.width > width * 0.96 && box.height > height * 0.96;
+        node.style.display = coversViewport ? "none" : "";
+        if (coversViewport)
+          node.dataset.geometryRejected = "viewport-complement";
       } catch (_) {
         // SVG may not be measurable during an intermediate render frame.
       }
@@ -307,9 +360,9 @@
   }
 
   function installMapObserver() {
-    const svg = document.getElementById('geoMap');
-    if (!svg || svg.dataset.geometryFixObserver === '1') return;
-    svg.dataset.geometryFixObserver = '1';
+    const svg = document.getElementById("geoMap");
+    if (!svg || svg.dataset.geometryFixObserver === "1") return;
+    svg.dataset.geometryFixObserver = "1";
     let pending = false;
     const run = () => {
       pending = false;
@@ -331,6 +384,7 @@
     installMapObserver();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", init, { once: true });
   else init();
 })();
