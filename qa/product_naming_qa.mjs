@@ -98,13 +98,18 @@ try {
   validateRows('product.family_variations', productResponse.body.family_variations, summary);
 
   await page.goto(`${baseUrl}/product?sku=PNC-001`, { waitUntil: 'networkidle', timeout: 20000 });
+  await page.waitForFunction(
+    expected => document.querySelector('.hero-name')?.textContent?.trim() === expected,
+    productResponse.body.profile.product,
+    { timeout: 15000 }
+  );
   const heroName = (await page.locator('.hero-name').textContent() || '').trim();
   if (heroName !== productResponse.body.profile.product) {
     throw new Error(`Product hero did not render the mapped short name: ${heroName || 'blank'}`);
   }
 
   await page.goto(`${baseUrl}/catalog`, { waitUntil: 'networkidle', timeout: 20000 });
-  await page.locator('.family').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.family').first().waitFor({ state: 'visible', timeout: 15000 });
   const renderedFamilyNames = await page.locator('.family-name').allTextContents();
   const expectedFamilyNames = (catalog.families || []).map(family => String(family.name || '')).filter(Boolean);
   if (JSON.stringify(renderedFamilyNames) !== JSON.stringify(expectedFamilyNames)) {
