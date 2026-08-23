@@ -345,20 +345,73 @@
   padding: 0 14px 12px;
 }
 
-.order-list .list-row {
-  grid-template-columns: 65px minmax(0, 1fr) auto;
-  padding: 9px 0;
+.product-order {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.15fr) minmax(70px, 0.45fr) minmax(150px, 0.8fr) minmax(145px, 0.8fr);
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
 }
 
-.order-age {
-  font-size: 10px;
-  font-weight: 800;
+.product-order__moment,
+.product-order__metric,
+.product-order__fulfillment {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.order-id {
+.product-order__moment strong,
+.product-order__metric strong {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.product-order__moment span,
+.product-order__metric span,
+.product-order__fulfillment > span {
+  color: var(--muted);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.product-order__moment code {
+  overflow: hidden;
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 8.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-status-pill {
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #efede8;
+  color: var(--muted);
+  font-size: 8.5px;
+  line-height: 1.2;
+}
+
+.order-status-pill.waiting {
+  background: #fff0cf;
+  color: #704000;
+}
+
+.order-status-pill.active {
+  background: #e8f4ec;
+  color: #245c38;
+}
+
+.order-status-pill.problem {
+  background: #f9e5e1;
+  color: #8b3027;
 }
 
 .product-page .footer {
@@ -485,7 +538,24 @@
     margin-top: 9px;
   }
 
-  .order-list .list-row {
-    grid-template-columns: 50px minmax(0, 1fr) auto;
+  .order-list {
+    padding: 0 11px 11px;
+  }
+
+  .product-order {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 14px;
+    padding: 13px 0;
+  }
+
+  .product-order__spend {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .product-order__metric:not(.product-order__spend),
+  .product-order__fulfillment {
+    padding-top: 9px;
+    border-top: 1px solid var(--line);
   }
 }
