@@ -44,16 +44,19 @@ function stateRead(delta, actions) {
 
 function renderAds(ads) {
   const a = ads || {},
+    panel = document.getElementById('adsRead'),
     metrics = document.getElementById('adsMetrics'),
     headline = document.getElementById('adsHeadline'),
     note = document.getElementById('adsNote');
   if (!a.through_date) {
+    panel.hidden = true;
     metrics.hidden = true;
     headline.textContent = 'Waiting for Amazon Ads access';
     note.textContent =
       a.note || 'Sales interpretation remains independent until advertising data is available.';
     return;
   }
+  panel.hidden = false;
   metrics.hidden = false;
   document.getElementById('adsSpend').textContent = money(a.spend);
   document.getElementById('adsRoas').textContent = a.roas == null ? '—' : `${Number(a.roas).toFixed(2)}×`;
@@ -80,16 +83,18 @@ function renderAttention(data, decisionCount) {
       '<div class="attention-clear"><strong>Operations are clear.</strong><p>Use the business rhythm and product drivers to understand performance; there is no immediate inventory action.</p></div>';
     return;
   }
-  const item = attention[0];
-  title.textContent =
-    decisionCount === 1 ? 'One decision needs attention' : `${decisionCount} decisions need attention`;
-  copy.textContent =
-    item.action === 'STOCKOUT'
-      ? 'Availability is already constraining demand.'
-      : item.action === 'PRODUCE'
-        ? 'Current cover is below the production threshold.'
-        : 'Stock cover is approaching the planning threshold.';
-  container.innerHTML = `<a class="attention-item" href="/inventory"><div><div class="sku">${escapeHtml(item.sku)} · ${escapeHtml(item.action)}</div><div class="name">${escapeHtml(item.product || item.sku)}</div><div class="meta">${integer(item.available)} on hand · ${integer(item.inbound)} inbound</div></div><div class="attention-cover"><strong>${item.days_cover == null ? '—' : Number(item.days_cover).toFixed(0)}</strong><span>days cover</span></div></a>`;
+  const total = Math.max(attention.length, decisionCount),
+    visible = attention.slice(0, 4);
+  title.textContent = total === 1 ? 'One decision needs attention' : `${total} decisions need attention`;
+  copy.textContent = `Review ${total === 1 ? 'this inventory exception' : 'these inventory exceptions'} before the next availability and production decision.`;
+  container.innerHTML = `${visible
+    .map(
+      (item) =>
+        `<a class="attention-item" href="/inventory"><div><div class="sku">${escapeHtml(item.sku)} · ${escapeHtml(item.action)}</div><div class="name">${escapeHtml(item.product || item.sku)}</div><div class="meta">${integer(item.available)} on hand · ${integer(item.inbound)} inbound</div></div><div class="attention-cover"><strong>${item.days_cover == null ? '—' : Number(item.days_cover).toFixed(0)}</strong><span>days cover</span></div></a>`,
+    )
+    .join(
+      '',
+    )}${total > visible.length ? `<a class="attention-more" href="/inventory"><span>Review all inventory decisions</span><strong>${integer(total - visible.length)} more →</strong></a>` : ''}`;
 }
 
 function renderDrivers(data, businessSales) {
