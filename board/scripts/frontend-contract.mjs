@@ -26,8 +26,32 @@ const theme = readFileSync(join(staticRoot, 'theme.css'), 'utf8');
 const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
 const shellSelector =
   /\.(?:app|topbar|brand|brand-copy|brand-title|brand-sub|mark|top-meta|primary-nav|nav-more|footer)\b/;
-const retiredComponentSelector =
-  /\.(?:card|card-pad|metric|metric-label|metric-value|metric-note|table-wrap|table)\b/;
+const retiredComponentNames = new Set([
+  'card',
+  'card-pad',
+  'metric',
+  'metric-label',
+  'metric-value',
+  'metric-note',
+  'table-wrap',
+  'table',
+  'page-head',
+  'page-summary',
+  'page-actions',
+  'view-tabs',
+  'view-tab',
+  'story',
+  'story-side',
+  'story-caption',
+  'story-link',
+  'section',
+  'section-head',
+  'section-title',
+  'section-sub',
+  'section-link',
+  'grid',
+]);
+const retiredComponentSelector = new RegExp(`\\.(?:${[...retiredComponentNames].join('|')})(?![\\w-])`);
 
 function check(condition, page, message) {
   if (!condition) failures.push(`${page}: ${message}`);
@@ -48,9 +72,9 @@ for (const page of pages) {
   check(!/design-refine\.css/i.test(html), page, 'deprecated shared refinement layer is loaded');
   check(!/<style\b/i.test(html) && !/\sstyle\s*=/i.test(html), page, 'contains inline CSS');
   check(
-    classNames.every((name) => !retiredComponentSelector.test(`.${name}`)),
+    classNames.every((name) => !retiredComponentNames.has(name)),
     page,
-    'uses a retired card, metric or table component class',
+    'uses a retired shared component class',
   );
   check(
     !/\/assets\/[^"'?#]+\.(?:css|js)\?[^"']+/i.test(html),

@@ -120,7 +120,7 @@
   }
 
   function workspaceGroups() {
-    return [...document.querySelectorAll('.tabs, .view-tabs, .subnav')]
+    return [...document.querySelectorAll('.tabs, .subnav')]
       .map((tablist) => ({
         tablist,
         tabs: [...tablist.querySelectorAll('button[data-view], button[data-ads-view]')],
@@ -290,7 +290,7 @@
     let suppressClickUntil = 0;
     const isMobile = () => matchMedia('(max-width: 760px)').matches;
     const explicitNoSwipe =
-      '.primary-nav,.tabs,.view-tabs,.subnav,.filters,.periods,.chart-tools,.data-table-scroll,.order-stream,.chart,.rhythm-host,.trajectory-chart,.sales-chart,.chart-wrap,.chart-host,input,textarea,select,button,canvas,svg,[role="slider"],[data-no-swipe],[data-horizontal-scroll]';
+      '.primary-nav,.tabs,.subnav,.filters,.periods,.chart-tools,.data-table-scroll,.order-stream,.chart,.rhythm-host,.trajectory-chart,.sales-chart,.chart-wrap,.chart-host,input,textarea,select,button,canvas,svg,[role="slider"],[data-no-swipe],[data-horizontal-scroll]';
 
     document.addEventListener(
       'pointerdown',
