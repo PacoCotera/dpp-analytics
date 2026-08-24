@@ -41,6 +41,16 @@ def _variation_theme(item: dict) -> tuple[str | None, list[str]]:
     return None, []
 
 
+def _parent_asin(item: dict) -> str | None:
+    group = _marketplace_group(item.get("relationships"))
+    for relationship in group.get("relationships") or []:
+        if str(relationship.get("type") or "").upper() != "VARIATION":
+            continue
+        parents = [str(value).strip() for value in (relationship.get("parentAsins") or []) if value]
+        return parents[0] if parents else None
+    return None
+
+
 def ingest_catalog() -> dict[str, int]:
     with db.ingestion_run(SOURCE, JOB, {"marketplace": settings.marketplace_id}) as run:
         with db.connect() as conn, conn.cursor() as cur:
@@ -105,6 +115,7 @@ def ingest_catalog() -> dict[str, int]:
                             continue
                         image = _main_image(item)
                         variation_theme, variation_attributes = _variation_theme(item)
+                        parent_asin = _parent_asin(item)
                         cur.execute(
                             """
                             INSERT INTO core.catalog_item(
@@ -141,6 +152,16 @@ def ingest_catalog() -> dict[str, int]:
                                 variation_attributes,
                             ),
                         )
+                        if parent_asin:
+                            cur.execute(
+                                """
+                                UPDATE core.sku
+                                SET parent_asin=%s,updated_at=now()
+                                WHERE marketplace_id=%s AND asin=%s
+                                  AND parent_asin IS DISTINCT FROM %s
+                                """,
+                                (parent_asin, settings.marketplace_id, asin, parent_asin),
+                            )
                         written += 1
                     conn.commit()
             run["records_written"] = written
