@@ -7,12 +7,12 @@ const outDir=process.argv[3]||'/out';
 await fs.mkdir(outDir,{recursive:true});
 const browser=await chromium.launch({headless:true});
 const cases=[
-  {name:'home-desktop',url:'/',width:1600,height:1000,active:'Home',visiblePrimary:['Today','Home','Sales','Products','Inventory','Finance'],visibleMore:['Trajectory','Ads','Data Health']},
-  {name:'product-mobile',url:'/product?sku=PNC-001',width:412,height:915,active:'Products',visiblePrimary:['Today','Home','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health']},
-  {name:'trajectory-mobile',url:'/trajectory',width:412,height:915,moreActive:true,visiblePrimary:['Today','Home','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health']},
-  {name:'inventory-mobile',url:'/inventory',width:412,height:915,moreActive:true,visiblePrimary:['Today','Home','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health']},
+  {name:'business-desktop',url:'/',width:1600,height:1000,active:'Business',visiblePrimary:['Business','Today','Sales','Products','Inventory','Finance'],visibleMore:['Trajectory','Ads','Data Health']},
+  {name:'product-mobile',url:'/product?sku=PNC-001',width:412,height:915,active:'Products',visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health']},
+  {name:'trajectory-mobile',url:'/trajectory',width:412,height:915,moreActive:true,visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health']},
+  {name:'inventory-mobile',url:'/inventory',width:412,height:915,moreActive:true,visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health']},
 ];
-const allPrimary=['Today','Home','Sales','Products','Inventory','Finance'];
+const allPrimary=['Business','Today','Sales','Products','Inventory','Finance'];
 const results=[];
 for(const c of cases){
   const mobile=c.width<700;
@@ -22,6 +22,7 @@ for(const c of cases){
   try{
     const response=await page.goto(baseUrl+c.url,{waitUntil:'networkidle',timeout:20000});if(!response?.ok())throw new Error(`navigation ${response?.status()}`);
     await page.locator('.primary-nav.app-navigation').waitFor({timeout:5000});
+    const brandHref=await page.locator('.topbar a.brand').getAttribute('href');if(brandHref!=='/today')throw new Error(`brand link ${brandHref} != /today`);
     const primary=await page.locator('.nav-primary-set>a').allTextContents();
     if(JSON.stringify(primary)!==JSON.stringify(allPrimary))throw new Error(`primary DOM ${JSON.stringify(primary)}`);
     const visiblePrimary=await page.locator('.nav-primary-set>a:visible').allTextContents();

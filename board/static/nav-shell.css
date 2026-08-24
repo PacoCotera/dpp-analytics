@@ -1,4 +1,15 @@
 /* Canonical seller navigation. Page identity and content geometry belong to layout-system.css. */
+a.brand {
+  border-radius: 14px;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.brand:focus-visible {
+  outline: 2px solid rgb(229 139 31 / 45%);
+  outline-offset: 4px;
+}
+
 .primary-nav.app-navigation {
   display: flex;
   align-items: center;
