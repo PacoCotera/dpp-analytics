@@ -819,27 +819,27 @@
   }
 
   .rhythm-rail {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     margin-right: -15px;
     margin-left: -15px;
   }
 
   .rhythm-kpi {
-    padding: 9px 12px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .rhythm-kpi:last-child {
+    padding: 10px 6px;
+    border-right: 1px solid var(--line);
     border-bottom: 0;
   }
 
+  .rhythm-kpi:last-child {
+    border-right: 0;
+  }
+
   .rhythm-kpi .label {
-    font-size: 10px;
+    font-size: 8.5px;
   }
 
   .rhythm-kpi small {
-    font-size: 11px;
+    display: none;
   }
 
   .today-product .name {

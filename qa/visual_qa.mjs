@@ -30,6 +30,52 @@ async function verifySalesOverview(page) {
   await page.locator('button[data-range="12m"]').click();
 }
 
+
+async function verifyToday(page) {
+  await wait(page, '#rhythm .dpp-bar');
+  await wait(page, '#dayPicker .day-choice');
+  await wait(page, '#products .ops-owned');
+  const state = await page.evaluate(() => {
+    const mobile = window.innerWidth <= 640;
+    const hero = document.querySelector('.today-hero');
+    const business = document.querySelector('.today-read-panel');
+    const queue = document.querySelector('.order-flow-panel');
+    const drivers = document.querySelector('.today-drivers-panel');
+    const rhythm = document.querySelector('.today-rhythm-panel');
+    const evidence = document.getElementById('todayBusinessEvidence');
+    const reference = document.getElementById('todayProductsReference');
+    const priority = [...document.querySelectorAll('.today-products-priority .today-product')];
+    const rhythmKpis = [...document.querySelectorAll('.rhythm-kpi')];
+    const tops = rhythmKpis.map(item => Math.round(item.getBoundingClientRect().top));
+    return {
+      mobile,
+      order: [hero, business, queue, drivers, rhythm].map(item =>
+        Math.round(item?.getBoundingClientRect().top || 0)
+      ),
+      evidenceOpen: Boolean(evidence?.hasAttribute('open')),
+      referencePresent: Boolean(reference),
+      referenceOpen: Boolean(reference?.hasAttribute('open')),
+      priorityCards: priority.length,
+      priorityVisible: priority.filter(item => item.getBoundingClientRect().height > 0).length,
+      rhythmKpis: rhythmKpis.length,
+      rhythmTopSpread: tops.length ? Math.max(...tops) - Math.min(...tops) : null,
+    };
+  });
+  if (
+    state.mobile &&
+    (state.order.some((top, index) => index && top <= state.order[index - 1]) ||
+      state.evidenceOpen ||
+      (state.referencePresent && state.referenceOpen) ||
+      state.priorityCards > 3 ||
+      state.priorityCards !== state.priorityVisible ||
+      state.rhythmKpis !== 3 ||
+      state.rhythmTopSpread > 2)
+  ) {
+    throw new Error(`Today mobile hierarchy mismatch: ${JSON.stringify(state)}`);
+  }
+  if (!state.mobile && (!state.evidenceOpen || (state.referencePresent && !state.referenceOpen)))
+    throw new Error(`Today desktop evidence is collapsed: ${JSON.stringify(state)}`);
+}
 async function verifyDataHealth(page) {
   await wait(page, '.health-summary');
   const mobile = await page.evaluate(() => window.innerWidth <= 640);
@@ -571,7 +617,7 @@ async function verifySalesOrders(page) {
 }
 
 const scenarios = [
-  ['today', '/today', ['mobile', 'desktop'], async p => { await wait(p, '#rhythm .dpp-bar'); await wait(p, '#dayPicker .day-choice'); }],
+  ['today', '/today', ['mobile', 'desktop'], verifyToday],
   ['today-wall', '/today?wall=1', ['desktop']],
   ['home', '/', ['mobile', 'tablet', 'desktop']],
   ['sales-overview', '/sales', ['mobile', 'tablet', 'desktop'], verifySalesOverview],
