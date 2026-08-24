@@ -19,17 +19,31 @@ The Python ingestion worker lives in `app/dpp_analytics/`. Source enablement and
 | --- | --- | --- |
 | Orders API v2026-01-01 | Near-real-time orders/items and intraday operating pulse | `ORDERS_INTERVAL_SECONDS`, default 180s |
 | FBA Inventory API v1 | Fulfillable/inbound/reserved/unfulfillable inventory snapshots | `INVENTORY_INTERVAL_SECONDS`, default 1800s |
-| Reports API merchant listings | Full seller listing/inventory breadth | `LISTINGS_REPORT_INTERVAL_SECONDS`, default 21600s |
-| Catalog Items API | Product/catalog enrichment for known ASINs | `CATALOG_INTERVAL_SECONDS`, default 86400s |
+| Reports API merchant listings | Full seller listing/inventory breadth and first discovery of seller SKUs | `LISTINGS_REPORT_INTERVAL_SECONDS`, default 21600s |
+| Catalog Items API | Product/catalog enrichment for known ASINs | `CATALOG_INTERVAL_SECONDS`, default 86400s; unresolved onboarding with a known ASIN retries every 1800s |
 | Data Kiosk | Reconciled historical sales and traffic | `DATA_KIOSK_INTERVAL_SECONDS`, default 43200s |
 | Finances API | Released/deferred financial events, fees, refunds, transfers and advertising postings | `FINANCES_INTERVAL_SECONDS`, default 14400s |
 | Amazon Ads reporting | Campaign/product/target/search-term attributed performance | `AMAZON_ADS_REPORTING_INTERVAL_SECONDS`, default 21600s |
 
 Backfill start dates and polling timeouts are also environment-controlled in `compose.yml`.
 
-### Seller catalog discovery rule
+### Seller catalog discovery and onboarding rule
 
 Do not loop Catalog Items to discover the seller's complete active inventory. The seller-wide listing universe comes from the Reports API merchant-listings report. Catalog Items is for enrichment/search of known catalog entries.
+
+Discovery and enrichment are intentionally separate because Amazon may expose a new offer incompletely while it is propagating. `core.seller_listing.first_seen_at` records when a seller SKU first entered our warehouse. Catalog attempts and successful enrichment are tracked separately in `core.catalog_item.catalog_last_attempt_at` and `catalog_enriched_at`.
+
+`mart.catalog_onboarding_state` is the canonical lifecycle read:
+
+- `AWAITING_ASIN` — Seller Listings has exposed the SKU, but no ASIN is available yet. Catalog Items cannot help; wait for the next authoritative Listings snapshot.
+- `AWAITING_CATALOG` — an ASIN is known but Catalog Items has not yet been attempted for it.
+- `CATALOG_PROPAGATING` — Catalog Items was queried, but Amazon did not return the item yet.
+- `SOURCE_READY` — Catalog Items returned the known ASIN and source enrichment is available.
+- `INACTIVE` — the seller listing is inactive.
+
+A newly discovered active SKU has a 48-hour onboarding grace. When an ASIN is known but Catalog remains unresolved, the scheduler pulls Catalog forward immediately after Listings discovery and retries every 30 minutes until source enrichment converges. After 48 hours, unresolved ASIN/Catalog evidence becomes a Data Health source-completeness exception.
+
+Seller taxonomy is a separate responsibility layered on top of Amazon source readiness. An unmapped SKU is informational while it is onboarding. Once source data is ready and the 48-hour grace has elapsed, a missing seller taxonomy becomes a Data Health seller-action item. Neither transient source propagation nor mutable seller taxonomy completeness is a code-deployment failure; production QA validates the lifecycle classification itself.
 
 ## Decision-surface truth policy
 
@@ -53,7 +67,7 @@ Trajectory is a view over reconciled historical sales plus portfolio breadth/con
 
 Commercial product identity is assembled server-side from normalized SKU/ASIN records, seller listings, catalog enrichment, configured variation relationships and local label/image overrides.
 
-The browser may group/sort/filter data for presentation, but canonical family/variation membership and role semantics should come from the API/data layer.
+The browser may group/sort/filter data for presentation, but canonical family/variation membership and role semantics should come from the API/data layer. During catalog onboarding, missing dimensions or seller taxonomy may be provisional; consumers must use the lifecycle/source-readiness fields instead of assuming a newly discovered SKU is fully populated.
 
 ### Inventory
 
