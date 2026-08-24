@@ -35,6 +35,18 @@ LABELS_PATH = Path(
     )
 )
 VERSIONED_ASSET_RE = re.compile(r'''(/assets/[^"'?#]+\.(?:css|js))''')
+BUILD_TOKEN = "__DPP_BUILD_SHA__"
+
+
+def deployment_sha() -> str:
+    raw_sha = os.getenv("DPP_BUILD_SHA", "").strip()
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", raw_sha):
+        fallback = ROOT / ".build_main_ref"
+        raw_sha = fallback.read_text().strip() if fallback.exists() else ""
+    return raw_sha[:8].lower() if re.fullmatch(r"[0-9a-fA-F]{40}", raw_sha) else "dev"
+
+
+BUILD_SHA = deployment_sha()
 
 
 def frontend_asset_version() -> str:
@@ -53,6 +65,9 @@ ASSET_VERSION = frontend_asset_version()
 def versioned_page(name: str) -> bytes:
     """Attach one content-derived generation to every local CSS/JS dependency."""
     text = (STATIC / name).read_text()
+    if text.count(BUILD_TOKEN) != 1:
+        raise RuntimeError(f"{name}: expected exactly one build token")
+    text = text.replace(BUILD_TOKEN, BUILD_SHA)
     text = VERSIONED_ASSET_RE.sub(lambda match: f"{match.group(1)}?v={ASSET_VERSION}", text)
     return text.encode()
 
