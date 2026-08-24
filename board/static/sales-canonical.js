@@ -20,14 +20,7 @@
   const esc = (s) =>
     String(s || '').replace(
       /[&<>"']/g,
-      (c) =>
-        ({
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          '"': '&quot;',
-          "'": '&#39;',
-        })[c],
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
     );
   const parseDate = (s) => (s ? new Date(`${String(s).slice(0, 10)}T12:00:00Z`) : null);
   const sum = (rows, key) => d3.sum(rows || [], (r) => Number(r[key] || 0));
@@ -79,12 +72,7 @@
   }
   function monthName(s) {
     const d = parseDate(s);
-    return d
-      ? new Intl.DateTimeFormat('en-US', {
-          month: 'short',
-          timeZone: 'UTC',
-        }).format(d)
-      : 'Month';
+    return d ? new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' }).format(d) : 'Month';
   }
 
   function renderSignals() {
@@ -302,12 +290,7 @@
       compact = hostW < 720,
       width = compact ? 520 : 960,
       height = 340,
-      m = {
-        top,
-        right: compact ? 14 : 38,
-        bottom: 44,
-        left: compact ? 54 : 62,
-      };
+      m = { top, right: compact ? 14 : 38, bottom: 44, left: compact ? 54 : 62 };
     svg
       .attr('viewBox', `0 0 ${width} ${height}`)
       .attr('preserveAspectRatio', 'xMidYMid meet')
@@ -317,19 +300,7 @@
     const iw = width - m.left - m.right,
       ih = height - m.top - m.bottom,
       plot = svg.append('g').attr('transform', `translate(${m.left},${m.top})`);
-    return {
-      svg,
-      node,
-      host,
-      tip: ensureTip(host),
-      width,
-      height,
-      m,
-      iw,
-      ih,
-      compact,
-      plot,
-    };
+    return { svg, node, host, tip: ensureTip(host), width, height, m, iw, ih, compact, plot };
   }
   function grid(ctx, y) {
     ctx.plot
@@ -536,51 +507,25 @@
         b = sum(prior12, 'sales'),
         delta = b > 0 ? (100 * (a - b)) / b : null;
       renderKpis([
-        {
-          l: 'Full history sales',
-          v: money(total),
-          n: `${fullRows.length} months`,
-        },
-        {
-          l: 'Orders · units',
-          v: `${nf.format(orders)} · ${nf.format(units)}`,
-          n: 'full history',
-        },
+        { l: 'Full history sales', v: money(total), n: `${fullRows.length} months` },
+        { l: 'Orders · units', v: `${nf.format(orders)} · ${nf.format(units)}`, n: 'full history' },
         {
           l: 'Monthly pace',
           v: fullRows.length ? money(total / fullRows.length) : '—',
           n: 'average / month',
         },
-        {
-          l: 'Benchmark',
-          v: pct(delta),
-          n: 'last 12M vs prior 12M',
-          tone: cls(delta),
-        },
+        { l: 'Benchmark', v: pct(delta), n: 'last 12M vs prior 12M', tone: cls(delta) },
       ]);
     } else
       renderKpis([
-        {
-          l: `${monthName(h.business_date)} MTD sales`,
-          v: money(h.sales_mtd),
-          n: 'current open month',
-        },
+        { l: `${monthName(h.business_date)} MTD sales`, v: money(h.sales_mtd), n: 'current open month' },
         {
           l: 'Orders · units',
           v: `${nf.format(h.orders_mtd || 0)} · ${nf.format(h.units_mtd || 0)}`,
           n: 'month to date',
         },
-        {
-          l: 'Pace',
-          v: `${money(h.daily_avg_mtd)}/day`,
-          n: `run rate ${money(h.projected_month_sales)}`,
-        },
-        {
-          l: 'Benchmark',
-          v: pct(h.delta_mtd_pct),
-          n: 'vs same days last month',
-          tone: cls(h.delta_mtd_pct),
-        },
+        { l: 'Pace', v: `${money(h.daily_avg_mtd)}/day`, n: `run rate ${money(h.projected_month_sales)}` },
+        { l: 'Benchmark', v: pct(h.delta_mtd_pct), n: 'vs same days last month', tone: cls(h.delta_mtd_pct) },
       ]);
   }
 
@@ -707,15 +652,9 @@
         const tr = [{ label: 'Sales', value: money(w.sales) }];
         if (w.days >= 7) {
           if (w.previous?.days >= 7 && w.previous.sales > 0)
-            tr.push({
-              label: 'LW',
-              value: pct((100 * (w.sales - w.previous.sales)) / w.previous.sales),
-            });
+            tr.push({ label: 'LW', value: pct((100 * (w.sales - w.previous.sales)) / w.previous.sales) });
           if (w.benchmark > 0)
-            tr.push({
-              label: '4W',
-              value: pct((100 * (w.sales - w.benchmark)) / w.benchmark),
-            });
+            tr.push({ label: '4W', value: pct((100 * (w.sales - w.benchmark)) / w.benchmark) });
         } else tr.push({ label: 'WTD', value: 'partial' });
         showTip(
           c,
@@ -736,11 +675,7 @@
       pace = projection?.projected || current.sales;
     renderKpis([
       { l: '90D sales', v: money(sales), n: 'reconciled period' },
-      {
-        l: 'Orders · units',
-        v: `${nf.format(orders)} · ${nf.format(units)}`,
-        n: 'last 90 days',
-      },
+      { l: 'Orders · units', v: `${nf.format(orders)} · ${nf.format(units)}`, n: 'last 90 days' },
       {
         l: 'Pace',
         v: `${money(pace)}/week`,
@@ -748,12 +683,7 @@
           ? `weekday-adjusted · through ${d3.utcFormat('%a')(projection.latest)}`
           : 'latest completed week',
       },
-      {
-        l: 'Benchmark',
-        v: pct(delta),
-        n: 'last 4W vs prior 4W',
-        tone: cls(delta),
-      },
+      { l: 'Benchmark', v: pct(delta), n: 'last 4W vs prior 4W', tone: cls(delta) },
     ]);
   }
 
@@ -867,15 +797,8 @@
       .on('pointerenter pointermove focus', function (e, r) {
         const tr = [{ label: 'Sales', value: money(r.sales) }];
         if (r.prev?.sales > 0)
-          tr.push({
-            label: 'PD',
-            value: pct((100 * (r.sales - r.prev.sales)) / r.prev.sales),
-          });
-        if (r.avg7 > 0)
-          tr.push({
-            label: '7D',
-            value: pct((100 * (r.sales - r.avg7)) / r.avg7),
-          });
+          tr.push({ label: 'PD', value: pct((100 * (r.sales - r.prev.sales)) / r.prev.sales) });
+        if (r.avg7 > 0) tr.push({ label: '7D', value: pct((100 * (r.sales - r.avg7)) / r.avg7) });
         showTip(
           c,
           this,
@@ -893,12 +816,7 @@
         n: 'last 28 days',
       },
       { l: 'Pace', v: `${money(h.daily_avg_t28)}/day`, n: '28-day average' },
-      {
-        l: 'Benchmark',
-        v: pct(h.delta28_pct),
-        n: 'vs prior 28 days',
-        tone: cls(h.delta28_pct),
-      },
+      { l: 'Benchmark', v: pct(h.delta28_pct), n: 'vs prior 28 days', tone: cls(h.delta28_pct) },
     ]);
   }
 
