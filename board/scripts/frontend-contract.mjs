@@ -24,6 +24,8 @@ const sharedStyles = ['theme.css', 'nav-shell.css', 'layout-system.css'];
 const failures = [];
 const theme = readFileSync(join(staticRoot, 'theme.css'), 'utf8');
 const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
+const shellSelector =
+  /\.(?:app|topbar|brand|brand-copy|brand-title|brand-sub|mark|top-meta|primary-nav|nav-more|footer)\b/;
 
 function check(condition, page, message) {
   if (!condition) failures.push(`${page}: ${message}`);
@@ -92,12 +94,8 @@ check(
   'static',
   'deprecated refinement layer still exists',
 );
-check(!/\.primary-nav|\.nav-more/.test(theme), 'theme.css', 'navigation rules belong to nav-shell.css');
-check(
-  !/\.primary-nav|\.nav-more/.test(layout),
-  'layout-system.css',
-  'navigation rules belong to nav-shell.css',
-);
+check(!shellSelector.test(theme), 'theme.css', 'application-shell rules belong to nav-shell.css');
+check(!shellSelector.test(layout), 'layout-system.css', 'application-shell rules belong to nav-shell.css');
 
 if (failures.length) {
   console.error(`Frontend contract failed:\n${failures.map((failure) => `- ${failure}`).join('\n')}`);
