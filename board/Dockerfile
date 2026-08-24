@@ -51,6 +51,7 @@ COPY board/finance_emergency.py ./finance_api_legacy.py
 COPY board/finance_api_corrected.py ./finance_api.py
 COPY board/inventory_api.py .
 COPY board/catalog_api.py .
+COPY board/catalog_onboarding.py .
 COPY board/trajectory_api.py .
 COPY board/health_api.py .
 COPY board/ads_api.py .
