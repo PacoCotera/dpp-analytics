@@ -2,8 +2,8 @@
   'use strict';
 
   const PRIMARY = [
+    { href: '/', label: 'Business' },
     { href: '/today', label: 'Today', className: 'today-link' },
-    { href: '/', label: 'Home' },
     { href: '/sales', label: 'Sales' },
     { href: '/catalog', label: 'Products' },
     { href: '/inventory', label: 'Inventory', mobileSecondary: true },
@@ -103,6 +103,22 @@
     });
   }
 
+  function initializeBrandLink() {
+    const brand = document.querySelector('.topbar .brand');
+    if (!brand) return;
+    if (brand.matches('a')) {
+      brand.href = '/today';
+      brand.setAttribute('aria-label', 'Open Today');
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = '/today';
+    link.className = brand.className;
+    link.innerHTML = brand.innerHTML;
+    link.setAttribute('aria-label', 'Open Today');
+    brand.replaceWith(link);
+  }
+
   function workspaceGroups() {
     return [...document.querySelectorAll('.tabs, .view-tabs, .subnav')]
       .map((tablist) => ({
@@ -197,14 +213,18 @@
     };
     try {
       sessionStorage.setItem(CONTEXT_KEY, JSON.stringify(context));
-    } catch (_) {}
+    } catch {
+      return;
+    }
   }
 
   function restorePageContext() {
     let context = null;
     try {
       context = JSON.parse(sessionStorage.getItem(CONTEXT_KEY) || 'null');
-    } catch (_) {}
+    } catch {
+      context = null;
+    }
     if (!context || context.path !== rawPath() || Date.now() - Number(context.at || 0) > 6 * 60 * 60 * 1000)
       return;
     const groups = workspaceGroups();
@@ -319,6 +339,7 @@
   }
 
   function initializeShell() {
+    initializeBrandLink();
     const nav = document.querySelector('.primary-nav');
     if (!nav) return;
     buildNavigation(nav);
