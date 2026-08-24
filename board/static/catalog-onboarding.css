@@ -43,7 +43,7 @@
   align-items: center;
   padding: 14px 15px;
   border: 1px solid var(--line);
-  border-left: 4px solid var(--line-strong);
+  border-left: 4px solid var(--line);
   border-radius: 14px;
   background: var(--surface);
 }
