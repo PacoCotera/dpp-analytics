@@ -31,7 +31,7 @@ Backfill start dates and polling timeouts are also environment-controlled in `co
 
 Do not loop Catalog Items to discover the seller's complete active inventory. The seller-wide listing universe comes from the Reports API merchant-listings report. Catalog Items is for enrichment/search of known catalog entries.
 
-Discovery and enrichment are intentionally separate because Amazon may expose a new offer incompletely while it is propagating. `core.seller_listing.first_seen_at` records when a seller SKU first entered our warehouse. Catalog attempts and successful enrichment are tracked separately in `core.catalog_item.catalog_last_attempt_at` and `catalog_enriched_at`.
+Discovery and enrichment are intentionally separate because Amazon may expose a new offer incompletely while it is propagating. `core.seller_listing.first_seen_at` records when a seller SKU first entered our warehouse. Catalog request attempts are tracked in `ops.catalog_item_attempt`; `core.catalog_item` is created only when Amazon actually returns a Catalog entity. Returned entities also retain their latest attempt/enrichment timestamps for audit compatibility.
 
 `mart.catalog_onboarding_state` is the canonical lifecycle read:
 
