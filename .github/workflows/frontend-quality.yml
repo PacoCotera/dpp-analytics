@@ -3,6 +3,7 @@ name: Application quality
 on:
   pull_request:
     paths:
+      - 'app/**'
       - 'board/static/**'
       - 'board/*.py'
       - 'board/package.json'
@@ -20,6 +21,7 @@ on:
       - '.github/workflows/frontend-quality.yml'
   push:
     paths:
+      - 'app/**'
       - 'board/static/**'
       - 'board/*.py'
       - 'board/package.json'
@@ -94,6 +96,16 @@ jobs:
 
       - name: Build production board image
         run: docker build --build-arg DEPLOY_SHA="${GITHUB_SHA}" -f board/Dockerfile -t dpp-board-quality .
+
+  worker-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build production worker image
+        run: docker build -t dpp-worker-quality app
 
   qa-syntax:
     runs-on: ubuntu-latest
