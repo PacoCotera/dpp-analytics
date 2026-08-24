@@ -104,30 +104,6 @@
               </div>
             </section>
 
-            <section class="sales-momentum-card" aria-label="Recent sales momentum">
-              <div class="sales-momentum-title">Shopper-spend momentum · incl. IVA</div>
-              <div
-                class="sales-signal sales-momentum-row"
-                data-window="t7"
-                title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
-              >
-                <div class="sales-signal-label">7D · incl. IVA</div>
-                <div class="sales-signal-value" id="t7Sales">—</div>
-                <div class="sales-volume" id="t7Volume">—</div>
-                <div class="sales-signal-note" id="t7Note">—</div>
-              </div>
-              <div
-                class="sales-signal sales-momentum-row"
-                data-window="t28"
-                title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
-              >
-                <div class="sales-signal-label">28D · incl. IVA</div>
-                <div class="sales-signal-value" id="t28Sales">—</div>
-                <div class="sales-volume" id="t28Volume">—</div>
-                <div class="sales-signal-note" id="t28Note">—</div>
-              </div>
-            </section>
-
             <section
               class="sales-utility-row sales-utility-today"
               data-window="today"
@@ -140,16 +116,46 @@
               <a href="/today" class="btn">Open Today →</a>
             </section>
 
-            <section
-              class="sales-signal sales-utility-row sales-utility-ytd"
-              data-window="ytd"
-              title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
-            >
-              <div class="sales-signal-label" id="ytdLabel">YTD · incl. IVA</div>
-              <div class="sales-signal-value" id="ytdSales">—</div>
-              <div class="sales-volume" id="ytdVolume">—</div>
-              <div class="sales-signal-note">Year to date</div>
-            </section>
+            <details class="sales-reference" id="salesReference" open>
+              <summary>
+                <span><strong>Momentum and YTD</strong><small>Secondary sales context</small></span
+                ><b id="salesReferenceToggle">View ↓</b>
+              </summary>
+              <section class="sales-momentum-card" aria-label="Recent sales momentum">
+                <div class="sales-momentum-title">Shopper-spend momentum · incl. IVA</div>
+                <div
+                  class="sales-signal sales-momentum-row"
+                  data-window="t7"
+                  title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
+                >
+                  <div class="sales-signal-label">7D · incl. IVA</div>
+                  <div class="sales-signal-value" id="t7Sales">—</div>
+                  <div class="sales-volume" id="t7Volume">—</div>
+                  <div class="sales-signal-note" id="t7Note">—</div>
+                </div>
+                <div
+                  class="sales-signal sales-momentum-row"
+                  data-window="t28"
+                  title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
+                >
+                  <div class="sales-signal-label">28D · incl. IVA</div>
+                  <div class="sales-signal-value" id="t28Sales">—</div>
+                  <div class="sales-volume" id="t28Volume">—</div>
+                  <div class="sales-signal-note" id="t28Note">—</div>
+                </div>
+              </section>
+
+              <section
+                class="sales-signal sales-utility-row sales-utility-ytd"
+                data-window="ytd"
+                title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
+              >
+                <div class="sales-signal-label" id="ytdLabel">YTD · incl. IVA</div>
+                <div class="sales-signal-value" id="ytdSales">—</div>
+                <div class="sales-volume" id="ytdVolume">—</div>
+                <div class="sales-signal-note">Year to date</div>
+              </section>
+            </details>
           </aside>
         </section>
       </main>
@@ -184,6 +190,10 @@
                 <tbody id="skuRows"></tbody>
               </table>
             </div>
+            <button class="products-more" id="productsMore" type="button" aria-expanded="false" hidden>
+              <span id="productsMoreLabel">Show all products</span>
+              <strong id="productsMoreCount"></strong>
+            </button>
           </div>
         </section>
       </main>

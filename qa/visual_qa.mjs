@@ -28,6 +28,78 @@ async function verifySalesOverview(page) {
     await wait(page, `#monthChart ${selector}`);
   }
   await page.locator('button[data-range="12m"]').click();
+  const state = await page.evaluate(() => {
+    const mobile = window.innerWidth <= 720;
+    const signals = document.querySelector('.sales-state-rail');
+    const chart = document.querySelector('.sales-main');
+    const reference = document.getElementById('salesReference');
+    const primary = document.querySelector('.sales-signal.primary');
+    const today = document.querySelector('.sales-utility-today');
+    return {
+      mobile,
+      signalsBeforeChart: Boolean(
+        signals && chart && signals.getBoundingClientRect().top < chart.getBoundingClientRect().top
+      ),
+      referenceOpen: Boolean(reference?.hasAttribute('open')),
+      primaryVisible: Boolean(primary && primary.getBoundingClientRect().height > 0),
+      todayVisible: Boolean(today && today.getBoundingClientRect().height > 0),
+    };
+  });
+  if (
+    state.mobile &&
+    (!state.signalsBeforeChart || state.referenceOpen || !state.primaryVisible || !state.todayVisible)
+  ) {
+    throw new Error(`Sales Overview mobile hierarchy mismatch: ${JSON.stringify(state)}`);
+  }
+  if (!state.mobile && !state.referenceOpen)
+    throw new Error('Sales Overview desktop reference context is collapsed');
+}
+
+async function verifySalesProducts(page) {
+  await page.locator('button[data-view="products"]').click();
+  await wait(page, '#skuRows tr');
+  const state = await page.evaluate(async () => {
+    const payload = await (await fetch('/api/sales', { cache: 'no-store' })).json();
+    const expected = Array.isArray(payload.skus) ? payload.skus : [];
+    const rows = [...document.querySelectorAll('#skuRows tr')];
+    const control = document.getElementById('productsMore');
+    const mobile = window.innerWidth <= 720;
+    return {
+      mobile,
+      total: rows.length,
+      expected: expected.length,
+      visible: rows.filter(row => getComputedStyle(row).display !== 'none').length,
+      controlVisible: Boolean(control && getComputedStyle(control).display !== 'none'),
+      expanded: control?.getAttribute('aria-expanded'),
+      structured: rows.every(row => row.querySelector('.product-line') && row.querySelector('.state')),
+      namesMatch: rows.every(
+        (row, index) =>
+          row.querySelector('.product-name')?.textContent?.trim() ===
+          String(expected[index]?.product || expected[index]?.sku || '').trim()
+      ),
+      thumbnailsMatch: rows.every((row, index) =>
+        expected[index]?.image_url ? Boolean(row.querySelector('.product-thumb')) : true
+      ),
+    };
+  });
+  if (
+    state.total !== state.expected ||
+    !state.structured ||
+    !state.namesMatch ||
+    !state.thumbnailsMatch
+  ) {
+    throw new Error(`Sales Products contract mismatch: ${JSON.stringify(state)}`);
+  }
+  if (
+    state.mobile &&
+    (state.visible !== Math.min(6, state.total) ||
+      state.controlVisible !== (state.total > 6) ||
+      (state.total > 6 && state.expanded !== 'false'))
+  ) {
+    throw new Error(`Sales Products mobile density mismatch: ${JSON.stringify(state)}`);
+  }
+  if (!state.mobile && state.visible !== state.total)
+    throw new Error(`Sales Products desktop rows hidden: ${JSON.stringify(state)}`);
 }
 
 
@@ -621,7 +693,7 @@ const scenarios = [
   ['today-wall', '/today?wall=1', ['desktop']],
   ['home', '/', ['mobile', 'tablet', 'desktop']],
   ['sales-overview', '/sales', ['mobile', 'tablet', 'desktop'], verifySalesOverview],
-  ['sales-products', '/sales', ['mobile', 'desktop'], async p => { await p.locator('button[data-view="products"]').click(); await wait(p, '#skuRows tr'); }],
+  ['sales-products', '/sales', ['mobile', 'desktop'], verifySalesProducts],
   ['sales-orders', '/sales', ['mobile', 'desktop'], verifySalesOrders],
   ['catalog', '/catalog', ['mobile', 'tablet', 'desktop'], verifyCatalog],
   ['catalog-design', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'dimension:design')],

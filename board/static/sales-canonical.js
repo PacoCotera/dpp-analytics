@@ -31,9 +31,12 @@
     RUNBG = '#f3dfc4',
     WEEKLINE = '#bfb7ac';
   const ORDER_MOBILE_LIMIT = 10;
+  const PRODUCT_MOBILE_LIMIT = 6;
+  const mobileHierarchy = window.matchMedia('(max-width: 720px)');
   let DATA = null,
     RANGE = '12m',
     ORDERS_EXPANDED = false,
+    PRODUCTS_EXPANDED = false,
     resizeTimer = null;
 
   function set(id, text, tone = '') {
@@ -107,16 +110,28 @@
   }
 
   function renderProducts() {
-    const out = document.getElementById('skuRows');
+    const out = document.getElementById('skuRows'),
+      control = document.getElementById('productsMore'),
+      rows = DATA?.skus || [],
+      hiddenCount = Math.max(0, rows.length - PRODUCT_MOBILE_LIMIT);
     if (!out) return;
-    out.innerHTML = (DATA?.skus || [])
-      .map((r) => {
+    out.innerHTML = rows
+      .map((r, index) => {
         const img = r.image_url
           ? `<img class="product-thumb" src="${esc(r.image_url)}" alt="" loading="lazy">`
           : '';
-        return `<tr><td><a class="product-line" href="/product?sku=${encodeURIComponent(r.sku)}">${img}<div style="min-width:0"><div class="product-sku">${esc(r.sku)}</div><div class="product-name">${esc(r.product || r.sku)}</div></div></a></td><td class="num"><strong>${money(r.sales_t28)}</strong></td><td class="num ${cls(r.delta28_pct)}">${pct(r.delta28_pct)}</td><td class="num">${nf.format(r.units_t28 || 0)}</td><td><span class="state ${esc(r.state)}">${esc(r.state)}</span></td></tr>`;
+        return `<tr${index >= PRODUCT_MOBILE_LIMIT ? ' class="product-reference-row"' : ''}><td><a class="product-line" href="/product?sku=${encodeURIComponent(r.sku)}">${img}<div style="min-width:0"><div class="product-sku">${esc(r.sku)}</div><div class="product-name">${esc(r.product || r.sku)}</div></div></a></td><td class="num"><strong>${money(r.sales_t28)}</strong></td><td class="num ${cls(r.delta28_pct)}">${pct(r.delta28_pct)}</td><td class="num">${nf.format(r.units_t28 || 0)}</td><td><span class="state ${esc(r.state)}">${esc(r.state)}</span></td></tr>`;
       })
       .join('');
+    document.getElementById('products')?.classList.toggle('products-expanded', PRODUCTS_EXPANDED);
+    if (!control) return;
+    control.hidden = hiddenCount === 0;
+    control.setAttribute('aria-expanded', PRODUCTS_EXPANDED ? 'true' : 'false');
+    set('productsMoreLabel', PRODUCTS_EXPANDED ? 'Show leading products' : 'Show all products');
+    set(
+      'productsMoreCount',
+      PRODUCTS_EXPANDED ? `${nf.format(rows.length)} shown` : `${nf.format(hiddenCount)} more`,
+    );
   }
   function renderOrders() {
     const out = document.getElementById('orderRows'),
@@ -822,6 +837,22 @@
     document.getElementById('ordersMore')?.addEventListener('click', () => {
       ORDERS_EXPANDED = !ORDERS_EXPANDED;
       renderOrders();
+    });
+    document.getElementById('productsMore')?.addEventListener('click', () => {
+      PRODUCTS_EXPANDED = !PRODUCTS_EXPANDED;
+      renderProducts();
+    });
+    const reference = document.getElementById('salesReference');
+    const updateReferenceToggle = () => {
+      set('salesReferenceToggle', reference?.open ? 'Hide ↑' : 'View ↓');
+    };
+    if (reference) {
+      reference.open = !mobileHierarchy.matches;
+      reference.addEventListener('toggle', updateReferenceToggle);
+      updateReferenceToggle();
+    }
+    mobileHierarchy.addEventListener('change', (event) => {
+      if (reference) reference.open = !event.matches;
     });
     const host = document.querySelector('.sales-chart-card');
     if ('ResizeObserver' in window && host) {
