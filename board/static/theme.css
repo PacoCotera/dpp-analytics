@@ -113,12 +113,6 @@ h1 {
   color: #251300;
   border-color: transparent;
 }
-.story-number {
-  font-size: 44px;
-  font-weight: 830;
-  letter-spacing: -0.05em;
-  color: var(--ink);
-}
 .good {
   color: var(--good) !important;
 }
@@ -152,10 +146,6 @@ h1 {
 }
 .chip.warn {
   background: var(--warn-soft);
-}
-.chip.dark {
-  background: var(--ink);
-  color: #fff;
 }
 .list {
   display: flex;
@@ -226,13 +216,7 @@ h1 {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.pc-image,
-.latest-product img,
-.product-win img,
-.product-line img,
-.product-card img,
-.product-identity img,
-.product-image,
+.product-thumb,
 [class*='product'] > img {
   background: #fff !important;
 }
@@ -256,22 +240,6 @@ h1 {
 }
 .notice.warn {
   background: var(--warn-soft);
-}
-.mini-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 68px;
-}
-.mini-bars span {
-  display: block;
-  flex: 1;
-  min-width: 4px;
-  background: #d8c1a3;
-  border-radius: 4px 4px 1px 1px;
-}
-.mini-bars span.hot {
-  background: var(--accent);
 }
 .empty {
   padding: 36px 22px;
@@ -312,9 +280,6 @@ h1 {
   h1 {
     font-size: 38px;
     margin-top: 6px;
-  }
-  .story-number {
-    font-size: 39px;
   }
   .row-title {
     font-size: 15px;
