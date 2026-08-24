@@ -146,7 +146,7 @@ function renderBusinessHealth(data) {
       <div class="business-health-card__head"><span>Data confidence</span><span>${feedIssues.length ? 'Inspect' : 'Healthy'}</span></div>
       <strong class="business-health-card__value ${feedIssues.length ? 'warning' : 'positive'}">${feeds.length ? `${integer(feeds.length - feedIssues.length)}/${integer(feeds.length)}` : '—'}</strong>
       <div class="business-health-card__title">Core streams healthy</div>
-      <p>${feedIssues.length ? `${integer(feedIssues.length)} stream${feedIssues.length === 1 ? '' : 's'} need attention.` : 'Operating evidence is current and decision-ready.'}</p>
+      <p>${!feeds.length ? 'No pipeline status is available.' : feedIssues.length ? `${integer(feedIssues.length)} stream${feedIssues.length === 1 ? '' : 's'} need attention.` : 'Operating evidence is current and decision-ready.'}</p>
     </a>`;
 }
 
