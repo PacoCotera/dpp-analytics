@@ -1,5 +1,7 @@
 import { byId, escapeHtml, fetchJson, integer, money, percent } from './ui-utils.js';
 
+const mobile = window.matchMedia('(max-width: 640px)');
+
 function toneClass(value) {
   const n = Number(value);
   if (n > 0) return 'good';
@@ -57,6 +59,7 @@ function renderStory(horizons, ads = {}) {
 }
 function renderAds(ads = {}) {
   const ready = ads.status === 'ready' && Number(ads.spend || 0) > 0;
+  byId('paidContext').classList.toggle('paid-context--empty', !ready);
   byId('paidTitle').textContent = ready
     ? 'Paid support is part of the current trajectory'
     : 'Waiting for Amazon Ads access';
@@ -103,16 +106,27 @@ function renderPortfolio(p = {}) {
     ['Top 3 share', share(p.top3_share_pct), 'How dependent T28 revenue is on the leaders'],
     ['New SKU share', share(p.new_sku_share_pct), 'T28 revenue from offers opened in the last 90 days'],
   ];
-  byId('portfolio').innerHTML = cards
-    .map(
-      ([l, v, c]) =>
-        `<div class="structure-card"><div class="structure-label">${escapeHtml(l)}</div><div class="structure-value">${escapeHtml(v)}</div><div class="structure-copy">${escapeHtml(c)}</div></div>`,
-    )
-    .join('');
+  const card = ([l, v, c]) =>
+    `<div class="structure-card"><div class="structure-label">${escapeHtml(l)}</div><div class="structure-value">${escapeHtml(v)}</div><div class="structure-copy">${escapeHtml(c)}</div></div>`;
+  const priority = [cards[0], cards[4], cards[5]];
+  const secondary = [cards[1], cards[2], cards[3]];
+  byId('portfolio').innerHTML = `
+    <div class="structure-priority">${priority.map(card).join('')}</div>
+    <details class="structure-reference" id="portfolioReference" open>
+      <summary><span><strong>Additional portfolio benchmarks</strong><small>Per-SKU and leader context</small></span></summary>
+      <div class="structure-secondary">${secondary.map(card).join('')}</div>
+    </details>`;
   const d = p.definition || {};
   byId('portfolioNote').innerHTML = d.identity
     ? `<strong>Portfolio identity:</strong> ${escapeHtml(d.identity)} ${d.productive_sku ? escapeHtml(d.productive_sku) : ''}`
     : '';
+}
+
+function syncMobileHierarchy() {
+  ['trajectoryGuide', 'portfolioReference'].forEach((id) => {
+    const disclosure = byId(id);
+    if (disclosure) disclosure.open = !mobile.matches;
+  });
 }
 function weekLabel(item, index) {
   if (item.current_week) return 'Current week';
@@ -151,9 +165,12 @@ function render(payload) {
   if (window.DPPCharts) window.DPPCharts.trajectory('#chart', payload.series || []);
   renderPortfolio(payload.portfolio);
   renderWeeks(payload.weekly);
+  syncMobileHierarchy();
 }
 function bindInteractions() {
   byId('helpBtn').addEventListener('click', () => byId('help').classList.toggle('show'));
+  mobile.addEventListener('change', syncMobileHierarchy);
+  syncMobileHierarchy();
 }
 async function start() {
   bindInteractions();

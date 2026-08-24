@@ -283,6 +283,43 @@ async function verifyProductWorkspace(page) {
   if (mobileHierarchy.mobile) await page.locator('#ordersPanel > summary').click();
 }
 
+
+async function verifyTrajectory(page) {
+  await wait(page, '.trajectory-horizon');
+  await wait(page, '#chart');
+  await wait(page, '.structure-priority .structure-card');
+  const state = await page.evaluate(() => {
+    const mobile = window.innerWidth <= 640;
+    const paid = document.getElementById('paidContext');
+    const paidEmpty = paid?.classList.contains('paid-context--empty');
+    const guide = document.getElementById('trajectoryGuide');
+    const reference = document.getElementById('portfolioReference');
+    const chartScroll = document.querySelector('.trajectory-chart-scroll');
+    const priority = [...document.querySelectorAll('.structure-priority .structure-card')];
+    return {
+      mobile,
+      emptyPaidVisible: Boolean(paidEmpty && paid && window.getComputedStyle(paid).display !== 'none'),
+      guideOpen: Boolean(guide?.hasAttribute('open')),
+      referenceOpen: Boolean(reference?.hasAttribute('open')),
+      priorityCards: priority.length,
+      priorityVisible: priority.filter(card => card.getBoundingClientRect().height > 0).length,
+      chartContained: Boolean(chartScroll && chartScroll.scrollWidth > chartScroll.clientWidth),
+    };
+  });
+  if (
+    state.mobile &&
+    (state.emptyPaidVisible ||
+      state.guideOpen ||
+      state.referenceOpen ||
+      state.priorityCards !== 3 ||
+      state.priorityVisible !== 3 ||
+      !state.chartContained)
+  ) {
+    throw new Error(`Trajectory mobile hierarchy mismatch: ${JSON.stringify(state)}`);
+  }
+  if (!state.mobile && (!state.guideOpen || !state.referenceOpen))
+    throw new Error(`Trajectory desktop evidence is collapsed: ${JSON.stringify(state)}`);
+}
 async function verifyInventory(page) {
   if ((await page.evaluate(() => window.innerWidth)) > 640) {
     await wait(page, '#rows tr');
@@ -552,7 +589,7 @@ const scenarios = [
   ['finance-overview', '/finance', ['mobile', 'desktop'], verifyFinanceReport],
   ['finance-closed', '/finance', ['mobile', 'tablet', 'desktop'], verifyFinanceClosed],
   ['finance-ledger', '/finance', ['mobile', 'desktop'], verifyFinanceEvidence],
-  ['trajectory', '/trajectory', ['mobile', 'desktop']],
+  ['trajectory', '/trajectory', ['mobile', 'desktop'], verifyTrajectory],
   ['data-health', '/data-health', ['mobile', 'desktop'], verifyDataHealth],
 ].map(([name, url, views, action]) => ({ name, url, views, action }));
 
