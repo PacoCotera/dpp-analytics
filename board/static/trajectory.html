@@ -84,8 +84,11 @@
                 </div>
               </div>
             </div>
-            <aside class="panel trajectory-why">
-              <div class="panel__header">
+            <details class="panel trajectory-why" id="trajectoryGuide" open>
+              <summary>
+                <span><strong>Signal grammar</strong><small>How to read mixed horizons</small></span>
+              </summary>
+              <div class="panel__header trajectory-why__desktop-header">
                 <div>
                   <h2 class="panel__title">Signal grammar</h2>
                   <div class="panel__description">Use the shape, not one percentage.</div>
@@ -117,7 +120,7 @@
                   </div>
                 </div>
               </div>
-            </aside>
+            </details>
           </div>
         </section>
         <section class="page-section">
@@ -131,12 +134,14 @@
               </div>
             </div>
             <div class="panel__body">
-              <svg
-                id="chart"
-                class="trajectory-chart"
-                viewBox="0 0 1000 330"
-                preserveAspectRatio="none"
-              ></svg>
+              <div class="trajectory-chart-scroll">
+                <svg
+                  id="chart"
+                  class="trajectory-chart"
+                  viewBox="0 0 1000 330"
+                  preserveAspectRatio="none"
+                ></svg>
+              </div>
             </div>
           </div>
         </section>
@@ -168,9 +173,7 @@
             </div>
           </div>
           <details class="week-disclosure" id="weekDisclosure">
-            <summary>
-              <span id="weekSummary">Recent weekly evidence</span>
-            </summary>
+            <summary><span id="weekSummary">Recent weekly evidence</span></summary>
             <div class="week-timeline" id="weeks"></div>
           </details>
         </section>
