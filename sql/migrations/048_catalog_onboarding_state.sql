@@ -1,5 +1,3 @@
-BEGIN;
-
 -- Track when seller SKUs first enter our catalog and when Catalog Items has
 -- actually been attempted/enriched. Listing discovery and Catalog enrichment
 -- run on different cadences, so a newly created Amazon offer may legitimately
@@ -62,9 +60,3 @@ LEFT JOIN core.catalog_item ci
 
 COMMENT ON VIEW mart.catalog_onboarding_state IS
 'Catalog ingestion lifecycle. New seller SKUs may temporarily be AWAITING_ASIN, AWAITING_CATALOG, or CATALOG_PROPAGATING while Amazon surfaces complete listing/catalog data. source_attention begins only after a 48-hour grace window.';
-
-INSERT INTO ops.schema_migrations(filename)
-VALUES ('048_catalog_onboarding_state.sql')
-ON CONFLICT (filename) DO NOTHING;
-
-COMMIT;
