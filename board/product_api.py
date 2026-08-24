@@ -46,7 +46,7 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
         asin = profile.get('asin')
         cutoff = _one(cur,"SELECT max(business_date) d FROM mart.business_daily WHERE marketplace_id=%s AND reconciled_daily_report",(marketplace,)).get('d')
 
-        commercial = _one(cur, """
+        portfolio_rows = _all(cur, """
             SELECT p.seller_sku sku,p.asin,p.parent_asin,p.family_asin,p.product_role,
                    p.offer_owner_sku,p.is_offer_owner,p.title product,p.image_url,
                    p.sales_t28,p.units_t28,p.orders_t28,p.sessions_t28,p.page_views_t28,
@@ -58,8 +58,12 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
                    ci.attributes catalog_attributes
             FROM mart.catalog_portfolio_product p
             LEFT JOIN core.catalog_item ci ON ci.marketplace_id=p.marketplace_id AND ci.asin=p.asin
-            WHERE p.marketplace_id=%s AND p.seller_sku=%s LIMIT 1
-        """, (marketplace,sku))
+            WHERE p.marketplace_id=%s
+        """, (marketplace,))
+        commercial = next(
+            (row for row in portfolio_rows if row.get('sku') == sku),
+            {},
+        )
 
         performance = _one(cur,"""
             WITH c AS (SELECT %s::date d), x AS (
@@ -120,19 +124,29 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
         """,(marketplace,sku))
 
         family_asin = commercial.get('family_asin') or asin
-        siblings = _all(cur,"""
-            SELECT p.seller_sku sku,p.asin,p.parent_asin,p.family_asin,p.product_role,p.title product,p.image_url,
-                   p.sales_t28,p.units_t28,p.sessions_t28,p.conversion_t28_pct,p.available,p.inbound,
-                   p.days_cover_with_inbound,p.inventory_action,p.status,
-                   ci.variation_theme amazon_variation_theme,
-                   ci.variation_attributes amazon_variation_attribute_names,
-                   ci.attributes catalog_attributes
-            FROM mart.catalog_portfolio_product p
-            LEFT JOIN core.catalog_item ci ON ci.marketplace_id=p.marketplace_id AND ci.asin=p.asin
-            WHERE p.marketplace_id=%s AND p.family_asin=%s
-              AND p.product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE') AND p.is_offer_owner
-            ORDER BY p.sales_t28 DESC,p.seller_sku LIMIT 12
-        """,(marketplace,family_asin)) if family_asin else []
+        sibling_keys = (
+            'sku', 'asin', 'parent_asin', 'family_asin', 'product_role', 'product',
+            'image_url', 'sales_t28', 'units_t28', 'sessions_t28',
+            'conversion_t28_pct', 'available', 'inbound', 'days_cover_with_inbound',
+            'inventory_action', 'status', 'amazon_variation_theme',
+            'amazon_variation_attribute_names', 'catalog_attributes',
+        )
+        siblings = [
+            {key: row.get(key) for key in sibling_keys}
+            for row in sorted(
+                (
+                    row for row in portfolio_rows
+                    if family_asin
+                    and row.get('family_asin') == family_asin
+                    and row.get('product_role') in ('SELLABLE_VARIATION', 'SELLABLE_STANDALONE')
+                    and row.get('is_offer_owner')
+                ),
+                key=lambda row: (
+                    -float(row.get('sales_t28') or 0),
+                    str(row.get('sku') or ''),
+                ),
+            )[:12]
+        ]
         local_clock = _one(cur,"SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
     taxonomy = _product_taxonomy()
@@ -159,3 +173,4 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
     return {'profile':decorate_products([profile])[0],'commercial':decorated_commercial,'performance':performance,'traffic':traffic,
             'economics':economics,'ads':ads,'family_variations':decorate_products(siblings),'taxonomy_warnings':taxonomy_warnings,
             'series':series,'recent_orders':recent_orders,'inventory_history':inventory_history,'business_date':cutoff,'local_time':local_clock.get('local_time')}
+
