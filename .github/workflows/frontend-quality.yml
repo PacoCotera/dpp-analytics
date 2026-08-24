@@ -55,7 +55,27 @@ jobs:
           cat changed-files.txt
 
           workflow_changed=false
-          grep -Eq '^\.github/workflows/frontend-quality\.yml  frontend-lint:
+          grep -Eq '^\.github/workflows/frontend-quality\.yml$' changed-files.txt && workflow_changed=true
+
+          emit() {
+            local name="$1"
+            local pattern="$2"
+            local value=false
+            if [[ "$workflow_changed" == true ]] || grep -Eq "$pattern" changed-files.txt; then
+              value=true
+            fi
+            echo "$name=$value" >>"$GITHUB_OUTPUT"
+          }
+
+          emit frontend '^(board/static/|board/(package\.json|eslint\.config\.js|\.stylelintrc\.json|\.prettierrc\.json)$)'
+          emit board_python '^board/[^/]+\.py$'
+          emit board_image '^(board/|compose\.yml$|\.env\.example$)'
+          emit worker_image '^app/'
+          emit qa '^qa/'
+          emit compose '^(compose\.yml$|\.env\.example$|scripts/init-host-config\.sh$)'
+          emit migrations '^(sql/(init|migrations)/|scripts/migrate\.sh$|compose\.yml$|\.env\.example$)'
+
+  frontend-lint:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
@@ -176,286 +196,6 @@ jobs:
   migration-chain:
     needs: changes
     if: needs.changes.outputs.migrations == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Start clean PostgreSQL
-        run: |
-          set -euo pipefail
-          docker compose --env-file .env.example up -d postgres
-          for i in $(seq 1 30); do
-            if docker inspect --format='{{json .State.Health.Status}}' dpp-postgres 2>/dev/null | grep -q healthy; then
-              exit 0
-            fi
-            sleep 2
-          done
-          docker logs --tail 100 dpp-postgres
-          exit 1
-
-      - name: Apply full migration chain
-        run: bash scripts/migrate.sh .env.example
-
-      - name: Tear down migration database
-        if: always()
-        run: docker compose --env-file .env.example down -v --remove-orphans
- changed-files.txt && workflow_changed=true
-
-          emit() {
-            local name="$1"
-            local pattern="$2"
-            local value=false
-            if [[ "$workflow_changed" == true ]] || grep -Eq "$pattern" changed-files.txt; then
-              value=true
-            fi
-            echo "$name=$value" >>"$GITHUB_OUTPUT"
-          }
-
-          emit frontend '^(board/static/|board/(package\.json|eslint\.config\.js|\.stylelintrc\.json|\.prettierrc\.json)$)'
-          emit board_python '^board/[^/]+\.py  frontend-lint:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: board
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install frontend tooling
-        run: npm install --no-package-lock --ignore-scripts
-
-      - name: Lint and verify formatting
-        run: npm run quality
-
-  board-python:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: board
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Compile board Python
-        run: python -m compileall -q .
-
-      - name: Test board cache and catalog lifecycle
-        run: python -m unittest -v test_response_cache.py test_catalog_onboarding.py
-
-  board-image:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Create deterministic main ref for image fallback
-        run: git update-ref refs/heads/main HEAD
-
-      - name: Build production board image
-        run: docker build --build-arg DEPLOY_SHA="${GITHUB_SHA}" -f board/Dockerfile -t dpp-board-quality .
-
-  worker-image:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build production worker image
-        run: docker build -t dpp-worker-quality app
-
-  qa-syntax:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Validate browser QA scripts
-        run: |
-          set -euo pipefail
-          for file in qa/*.mjs; do
-            node --check "$file"
-          done
-
-  qa-image:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build production browser QA image
-        run: docker build -t dpp-qa-quality qa
-
-  compose-config:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate Compose with example environment
-        run: docker compose --env-file .env.example config --quiet
-
-  migration-chain:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Start clean PostgreSQL
-        run: |
-          set -euo pipefail
-          docker compose --env-file .env.example up -d postgres
-          for i in $(seq 1 30); do
-            if docker inspect --format='{{json .State.Health.Status}}' dpp-postgres 2>/dev/null | grep -q healthy; then
-              exit 0
-            fi
-            sleep 2
-          done
-          docker logs --tail 100 dpp-postgres
-          exit 1
-
-      - name: Apply full migration chain
-        run: bash scripts/migrate.sh .env.example
-
-      - name: Tear down migration database
-        if: always()
-        run: docker compose --env-file .env.example down -v --remove-orphans
-
-          emit board_image '^(board/|compose\.yml$|\.env\.example$)'
-          emit worker_image '^app/'
-          emit qa '^qa/'
-          emit compose '^(compose\.yml$|\.env\.example$|scripts/init-host-config\.sh$)'
-          emit migrations '^(sql/(init|migrations)/|scripts/migrate\.sh$|compose\.yml$|\.env\.example$)'
-
-  frontend-lint:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: board
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install frontend tooling
-        run: npm install --no-package-lock --ignore-scripts
-
-      - name: Lint and verify formatting
-        run: npm run quality
-
-  board-python:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: board
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Compile board Python
-        run: python -m compileall -q .
-
-      - name: Test board cache and catalog lifecycle
-        run: python -m unittest -v test_response_cache.py test_catalog_onboarding.py
-
-  board-image:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Create deterministic main ref for image fallback
-        run: git update-ref refs/heads/main HEAD
-
-      - name: Build production board image
-        run: docker build --build-arg DEPLOY_SHA="${GITHUB_SHA}" -f board/Dockerfile -t dpp-board-quality .
-
-  worker-image:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build production worker image
-        run: docker build -t dpp-worker-quality app
-
-  qa-syntax:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Validate browser QA scripts
-        run: |
-          set -euo pipefail
-          for file in qa/*.mjs; do
-            node --check "$file"
-          done
-
-  qa-image:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build production browser QA image
-        run: docker build -t dpp-qa-quality qa
-
-  compose-config:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate Compose with example environment
-        run: docker compose --env-file .env.example config --quiet
-
-  migration-chain:
     runs-on: ubuntu-latest
 
     steps:
