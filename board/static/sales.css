@@ -81,7 +81,7 @@
     800 10px/1 Inter,
     -apple-system,
     BlinkMacSystemFont,
-    'Segoe UI',
+    "Segoe UI",
     sans-serif;
   cursor: pointer;
 }
@@ -250,8 +250,8 @@
 .sales-momentum-card .sales-momentum-row {
   display: grid;
   grid-template-areas:
-    'label value'
-    'volume note';
+    "label value"
+    "volume note";
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 3px 12px;
   padding: 10px 1px;
@@ -317,9 +317,9 @@
 .sales-state-rail > .sales-utility-today {
   display: grid;
   grid-template-areas:
-    'label sales'
-    'meta link'
-    'pace pace';
+    "label sales"
+    "meta link"
+    "pace pace";
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 12px;
   align-items: center;
@@ -376,8 +376,8 @@
   display: grid;
   order: 4;
   grid-template-areas:
-    'label value'
-    'volume value';
+    "label value"
+    "volume value";
   grid-template-columns: minmax(0, 1fr) auto;
   column-gap: 12px;
   align-items: end;
@@ -472,6 +472,146 @@
   color: var(--muted);
   font-size: 9.5px;
   line-height: 1.2;
+}
+
+.product-read {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.product-read__card {
+  min-width: 0;
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--surface);
+}
+
+.product-read__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 8.5px;
+  font-weight: 820;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.product-read__head span:last-child {
+  text-align: right;
+}
+
+.product-read__value {
+  display: block;
+  margin-top: 13px;
+  font-size: 25px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.product-read__value.good {
+  color: var(--good);
+}
+
+.product-read__value.bad {
+  color: var(--bad);
+}
+
+.product-read__title {
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.product-read__card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 9.5px;
+  line-height: 1.4;
+}
+
+.product-contribution-header {
+  margin-top: 2px;
+}
+
+.product-change strong,
+.product-change small {
+  display: block;
+}
+
+.product-change small {
+  margin-top: 3px;
+  color: inherit;
+  font-size: 9px;
+}
+
+.order-evidence {
+  overflow: hidden;
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--surface);
+}
+
+.order-evidence > summary {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px 16px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.order-evidence > summary::-webkit-details-marker {
+  display: none;
+}
+
+.order-evidence > summary strong,
+.order-evidence > summary small {
+  display: block;
+}
+
+.order-evidence > summary strong {
+  font-size: 13px;
+}
+
+.order-evidence > summary small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.order-evidence > summary b {
+  color: #704000;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.order-evidence > summary::after {
+  color: var(--muted);
+  font-size: 18px;
+  content: "›";
+  transition: transform 120ms ease;
+}
+
+.order-evidence[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.order-evidence[open] > summary::after {
+  transform: rotate(90deg);
+}
+
+.order-evidence__body {
+  padding: 14px;
 }
 
 .state {
@@ -814,25 +954,66 @@
     font-size: 10px;
   }
 
+  .product-read {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    margin-bottom: 17px;
+  }
+
+  .product-read__card {
+    padding: 12px 13px;
+  }
+
+  .product-read__card:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .product-read__value {
+    margin-top: 10px;
+    font-size: 23px;
+  }
+
+  .product-read__card p {
+    font-size: 10px;
+  }
+
+  .order-evidence {
+    margin-top: 18px;
+  }
+
+  .order-evidence > summary {
+    min-height: 54px;
+    gap: 10px;
+    padding: 10px 13px;
+  }
+
+  .order-evidence > summary b {
+    font-size: 8px;
+  }
+
+  .order-evidence__body {
+    padding: 12px;
+  }
+
   /* Products and orders become page-owned decision/evidence lists on phones.
      Do not mix table-cell display overrides with an intact table formatting
      context: that was the legacy compatibility layer that distorted Products. */
   #products .data-table-scroll,
-  #orders .data-table-scroll {
+  #orderEvidence .data-table-scroll {
     overflow: visible;
   }
 
   #products .data-table,
-  #orders .data-table,
+  #orderEvidence .data-table,
   #products .data-table tbody,
-  #orders .data-table tbody {
+  #orderEvidence .data-table tbody {
     display: block;
     width: 100%;
     min-width: 0;
   }
 
   #products .data-table thead,
-  #orders .data-table thead {
+  #orderEvidence .data-table thead {
     display: none;
   }
 
@@ -843,9 +1024,10 @@
   #skuRows tr {
     display: grid;
     grid-template-areas:
-      'product sales'
-      'product delta'
-      'units state';
+      "product sales"
+      "product share"
+      "change movement"
+      "units state";
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 5px 12px;
     padding: 13px 14px;
@@ -878,29 +1060,61 @@
   }
 
   #skuRows td:nth-child(3) {
-    grid-area: delta;
-    font-size: 12px;
+    grid-area: share;
+    color: var(--muted);
+    font-size: 10.5px;
     text-align: right;
   }
 
   #skuRows td:nth-child(3)::before {
-    content: 'vs prior 28 · ';
+    content: "Portfolio share · ";
     color: var(--muted);
     font-weight: 500;
   }
 
   #skuRows td:nth-child(4) {
+    grid-area: change;
+    padding-top: 7px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+  }
+
+  #skuRows td:nth-child(4)::before {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--muted);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    content: "Product change";
+  }
+
+  #skuRows td:nth-child(5) {
+    grid-area: movement;
+    padding-top: 7px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 10.5px;
+    text-align: right;
+  }
+
+  #skuRows td:nth-child(5)::before {
+    content: "Movement share · ";
+  }
+
+  #skuRows td:nth-child(6) {
     grid-area: units;
     padding-left: 53px;
     color: var(--muted);
     font-size: 11px;
   }
 
-  #skuRows td:nth-child(4)::after {
-    content: ' units / 28D';
+  #skuRows td:nth-child(6)::after {
+    content: " units / 28D";
   }
 
-  #skuRows td:nth-child(5) {
+  #skuRows td:nth-child(7) {
     grid-area: state;
     justify-self: end;
   }
@@ -920,9 +1134,9 @@
   #orderRows tr {
     display: grid;
     grid-template-areas:
-      'moment spend'
-      'items items'
-      'status status';
+      "moment spend"
+      "items items"
+      "status status";
     grid-template-columns: minmax(0, 1fr) auto;
     overflow: hidden;
     column-gap: 0;
@@ -934,7 +1148,7 @@
     box-shadow: 0 4px 14px rgb(28 26 23 / 7%);
   }
 
-  #orders .data-table-shell {
+  #orderEvidence .data-table-shell {
     overflow: visible;
     border: 0;
     border-radius: 0;
@@ -946,7 +1160,7 @@
     gap: 18px;
   }
 
-  #orders:not(.orders-expanded) #orderRows .order-reference-row {
+  #orderEvidence:not(.orders-expanded) #orderRows .order-reference-row {
     display: none;
   }
 
@@ -982,7 +1196,7 @@
   .products-more::before {
     color: var(--muted);
     font-size: 18px;
-    content: '›';
+    content: "›";
     transition: transform 120ms ease;
   }
 
@@ -1000,8 +1214,8 @@
     text-transform: uppercase;
   }
 
-  .orders-more[aria-expanded='true']::before,
-  .products-more[aria-expanded='true']::before {
+  .orders-more[aria-expanded="true"]::before,
+  .products-more[aria-expanded="true"]::before {
     transform: rotate(90deg);
   }
 
