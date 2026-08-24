@@ -229,6 +229,35 @@ async function verifyProductWorkspace(page) {
       throw new Error(`Product Ads pending language mismatch: ${adsState} / ${adsDecision}`);
   }
 
+  const mobileHierarchy = await page.evaluate(() => {
+    const mobile = window.innerWidth <= 640;
+    const reference = document.getElementById('productReference');
+    const facts = document.querySelector('.product-health__facts');
+    const decisions = document.querySelector('.decision-rail');
+    const chart = document.querySelector('.product-chart-panel');
+    const summary = reference?.querySelector(':scope > summary');
+    return {
+      mobile,
+      referenceOpen: Boolean(reference?.hasAttribute('open')),
+      factsVisible: Boolean(facts && window.getComputedStyle(facts).display !== 'none'),
+      decisionsBeforeChart: Boolean(
+        decisions && chart && decisions.getBoundingClientRect().top < chart.getBoundingClientRect().top
+      ),
+      referenceSummaryHeight: summary?.getBoundingClientRect().height || 0,
+    };
+  });
+  if (
+    mobileHierarchy.mobile &&
+    (mobileHierarchy.referenceOpen ||
+      mobileHierarchy.factsVisible ||
+      !mobileHierarchy.decisionsBeforeChart ||
+      mobileHierarchy.referenceSummaryHeight < 44)
+  ) {
+    throw new Error(`Product mobile hierarchy mismatch: ${JSON.stringify(mobileHierarchy)}`);
+  }
+  if (!mobileHierarchy.mobile && !mobileHierarchy.referenceOpen)
+    throw new Error('Product desktop secondary context is collapsed');
+
   await page.locator('#ordersPanel > summary').click();
   await wait(page, '.product-order');
   const orderEvidence = await page.evaluate(() => {
@@ -251,6 +280,7 @@ async function verifyProductWorkspace(page) {
   );
   if (leakedOrderPending.length)
     throw new Error(`Product order evidence leaked raw pending language: ${JSON.stringify(leakedOrderPending)}`);
+  if (mobileHierarchy.mobile) await page.locator('#ordersPanel > summary').click();
 }
 
 async function verifyInventory(page) {

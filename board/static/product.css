@@ -201,6 +201,18 @@
   flex-direction: column;
 }
 
+.product-reference {
+  border-top: 1px solid var(--line);
+}
+
+.product-reference > summary {
+  display: none;
+}
+
+.product-reference .decision-block:first-of-type {
+  border-top: 0;
+}
+
 .decision-block {
   padding: 11px 15px;
   border-top: 1px solid var(--line);
@@ -458,7 +470,7 @@
   }
 
   .hero-sku {
-    font-size: 8.5px;
+    font-size: 9px;
   }
 
   .hero-price {
@@ -490,15 +502,11 @@
   }
 
   .product-health p {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .product-health__facts {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .product-health__fact {
-    padding: 7px 8px;
+    display: none;
   }
 
   .product-kpi-rail {
@@ -510,6 +518,12 @@
     padding: 10px 8px;
   }
 
+  .product-health__kicker,
+  .product-kpi .label,
+  .decision-label {
+    font-size: 9.5px;
+  }
+
   .product-kpi:nth-child(n + 3) {
     border-top: 1px solid var(--line);
   }
@@ -518,8 +532,20 @@
     font-size: 19px;
   }
 
+  .product-kpi span {
+    font-size: 10px;
+  }
+
   .product-workspace {
     margin-top: 10px;
+  }
+
+  .decision-rail {
+    order: -1;
+  }
+
+  .decision-block {
+    padding: 13px 14px;
   }
 
   .product-chart {
@@ -530,8 +556,55 @@
     font-size: 14px;
   }
 
+  .decision-block p {
+    font-size: 11.5px;
+  }
+
   .inventory-line b {
     font-size: 15px;
+  }
+
+  .inventory-line span {
+    font-size: 9.5px;
+  }
+
+  .product-reference > summary {
+    display: flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .product-reference > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .product-reference > summary strong,
+  .product-reference > summary small {
+    display: block;
+  }
+
+  .product-reference > summary strong {
+    font-size: 11.5px;
+  }
+
+  .product-reference > summary small {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 9.5px;
+  }
+
+  .product-reference > summary b {
+    color: var(--accent-ink);
+    font-size: 9.5px;
+  }
+
+  .product-reference:not([open]) > .decision-block {
+    display: none;
   }
 
   .evidence {
