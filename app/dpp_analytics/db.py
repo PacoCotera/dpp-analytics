@@ -10,6 +10,12 @@ from psycopg.rows import dict_row
 from .settings import settings
 
 
+CATALOG_HOT_PATH_MATERIALIZED_VIEWS = {
+    "traffic": "mart.catalog_traffic_t56_cache",
+    "sku_activity": "mart.catalog_sku_activity_t56_cache",
+}
+
+
 def connect() -> psycopg.Connection:
     return psycopg.connect(
         host=settings.db_host,
@@ -23,7 +29,9 @@ def connect() -> psycopg.Connection:
 
 
 @contextmanager
-def ingestion_run(source: str, job_name: str, metadata: dict[str, Any] | None = None) -> Iterator[dict[str, Any]]:
+def ingestion_run(
+    source: str, job_name: str, metadata: dict[str, Any] | None = None
+) -> Iterator[dict[str, Any]]:
     conn = connect()
     run: dict[str, Any] = {"id": None, "records_read": 0, "records_written": 0}
     try:
@@ -68,6 +76,24 @@ def ingestion_run(source: str, job_name: str, metadata: dict[str, Any] | None = 
         raise
     finally:
         conn.close()
+
+
+def refresh_catalog_hot_path_cache(kind: str) -> dict[str, str]:
+    """Refresh one persisted Catalog hot-path relation after source ingestion.
+
+    The relation name is selected from a fixed whitelist rather than interpolated
+    from caller input. Non-concurrent refresh is intentional for now: these are
+    tiny relations, refresh happens after ingestion, and the board response cache
+    shields ordinary navigation. Production timing will tell us if concurrent
+    refresh is warranted later.
+    """
+    relation = CATALOG_HOT_PATH_MATERIALIZED_VIEWS.get(kind)
+    if relation is None:
+        raise ValueError(f"Unknown Catalog hot-path cache: {kind}")
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(f"REFRESH MATERIALIZED VIEW {relation}")
+        conn.commit()
+    return {"cache": kind, "relation": relation}
 
 
 def mark_interrupted_runs() -> int:
