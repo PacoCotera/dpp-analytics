@@ -58,10 +58,7 @@ function jobState(item) {
 
 function worstState(states) {
   const rank = { failed: 4, stale: 3, degraded: 2, healthy: 1, disconnected: 0 };
-  return states.reduce(
-    (worst, state) => (rank[state] > rank[worst] ? state : worst),
-    'disconnected',
-  );
+  return states.reduce((worst, state) => (rank[state] > rank[worst] ? state : worst), 'disconnected');
 }
 
 function domainState(definition) {
@@ -313,8 +310,7 @@ function render(payload) {
   byId('healthUpdated').textContent = `Health checked ${timestamp(payload.checked_at)} · refreshes every 60s`;
   byId('summaryCount').textContent = String(totalAttention);
   byId('summaryCount').dataset.state =
-    problems.some((item) => jobState(item) === 'failed') ||
-    Number(catalogSummary.source_attention || 0) > 0
+    problems.some((item) => jobState(item) === 'failed') || Number(catalogSummary.source_attention || 0) > 0
       ? 'failed'
       : totalAttention
         ? 'degraded'
