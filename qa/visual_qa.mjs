@@ -211,7 +211,8 @@ async function verifyBusiness(page) {
       rhythmWeekendDays: document.querySelectorAll('#spark .home-rhythm__bar--weekend').length,
       signalCopy: document
         .querySelector('.rhythm-panel .panel__description')
-        ?.textContent?.toLowerCase()
+        ?.textContent?.replace(/\s+/g, ' ')
+        .toLowerCase()
         .includes('seven-day signal'),
       productDriversRemoved: !document.querySelector('.drivers, #movers, .driver'),
       adsVisible: Boolean(ads && !ads.hidden && getComputedStyle(ads).display !== 'none'),
