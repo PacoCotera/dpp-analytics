@@ -3,6 +3,7 @@ import { byId, escapeHtml, fetchJson, integer, money } from './ui-utils.js';
 let lastPayload = null;
 let lastQuery = null;
 let loadingQuery = null;
+const mobileHierarchy = window.matchMedia('(max-width: 640px)');
 
 const AMAZON_PROCESSING = new Set(['PENDING', 'PENDING_AVAILABILITY', 'INVOICE_UNCONFIRMED']);
 
@@ -195,17 +196,16 @@ function renderProducts(payload) {
   const products = payload.sku_today || [];
   const totalSales = Number(payload.today?.sales_today || 0);
   const live = Boolean(payload.is_live);
+  const previousReferenceOpen = Boolean(byId('todayProductsReference')?.open);
   byId('productsTitle').textContent = live ? 'What is driving today' : 'What drove that day';
-  byId('products').innerHTML = products.length
-    ? products
-        .slice(0, 8)
-        .map((item) => {
-          const image = item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="">` : '';
-          const contribution = totalSales > 0 ? (100 * Number(item.sales || 0)) / totalSales : 0;
-          const identity = [item.sku ? `SKU ${item.sku}` : '', item.asin ? `ASIN ${item.asin}` : '']
-            .filter(Boolean)
-            .join(' · ');
-          return `<a class="today-product ops-owned" href="/product?sku=${encodeURIComponent(item.sku || '')}">
+  if (products.length) {
+    const cards = products.slice(0, 8).map((item) => {
+      const image = item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="">` : '';
+      const contribution = totalSales > 0 ? (100 * Number(item.sales || 0)) / totalSales : 0;
+      const identity = [item.sku ? `SKU ${item.sku}` : '', item.asin ? `ASIN ${item.asin}` : '']
+        .filter(Boolean)
+        .join(' · ');
+      return `<a class="today-product ops-owned" href="/product?sku=${encodeURIComponent(item.sku || '')}">
             ${image}
             <div>
               <div class="name">${escapeHtml(item.product || item.sku || item.asin || 'Product')}</div>
@@ -215,9 +215,32 @@ function renderProducts(payload) {
             </div>
             <div class="value">${money(item.sales || 0)}<span class="share">${contribution.toFixed(0)}% of shopper spend</span></div>
           </a>`;
-        })
-        .join('')
-    : `<div class="empty ops-owned">${live ? 'Products will appear as orders arrive.' : 'No product sales recorded for this day.'}</div>`;
+    });
+    const secondary = cards.slice(3);
+    byId('products').innerHTML =
+      `<div class="today-products-priority ops-owned">${cards.slice(0, 3).join('')}</div>
+      ${
+        secondary.length
+          ? `<details class="today-products-reference ops-owned" id="todayProductsReference" open>
+        <summary><span><strong>${secondary.length} more product${secondary.length === 1 ? '' : 's'}</strong><small>Secondary contribution</small></span><b>View ↓</b></summary>
+        <div class="today-products-secondary">${secondary.join('')}</div>
+      </details>`
+          : ''
+      }`;
+    const reference = byId('todayProductsReference');
+    if (reference) {
+      reference.open = mobileHierarchy.matches ? previousReferenceOpen : true;
+      const toggle = reference.querySelector('summary b');
+      const updateToggle = () => {
+        if (toggle) toggle.textContent = reference.open ? 'Hide ↑' : 'View ↓';
+      };
+      reference.addEventListener('toggle', updateToggle);
+      updateToggle();
+    }
+  } else {
+    byId('products').innerHTML =
+      `<div class="empty ops-owned">${live ? 'Products will appear as orders arrive.' : 'No product sales recorded for this day.'}</div>`;
+  }
 }
 
 function renderAll() {
@@ -263,6 +286,22 @@ if (openPanel) {
     byId('openOrderToggle').textContent = openPanel.open ? 'Hide ↑' : 'View ↓';
   });
 }
+
+const businessEvidence = byId('todayBusinessEvidence');
+if (businessEvidence) {
+  const updateBusinessToggle = () => {
+    byId('todayBusinessToggle').textContent = businessEvidence.open ? 'Hide ↑' : 'View ↓';
+  };
+  businessEvidence.open = !mobileHierarchy.matches;
+  businessEvidence.addEventListener('toggle', updateBusinessToggle);
+  updateBusinessToggle();
+}
+
+mobileHierarchy.addEventListener('change', (event) => {
+  if (businessEvidence) businessEvidence.open = !event.matches;
+  const productReference = byId('todayProductsReference');
+  if (productReference) productReference.open = !event.matches;
+});
 
 window.addEventListener('popstate', loadOperations);
 keepOperationalOwner('orderGrid', renderSelectedOrders);
