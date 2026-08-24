@@ -2,10 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#f4f0e8" />
     <title>Dirty Pawz Press · Sales</title>
     <link rel="stylesheet" href="/assets/theme.css" />
@@ -28,9 +25,7 @@
             <div class="brand-sub">Sales · Amazon Mexico</div>
           </div>
         </div>
-        <div class="top-meta">
-          <strong id="clock">--:--</strong><span id="asof">Loading sales</span>
-        </div>
+        <div class="top-meta"><strong id="clock">--:--</strong><span id="asof">Loading sales</span></div>
       </header>
 
       <nav class="primary-nav"></nav>
@@ -38,44 +33,24 @@
       <header class="page-header">
         <div>
           <h1 class="page-header__title">Sales</h1>
-          <p class="page-header__description">
-            Revenue, momentum, product drivers and demand geography.
-          </p>
+          <p class="page-header__description">Revenue, momentum, product drivers and demand geography.</p>
         </div>
       </header>
 
       <nav class="subnav tabs" aria-label="Sales views">
-        <button
-          class="subnav__item active"
-          type="button"
-          data-view="overview"
-          aria-selected="true"
-        >
+        <button class="subnav__item active" type="button" data-view="overview" aria-selected="true">
           Overview
         </button>
-        <button
-          class="subnav__item"
-          type="button"
-          data-view="products"
-          aria-selected="false"
-        >
-          Drivers
-        </button>
-        <button
-          class="subnav__item"
-          type="button"
-          data-view="geography"
-          aria-selected="false"
-        >
+        <button class="subnav__item" type="button" data-view="products" aria-selected="false">Drivers</button>
+        <button class="subnav__item" type="button" data-view="geography" aria-selected="false">
           Geography
         </button>
       </nav>
 
       <div class="notice" role="note" aria-label="Sales monetary basis">
-        <strong>Sales page basis:</strong> every sales amount is
-        <strong>shopper spend incl. IVA</strong>. Historical periods use
-        reconciled Amazon Sales &amp; Traffic; Today and order evidence use
-        Amazon Orders. <strong>Net sales ex IVA live in Finance.</strong>
+        <strong>Sales page basis:</strong> every sales amount is <strong>shopper spend incl. IVA</strong>.
+        Historical periods use reconciled Amazon Sales &amp; Traffic; Today and order evidence use Amazon
+        Orders. <strong>Net sales ex IVA live in Finance.</strong>
       </div>
 
       <main id="overview" class="view active">
@@ -84,36 +59,16 @@
             <div class="panel sales-chart-card">
               <div class="sales-chart-header">
                 <div>
-                  <div class="sales-chart-title" id="salesChartTitle">
-                    Monthly shopper spend
-                  </div>
+                  <div class="sales-chart-title" id="salesChartTitle">Monthly shopper spend</div>
                   <div class="sales-chart-subtitle" id="salesChartSub">
-                    12 months · incl. IVA · Amazon Sales &amp; Traffic · current
-                    month actual + run rate
+                    12 months · incl. IVA · Amazon Sales &amp; Traffic · current month actual + run rate
                   </div>
                 </div>
-                <div
-                  class="sales-range"
-                  role="group"
-                  aria-label="Sales chart time window"
-                >
-                  <button type="button" data-range="full" aria-pressed="false">
-                    FULL
-                  </button>
-                  <button
-                    class="active"
-                    type="button"
-                    data-range="12m"
-                    aria-pressed="true"
-                  >
-                    12M
-                  </button>
-                  <button type="button" data-range="90d" aria-pressed="false">
-                    90D
-                  </button>
-                  <button type="button" data-range="28d" aria-pressed="false">
-                    28D
-                  </button>
+                <div class="sales-range" role="group" aria-label="Sales chart time window">
+                  <button type="button" data-range="full" aria-pressed="false">FULL</button>
+                  <button class="active" type="button" data-range="12m" aria-pressed="true">12M</button>
+                  <button type="button" data-range="90d" aria-pressed="false">90D</button>
+                  <button type="button" data-range="28d" aria-pressed="false">28D</button>
                 </div>
               </div>
               <svg
@@ -136,16 +91,12 @@
               data-window="mtd"
               title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
             >
-              <div class="sales-signal-label" id="mtdLabel">
-                Month to date · incl. IVA
-              </div>
+              <div class="sales-signal-label" id="mtdLabel">Month to date · incl. IVA</div>
               <div class="sales-signal-value" id="mtdSales">—</div>
               <div class="sales-volume" id="mtdVolume">—</div>
               <div class="sales-signal-note" id="mtdNote">—</div>
               <div class="sales-run-rate">
-                <div>
-                  <span>Run rate</span><strong id="salesRunRate">—</strong>
-                </div>
+                <div><span>Run rate</span><strong id="salesRunRate">—</strong></div>
                 <small>Directional<br />not a forecast</small>
               </div>
             </section>
@@ -164,18 +115,11 @@
 
             <details class="sales-reference" id="salesReference" open>
               <summary>
-                <span
-                  ><strong>Momentum and YTD</strong
-                  ><small>Secondary sales context</small></span
+                <span><strong>Momentum and YTD</strong><small>Secondary sales context</small></span
                 ><b id="salesReferenceToggle">View ↓</b>
               </summary>
-              <section
-                class="sales-momentum-card"
-                aria-label="Recent sales momentum"
-              >
-                <div class="sales-momentum-title">
-                  Shopper-spend momentum · incl. IVA
-                </div>
+              <section class="sales-momentum-card" aria-label="Recent sales momentum">
+                <div class="sales-momentum-title">Shopper-spend momentum · incl. IVA</div>
                 <div
                   class="sales-signal sales-momentum-row"
                   data-window="t7"
@@ -203,9 +147,7 @@
                 data-window="ytd"
                 title="Reconciled Amazon Sales & Traffic shopper spend including IVA."
               >
-                <div class="sales-signal-label" id="ytdLabel">
-                  YTD · incl. IVA
-                </div>
+                <div class="sales-signal-label" id="ytdLabel">YTD · incl. IVA</div>
                 <div class="sales-signal-value" id="ytdSales">—</div>
                 <div class="sales-volume" id="ytdVolume">—</div>
                 <div class="sales-signal-note">Year to date</div>
@@ -221,46 +163,30 @@
             <div>
               <h2 class="section-header__title">What is driving the change</h2>
               <div class="section-header__description">
-                Last 28 days vs prior 28 · reconciled Amazon Sales &amp; Traffic
-                · shopper spend incl. IVA.
+                Last 28 days vs prior 28 · reconciled Amazon Sales &amp; Traffic · shopper spend incl. IVA.
               </div>
             </div>
           </div>
-          <div
-            class="product-read"
-            id="productRead"
-            aria-label="Product mix interpretation"
-          >
+          <div class="product-read" id="productRead" aria-label="Product mix interpretation">
             <article class="product-read__card">
               <div class="product-read__head">
-                <span>28D change</span
-                ><span id="productChangeState">Reading</span>
+                <span>28D change</span><span id="productChangeState">Reading</span>
               </div>
-              <strong class="product-read__value" id="productNetChange"
-                >—</strong
-              >
+              <strong class="product-read__value" id="productNetChange">—</strong>
               <div class="product-read__title">vs prior 28 days</div>
-              <p id="productChangeDriver">
-                Finding the largest product movement.
-              </p>
+              <p id="productChangeDriver">Finding the largest product movement.</p>
             </article>
             <article class="product-read__card">
               <div class="product-read__head">
-                <span>Concentration</span
-                ><span id="productConcentrationState">Reading</span>
+                <span>Concentration</span><span id="productConcentrationState">Reading</span>
               </div>
-              <strong class="product-read__value" id="productConcentration"
-                >—</strong
-              >
+              <strong class="product-read__value" id="productConcentration">—</strong>
               <div class="product-read__title">Top 3 share of 28D sales</div>
-              <p id="productConcentrationCopy">
-                Measuring how concentrated demand is.
-              </p>
+              <p id="productConcentrationCopy">Measuring how concentrated demand is.</p>
             </article>
             <article class="product-read__card">
               <div class="product-read__head">
-                <span>Breadth</span
-                ><span id="productBreadthState">Reading</span>
+                <span>Breadth</span><span id="productBreadthState">Reading</span>
               </div>
               <strong class="product-read__value" id="productBreadth">—</strong>
               <div class="product-read__title">Across selling products</div>
@@ -271,8 +197,7 @@
             <div>
               <h3 class="section-header__title">Product contribution</h3>
               <div class="section-header__description">
-                Leaders, growers and decliners · movement share uses absolute
-                product-level change.
+                Leaders, growers and decliners · movement share uses absolute product-level change.
               </div>
             </div>
           </div>
@@ -298,13 +223,7 @@
                 <tbody id="skuRows"></tbody>
               </table>
             </div>
-            <button
-              class="products-more"
-              id="productsMore"
-              type="button"
-              aria-expanded="false"
-              hidden
-            >
+            <button class="products-more" id="productsMore" type="button" aria-expanded="false" hidden>
               <span id="productsMoreLabel">Show all products</span>
               <strong id="productsMoreCount"></strong>
             </button>
@@ -338,13 +257,7 @@
                   <tbody id="orderRows"></tbody>
                 </table>
               </div>
-              <button
-                class="orders-more"
-                id="ordersMore"
-                type="button"
-                aria-expanded="false"
-                hidden
-              >
+              <button class="orders-more" id="ordersMore" type="button" aria-expanded="false" hidden>
                 <span id="ordersMoreLabel">Show all recent orders</span>
                 <strong id="ordersMoreCount"></strong>
               </button>
@@ -359,24 +272,14 @@
             <div>
               <h2 class="section-header__title">Demand geography</h2>
               <div class="section-header__description">
-                Amazon Orders · destination state and postal code only · shopper
-                spend incl. IVA.
+                Amazon Orders · destination state and postal code only · shopper spend incl. IVA.
               </div>
-              <div class="geo-coverage" id="geoCoverage">
-                Checking geography coverage…
-              </div>
+              <div class="geo-coverage" id="geoCoverage">Checking geography coverage…</div>
             </div>
             <div class="geo-controls" aria-label="Geography filters">
-              <div
-                class="geo-range"
-                id="geoRange"
-                role="group"
-                aria-label="Geography time window"
-              >
+              <div class="geo-range" id="geoRange" role="group" aria-label="Geography time window">
                 <button type="button" data-geo-range="30d">30D</button>
-                <button class="active" type="button" data-geo-range="90d">
-                  90D
-                </button>
+                <button class="active" type="button" data-geo-range="90d">90D</button>
                 <button type="button" data-geo-range="ytd">YTD</button>
                 <button type="button" data-geo-range="all">ALL</button>
               </div>
@@ -404,24 +307,16 @@
             </div>
           </div>
 
-          <div
-            class="geo-kpi-rail"
-            id="geoKpis"
-            aria-label="Geography key metrics"
-          ></div>
+          <div class="geo-kpi-rail" id="geoKpis" aria-label="Geography key metrics"></div>
 
           <div class="geo-grid">
             <section class="panel geo-map-panel">
               <div class="geo-map-header">
                 <div>
                   <strong id="geoMapStatus">Mexico · loading map</strong>
-                  <small
-                    >Click a state to drill into postal-code polygons.</small
-                  >
+                  <small>Click a state to drill into postal-code polygons.</small>
                 </div>
-                <button class="geo-back" id="geoBack" type="button" hidden>
-                  ← Mexico
-                </button>
+                <button class="geo-back" id="geoBack" type="button" hidden>← Mexico</button>
               </div>
               <svg
                 id="geoMap"
@@ -430,18 +325,15 @@
                 preserveAspectRatio="xMidYMid meet"
               ></svg>
               <div class="geo-map-source">
-                Postal labels: SEPOMEX · polygon source: open-mexico / SEPOMEX ·
-                geometry is filtered server-side to postal codes present in the
-                selected demand slice.
+                Postal labels: SEPOMEX · polygon source: open-mexico / SEPOMEX · geometry is filtered
+                server-side to postal codes present in the selected demand slice.
               </div>
             </section>
 
             <section class="panel geo-ranked-panel">
               <div class="geo-ranked-header">
                 <strong id="geoRankedTitle">Top states</strong>
-                <small id="geoSortStatus"
-                  >Sorted by Spend ↓ · click a column to reorder</small
-                >
+                <small id="geoSortStatus">Sorted by Spend ↓ · click a column to reorder</small>
               </div>
               <div class="data-table-scroll">
                 <table class="data-table geo-table">
@@ -457,11 +349,7 @@
                       <th data-geo-sort="area" aria-sort="none">
                         <button type="button">Area</button>
                       </th>
-                      <th
-                        class="num"
-                        data-geo-sort="sales"
-                        aria-sort="descending"
-                      >
+                      <th class="num" data-geo-sort="sales" aria-sort="descending">
                         <button type="button">Spend</button>
                       </th>
                       <th class="num" data-geo-sort="orders" aria-sort="none">
@@ -482,10 +370,9 @@
           </div>
 
           <div class="geo-privacy-note">
-            <strong>Privacy boundary:</strong> reporting stores only destination
-            country, state/region and postal code. Recipient name, street
-            address, city, phone, delivery instructions and the raw recipient
-            object are discarded before warehouse persistence.
+            <strong>Privacy boundary:</strong> reporting stores only destination country, state/region and
+            postal code. Recipient name, street address, city, phone, delivery instructions and the raw
+            recipient object are discarded before warehouse persistence.
           </div>
         </section>
       </main>
@@ -493,8 +380,8 @@
       <footer class="footer">
         <span>MXN · Sales page = shopper spend incl. IVA throughout</span
         ><span
-          >Finance = net sales ex IVA + IVA withheld + gross shopper spend +
-          payout cash timing · Dirty Pawz Press Analytics</span
+          >Finance = net sales ex IVA + IVA withheld + gross shopper spend + payout cash timing · Dirty Pawz
+          Press Analytics</span
         >
       </footer>
     </div>
