@@ -52,6 +52,8 @@ const retiredComponentNames = new Set([
   'grid',
 ]);
 const retiredComponentSelector = new RegExp(`\\.(?:${[...retiredComponentNames].join('|')})(?![\\w-])`);
+const pageOwnedOrRetiredThemeSelector =
+  /\.story-number(?![\w-])|\.chip\.dark(?![\w-])|\.(?:mini-bars|pc-image|product-win|product-card|product-identity|product-image)(?![\w-])/;
 
 function check(condition, page, message) {
   if (!condition) failures.push(`${page}: ${message}`);
@@ -131,6 +133,11 @@ check(
 check(!shellSelector.test(theme), 'theme.css', 'application-shell rules belong to nav-shell.css');
 check(!shellSelector.test(layout), 'layout-system.css', 'application-shell rules belong to nav-shell.css');
 check(!retiredComponentSelector.test(theme), 'theme.css', 'retired component rules remain in the theme');
+check(
+  !pageOwnedOrRetiredThemeSelector.test(theme),
+  'theme.css',
+  'page-owned or retired rules remain in the shared theme',
+);
 
 if (failures.length) {
   console.error(`Frontend contract failed:\n${failures.map((failure) => `- ${failure}`).join('\n')}`);
