@@ -360,6 +360,19 @@ function bindInteractions() {
   byId('ordersPanel').addEventListener('toggle', () => {
     byId('orderToggle').textContent = byId('ordersPanel').open ? 'Hide ↑' : 'View ↓';
   });
+
+  const reference = byId('productReference');
+  const referenceToggle = byId('productReferenceToggle');
+  const mobile = window.matchMedia('(max-width: 640px)');
+  const syncReference = () => {
+    reference.open = !mobile.matches;
+    referenceToggle.textContent = reference.open ? 'Hide ↑' : 'View ↓';
+  };
+  reference.addEventListener('toggle', () => {
+    referenceToggle.textContent = reference.open ? 'Hide ↑' : 'View ↓';
+  });
+  mobile.addEventListener('change', syncReference);
+  syncReference();
 }
 
 async function start() {
