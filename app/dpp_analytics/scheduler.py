@@ -30,6 +30,7 @@ STOP = False
 FINANCE_CLOSE_INTERVAL_SECONDS = 3600
 ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS = 86400
 CATALOG_ONBOARDING_RETRY_SECONDS = 1800
+GEOGRAPHY_JOB = "orders_geography_state_v2026"
 
 
 def _stop(signum: int, frame: object) -> None:
@@ -124,8 +125,12 @@ def _catalog_metadata_backfill_needed() -> bool:
                 SELECT count(*)::int AS unresolved
                 FROM mart.catalog_onboarding_state
                 WHERE marketplace_id=%s
-                  AND lower(COALESCE(status,'')) <> 'inactive'
-                  AND source_state IN ('AWAITING_CATALOG','CATALOG_PROPAGATING')
+                  AND asin IS NOT NULL
+                  AND catalog_enriched_at IS NULL
+                  AND (
+                    source_state IN ('AWAITING_CATALOG','CATALOG_PROPAGATING')
+                    OR (catalog_last_attempt_at IS NULL AND age_seconds < 172800)
+                  )
                 """,
                 (settings.marketplace_id,),
             )
@@ -136,6 +141,62 @@ def _catalog_metadata_backfill_needed() -> bool:
     except Exception:
         log.exception("could not inspect Catalog onboarding state; using normal schedule")
         return False
+
+
+def _claim_manual_sync() -> dict | None:
+    with db.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            WITH candidate AS (
+                SELECT id FROM ops.manual_sync_request
+                WHERE status='pending'
+                ORDER BY requested_at
+                FOR UPDATE SKIP LOCKED LIMIT 1
+            )
+            UPDATE ops.manual_sync_request request
+            SET status='running', started_at=now()
+            FROM candidate
+            WHERE request.id=candidate.id
+            RETURNING request.id,request.job_name
+            """
+        )
+        request = cur.fetchone()
+        conn.commit()
+        return request
+
+
+def _finish_manual_sync(request_id: int, success: bool) -> None:
+    with db.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE ops.manual_sync_request
+            SET status=%s,finished_at=now(),error_message=%s
+            WHERE id=%s
+            """,
+            ("success" if success else "error", None if success else "Collector failed; see ingestion run", request_id),
+        )
+        conn.commit()
+
+
+def _run_manual_sync() -> str | None:
+    request = _claim_manual_sync()
+    if not request:
+        return None
+    jobs: dict[str, Callable[[], dict]] = {
+        "orders_v2026": ingest_orders,
+        "fba_inventory_v1": ingest_inventory,
+        "finances_v2024": ingest_finances,
+        "settlement_reports_v2": ingest_settlement_reports,
+        "sales_traffic_2024_04_24": ingest_sales_traffic,
+        "merchant_listings_all_data": ingest_listings_report,
+        "catalog_items_2022_04_01": ingest_catalog,
+        GEOGRAPHY_JOB: backfill_order_geography,
+        "month_close": close_ready_months,
+    }
+    job_name = request["job_name"]
+    result = _run(f"manual_{job_name}", jobs[job_name])
+    _finish_manual_sync(request["id"], result is not None)
+    return job_name
 
 
 def main() -> None:
@@ -207,7 +268,7 @@ def main() -> None:
     )
     next_geography = _next_due(
         "amazon_spapi",
-        "orders_geography_v2026",
+        GEOGRAPHY_JOB,
         ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS,
     )
 
@@ -265,6 +326,19 @@ def main() -> None:
 
     while not STOP:
         now = time.monotonic()
+
+        manual_job = _run_manual_sync()
+        if manual_job:
+            now = time.monotonic()
+            if manual_job == "orders_v2026": next_orders = now + settings.orders_interval_seconds
+            elif manual_job == "fba_inventory_v1": next_inventory = now + settings.inventory_interval_seconds
+            elif manual_job == "finances_v2024": next_finances = now + settings.finances_interval_seconds
+            elif manual_job == "settlement_reports_v2": next_settlements = now + settings.settlement_reports_interval_seconds
+            elif manual_job == "sales_traffic_2024_04_24": next_data_kiosk = now + settings.data_kiosk_interval_seconds
+            elif manual_job == "merchant_listings_all_data": next_listings_report = now + settings.listings_report_interval_seconds
+            elif manual_job == "catalog_items_2022_04_01": next_catalog = now + settings.catalog_interval_seconds
+            elif manual_job == GEOGRAPHY_JOB: next_geography = now + ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS
+            elif manual_job == "month_close": next_finance_close = now + FINANCE_CLOSE_INTERVAL_SECONDS
 
         if now >= next_orders:
             order_result = _run("orders", ingest_orders)

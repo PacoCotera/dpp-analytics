@@ -76,7 +76,7 @@ JOB_DEFINITIONS = {
         "interval_seconds": lambda: _seconds("CATALOG_INTERVAL_SECONDS", 86400),
         "grace_seconds": 86400,
     },
-    ("amazon_spapi", "orders_geography_v2026"): {
+    ("amazon_spapi", "orders_geography_state_v2026"): {
         "label": "Order geography",
         "operation": "Amazon SP-API · Orders geography backfill",
         "purpose": "Enriches historical orders for Sales geography decisions.",

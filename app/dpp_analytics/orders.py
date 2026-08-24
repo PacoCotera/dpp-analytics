@@ -15,7 +15,7 @@ from .spapi import SpApiClient
 
 SOURCE = "amazon_spapi"
 JOB = "orders_v2026"
-GEOGRAPHY_JOB = "orders_geography_v2026"
+GEOGRAPHY_JOB = "orders_geography_state_v2026"
 FULFILLMENT_BACKFILL_CURSOR = "fulfillment_csv_v1_complete"
 
 
