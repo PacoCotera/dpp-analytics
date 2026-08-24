@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS ops.catalog_item_attempt (
     marketplace_id text NOT NULL,
     asin text NOT NULL,
@@ -62,9 +60,3 @@ LEFT JOIN core.catalog_item ci
 
 COMMENT ON VIEW mart.catalog_onboarding_state IS
 'Catalog ingestion lifecycle. Seller Listings owns discovery; ops.catalog_item_attempt proves request attempts; core.catalog_item exists only when Amazon actually returned an entity. A 48-hour grace separates normal propagation from source attention.';
-
-INSERT INTO ops.schema_migrations(filename)
-VALUES ('050_catalog_attempt_tracking.sql')
-ON CONFLICT (filename) DO NOTHING;
-
-COMMIT;
