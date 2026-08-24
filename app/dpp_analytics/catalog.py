@@ -55,6 +55,7 @@ def ingest_catalog() -> dict[str, int]:
         client = SpApiClient()
         try:
             written = 0
+            missing = 0
             for start in range(0, len(asins), 20):
                 batch = asins[start:start + 20]
                 payload = client.get(
@@ -72,8 +73,25 @@ def ingest_catalog() -> dict[str, int]:
                     },
                 )
                 items = payload.get("items") or []
+                returned_asins = {str(item.get("asin")) for item in items if item.get("asin")}
+                missing += len(set(batch) - returned_asins)
                 run["records_read"] += len(items)
                 with db.connect() as conn, conn.cursor() as cur:
+                    # Record the attempt even when Amazon has not propagated a new
+                    # ASIN into Catalog Items yet. This lets the board distinguish
+                    # "not attempted" from "attempted but still propagating".
+                    cur.execute(
+                        """
+                        INSERT INTO core.catalog_item(
+                            marketplace_id, asin, catalog_last_attempt_at, updated_at
+                        )
+                        SELECT %s, requested_asin, now(), now()
+                        FROM unnest(%s::text[]) AS requested_asin
+                        ON CONFLICT (marketplace_id, asin) DO UPDATE SET
+                            catalog_last_attempt_at=now()
+                        """,
+                        (settings.marketplace_id, batch),
+                    )
                     for item in items:
                         asin = item.get("asin")
                         if not asin:
@@ -85,8 +103,9 @@ def ingest_catalog() -> dict[str, int]:
                             INSERT INTO core.catalog_item(
                                 marketplace_id, asin, title, image_url, image_width, image_height,
                                 attributes, relationships, product_types,
-                                variation_theme, variation_attributes, updated_at
-                            ) VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb,%s,%s,now())
+                                variation_theme, variation_attributes,
+                                catalog_last_attempt_at, catalog_enriched_at, updated_at
+                            ) VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb,%s,%s,now(),now(),now())
                             ON CONFLICT (marketplace_id, asin) DO UPDATE SET
                                 title=EXCLUDED.title,
                                 image_url=EXCLUDED.image_url,
@@ -97,6 +116,8 @@ def ingest_catalog() -> dict[str, int]:
                                 product_types=EXCLUDED.product_types,
                                 variation_theme=EXCLUDED.variation_theme,
                                 variation_attributes=EXCLUDED.variation_attributes,
+                                catalog_last_attempt_at=now(),
+                                catalog_enriched_at=now(),
                                 updated_at=now()
                             """,
                             (
@@ -116,6 +137,11 @@ def ingest_catalog() -> dict[str, int]:
                         written += 1
                     conn.commit()
             run["records_written"] = written
-            return {"records_read": run["records_read"], "records_written": written}
+            return {
+                "records_read": run["records_read"],
+                "records_written": written,
+                "requested_asins": len(asins),
+                "missing_asins": missing,
+            }
         finally:
             client.close()
