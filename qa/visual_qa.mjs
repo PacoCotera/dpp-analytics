@@ -200,6 +200,19 @@ async function verifyBusiness(page) {
       expectedItems: Math.min(4, exceptions.length),
       expectedMore: exceptions.length > 0 && total > Math.min(4, exceptions.length),
       healthDomains: document.querySelectorAll('.business-health-card').length,
+      rhythmCurrentBand: document.querySelectorAll('#spark .home-rhythm__current-week').length,
+      rhythmLatestRead: Boolean(
+        document.querySelector('#spark .home-rhythm__latest-dot') &&
+          document.querySelector('#spark .home-rhythm__latest-label'),
+      ),
+      rhythmExceptionalDays: document.querySelectorAll(
+        '#spark .home-rhythm__bar--exceptional',
+      ).length,
+      rhythmWeekendDays: document.querySelectorAll('#spark .home-rhythm__bar--weekend').length,
+      signalCopy: document
+        .querySelector('.rhythm-panel .panel__description')
+        ?.textContent?.toLowerCase()
+        .includes('seven-day signal'),
       productDriversRemoved: !document.querySelector('.drivers, #movers, .driver'),
       adsVisible: Boolean(ads && !ads.hidden && getComputedStyle(ads).display !== 'none'),
       adsExpected: Boolean(payload.ads?.through_date),
@@ -216,6 +229,11 @@ async function verifyBusiness(page) {
     state.clearState !== (state.expectedItems === 0) ||
     state.moreVisible !== state.expectedMore ||
     state.healthDomains !== 3 ||
+    state.rhythmCurrentBand !== 1 ||
+    !state.rhythmLatestRead ||
+    state.rhythmExceptionalDays < 1 ||
+    state.rhythmWeekendDays < 1 ||
+    !state.signalCopy ||
     !state.productDriversRemoved ||
     state.adsVisible !== state.adsExpected ||
     !state.adsAfterHealth
