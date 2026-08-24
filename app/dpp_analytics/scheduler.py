@@ -38,13 +38,29 @@ def _stop(signum: int, frame: object) -> None:
     log.info("shutdown requested signal=%s", signum)
 
 
-def _run(name: str, fn: Callable[[], dict]) -> None:
+def _run(name: str, fn: Callable[[], dict]) -> dict | None:
     started = time.monotonic()
     try:
         result = fn()
-        log.info("job=%s status=success result=%s elapsed=%.2fs", name, result, time.monotonic() - started)
+        log.info(
+            "job=%s status=success result=%s elapsed=%.2fs",
+            name,
+            result,
+            time.monotonic() - started,
+        )
+        return result
     except Exception:
         log.exception("job=%s status=error elapsed=%.2fs", name, time.monotonic() - started)
+        return None
+
+
+def _refresh_catalog_cache_if_written(result: dict | None, kind: str) -> None:
+    if int((result or {}).get("records_written") or 0) <= 0:
+        return
+    _run(
+        f"catalog_{kind}_cache_refresh",
+        lambda: db.refresh_catalog_hot_path_cache(kind),
+    )
 
 
 def _probe_product_roles() -> tuple[bool, dict]:
@@ -52,10 +68,17 @@ def _probe_product_roles() -> tuple[bool, dict]:
     try:
         result = product_roles_probe()
         listing_ok = (result.get("product_listing") or {}).get("status") == "ok"
-        log.info("job=product_roles_probe status=success result=%s elapsed=%.2fs", result, time.monotonic() - started)
+        log.info(
+            "job=product_roles_probe status=success result=%s elapsed=%.2fs",
+            result,
+            time.monotonic() - started,
+        )
         return listing_ok, result
     except Exception:
-        log.exception("job=product_roles_probe status=error elapsed=%.2fs", time.monotonic() - started)
+        log.exception(
+            "job=product_roles_probe status=error elapsed=%.2fs",
+            time.monotonic() - started,
+        )
         return False, {}
 
 
@@ -73,7 +96,11 @@ def _next_due(source: str, job_name: str, interval: int) -> float:
     try:
         age = db.seconds_since_last_success(source, job_name)
     except Exception:
-        log.exception("could not read last-success age source=%s job=%s; scheduling immediately", source, job_name)
+        log.exception(
+            "could not read last-success age source=%s job=%s; scheduling immediately",
+            source,
+            job_name,
+        )
         return 0.0
     if age is None or age >= interval:
         return 0.0
@@ -152,7 +179,9 @@ def main() -> None:
         return
 
     if not settings.production_ingestion_enabled:
-        log.info("SP-API production credentials active; ingestion kill-switch is OFF, running read-only authorization probes only")
+        log.info(
+            "SP-API production credentials active; ingestion kill-switch is OFF, running read-only authorization probes only"
+        )
         _probe_loop("production_probe", production_probe, settings.production_probe_interval_seconds)
         return
 
@@ -166,36 +195,80 @@ def main() -> None:
     else:
         log.info("Amazon Ads ingestion disabled")
 
-    next_listings_report = _next_due("amazon_reports", "merchant_listings_all_data", settings.listings_report_interval_seconds)
-    next_settlements = _next_due("amazon_reports", "settlement_reports_v2", settings.settlement_reports_interval_seconds)
-    next_geography = _next_due("amazon_spapi", "orders_geography_v2026", ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS)
+    next_listings_report = _next_due(
+        "amazon_reports",
+        "merchant_listings_all_data",
+        settings.listings_report_interval_seconds,
+    )
+    next_settlements = _next_due(
+        "amazon_reports",
+        "settlement_reports_v2",
+        settings.settlement_reports_interval_seconds,
+    )
+    next_geography = _next_due(
+        "amazon_spapi",
+        "orders_geography_v2026",
+        ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS,
+    )
 
     catalog_role_ready = False
     if settings.catalog_enabled:
         catalog_role_ready, product_roles = _probe_product_roles()
         if not catalog_role_ready:
             pricing_ok = (product_roles.get("pricing") or {}).get("status") == "ok"
-            log.warning("Catalog Items enrichment paused: Product Listing is not authorized yet; pricing_authorized=%s", pricing_ok)
+            log.warning(
+                "Catalog Items enrichment paused: Product Listing is not authorized yet; pricing_authorized=%s",
+                pricing_ok,
+            )
     else:
         log.info("Catalog Items enrichment disabled")
 
     next_orders = 0.0
-    next_inventory = _next_due("amazon_spapi", "fba_inventory_v1", settings.inventory_interval_seconds)
-    next_finances = _next_due("amazon_spapi", "finances_v2024", settings.finances_interval_seconds)
+    next_inventory = _next_due(
+        "amazon_spapi", "fba_inventory_v1", settings.inventory_interval_seconds
+    )
+    next_finances = _next_due(
+        "amazon_spapi", "finances_v2024", settings.finances_interval_seconds
+    )
     next_finance_close = _next_due("dpp_finance", "month_close", FINANCE_CLOSE_INTERVAL_SECONDS)
     if settings.catalog_enabled and catalog_role_ready:
-        next_catalog = 0.0 if _catalog_metadata_backfill_needed() else _next_due("amazon_spapi", "catalog_items_2022_04_01", settings.catalog_interval_seconds)
+        next_catalog = (
+            0.0
+            if _catalog_metadata_backfill_needed()
+            else _next_due(
+                "amazon_spapi",
+                "catalog_items_2022_04_01",
+                settings.catalog_interval_seconds,
+            )
+        )
     else:
         next_catalog = float("inf")
-    next_product_roles_probe = time.monotonic() + settings.production_probe_interval_seconds if settings.catalog_enabled else float("inf")
-    next_data_kiosk = _next_due("amazon_data_kiosk", "sales_traffic_2024_04_24", settings.data_kiosk_interval_seconds)
-    next_ads = _next_due("amazon_ads", "sponsored_products_reporting_v3", settings.ads_reporting_interval_seconds) if settings.ads_enabled and settings.ads_credentials_present else float("inf")
+    next_product_roles_probe = (
+        time.monotonic() + settings.production_probe_interval_seconds
+        if settings.catalog_enabled
+        else float("inf")
+    )
+    next_data_kiosk = _next_due(
+        "amazon_data_kiosk",
+        "sales_traffic_2024_04_24",
+        settings.data_kiosk_interval_seconds,
+    )
+    next_ads = (
+        _next_due(
+            "amazon_ads",
+            "sponsored_products_reporting_v3",
+            settings.ads_reporting_interval_seconds,
+        )
+        if settings.ads_enabled and settings.ads_credentials_present
+        else float("inf")
+    )
 
     while not STOP:
         now = time.monotonic()
 
         if now >= next_orders:
-            _run("orders", ingest_orders)
+            order_result = _run("orders", ingest_orders)
+            _refresh_catalog_cache_if_written(order_result, "sku_activity")
             next_orders = time.monotonic() + settings.orders_interval_seconds
 
         if now >= next_geography:
@@ -223,7 +296,9 @@ def main() -> None:
             _run("seller_listings_report", ingest_listings_report)
             next_listings_report = time.monotonic() + settings.listings_report_interval_seconds
             if catalog_role_ready and _catalog_metadata_backfill_needed():
-                log.info("Seller listings exposed unresolved Catalog onboarding; pulling Catalog run forward")
+                log.info(
+                    "Seller listings exposed unresolved Catalog onboarding; pulling Catalog run forward"
+                )
                 next_catalog = min(next_catalog, time.monotonic())
 
         if now >= next_product_roles_probe:
@@ -234,7 +309,10 @@ def main() -> None:
                 next_catalog = time.monotonic()
             elif not catalog_role_ready:
                 pricing_ok = (product_roles.get("pricing") or {}).get("status") == "ok"
-                log.warning("Product Listing still unavailable; Catalog Items enrichment remains paused; pricing_authorized=%s", pricing_ok)
+                log.warning(
+                    "Product Listing still unavailable; Catalog Items enrichment remains paused; pricing_authorized=%s",
+                    pricing_ok,
+                )
                 next_catalog = float("inf")
             next_product_roles_probe = time.monotonic() + settings.production_probe_interval_seconds
 
@@ -242,12 +320,16 @@ def main() -> None:
             _run("catalog", ingest_catalog)
             if _catalog_metadata_backfill_needed():
                 next_catalog = time.monotonic() + CATALOG_ONBOARDING_RETRY_SECONDS
-                log.info("Catalog onboarding still unresolved; retrying in %ss", CATALOG_ONBOARDING_RETRY_SECONDS)
+                log.info(
+                    "Catalog onboarding still unresolved; retrying in %ss",
+                    CATALOG_ONBOARDING_RETRY_SECONDS,
+                )
             else:
                 next_catalog = time.monotonic() + settings.catalog_interval_seconds
 
         if now >= next_data_kiosk:
-            _run("data_kiosk", ingest_sales_traffic)
+            data_kiosk_result = _run("data_kiosk", ingest_sales_traffic)
+            _refresh_catalog_cache_if_written(data_kiosk_result, "traffic")
             next_data_kiosk = time.monotonic() + settings.data_kiosk_interval_seconds
 
         if now >= next_ads:
