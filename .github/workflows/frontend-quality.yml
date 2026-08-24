@@ -113,6 +113,7 @@ jobs:
           node --check qa/nav_qa.mjs
           node --check qa/product_naming_qa.mjs
           node --check qa/geography_qa.mjs
+          node --check qa/cache_performance_qa.mjs
 
   compose-config:
     runs-on: ubuntu-latest
