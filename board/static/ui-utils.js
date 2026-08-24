@@ -54,7 +54,9 @@ export function byId(id) {
 
 export async function fetchJson(url, options = {}) {
   if (!window.DPPDataCache?.fetchJson) throw new Error('DPP data cache unavailable');
-  return window.DPPDataCache.fetchJson(url, options);
+  const cacheOptionKeys = ['ttlMs', 'forceRefresh', 'fetchOptions'];
+  const isCacheOptions = cacheOptionKeys.some((key) => Object.prototype.hasOwnProperty.call(options, key));
+  return window.DPPDataCache.fetchJson(url, isCacheOptions ? options : { fetchOptions: options });
 }
 
 export function setText(id, value) {
