@@ -73,7 +73,7 @@ Required behavior:
 - immutable byte payloads in cache;
 - endpoint-specific TTLs;
 - `refresh=1` bypass that rebuilds and replaces the cache entry;
-- response headers exposing HIT/MISS/REFRESH and cache age for diagnostics;
+- response headers exposing HIT/MISS/REFRESH, cache age and cold-build duration for diagnostics;
 - `/health` remains uncached because it is a liveness/dependency probe.
 
 Initial TTLs are intentionally conservative and can be tuned from observed behavior:
@@ -138,6 +138,7 @@ Board API responses expose:
 - `X-DPP-Cache: HIT | MISS | REFRESH`;
 - `X-DPP-Cache-Age` in seconds;
 - `X-DPP-Cache-TTL` in seconds;
+- `X-DPP-Build-Ms`, the cold payload build duration for MISS/REFRESH and `0` for a HIT;
 - standard `Content-Length`, which provides serialized response size.
 
 Sales Geography production QA records the serialized byte size and cache status of both the core Sales payload and the lazy geography payload. This creates an executable payload-shaping check without turning Data Health into a performance UI prematurely.
@@ -171,7 +172,8 @@ These are application targets, not correctness substitutes:
 
 - [x] split Sales geography into a lazy cached endpoint;
 - [ ] inspect other default payloads for optional heavy detail;
-- [ ] add endpoint build-time instrumentation and Data Health visibility;
+- [x] expose per-response cold-build timing;
+- [ ] add aggregate cache/build visibility to Data Health if production measurements justify it;
 - [ ] rank slow SQL by measured cold-build contribution.
 
 ### Phase 3 — PostgreSQL KPI persistence
