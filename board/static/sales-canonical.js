@@ -912,9 +912,8 @@
   }
   async function load() {
     try {
-      const r = await fetch('/api/sales', { cache: 'no-store' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      DATA = await r.json();
+      if (!window.DPPDataCache?.fetchJson) throw new Error('DPP data cache unavailable');
+      DATA = await window.DPPDataCache.fetchJson('/api/sales');
       render();
     } catch (e) {
       set('asof', 'Sales data unavailable');
