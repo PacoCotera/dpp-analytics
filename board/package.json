@@ -7,7 +7,7 @@
     "lint:contract": "node scripts/frontend-contract.mjs",
     "lint:js": "eslint static/**/*.js --no-warn-ignored",
     "lint:css": "stylelint 'static/**/*.css'",
-    "format:check": "prettier --write 'static/**/*.{css,html,js}' && git diff --exit-code -- static/data_health.html static/data-health.js",
+    "format:check": "prettier --check 'static/**/*.{css,html,js}'",
     "format": "prettier --write 'static/**/*.{css,html,js}'",
     "quality": "npm run lint && npm run format:check"
   },
