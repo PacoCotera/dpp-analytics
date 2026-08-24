@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "npm run lint:js && npm run lint:css",
+    "lint": "npm run lint:contract && npm run lint:js && npm run lint:css",
+    "lint:contract": "node scripts/frontend-contract.mjs",
     "lint:js": "eslint static/**/*.js --no-warn-ignored",
     "lint:css": "stylelint 'static/**/*.css'",
     "format:check": "prettier --check 'static/**/*.{css,html,js}'",

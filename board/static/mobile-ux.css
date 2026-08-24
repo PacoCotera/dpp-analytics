@@ -1,8 +1,0 @@
-/* Deprecated compatibility shim.
-
-   Responsive behavior is owned by the application shell, layout-system.css, and
-   each workspace stylesheet. This file intentionally contains no selectors.
-
-   Keep the empty asset for one deployment generation so cached HTML from the
-   previous release can still request it during rollout. Remove the remaining
-   stylesheet links and this file after production convergence is verified. */
