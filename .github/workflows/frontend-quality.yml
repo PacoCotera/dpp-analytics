@@ -121,12 +121,20 @@ jobs:
 
       - name: Validate browser QA scripts
         run: |
-          node --check qa/visual_qa.mjs
-          node --check qa/nav_qa.mjs
-          node --check qa/product_naming_qa.mjs
-          node --check qa/geography_qa.mjs
-          node --check qa/cache_performance_qa.mjs
-          node --check qa/catalog_onboarding_qa.mjs
+          set -euo pipefail
+          for file in qa/*.mjs; do
+            node --check "$file"
+          done
+
+  qa-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build production browser QA image
+        run: docker build -t dpp-qa-quality qa
 
   compose-config:
     runs-on: ubuntu-latest
