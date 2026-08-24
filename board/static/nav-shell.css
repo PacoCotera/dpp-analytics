@@ -10,6 +10,82 @@ a.brand:focus-visible {
   outline-offset: 4px;
 }
 
+.primary-nav {
+  display: flex;
+  gap: 5px;
+  overflow: auto;
+  margin: 18px 0 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x proximity;
+}
+
+.primary-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.primary-nav a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 13px;
+  border-radius: 999px !important;
+  color: #665f56;
+  font-size: 12px;
+  font-weight: 680;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  box-shadow: none !important;
+  transition: 0.18s ease;
+}
+
+.primary-nav a:hover {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.primary-nav a.active {
+  background: var(--ink);
+  color: #fff6e8;
+  box-shadow: 0 6px 16px rgba(28, 26, 23, 0.12);
+}
+
+.primary-nav a:not(.active) {
+  background: transparent !important;
+  color: #665f56 !important;
+}
+
+.primary-nav a.active:not(.today-link) {
+  border-radius: 999px !important;
+  background: var(--ink) !important;
+  color: #fff6e8 !important;
+  box-shadow: 0 6px 16px rgba(28, 26, 23, 0.12) !important;
+}
+
+.primary-nav a.today-link:not(.active) {
+  background: transparent !important;
+  color: #7f4900 !important;
+}
+
+.primary-nav a.today-link {
+  background: #f6dfbd;
+  color: #7f4900;
+}
+
+.primary-nav a.today-link.active {
+  border-radius: 999px !important;
+  background: var(--accent) !important;
+  color: #231304 !important;
+  box-shadow: 0 6px 16px rgba(229, 139, 31, 0.16) !important;
+}
+
+.primary-nav a.disabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
 .primary-nav.app-navigation {
   display: flex;
   align-items: center;
@@ -192,5 +268,28 @@ a.brand:focus-visible {
   }
   .nav-more > summary > span:first-child:before {
     font-size: 11.5px;
+  }
+}
+
+@media (max-width: 640px) {
+  .primary-nav {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    margin: 12px -14px 18px;
+    padding: 8px 18px 9px;
+    border-bottom: 1px solid rgba(207, 197, 183, 0.85);
+    background: rgba(248, 245, 239, 0.94);
+    box-shadow: 0 7px 20px rgba(52, 43, 29, 0.06);
+    backdrop-filter: blur(14px);
+    scroll-padding-inline: 40%;
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .primary-nav a {
+    min-height: 42px;
+    padding: 0 14px;
+    font-size: 13px;
+    scroll-snap-align: center;
   }
 }

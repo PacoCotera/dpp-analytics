@@ -20,12 +20,10 @@ const pageStyles = {
   'today.html': 'today.css',
   'trajectory.html': 'trajectory.css',
 };
-const sharedStyles = ['theme.css', 'design-refine.css', 'nav-shell.css', 'layout-system.css'];
+const sharedStyles = ['theme.css', 'nav-shell.css', 'layout-system.css'];
 const failures = [];
-const sharedRefinements = readFileSync(join(staticRoot, 'design-refine.css'), 'utf8').replace(
-  /\/\*[\s\S]*?\*\//g,
-  '',
-);
+const theme = readFileSync(join(staticRoot, 'theme.css'), 'utf8');
+const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
 
 function check(condition, page, message) {
   if (!condition) failures.push(`${page}: ${message}`);
@@ -40,6 +38,7 @@ for (const page of pages) {
 
   check(page in pageStyles, page, 'page stylesheet is not declared in the frontend contract');
   check(!/mobile-ux\.css/i.test(html), page, 'deprecated mobile compatibility shim is loaded');
+  check(!/design-refine\.css/i.test(html), page, 'deprecated shared refinement layer is loaded');
   check(!/<style\b/i.test(html) && !/\sstyle\s*=/i.test(html), page, 'contains inline CSS');
   check(
     !/\/assets\/[^"'?#]+\.(?:css|js)\?[^"']+/i.test(html),
@@ -89,14 +88,15 @@ for (const expected of Object.keys(pageStyles)) {
 }
 
 check(
-  !/\bbody(?:\.|#|:has\()/i.test(sharedRefinements),
-  'design-refine.css',
-  'shared refinements must not target a page through body identity',
+  !readdirSync(staticRoot).includes('design-refine.css'),
+  'static',
+  'deprecated refinement layer still exists',
 );
+check(!/\.primary-nav|\.nav-more/.test(theme), 'theme.css', 'navigation rules belong to nav-shell.css');
 check(
-  !/#[a-z][\w-]*[^{}]*\{/i.test(sharedRefinements),
-  'design-refine.css',
-  'shared refinements must not target page DOM ids',
+  !/\.primary-nav|\.nav-more/.test(layout),
+  'layout-system.css',
+  'navigation rules belong to nav-shell.css',
 );
 
 if (failures.length) {
