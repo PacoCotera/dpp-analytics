@@ -460,19 +460,51 @@ def _family_rollup(rows: list[dict], traffic_median: float, conversion_median: f
     return sorted(out, key=lambda f: (not f["needs_attention"], -f["sales_t28"], f["name"] or ""))
 
 
+def _catalog_summary(rows: list[dict]) -> dict:
+    """Derive Catalog identity counts from the canonical product rowset.
+
+    The payload already fetches every portfolio row immediately after the old
+    summary query. Computing these small aggregates in memory avoids evaluating
+    mart.catalog_portfolio_product twice during each cold response while keeping
+    the public summary contract unchanged.
+    """
+    sellable_roles = {"SELLABLE_VARIATION", "SELLABLE_STANDALONE"}
+    sellable = [row for row in rows if row.get("product_role") in sellable_roles]
+    active_sellable = [
+        row
+        for row in sellable
+        if str(row.get("status") or "").lower() != "inactive"
+    ]
+
+    fetched_at = [row.get("fetched_at") for row in rows if row.get("fetched_at")]
+    traffic_dates = [
+        row.get("traffic_through_date")
+        for row in rows
+        if row.get("traffic_through_date")
+    ]
+    families = {
+        row.get("family_asin") for row in rows if row.get("family_asin") is not None
+    }
+
+    return {
+        "listing_records": len(rows),
+        "sellable_offers": len(sellable),
+        "structural_parents": sum(
+            row.get("product_role") == "STRUCTURAL_PARENT" for row in rows
+        ),
+        "sku_aliases": sum(
+            row.get("product_role") == "SELLER_SKU_ALIAS" for row in rows
+        ),
+        "active_sellable": len(active_sellable),
+        "inactive_sellable": len(sellable) - len(active_sellable),
+        "families": len(families),
+        "listings_fetched_at": max(fetched_at, default=None),
+        "traffic_through_date": max(traffic_dates, default=None),
+    }
+
+
 def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
     with connect() as conn, conn.cursor() as cur:
-        summary = _one(cur, """
-            SELECT count(*)::int AS listing_records,
-              count(*) FILTER (WHERE product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE'))::int AS sellable_offers,
-              count(*) FILTER (WHERE product_role = 'STRUCTURAL_PARENT')::int AS structural_parents,
-              count(*) FILTER (WHERE product_role = 'SELLER_SKU_ALIAS')::int AS sku_aliases,
-              count(*) FILTER (WHERE product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE') AND lower(COALESCE(status,'')) <> 'inactive')::int AS active_sellable,
-              count(*) FILTER (WHERE product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE') AND lower(COALESCE(status,'')) = 'inactive')::int AS inactive_sellable,
-              count(DISTINCT family_asin)::int AS families, max(fetched_at) AS listings_fetched_at,
-              max(traffic_through_date) AS traffic_through_date
-            FROM mart.catalog_portfolio_product WHERE marketplace_id=%s
-        """, (marketplace,))
         rows = _all(cur, """
             SELECT p.marketplace_id, p.seller_sku AS sku, p.asin, p.parent_asin, p.family_asin, p.product_role,
                    p.offer_rank, p.offer_owner_sku, p.is_offer_owner, p.title AS product, p.image_url, p.image_source,
@@ -499,6 +531,7 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         """, (marketplace,))
         local_clock = _one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
+    summary = _catalog_summary(rows)
     rows = decorate_products(rows)
     costs = _product_costs()
     taxonomy = _product_taxonomy()
@@ -577,3 +610,4 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         },
         "local_time": local_clock.get("local_time"),
     }
+
