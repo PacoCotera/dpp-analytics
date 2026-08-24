@@ -32,14 +32,15 @@
         ><a href="/finance">Finance</a>
       </nav>
       <main class="home-main">
-        <header class="page-header">
-          <div>
-            <h1 class="page-header__title">Business</h1>
-            <p class="page-header__description">
-              Exceptions, decisions and the performance evidence behind them.
+        <section class="business-brief" aria-label="Business read">
+          <div class="business-brief__read">
+            <div class="state-read__eyebrow">Business pulse</div>
+            <h1 class="state-read__title" id="stateHeadline">Reading the business…</h1>
+            <p class="state-read__copy" id="stateCopy">
+              Comparing the last four weeks with the prior four and checking operating exceptions.
             </p>
           </div>
-          <div class="page-header__aside">
+          <div class="business-brief__metrics">
             <div class="kpi-rail" aria-label="Business summary">
               <div
                 class="kpi"
@@ -63,19 +64,51 @@
               </div>
               <div class="kpi">
                 <strong class="kpi__value" id="decisionCount">—</strong
-                ><span class="kpi__label">Attention</span
-                ><small class="kpi__note" id="decisionNote">operating decisions</small>
+                ><span class="kpi__label">Exceptions</span
+                ><small class="kpi__note" id="decisionNote">current operating flags</small>
               </div>
             </div>
           </div>
-        </header>
-        <section class="state-read" aria-label="Business state">
-          <div>
-            <div class="state-read__eyebrow">Operating read</div>
-            <h2 class="state-read__title" id="stateHeadline">Reading the business…</h2>
-            <p class="state-read__copy" id="stateCopy">
-              Comparing the last four weeks with the prior four and checking operating exceptions.
-            </p>
+        </section>
+        <section class="home-working">
+          <div class="panel rhythm-panel">
+            <div class="panel__header">
+              <div>
+                <h2 class="panel__title">Demand pulse</h2>
+                <div class="panel__description">
+                  13 weeks · shopper spend incl. IVA · reconciled Amazon Sales &amp; Traffic · four-week
+                  signal · current week partial
+                </div>
+              </div>
+              <a class="section-header__action" href="/sales">Open Sales →</a>
+            </div>
+            <div class="panel__body"><svg class="spark" id="spark" viewBox="0 0 960 320"></svg></div>
+          </div>
+        </section>
+        <section class="panel attention-panel" aria-label="Attention and decisions">
+          <div class="panel__body">
+            <div class="attention-head">
+              <div>
+                <div class="attention-kicker">Decisions</div>
+                <div class="attention-title" id="attentionTitle">Checking for exceptions…</div>
+              </div>
+              <div class="attention-count" id="attentionCount">—</div>
+            </div>
+            <div class="attention-copy" id="attentionCopy">
+              Inventory and operating exceptions that need a decision appear here.
+            </div>
+            <div id="attention"></div>
+          </div>
+        </section>
+        <section class="page-section business-health">
+          <div class="section-header">
+            <div>
+              <div class="business-health__kicker">Business health</div>
+              <h2 class="section-header__title">What can change the next decision</h2>
+            </div>
+          </div>
+          <div class="business-health-grid" id="businessHealth">
+            <div class="empty"><strong>Reading business health</strong>One moment.</div>
           </div>
         </section>
         <section class="ads-read" id="adsRead" aria-label="Advertising context" hidden>
@@ -93,48 +126,6 @@
             <div><strong id="adsTacos">—</strong><span>TACOS</span></div>
           </div>
           <p id="adsNote">Sales interpretation remains independent until advertising data is available.</p>
-        </section>
-        <section class="panel attention-panel" aria-label="Attention and decisions">
-          <div class="panel__body">
-            <div class="attention-head">
-              <div>
-                <div class="attention-kicker">Decisions</div>
-                <div class="attention-title" id="attentionTitle">Checking for exceptions…</div>
-              </div>
-              <div class="attention-count" id="attentionCount">—</div>
-            </div>
-            <div class="attention-copy" id="attentionCopy">
-              Inventory and operating exceptions that need a decision appear here.
-            </div>
-            <div id="attention"></div>
-          </div>
-        </section>
-        <section class="home-working">
-          <div class="panel rhythm-panel">
-            <div class="panel__header">
-              <div>
-                <h2 class="panel__title">Business rhythm</h2>
-                <div class="panel__description">
-                  13 weeks · shopper spend incl. IVA · reconciled Amazon Sales &amp; Traffic · four-week
-                  signal · current week partial
-                </div>
-              </div>
-              <a class="section-header__action" href="/sales">Open Sales →</a>
-            </div>
-            <div class="panel__body"><svg class="spark" id="spark" viewBox="0 0 960 320"></svg></div>
-          </div>
-        </section>
-        <section class="page-section drivers">
-          <div class="section-header">
-            <div>
-              <div class="driver-kicker">Drivers</div>
-              <h2 class="section-header__title">What is driving the change</h2>
-            </div>
-            <a class="section-header__action" href="/catalog">Open Products →</a>
-          </div>
-          <div class="drivers-grid" id="movers">
-            <div class="empty"><strong>Reading product momentum</strong>One moment.</div>
-          </div>
         </section>
       </main>
       <footer class="footer home-footer">
