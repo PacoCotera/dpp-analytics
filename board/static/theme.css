@@ -265,57 +265,6 @@ h1 {
 .grid.main-aside {
   grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.75fr);
 }
-.card {
-  background: rgba(255, 253, 249, 0.62) !important;
-  border: 1px solid var(--line);
-  border-color: rgba(222, 215, 204, 0.86) !important;
-  border-radius: 16px !important;
-  box-shadow: none !important;
-  overflow: hidden;
-}
-.card-pad {
-  padding: 19px 20px;
-}
-.card.interactive {
-  transition: 0.18s ease;
-  cursor: pointer;
-}
-.card.interactive:hover {
-  transform: none !important;
-  box-shadow: none !important;
-  border-color: #c9bfb1 !important;
-  background: #fffdf9 !important;
-}
-.metric {
-  min-height: 112px !important;
-  padding: 15px 16px !important;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-.metric-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.metric-value {
-  font-size: clamp(29px, 3.2vw, 42px) !important;
-  font-weight: 830;
-  line-height: 1;
-  letter-spacing: -0.055em;
-  font-variant-numeric: tabular-nums;
-  margin: 7px 0 !important;
-}
-.metric-note {
-  font-size: 12px;
-  line-height: 1.35 !important;
-  color: var(--muted);
-}
-.metric-note strong {
-  color: var(--ink);
-}
 .good {
   color: var(--good) !important;
 }
@@ -432,40 +381,6 @@ h1 {
 .product-image,
 [class*='product'] > img {
   background: #fff !important;
-}
-.table-wrap {
-  overflow: auto;
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 760px;
-}
-.table th {
-  font-size: 10px;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  text-align: left;
-  color: var(--muted);
-  font-weight: 800;
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--line);
-  background: transparent !important;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-.table td {
-  padding: 13px 14px;
-  border-bottom: 1px solid #ebe4d9;
-  font-size: 13px;
-  vertical-align: middle;
-}
-.table tr:last-child td {
-  border-bottom: 0;
-}
-.table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.45) !important;
 }
 .num {
   text-align: right;
@@ -601,19 +516,6 @@ h1 {
   .grid.four {
     grid-template-columns: 1fr;
   }
-  .metric {
-    min-height: 0 !important;
-    padding: 13px 14px !important;
-  }
-  .metric-label {
-    font-size: 12px;
-  }
-  .metric-note {
-    font-size: 13px;
-  }
-  .metric-value {
-    font-size: 31px !important;
-  }
   .section {
     margin-top: 22px !important;
   }
@@ -631,12 +533,6 @@ h1 {
   }
   .section-sub {
     margin-top: 2px !important;
-  }
-  .card-pad {
-    padding: 14px !important;
-  }
-  .card {
-    border-radius: 14px !important;
   }
   .grid {
     gap: 8px !important;
@@ -674,11 +570,5 @@ h1 {
   }
   .notice {
     font-size: 14px;
-  }
-  .table td {
-    font-size: 14px;
-  }
-  .table th {
-    font-size: 12px;
   }
 }
