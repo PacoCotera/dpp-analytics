@@ -70,11 +70,7 @@
   }
 
   async function fetchJson(url, options = {}) {
-    const {
-      ttlMs = ttlFor(url),
-      forceRefresh = false,
-      fetchOptions = {},
-    } = options;
+    const { ttlMs = ttlFor(url), forceRefresh = false, fetchOptions = {} } = options;
     const method = String(fetchOptions.method || 'GET').toUpperCase();
     const key = canonicalUrl(url);
     const now = Date.now();
