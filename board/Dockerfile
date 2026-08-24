@@ -31,6 +31,7 @@ PY
 # replaces only payload owners that need stronger canonical contracts.
 COPY board/server.py ./server_legacy.py
 COPY board/server_canonical.py ./server.py
+COPY board/response_cache.py .
 COPY board/geo_reference.py .
 COPY board/home_api.py .
 # Keep the mature API implementations as legacy readers and make the canonical
