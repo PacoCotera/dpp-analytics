@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#f4f0e8" />
-    <title>Dirty Pawz Press · Home</title>
+    <title>Dirty Pawz Press · Business</title>
     <link rel="stylesheet" href="/assets/theme.css" />
     <link rel="stylesheet" href="/assets/chart-system.css" />
     <link rel="stylesheet" href="/assets/mobile-ux.css" />
@@ -21,22 +21,22 @@
           <div class="mark">DP</div>
           <div class="brand-copy">
             <div class="brand-title">DIRTY PAWZ PRESS</div>
-            <div class="brand-sub">Amazon Mexico · Operating Board</div>
+            <div class="brand-sub">Business · Amazon Mexico</div>
           </div>
         </div>
         <div class="top-meta"><strong id="clock">--:--</strong><span id="fresh">Loading live data</span></div>
       </header>
       <nav class="primary-nav">
-        <a class="today-link" href="/today">Today</a><a class="active" href="/">Home</a
+        <a class="active" href="/">Business</a><a class="today-link" href="/today">Today</a
         ><a href="/sales">Sales</a><a href="/catalog">Products</a><a href="/inventory">Inventory</a
         ><a href="/finance">Finance</a>
       </nav>
       <main class="home-main">
         <header class="page-header">
           <div>
-            <h1 class="page-header__title">Home</h1>
+            <h1 class="page-header__title">Business</h1>
             <p class="page-header__description">
-              Business state, operating decisions and the drivers behind them.
+              Exceptions, decisions and the performance evidence behind them.
             </p>
           </div>
           <div class="page-header__aside">
@@ -71,14 +71,14 @@
         </header>
         <section class="state-read" aria-label="Business state">
           <div>
-            <div class="state-read__eyebrow">Business state</div>
+            <div class="state-read__eyebrow">Operating read</div>
             <h2 class="state-read__title" id="stateHeadline">Reading the business…</h2>
             <p class="state-read__copy" id="stateCopy">
               Comparing the last four weeks with the prior four and checking operating exceptions.
             </p>
           </div>
         </section>
-        <section class="ads-read" id="adsRead" aria-label="Advertising context">
+        <section class="ads-read" id="adsRead" aria-label="Advertising context" hidden>
           <div class="ads-read__head">
             <div>
               <div class="ads-read__eyebrow">Paid media context</div>
@@ -94,6 +94,21 @@
           </div>
           <p id="adsNote">Sales interpretation remains independent until advertising data is available.</p>
         </section>
+        <section class="panel attention-panel" aria-label="Attention and decisions">
+          <div class="panel__body">
+            <div class="attention-head">
+              <div>
+                <div class="attention-kicker">Decisions</div>
+                <div class="attention-title" id="attentionTitle">Checking for exceptions…</div>
+              </div>
+              <div class="attention-count" id="attentionCount">—</div>
+            </div>
+            <div class="attention-copy" id="attentionCopy">
+              Inventory and operating exceptions that need a decision appear here.
+            </div>
+            <div id="attention"></div>
+          </div>
+        </section>
         <section class="home-working">
           <div class="panel rhythm-panel">
             <div class="panel__header">
@@ -106,25 +121,8 @@
               </div>
               <a class="section-header__action" href="/sales">Open Sales →</a>
             </div>
-            <div class="panel__body">
-              <svg class="spark" id="spark" viewBox="0 0 960 320"></svg>
-            </div>
+            <div class="panel__body"><svg class="spark" id="spark" viewBox="0 0 960 320"></svg></div>
           </div>
-          <aside class="panel attention-panel" aria-label="Attention and decisions">
-            <div class="panel__body">
-              <div class="attention-head">
-                <div>
-                  <div class="attention-kicker">Attention</div>
-                  <div class="attention-title" id="attentionTitle">Checking for decisions…</div>
-                </div>
-                <div class="attention-count" id="attentionCount">—</div>
-              </div>
-              <div class="attention-copy" id="attentionCopy">
-                Inventory and operating exceptions that need a decision appear here.
-              </div>
-              <div id="attention"></div>
-            </div>
-          </aside>
         </section>
         <section class="page-section drivers">
           <div class="section-header">
