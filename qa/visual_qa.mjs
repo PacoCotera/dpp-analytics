@@ -148,6 +148,48 @@ async function verifyToday(page) {
   if (!state.mobile && (!state.evidenceOpen || (state.referencePresent && !state.referenceOpen)))
     throw new Error(`Today desktop evidence is collapsed: ${JSON.stringify(state)}`);
 }
+
+async function verifyBusiness(page) {
+  await wait(page, '#stateHeadline');
+  const state = await page.evaluate(async () => {
+    const payload = await (await fetch('/api/home', { cache: 'no-store' })).json();
+    const exceptions = (payload.inventory || []).filter(item =>
+      ['STOCKOUT', 'PRODUCE', 'PLAN'].includes(String(item.action || '').toUpperCase())
+    );
+    const total = Math.max(exceptions.length, Number(payload.inventory_summary?.needs_action || 0));
+    const attention = document.querySelector('.attention-panel');
+    const rhythm = document.querySelector('.rhythm-panel');
+    const ads = document.getElementById('adsRead');
+    const brand = document.querySelector('.topbar a.brand');
+    return {
+      title: document.querySelector('.page-header__title')?.textContent?.trim(),
+      activeNav: document.querySelector('.nav-primary-set > a.active')?.textContent?.trim(),
+      brandPath: brand ? new URL(brand.href).pathname : '',
+      attentionBeforeRhythm: Boolean(
+        attention && rhythm && attention.getBoundingClientRect().top < rhythm.getBoundingClientRect().top
+      ),
+      exceptionItems: document.querySelectorAll('.attention-item').length,
+      clearState: Boolean(document.querySelector('.attention-clear')),
+      moreVisible: Boolean(document.querySelector('.attention-more')),
+      expectedItems: Math.min(4, exceptions.length),
+      expectedMore: exceptions.length > 0 && total > Math.min(4, exceptions.length),
+      adsVisible: Boolean(ads && !ads.hidden && getComputedStyle(ads).display !== 'none'),
+      adsExpected: Boolean(payload.ads?.through_date),
+    };
+  });
+  if (
+    state.title !== 'Business' ||
+    state.activeNav !== 'Business' ||
+    state.brandPath !== '/today' ||
+    !state.attentionBeforeRhythm ||
+    state.exceptionItems !== state.expectedItems ||
+    state.clearState !== (state.expectedItems === 0) ||
+    state.moreVisible !== state.expectedMore ||
+    state.adsVisible !== state.adsExpected
+  ) {
+    throw new Error(`Business decision-board contract mismatch: ${JSON.stringify(state)}`);
+  }
+}
 async function verifyDataHealth(page) {
   await wait(page, '.health-summary');
   const mobile = await page.evaluate(() => window.innerWidth <= 640);
@@ -691,7 +733,7 @@ async function verifySalesOrders(page) {
 const scenarios = [
   ['today', '/today', ['mobile', 'desktop'], verifyToday],
   ['today-wall', '/today?wall=1', ['desktop']],
-  ['home', '/', ['mobile', 'tablet', 'desktop']],
+  ['business', '/', ['mobile', 'tablet', 'desktop'], verifyBusiness],
   ['sales-overview', '/sales', ['mobile', 'tablet', 'desktop'], verifySalesOverview],
   ['sales-products', '/sales', ['mobile', 'desktop'], verifySalesProducts],
   ['sales-orders', '/sales', ['mobile', 'desktop'], verifySalesOrders],
