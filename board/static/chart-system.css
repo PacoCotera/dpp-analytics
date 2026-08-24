@@ -96,6 +96,76 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+#spark .dpp-grid line {
+  stroke: #e6ded1;
+}
+#spark .dpp-axis text {
+  fill: #6c6257;
+}
+#spark .home-rhythm__current-week {
+  fill: #dca154;
+  opacity: 0.08;
+}
+#spark .home-rhythm__week-line {
+  stroke: #b9aa96;
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+  opacity: 0.22;
+}
+#spark .home-rhythm__bar {
+  fill: #c9a66f;
+  opacity: 0.76;
+}
+#spark .home-rhythm__bar--weekend {
+  fill: #dfd2bf;
+  opacity: 0.62;
+}
+#spark .home-rhythm__bar--exceptional {
+  fill: #df8b2d;
+  opacity: 0.92;
+}
+#spark .home-rhythm__area {
+  pointer-events: none;
+}
+#spark .home-rhythm__line-halo {
+  stroke: #faf7f1;
+  stroke-width: 6;
+}
+#spark .home-rhythm__line {
+  stroke: #4a4035;
+  stroke-width: 2.8;
+}
+#spark .home-rhythm__latest-dot {
+  fill: #e58b1f;
+  stroke: #fffaf2;
+  stroke-width: 2.5;
+  pointer-events: none;
+}
+#spark .home-rhythm__latest-label {
+  fill: #40372f;
+  font:
+    800 9px Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  paint-order: stroke;
+  stroke: #faf7f1;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+#spark .home-rhythm__current-label {
+  fill: #9a6425;
+  font:
+    800 7px Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
 .dpp-chart .dpp-dot {
   fill: #26231f;
   stroke: #f8f5ef;
