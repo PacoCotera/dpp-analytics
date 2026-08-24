@@ -10,9 +10,14 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: performance-history
+  cancel-in-progress: false
+
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, dpp-analytics]
+    timeout-minutes: 5
 
     steps:
       - name: Download production QA artifact
