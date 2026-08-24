@@ -1,3 +1,10 @@
+.story-number {
+  color: var(--ink);
+  font-size: 44px;
+  font-weight: 830;
+  letter-spacing: -0.05em;
+}
+
 .paid-context {
   display: flex;
   align-items: center;
@@ -295,6 +302,10 @@
   margin-bottom: 8px;
 }
 @media (max-width: 640px) {
+  .story-number {
+    font-size: 39px;
+  }
+
   .paid-context--empty {
     display: none;
   }
