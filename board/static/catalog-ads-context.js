@@ -1,4 +1,4 @@
-import { money, percent } from './ui-utils.js';
+import { fetchJson, money, percent } from './ui-utils.js';
 
 function pctRatio(value) {
   return value === null || value === undefined ? '—' : percent(100 * Number(value), { sign: false });
@@ -94,10 +94,7 @@ function attach(payload) {
 
 async function load() {
   try {
-    const response = await fetch('/api/catalog', { cache: 'no-store' });
-    if (!response.ok) return;
-    const payload = await response.json();
-    attach(payload);
+    attach(await fetchJson('/api/catalog'));
   } catch {
     // Catalog owns the primary loading/error state; Ads is optional enrichment.
   }

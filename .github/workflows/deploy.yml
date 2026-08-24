@@ -263,8 +263,23 @@ jobs:
           fi
           exit "$rc"
 
-      - name: Upload production browser QA artifacts
-        if: always()
+      - name: Upload compact production QA summaries
+        if: success()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: dpp-production-visual-qa-${{ github.run_id }}
+          path: |
+            /tmp/dpp-production-visual-qa/report.md
+            /tmp/dpp-production-visual-qa/summary.json
+            /tmp/dpp-production-visual-qa/**/*-summary.json
+            /tmp/dpp-production-visual-qa/performance-candidate-baseline.json
+          if-no-files-found: warn
+          retention-days: 3
+          compression-level: 9
+
+      - name: Upload full production QA failure diagnostics
+        if: failure()
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
@@ -274,7 +289,8 @@ jobs:
             /tmp/dpp-production-visual-qa-run.txt
             /tmp/dpp-production-visual-qa-exit-code.txt
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 14
+          compression-level: 9
 
       - name: Collect deployment heartbeat
         if: always()

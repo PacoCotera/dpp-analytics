@@ -19,30 +19,65 @@ on:
       - 'scripts/migrate.sh'
       - 'scripts/init-host-config.sh'
       - '.github/workflows/frontend-quality.yml'
-  push:
-    paths:
-      - 'app/**'
-      - 'board/static/**'
-      - 'board/*.py'
-      - 'board/package.json'
-      - 'board/eslint.config.js'
-      - 'board/.stylelintrc.json'
-      - 'board/.prettierrc.json'
-      - 'board/Dockerfile'
-      - 'compose.yml'
-      - '.env.example'
-      - 'qa/**'
-      - 'sql/init/**'
-      - 'sql/migrations/**'
-      - 'scripts/migrate.sh'
-      - 'scripts/init-host-config.sh'
-      - '.github/workflows/frontend-quality.yml'
-
 permissions:
   contents: read
 
+concurrency:
+  group: application-quality-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      board_python: ${{ steps.filter.outputs.board_python }}
+      board_image: ${{ steps.filter.outputs.board_image }}
+      worker_image: ${{ steps.filter.outputs.worker_image }}
+      qa: ${{ steps.filter.outputs.qa }}
+      compose: ${{ steps.filter.outputs.compose }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+
+    steps:
+      - name: Checkout change range
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed paths
+        id: filter
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" >changed-files.txt
+          cat changed-files.txt
+
+          workflow_changed=false
+          grep -Eq '^\.github/workflows/frontend-quality\.yml$' changed-files.txt && workflow_changed=true
+
+          emit() {
+            local name="$1"
+            local pattern="$2"
+            local value=false
+            if [[ "$workflow_changed" == true ]] || grep -Eq "$pattern" changed-files.txt; then
+              value=true
+            fi
+            echo "$name=$value" >>"$GITHUB_OUTPUT"
+          }
+
+          emit frontend '^(board/static/|board/(package\.json|eslint\.config\.js|\.stylelintrc\.json|\.prettierrc\.json)$)'
+          emit board_python '^board/[^/]+\.py$'
+          emit board_image '^(board/(Dockerfile|[^/]+\.py)$|compose\.yml$|\.env\.example$)'
+          emit worker_image '^app/'
+          emit qa '^qa/'
+          emit compose '^(compose\.yml$|\.env\.example$|scripts/init-host-config\.sh$)'
+          emit migrations '^(sql/(init|migrations)/|scripts/migrate\.sh$|compose\.yml$|\.env\.example$)'
+
   frontend-lint:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -64,6 +99,8 @@ jobs:
         run: npm run quality
 
   board-python:
+    needs: changes
+    if: needs.changes.outputs.board_python == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -85,6 +122,8 @@ jobs:
         run: python -m unittest -v test_response_cache.py test_catalog_onboarding.py
 
   board-image:
+    needs: changes
+    if: needs.changes.outputs.board_image == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -98,6 +137,8 @@ jobs:
         run: docker build --build-arg DEPLOY_SHA="${GITHUB_SHA}" -f board/Dockerfile -t dpp-board-quality .
 
   worker-image:
+    needs: changes
+    if: needs.changes.outputs.worker_image == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -108,6 +149,8 @@ jobs:
         run: docker build -t dpp-worker-quality app
 
   qa-syntax:
+    needs: changes
+    if: needs.changes.outputs.qa == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -127,6 +170,8 @@ jobs:
           done
 
   qa-image:
+    needs: changes
+    if: needs.changes.outputs.qa == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -137,6 +182,8 @@ jobs:
         run: docker build -t dpp-qa-quality qa
 
   compose-config:
+    needs: changes
+    if: needs.changes.outputs.compose == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -147,6 +194,8 @@ jobs:
         run: docker compose --env-file .env.example config --quiet
 
   migration-chain:
+    needs: changes
+    if: needs.changes.outputs.migrations == 'true'
     runs-on: ubuntu-latest
 
     steps:

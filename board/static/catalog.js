@@ -1,4 +1,4 @@
-import { byId, escapeHtml, integer, money } from './ui-utils.js';
+import { byId, escapeHtml, fetchJson, integer, money } from './ui-utils.js';
 
 const $ = byId;
 const esc = escapeHtml;
@@ -486,12 +486,7 @@ function render(data) {
 
 async function load() {
   try {
-    const response = await fetch('/api/catalog', { cache: 'no-store' });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || `HTTP ${response.status}`);
-    }
-    render(await response.json());
+    render(await fetchJson('/api/catalog'));
   } catch (error) {
     $('portfolio').innerHTML = `<div class="empty">Catalog unavailable · ${esc(error.message)}</div>`;
     $('asof').textContent = 'Feed unavailable';
