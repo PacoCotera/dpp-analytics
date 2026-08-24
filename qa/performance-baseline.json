@@ -4,11 +4,16 @@
   "accepted_from_commit": null,
   "accepted_at": null,
   "notes": "Initial baseline contract. Populate from an accepted production deployment after enough samples exist to distinguish normal run-to-run variance from regressions.",
+  "acceptance_policy": {
+    "minimum_successful_production_samples": 3,
+    "aggregation": "median"
+  },
   "threshold_policy": {
     "comparison_only": true,
     "warning_regression_pct": 25,
     "hard_regression_pct": 50,
-    "minimum_regression_ms": 75
+    "minimum_regression_ms": 75,
+    "minimum_regression_bytes": 16384
   },
   "api": {},
   "pages": {}
