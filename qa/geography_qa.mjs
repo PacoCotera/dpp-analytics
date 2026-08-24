@@ -9,8 +9,12 @@ await fs.mkdir(outDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
 const errors = [];
+let geographyRequests = 0;
 page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
 page.on('console', msg => { if (msg.type() === 'error') errors.push(`console: ${msg.text()}`); });
+page.on('request', request => {
+  if (new URL(request.url()).pathname === '/api/sales/geography') geographyRequests += 1;
+});
 
 const isOrdered = (values, direction) => values.every((value, index) => {
   if (!index) return true;
@@ -20,13 +24,35 @@ const isOrdered = (values, direction) => values.every((value, index) => {
 try {
   const response = await page.goto(`${baseUrl}/sales`, { waitUntil: 'domcontentloaded', timeout: 20000 });
   if (!response?.ok()) throw new Error(`Sales navigation returned ${response?.status() || 'no response'}`);
+  if (geographyRequests !== 0) throw new Error(`Sales initial load eagerly requested geography ${geographyRequests} time(s)`);
 
-  const api = await page.evaluate(async () => {
+  const coreApi = await page.evaluate(async () => {
     const r = await fetch('/api/sales', { cache: 'no-store' });
-    return { status: r.status, body: await r.json() };
+    const body = await r.json();
+    return {
+      status: r.status,
+      body,
+      cacheStatus: r.headers.get('X-DPP-Cache'),
+      payloadBytes: new TextEncoder().encode(JSON.stringify(body)).length,
+    };
   });
-  if (api.status !== 200) throw new Error(`Sales API ${api.status}`);
-  const geo = api.body?.geography || {};
+  if (coreApi.status !== 200) throw new Error(`Sales API ${coreApi.status}`);
+  if ('geography' in coreApi.body) throw new Error('Default Sales payload still contains geography');
+  if (!coreApi.cacheStatus) throw new Error('Default Sales payload did not expose cache status');
+
+  const geoApi = await page.evaluate(async () => {
+    const r = await fetch('/api/sales/geography', { cache: 'no-store' });
+    const body = await r.json();
+    return {
+      status: r.status,
+      body,
+      cacheStatus: r.headers.get('X-DPP-Cache'),
+      payloadBytes: new TextEncoder().encode(JSON.stringify(body)).length,
+    };
+  });
+  if (geoApi.status !== 200) throw new Error(`Sales geography API ${geoApi.status}`);
+  if (!geoApi.cacheStatus) throw new Error('Sales geography payload did not expose cache status');
+  const geo = geoApi.body?.geography || {};
   const coverage = geo.coverage || {};
   if (!Array.isArray(geo.daily) || !geo.daily.length) throw new Error('Postal geography daily fact is empty');
   if (!Array.isArray(geo.sku_daily) || !geo.sku_daily.length) throw new Error('Postal SKU geography fact is empty');
@@ -56,10 +82,12 @@ try {
   const leaked = forbidden.filter(word => keys.some(key => key.includes(word)));
   if (leaked.length) throw new Error(`Geography payload exposes forbidden PII-shaped keys: ${leaked.join(', ')}`);
 
+  const requestsBeforeOpen = geographyRequests;
   await page.locator('button[data-view="geography"]').click();
   await page.locator('#geography.view.active').waitFor({ state: 'visible', timeout: 5000 });
   await page.locator('#geoRankedRows tr').first().waitFor({ state: 'visible', timeout: 8000 });
   await page.locator('#geoMap path.state-shape').first().waitFor({ state: 'visible', timeout: 15000 });
+  if (geographyRequests <= requestsBeforeOpen) throw new Error('Opening Geography did not request its lazy payload');
 
   const national = await page.evaluate(() => {
     const scroll = document.querySelector('.geo-ranked-panel .data-table-scroll');
@@ -207,6 +235,14 @@ try {
   await page.screenshot({ path: path.join(outDir, 'sales-geography-postal-desktop.png'), fullPage: true });
   await fs.writeFile(path.join(outDir, 'geography-summary.json'), JSON.stringify({
     ok: true,
+    lazyContract: {
+      geographyRequestsBeforeOpen: requestsBeforeOpen,
+      geographyRequestsAfterOpen: geographyRequests,
+      corePayloadBytes: coreApi.payloadBytes,
+      geographyPayloadBytes: geoApi.payloadBytes,
+      coreCacheStatus: coreApi.cacheStatus,
+      geographyCacheStatus: geoApi.cacheStatus,
+    },
     coverage,
     referenceCount: references.length,
     national,
@@ -222,7 +258,22 @@ try {
     },
     postal,
   }, null, 2));
-  console.log(JSON.stringify({ ok: true, coverage, referenceCount: references.length, national, windingAudit, postal }));
+  console.log(JSON.stringify({
+    ok: true,
+    lazyContract: {
+      geographyRequestsBeforeOpen: requestsBeforeOpen,
+      geographyRequestsAfterOpen: geographyRequests,
+      corePayloadBytes: coreApi.payloadBytes,
+      geographyPayloadBytes: geoApi.payloadBytes,
+      coreCacheStatus: coreApi.cacheStatus,
+      geographyCacheStatus: geoApi.cacheStatus,
+    },
+    coverage,
+    referenceCount: references.length,
+    national,
+    windingAudit,
+    postal,
+  }));
 } catch (err) {
   await page.screenshot({ path: path.join(outDir, 'sales-geography-error.png'), fullPage: true }).catch(() => {});
   await fs.writeFile(path.join(outDir, 'geography-summary.json'), JSON.stringify({ ok: false, error: err.message, errors }, null, 2));
