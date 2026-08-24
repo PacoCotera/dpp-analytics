@@ -63,6 +63,7 @@ async function verifySalesProducts(page) {
     const expected = Array.isArray(payload.skus) ? payload.skus : [];
     const rows = [...document.querySelectorAll('#skuRows tr')];
     const control = document.getElementById('productsMore');
+    const evidence = document.getElementById('orderEvidence');
     const mobile = window.innerWidth <= 720;
     return {
       mobile,
@@ -71,7 +72,20 @@ async function verifySalesProducts(page) {
       visible: rows.filter(row => getComputedStyle(row).display !== 'none').length,
       controlVisible: Boolean(control && getComputedStyle(control).display !== 'none'),
       expanded: control?.getAttribute('aria-expanded'),
-      structured: rows.every(row => row.querySelector('.product-line') && row.querySelector('.state')),
+      driverTab: document.querySelector('button[data-view="products"]')?.textContent?.trim(),
+      ordersTabRemoved: !document.querySelector('button[data-view="orders"]'),
+      readCards: document.querySelectorAll('.product-read__card').length,
+      readPopulated: [...document.querySelectorAll('.product-read__value')]
+        .every(item => item.textContent.trim() && item.textContent.trim() !== '—'),
+      productReadAvailable: Boolean(payload.product_read?.breadth_state),
+      orderEvidenceClosed: Boolean(evidence && !evidence.hasAttribute('open')),
+      structured: rows.every(row =>
+        row.querySelector('.product-line') &&
+        row.querySelector('.product-share') &&
+        row.querySelector('.product-change') &&
+        row.querySelector('.product-movement') &&
+        row.querySelector('.state')
+      ),
       namesMatch: rows.every(
         (row, index) =>
           row.querySelector('.product-name')?.textContent?.trim() ===
@@ -84,6 +98,12 @@ async function verifySalesProducts(page) {
   });
   if (
     state.total !== state.expected ||
+    state.driverTab !== 'Drivers' ||
+    !state.ordersTabRemoved ||
+    state.readCards !== 3 ||
+    !state.readPopulated ||
+    !state.productReadAvailable ||
+    !state.orderEvidenceClosed ||
     !state.structured ||
     !state.namesMatch ||
     !state.thumbnailsMatch
@@ -607,7 +627,9 @@ async function verifyFinanceEvidence(page) {
 }
 
 async function verifySalesOrders(page) {
-  await page.locator('button[data-view="orders"]').click();
+  await page.locator('button[data-view="products"]').click();
+  const evidence = page.locator('#orderEvidence');
+  await evidence.locator('summary').click();
   await wait(page, '#orderRows tr');
   const state = await page.evaluate(async () => {
     const payload = await (await fetch('/api/sales', { cache: 'no-store' })).json();
@@ -621,6 +643,7 @@ async function verifySalesOrders(page) {
       visible: rows.filter(row => getComputedStyle(row).display !== 'none').length,
       controlVisible: Boolean(control && getComputedStyle(control).display !== 'none'),
       expanded: control?.getAttribute('aria-expanded'),
+      evidenceOpen: Boolean(document.getElementById('orderEvidence')?.hasAttribute('open')),
       orderGap: Number.parseFloat(
         getComputedStyle(document.getElementById('orderRows')).rowGap || '0'
       ),
@@ -697,7 +720,7 @@ async function verifySalesOrders(page) {
       statuses: rows.map(row => row.querySelector('.order-status-pill')?.textContent?.trim() || ''),
     };
   });
-  if (!state.structured || !state.itemRows || !state.namedItems) {
+  if (!state.evidenceOpen || !state.structured || !state.itemRows || !state.namedItems) {
     throw new Error(`Sales Orders structure mismatch: ${JSON.stringify(state)}`);
   }
   if (

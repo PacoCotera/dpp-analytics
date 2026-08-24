@@ -49,6 +49,54 @@ def _decorate_recent_order_items(cur, decorate_products, orders: list[dict]) -> 
     return orders
 
 
+def _product_read(headline: dict, products: list[dict]) -> dict:
+    product_sales = sum(float(row.get("sales_t28") or 0) for row in products)
+    top_three_sales = sum(float(row.get("sales_t28") or 0) for row in products[:3])
+    top_three_share = round(100.0 * top_three_sales / product_sales, 1) if product_sales else None
+    growing = sum(1 for row in products if float(row.get("delta28_pct") or 0) >= 8)
+    declining = sum(1 for row in products if float(row.get("delta28_pct") or 0) <= -8)
+    stable = max(0, len(products) - growing - declining)
+    movement_rows = [row for row in products if row.get("sales_change_t28") is not None]
+    leading_mover = max(
+        movement_rows,
+        key=lambda row: abs(float(row.get("sales_change_t28") or 0)),
+        default={},
+    )
+    if top_three_share is None:
+        concentration_state = "Unavailable"
+    elif top_three_share >= 75:
+        concentration_state = "Concentrated"
+    elif top_three_share <= 55:
+        concentration_state = "Broad"
+    else:
+        concentration_state = "Balanced"
+    if growing >= declining + 2:
+        breadth_state = "Broad improvement"
+    elif declining >= growing + 2:
+        breadth_state = "Broad weakening"
+    else:
+        breadth_state = "Mixed movement"
+    return {
+        "sales_t28": headline.get("sales_t28"),
+        "sales_prior_t28": headline.get("sales_prior_t28"),
+        "sales_change_t28": headline.get("sales_change_t28"),
+        "delta28_pct": headline.get("delta28_pct"),
+        "top_three_share_pct": top_three_share,
+        "concentration_state": concentration_state,
+        "growing": growing,
+        "declining": declining,
+        "stable": stable,
+        "breadth_state": breadth_state,
+        "leading_mover": {
+            "sku": leading_mover.get("sku"),
+            "product": leading_mover.get("product"),
+            "sales_change_t28": leading_mover.get("sales_change_t28"),
+        }
+        if leading_mover
+        else {},
+    }
+
+
 def sales_payload(connect, decorate_products, marketplace: str) -> dict:
     payload = _legacy_sales_payload(connect, decorate_products, marketplace)
     cutoff = (payload.get("headline") or {}).get("business_date")
@@ -95,8 +143,9 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
                        CASE WHEN x.sales_prev_month_same_days>0 THEN round(100.0*(x.sales_mtd-x.sales_prev_month_same_days)/x.sales_prev_month_same_days,1) END AS delta_mtd_pct,
                        x.sales_ytd,x.orders_ytd,x.units_ytd,x.sales_t7,x.orders_t7,round(x.sales_t7/7.0,2) AS daily_avg_t7,
                        CASE WHEN x.sales_prior_t7>0 THEN round(100.0*(x.sales_t7-x.sales_prior_t7)/x.sales_prior_t7,1) END AS delta7_pct,
-                       x.sales_t28,x.orders_t28,x.units_t28,x.sessions_t28,round(x.sales_t28/28.0,2) AS daily_avg_t28,
+                       x.sales_t28,x.sales_prior_t28,x.orders_t28,x.units_t28,x.sessions_t28,round(x.sales_t28/28.0,2) AS daily_avg_t28,
                        CASE WHEN x.sales_prior_t28>0 THEN round(100.0*(x.sales_t28-x.sales_prior_t28)/x.sales_prior_t28,1) END AS delta28_pct,
+                       (x.sales_t28-x.sales_prior_t28)::numeric(14,2) AS sales_change_t28,
                        CASE WHEN x.sessions_t28>0 THEN round(100.0*x.units_t28/x.sessions_t28,1) END AS cvr28_pct
                 FROM c CROSS JOIN x
                 """,
@@ -118,20 +167,35 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
 
             cur.execute(
                 """
-                SELECT p.seller_sku AS sku,p.asin,p.title AS product,p.image_url,
-                       p.sales_t28,p.units_t28,p.sales_delta28_pct AS delta28_pct,
-                       COALESCE(m.state,CASE WHEN p.sales_t28>0 THEN 'STABLE' ELSE 'DORMANT' END) AS state,
-                       'AMAZON_ORDERED_PRODUCT_SALES'::text AS sales_basis
-                FROM mart.catalog_portfolio_product p
-                LEFT JOIN mart.catalog_movers_t28 m
-                  ON m.marketplace_id=p.marketplace_id AND m.seller_sku=p.seller_sku
-                WHERE p.marketplace_id=%s AND p.is_offer_owner
-                  AND p.product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE') AND p.sales_t28>0
-                ORDER BY p.sales_t28 DESC,p.seller_sku LIMIT 20
+                WITH product_base AS (
+                  SELECT p.seller_sku AS sku,p.asin,p.title AS product,p.image_url,
+                         p.sales_t28,p.units_t28,p.sales_delta28_pct AS delta28_pct,
+                         COALESCE(m.state,CASE WHEN p.sales_t28>0 THEN 'STABLE' ELSE 'DORMANT' END) AS state,
+                         'AMAZON_ORDERED_PRODUCT_SALES'::text AS sales_basis,
+                         CASE
+                           WHEN p.sales_delta28_pct IS NULL OR p.sales_delta28_pct<=-100 THEN NULL
+                           ELSE round(p.sales_t28/(1+p.sales_delta28_pct/100.0),2)
+                         END::numeric(14,2) AS sales_prior_t28
+                  FROM mart.catalog_portfolio_product p
+                  LEFT JOIN mart.catalog_movers_t28 m
+                    ON m.marketplace_id=p.marketplace_id AND m.seller_sku=p.seller_sku
+                  WHERE p.marketplace_id=%s AND p.is_offer_owner
+                    AND p.product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE') AND p.sales_t28>0
+                ), scored AS (
+                  SELECT p.*,
+                         (p.sales_t28-p.sales_prior_t28)::numeric(14,2) AS sales_change_t28,
+                         round(100.0*p.sales_t28/nullif(sum(p.sales_t28) OVER (),0),1) AS share_t28_pct
+                  FROM product_base p
+                )
+                SELECT s.*,
+                       round(100.0*abs(s.sales_change_t28)/nullif(sum(abs(s.sales_change_t28)) OVER (),0),1) AS movement_contribution_pct
+                FROM scored s
+                ORDER BY s.sales_t28 DESC,s.sku LIMIT 20
                 """,
                 (marketplace,),
             )
             payload["skus"] = decorate_products(list(cur.fetchall()))
+            payload["product_read"] = _product_read(payload["headline"], payload["skus"])
 
         cur.execute(
             """

@@ -109,6 +109,44 @@
     set('asof', 'Historical through ' + String(h.business_date || '').slice(5));
   }
 
+  function renderProductRead() {
+    const read = DATA?.product_read || {},
+      change = Number(read.sales_change_t28 || 0),
+      delta = read.delta28_pct,
+      mover = read.leading_mover || {},
+      moverChange = Number(mover.sales_change_t28 || 0),
+      concentration = read.top_three_share_pct,
+      growing = Number(read.growing || 0),
+      declining = Number(read.declining || 0),
+      stable = Number(read.stable || 0);
+    set('productNetChange', shortMoney(change), cls(change));
+    set('productChangeState', change > 0 ? 'Improving' : change < 0 ? 'Weakening' : 'Flat');
+    set(
+      'productChangeDriver',
+      mover.product
+        ? `${mover.product} ${moverChange >= 0 ? 'added' : 'reduced'} ${shortMoney(Math.abs(moverChange))}.`
+        : `${pct(delta)} vs the prior 28 days.`,
+    );
+    set('productConcentration', concentration == null ? '—' : `${Number(concentration).toFixed(1)}%`);
+    set('productConcentrationState', read.concentration_state || 'Unavailable');
+    set(
+      'productConcentrationCopy',
+      concentration == null
+        ? 'Not enough product history to assess concentration.'
+        : Number(concentration) >= 75
+          ? 'A small group of products carries most current demand.'
+          : Number(concentration) <= 55
+            ? 'Demand is distributed across the selling portfolio.'
+            : 'Demand has a clear lead group without one-product dependence.',
+    );
+    set('productBreadth', `${nf.format(growing)} ↑ / ${nf.format(declining)} ↓`);
+    set('productBreadthState', read.breadth_state || 'Mixed movement');
+    set(
+      'productBreadthCopy',
+      `${nf.format(stable)} stable · ${nf.format(growing + declining + stable)} selling products assessed.`,
+    );
+  }
+
   function renderProducts() {
     const out = document.getElementById('skuRows'),
       control = document.getElementById('productsMore'),
@@ -120,7 +158,7 @@
         const img = r.image_url
           ? `<img class="product-thumb" src="${esc(r.image_url)}" alt="" loading="lazy">`
           : '';
-        return `<tr${index >= PRODUCT_MOBILE_LIMIT ? ' class="product-reference-row"' : ''}><td><a class="product-line" href="/product?sku=${encodeURIComponent(r.sku)}">${img}<div style="min-width:0"><div class="product-sku">${esc(r.sku)}</div><div class="product-name">${esc(r.product || r.sku)}</div></div></a></td><td class="num"><strong>${money(r.sales_t28)}</strong></td><td class="num ${cls(r.delta28_pct)}">${pct(r.delta28_pct)}</td><td class="num">${nf.format(r.units_t28 || 0)}</td><td><span class="state ${esc(r.state)}">${esc(r.state)}</span></td></tr>`;
+        return `<tr${index >= PRODUCT_MOBILE_LIMIT ? ' class="product-reference-row"' : ''}><td><a class="product-line" href="/product?sku=${encodeURIComponent(r.sku)}">${img}<div style="min-width:0"><div class="product-sku">${esc(r.sku)}</div><div class="product-name">${esc(r.product || r.sku)}</div></div></a></td><td class="num product-sales"><strong>${money(r.sales_t28)}</strong></td><td class="num product-share">${r.share_t28_pct == null ? '—' : `${Number(r.share_t28_pct).toFixed(1)}%`}</td><td class="num product-change ${cls(r.sales_change_t28)}"><strong>${r.sales_change_t28 == null ? '—' : shortMoney(r.sales_change_t28)}</strong><small>${pct(r.delta28_pct)}</small></td><td class="num product-movement">${r.movement_contribution_pct == null ? '—' : `${Number(r.movement_contribution_pct).toFixed(1)}%`}</td><td class="num product-units">${nf.format(r.units_t28 || 0)}</td><td class="product-state"><span class="state ${esc(r.state)}">${esc(r.state)}</span></td></tr>`;
       })
       .join('');
     document.getElementById('products')?.classList.toggle('products-expanded', PRODUCTS_EXPANDED);
@@ -189,7 +227,8 @@
         </tr>`;
       })
       .join('');
-    document.getElementById('orders')?.classList.toggle('orders-expanded', ORDERS_EXPANDED);
+    document.getElementById('orderEvidence')?.classList.toggle('orders-expanded', ORDERS_EXPANDED);
+    set('orderEvidenceCount', `${nf.format(rows.length)} recent orders`);
     if (!control) return;
     control.hidden = hiddenCount === 0;
     control.setAttribute('aria-expanded', ORDERS_EXPANDED ? 'true' : 'false');
@@ -809,6 +848,7 @@
   }
   function render() {
     renderSignals();
+    renderProductRead();
     renderProducts();
     renderOrders();
     renderChart();

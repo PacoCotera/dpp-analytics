@@ -33,7 +33,7 @@
       <header class="page-header">
         <div>
           <h1 class="page-header__title">Sales</h1>
-          <p class="page-header__description">Revenue, momentum, product performance and demand geography.</p>
+          <p class="page-header__description">Revenue, momentum, product drivers and demand geography.</p>
         </div>
       </header>
 
@@ -41,10 +41,7 @@
         <button class="subnav__item active" type="button" data-view="overview" aria-selected="true">
           Overview
         </button>
-        <button class="subnav__item" type="button" data-view="products" aria-selected="false">
-          Products
-        </button>
-        <button class="subnav__item" type="button" data-view="orders" aria-selected="false">Orders</button>
+        <button class="subnav__item" type="button" data-view="products" aria-selected="false">Drivers</button>
         <button class="subnav__item" type="button" data-view="geography" aria-selected="false">
           Geography
         </button>
@@ -164,9 +161,43 @@
         <section class="page-section">
           <div class="section-header">
             <div>
-              <h2 class="section-header__title">Product performance</h2>
+              <h2 class="section-header__title">What is driving the change</h2>
               <div class="section-header__description">
                 Last 28 days vs prior 28 · reconciled Amazon Sales &amp; Traffic · shopper spend incl. IVA.
+              </div>
+            </div>
+          </div>
+          <div class="product-read" id="productRead" aria-label="Product mix interpretation">
+            <article class="product-read__card">
+              <div class="product-read__head">
+                <span>28D change</span><span id="productChangeState">Reading</span>
+              </div>
+              <strong class="product-read__value" id="productNetChange">—</strong>
+              <div class="product-read__title">vs prior 28 days</div>
+              <p id="productChangeDriver">Finding the largest product movement.</p>
+            </article>
+            <article class="product-read__card">
+              <div class="product-read__head">
+                <span>Concentration</span><span id="productConcentrationState">Reading</span>
+              </div>
+              <strong class="product-read__value" id="productConcentration">—</strong>
+              <div class="product-read__title">Top 3 share of 28D sales</div>
+              <p id="productConcentrationCopy">Measuring how concentrated demand is.</p>
+            </article>
+            <article class="product-read__card">
+              <div class="product-read__head">
+                <span>Breadth</span><span id="productBreadthState">Reading</span>
+              </div>
+              <strong class="product-read__value" id="productBreadth">—</strong>
+              <div class="product-read__title">Across selling products</div>
+              <p id="productBreadthCopy">Comparing growers and decliners.</p>
+            </article>
+          </div>
+          <div class="section-header product-contribution-header">
+            <div>
+              <h3 class="section-header__title">Product contribution</h3>
+              <div class="section-header__description">
+                Leaders, growers and decliners · movement share uses absolute product-level change.
               </div>
             </div>
           </div>
@@ -182,7 +213,9 @@
                     >
                       28D shopper spend incl. IVA
                     </th>
-                    <th class="num">Δ28</th>
+                    <th class="num">Share</th>
+                    <th class="num">Change</th>
+                    <th class="num">Movement</th>
                     <th class="num">Units</th>
                     <th>State</th>
                   </tr>
@@ -196,43 +229,41 @@
             </button>
           </div>
         </section>
-      </main>
-
-      <main id="orders" class="view">
-        <section class="page-section">
-          <div class="section-header">
-            <div>
-              <h2 class="section-header__title">Recent orders</h2>
-              <div class="section-header__description">
-                Order evidence · shopper spend includes IVA · no customer PII.
+        <details class="order-evidence" id="orderEvidence">
+          <summary>
+            <span>
+              <strong>Investigate the underlying orders</strong>
+              <small>Recent order evidence · no customer PII</small>
+            </span>
+            <b id="orderEvidenceCount">— orders</b>
+          </summary>
+          <section class="order-evidence__body">
+            <div class="data-table-shell">
+              <div class="data-table-scroll">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Order</th>
+                      <th>Items</th>
+                      <th
+                        class="num"
+                        title="Customer-facing order amount including IVA. Settlement/proceeds amounts are excluded."
+                      >
+                        Shopper spend incl. IVA
+                      </th>
+                      <th>Fulfillment</th>
+                    </tr>
+                  </thead>
+                  <tbody id="orderRows"></tbody>
+                </table>
               </div>
+              <button class="orders-more" id="ordersMore" type="button" aria-expanded="false" hidden>
+                <span id="ordersMoreLabel">Show all recent orders</span>
+                <strong id="ordersMoreCount"></strong>
+              </button>
             </div>
-          </div>
-          <div class="data-table-shell">
-            <div class="data-table-scroll">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Order</th>
-                    <th>Items</th>
-                    <th
-                      class="num"
-                      title="Customer-facing order amount including IVA. Settlement/proceeds amounts are excluded."
-                    >
-                      Shopper spend incl. IVA
-                    </th>
-                    <th>Fulfillment</th>
-                  </tr>
-                </thead>
-                <tbody id="orderRows"></tbody>
-              </table>
-            </div>
-            <button class="orders-more" id="ordersMore" type="button" aria-expanded="false" hidden>
-              <span id="ordersMoreLabel">Show all recent orders</span>
-              <strong id="ordersMoreCount"></strong>
-            </button>
-          </div>
-        </section>
+          </section>
+        </details>
       </main>
 
       <main id="geography" class="view">
@@ -315,7 +346,9 @@
                   </colgroup>
                   <thead>
                     <tr>
-                      <th data-geo-sort="area" aria-sort="none"><button type="button">Area</button></th>
+                      <th data-geo-sort="area" aria-sort="none">
+                        <button type="button">Area</button>
+                      </th>
                       <th class="num" data-geo-sort="sales" aria-sort="descending">
                         <button type="button">Spend</button>
                       </th>
