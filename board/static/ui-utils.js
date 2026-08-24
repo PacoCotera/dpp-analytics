@@ -1,3 +1,5 @@
+import './data-cache.js';
+
 export const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 export const number1 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
 
@@ -51,11 +53,10 @@ export function byId(id) {
 }
 
 export async function fetchJson(url, options = {}) {
-  const response = await fetch(url, { cache: 'no-store', ...options });
-  if (response.ok) return response.json();
-
-  const body = await response.json().catch(() => ({}));
-  throw new Error(body.error || `HTTP ${response.status}`);
+  if (!window.DPPDataCache?.fetchJson) throw new Error('DPP data cache unavailable');
+  const cacheOptionKeys = ['ttlMs', 'forceRefresh', 'fetchOptions'];
+  const isCacheOptions = cacheOptionKeys.some((key) => Object.prototype.hasOwnProperty.call(options, key));
+  return window.DPPDataCache.fetchJson(url, isCacheOptions ? options : { fetchOptions: options });
 }
 
 export function setText(id, value) {

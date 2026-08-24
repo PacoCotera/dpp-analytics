@@ -1,6 +1,6 @@
 # Operating Board Frontend Architecture
 
-This document defines frontend ownership and architectural constraints. For the route → API → HTML/CSS/JS map and operational change recipes, use [`maintenance.md`](maintenance.md). For source-of-truth and reconciliation rules, use [`data-model.md`](data-model.md).
+This document defines frontend ownership and architectural constraints. For the route → API → HTML/CSS/JS map and operational change recipes, use [`maintenance.md`](maintenance.md). For source-of-truth and reconciliation rules, use [`data-model.md`](data-model.md). For response caching, freshness and KPI-precomputation rules, use [`reporting-cache-architecture.md`](reporting-cache-architecture.md).
 
 ## Decision
 
@@ -77,13 +77,15 @@ Each workspace owns a small explicit trio where appropriate:
 - CSS: page-specific presentation
 - JavaScript: API request, view-model transformation, rendering and interaction
 
-Page modules do not own global typography, primary navigation, generic KPI/panel/table geometry or duplicated formatting utilities. Shared formatting, escaping and fetch behavior lives in `static/ui-utils.js`.
+Page modules do not own global typography, primary navigation, generic KPI/panel/table geometry or duplicated formatting utilities. Shared formatting, escaping and the `fetchJson()` interface live in `static/ui-utils.js`. `static/data-cache.js` owns only transport reuse: session-scoped JSON TTL caching and same-page in-flight request deduplication. Neither shared frontend utility may redefine accounting, reconciliation, attribution, catalog or inventory semantics.
 
 The Sales workspace retains the existing `sales-canonical.js` filename because it is already the single live renderer; the historical filename does not imply another Sales runtime.
 
 ### 6. Data/API
 
 Python endpoints own business definitions, reconciliation state and reusable server-side joins. Browser code must not independently redefine accounting, catalog hierarchy, attribution or inventory action semantics.
+
+Repeated canonical payloads may be reused through the board response cache and browser session cache. Cache lifetime and invalidation policy are transport concerns; PostgreSQL remains authoritative. See [`reporting-cache-architecture.md`](reporting-cache-architecture.md).
 
 ## Grid system
 
@@ -170,6 +172,7 @@ In the same PR:
 - update this file when shared ownership/framework rules change;
 - update `maintenance.md` when a route or owning file changes;
 - update `data-model.md` when the authoritative data definition changes;
+- update `reporting-cache-architecture.md` when cache ownership, freshness or KPI-precomputation policy changes;
 - update the root README if the product surface or repository map changes.
 
 ## Quality gate

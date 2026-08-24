@@ -9,6 +9,7 @@ This directory is the maintainer-facing map of the application. The goal is to m
 | What is this repo and where does each major subsystem live? | [`../README.md`](../README.md) |
 | I need to change or debug a page. Where do I start? | [`maintenance.md`](maintenance.md) |
 | Which frontend layer owns navigation, layout, charts or page-specific behavior? | [`frontend-architecture.md`](frontend-architecture.md) |
+| How are repeated API queries cached, how fresh may a page be, and where should KPI precomputation live? | [`reporting-cache-architecture.md`](reporting-cache-architecture.md) |
 | Which source is authoritative for Today, Sales, Finance, Ads, Catalog or Inventory? | [`data-model.md`](data-model.md) |
 | What exactly does a money number mean: shopper spend, Amazon sales, Finance net sales, payout or Ads attribution? | [`metric-basis.md`](metric-basis.md) |
 | How does production deploy and where do I inspect its health? | [`control-plane.md`](control-plane.md) |
@@ -24,6 +25,7 @@ Documentation is part of the application architecture. Update it in the same PR 
 - a Finance close/accounting rule;
 - an ingestion source or schedule;
 - shared frontend ownership or framework choice;
+- caching, freshness or KPI-precomputation behavior;
 - deployment, migration, QA or production-health behavior;
 - host-side configuration paths that a maintainer must know.
 
@@ -38,6 +40,7 @@ Do not use documentation as a second implementation. Keep it focused on boundari
 - Finance separates net sales ex IVA, IVA, gross customer spend, Amazon-side closure, seller COGS readiness and immutable management close.
 - Ads-attributed sales are attribution, not incrementality; TACOS uses independently reconciled seller sales.
 - The browser does not redefine accounting, attribution or inventory-action semantics.
+- Cache layers may reuse canonical payloads but never redefine business truth.
 - Each frontend workspace has one clear composition/style/runtime owner.
 - Shared navigation, layout, charts and utilities are centralized.
 - Docker does not inject frontend behavior.

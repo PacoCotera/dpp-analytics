@@ -20,6 +20,7 @@ from finance_api import finance_payload as build_finance_payload
 from health_api import health_board_payload as build_health_board_payload
 from inventory_api import inventory_payload as build_inventory_payload
 from product_api import product_payload as build_product_payload
+from response_cache import TTLResponseCache
 from sales_api import sales_payload as build_sales_payload
 from today_api import today_payload as build_today_payload
 from trajectory_api import trajectory_payload as build_trajectory_payload
@@ -108,6 +109,39 @@ TRAJECTORY_INDEX = versioned_page("trajectory.html")
 DATA_HEALTH_INDEX = versioned_page("data_health.html")
 MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
 AMAZON_MX_DP = "https://www.amazon.com.mx/dp/"
+API_CACHE = TTLResponseCache(max_entries=int(os.getenv("BOARD_CACHE_MAX_ENTRIES", "128")))
+API_CACHE_TTLS = {
+    "/api/today": 15,
+    "/api/home": 30,
+    "/api/sales": 60,
+    "/api/catalog": 300,
+    "/api/inventory": 60,
+    "/api/finance": 300,
+    "/api/ads": 300,
+    "/api/product": 300,
+    "/api/trajectory": 600,
+    "/api/data-health": 30,
+}
+
+
+def api_cache_ttl(path: str, query: dict[str, list[str]]) -> int:
+    if path == "/api/today" and (query.get("date") or [None])[0]:
+        return 300
+    return API_CACHE_TTLS.get(path, 0)
+
+
+def api_cache_key(path: str, query: dict[str, list[str]]) -> str:
+    normalized = tuple(
+        (key, tuple(sorted(values)))
+        for key, values in sorted(query.items())
+        if key != "refresh"
+    )
+    return f"{path}:{normalized!r}"
+
+
+def cache_refresh_requested(query: dict[str, list[str]]) -> bool:
+    value = str((query.get("refresh") or [""])[0]).strip().lower()
+    return value in {"1", "true", "yes"}
 
 
 def connect():
@@ -327,27 +361,60 @@ def health_payload():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "DPPBoard/9"
+    server_version = "DPPBoard/10"
 
     def log_message(self, fmt, *args):
         print(f"{self.address_string()} {fmt % args}")
 
-    def send_bytes(self, status, content_type, body, cache="no-store"):
+    def send_bytes(self, status, content_type, body, cache="no-store", headers=None):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Cache-Control", cache)
+        if headers:
+            for name, value in headers.items():
+                self.send_header(name, str(value))
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
-    def json_endpoint(self, builder):
+    def json_endpoint(self, builder, *, cache_key=None, ttl_seconds=0, refresh=False):
         try:
-            payload = clean(builder())
-            body = json.dumps(payload, separators=(",", ":")).encode()
-            self.send_bytes(200, "application/json", body)
+            def build_body():
+                payload = clean(builder())
+                return json.dumps(payload, separators=(",", ":")).encode()
+
+            if cache_key and ttl_seconds > 0:
+                result = API_CACHE.get_or_build(
+                    cache_key,
+                    ttl_seconds,
+                    build_body,
+                    refresh=refresh,
+                )
+                self.send_bytes(
+                    200,
+                    "application/json",
+                    result.value,
+                    cache=f"private, max-age={result.ttl_seconds}",
+                    headers={
+                        "X-DPP-Cache": result.status,
+                        "X-DPP-Cache-Age": result.age_seconds,
+                        "X-DPP-Cache-TTL": result.ttl_seconds,
+                    },
+                )
+                return
+
+            self.send_bytes(200, "application/json", build_body())
         except Exception as exc:
             body = json.dumps({"error": str(exc)[:500]}).encode()
             self.send_bytes(500, "application/json", body)
+
+    def cached_json_endpoint(self, path, query, builder):
+        self.json_endpoint(
+            builder,
+            cache_key=api_cache_key(path, query),
+            ttl_seconds=api_cache_ttl(path, query),
+            refresh=cache_refresh_requested(query),
+        )
 
     def do_GET(self):
         parsed = urlsplit(self.path)
@@ -373,35 +440,59 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/today":
             selected_date = (query.get("date") or [None])[0]
-            self.json_endpoint(lambda: build_today_payload(connect, decorate_products, MARKETPLACE, selected_date))
+            self.cached_json_endpoint(
+                path,
+                query,
+                lambda: build_today_payload(connect, decorate_products, MARKETPLACE, selected_date),
+            )
             return
         if path == "/api/home":
-            self.json_endpoint(home_payload)
+            self.cached_json_endpoint(path, query, home_payload)
             return
         if path == "/api/sales":
-            self.json_endpoint(lambda: build_sales_payload(connect, decorate_products, MARKETPLACE))
+            self.cached_json_endpoint(
+                path,
+                query,
+                lambda: build_sales_payload(connect, decorate_products, MARKETPLACE),
+            )
             return
         if path == "/api/catalog":
-            self.json_endpoint(lambda: build_catalog_payload(connect, decorate_products, MARKETPLACE))
+            self.cached_json_endpoint(
+                path,
+                query,
+                lambda: build_catalog_payload(connect, decorate_products, MARKETPLACE),
+            )
             return
         if path == "/api/inventory":
-            self.json_endpoint(lambda: build_inventory_payload(connect, decorate_products, MARKETPLACE))
+            self.cached_json_endpoint(
+                path,
+                query,
+                lambda: build_inventory_payload(connect, decorate_products, MARKETPLACE),
+            )
             return
         if path == "/api/finance":
-            self.json_endpoint(lambda: build_finance_payload(connect, MARKETPLACE))
+            self.cached_json_endpoint(path, query, lambda: build_finance_payload(connect, MARKETPLACE))
             return
         if path == "/api/ads":
-            self.json_endpoint(lambda: build_ads_payload(connect, MARKETPLACE, decorate_products))
+            self.cached_json_endpoint(
+                path,
+                query,
+                lambda: build_ads_payload(connect, MARKETPLACE, decorate_products),
+            )
             return
         if path == "/api/product":
             sku = (query.get("sku") or [""])[0]
-            self.json_endpoint(lambda: build_product_payload(connect, decorate_products, MARKETPLACE, sku))
+            self.cached_json_endpoint(
+                path,
+                query,
+                lambda: build_product_payload(connect, decorate_products, MARKETPLACE, sku),
+            )
             return
         if path == "/api/trajectory":
-            self.json_endpoint(lambda: build_trajectory_payload(connect, MARKETPLACE))
+            self.cached_json_endpoint(path, query, lambda: build_trajectory_payload(connect, MARKETPLACE))
             return
         if path == "/api/data-health":
-            self.json_endpoint(lambda: build_health_board_payload(connect, MARKETPLACE))
+            self.cached_json_endpoint(path, query, lambda: build_health_board_payload(connect, MARKETPLACE))
             return
 
         pages = {
