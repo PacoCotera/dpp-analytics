@@ -81,8 +81,8 @@ jobs:
       - name: Compile board Python
         run: python -m compileall -q .
 
-      - name: Test board response cache
-        run: python -m unittest -v test_response_cache.py
+      - name: Test board cache and catalog lifecycle
+        run: python -m unittest -v test_response_cache.py test_catalog_onboarding.py
 
   board-image:
     runs-on: ubuntu-latest
