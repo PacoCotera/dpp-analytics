@@ -116,6 +116,47 @@ class CatalogOnboardingTest(unittest.TestCase):
         self.assertFalse(item["requires_seller_action"])
         self.assertEqual(payload["summary"]["seller_mapped"], 1)
 
+    def test_new_inactive_listing_remains_onboarding_evidence(self):
+        rows = [
+            {
+                "sku": "NEW-INACTIVE",
+                "asin": "BNEWINACTIVE",
+                "status": "inactive",
+                "source_state": "INACTIVE",
+                "age_seconds": 2 * 3600,
+                "is_onboarding": True,
+                "source_attention": False,
+            }
+        ]
+        with patch("catalog_onboarding._taxonomy_skus", return_value=set()):
+            payload = catalog_onboarding_snapshot(connect_with(rows), "MX")
+        item = payload["items"][0]
+        self.assertEqual(item["taxonomy_state"], "ONBOARDING")
+        self.assertFalse(item["requires_seller_action"])
+        self.assertEqual(payload["summary"]["active_listings"], 0)
+        self.assertEqual(payload["summary"]["inactive_listings"], 1)
+        self.assertEqual(payload["summary"]["onboarding"], 1)
+
+    def test_established_inactive_listing_never_requires_taxonomy_action(self):
+        rows = [
+            {
+                "sku": "OLD-INACTIVE",
+                "asin": "BOLDINACTIVE",
+                "status": "inactive",
+                "source_state": "INACTIVE",
+                "age_seconds": 90 * 24 * 3600,
+                "is_onboarding": False,
+                "source_attention": False,
+            }
+        ]
+        with patch("catalog_onboarding._taxonomy_skus", return_value=set()):
+            payload = catalog_onboarding_snapshot(connect_with(rows), "MX")
+        item = payload["items"][0]
+        self.assertEqual(item["taxonomy_state"], "INACTIVE")
+        self.assertFalse(item["requires_seller_action"])
+        self.assertEqual(payload["summary"]["onboarding"], 0)
+        self.assertEqual(payload["summary"]["taxonomy_attention"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
