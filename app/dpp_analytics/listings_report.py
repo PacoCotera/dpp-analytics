@@ -130,6 +130,12 @@ def ingest_listings_report() -> dict[str, int | str]:
 
             with db.connect() as conn, conn.cursor() as cur:
                 cur.execute(
+                    "SELECT seller_sku FROM core.seller_listing WHERE marketplace_id=%s",
+                    (settings.marketplace_id,),
+                )
+                known_skus = {str(row["seller_sku"]) for row in cur.fetchall()}
+
+                cur.execute(
                     """
                     INSERT INTO raw.api_payload(source,resource_type,resource_id,marketplace_id,payload,ingestion_run_id)
                     VALUES (%s,%s,%s,%s,%s::jsonb,%s)
@@ -155,8 +161,8 @@ def ingest_listings_report() -> dict[str, int | str]:
                         INSERT INTO core.seller_listing(
                             marketplace_id,seller_sku,asin,listing_id,item_name,item_description,
                             price,quantity,pending_quantity,image_url,open_date,item_condition,
-                            fulfillment_channel,merchant_shipping_group,status,source_payload_id,fetched_at
-                        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now())
+                            fulfillment_channel,merchant_shipping_group,status,source_payload_id,fetched_at,first_seen_at
+                        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),now())
                         ON CONFLICT (marketplace_id,seller_sku) DO UPDATE SET
                             asin=EXCLUDED.asin,
                             listing_id=EXCLUDED.listing_id,
@@ -236,7 +242,14 @@ def ingest_listings_report() -> dict[str, int | str]:
                     )
                 conn.commit()
 
+            discovered = sorted(seen - known_skus)
             run["records_written"] = written
-            return {"records_read": len(rows), "records_written": written, "report_id": report_id}
+            return {
+                "records_read": len(rows),
+                "records_written": written,
+                "report_id": report_id,
+                "new_skus": len(discovered),
+                "new_sku_ids": discovered[:20],
+            }
         finally:
             client.close()

@@ -24,6 +24,8 @@ node /qa/footer_qa.mjs "$base_url" "$work_dir"
 footer_rc=$?
 node /qa/cache_performance_qa.mjs "$base_url" "$work_dir"
 cache_performance_rc=$?
+node /qa/catalog_onboarding_qa.mjs "$base_url" "$work_dir"
+catalog_onboarding_rc=$?
 cp -a "$work_dir"/. "$out_root"/ 2>/dev/null || true
 if [ "$visual_rc" -ne 0 ]; then exit "$visual_rc"; fi
 if [ "$nav_rc" -ne 0 ]; then exit "$nav_rc"; fi
@@ -34,4 +36,5 @@ if [ "$order_operations_rc" -ne 0 ]; then exit "$order_operations_rc"; fi
 if [ "$product_naming_rc" -ne 0 ]; then exit "$product_naming_rc"; fi
 if [ "$ads_surface_rc" -ne 0 ]; then exit "$ads_surface_rc"; fi
 if [ "$footer_rc" -ne 0 ]; then exit "$footer_rc"; fi
-exit "$cache_performance_rc"
+if [ "$cache_performance_rc" -ne 0 ]; then exit "$cache_performance_rc"; fi
+exit "$catalog_onboarding_rc"

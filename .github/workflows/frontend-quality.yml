@@ -3,6 +3,7 @@ name: Application quality
 on:
   pull_request:
     paths:
+      - 'app/**'
       - 'board/static/**'
       - 'board/*.py'
       - 'board/package.json'
@@ -20,6 +21,7 @@ on:
       - '.github/workflows/frontend-quality.yml'
   push:
     paths:
+      - 'app/**'
       - 'board/static/**'
       - 'board/*.py'
       - 'board/package.json'
@@ -79,8 +81,8 @@ jobs:
       - name: Compile board Python
         run: python -m compileall -q .
 
-      - name: Test board response cache
-        run: python -m unittest -v test_response_cache.py
+      - name: Test board cache and catalog lifecycle
+        run: python -m unittest -v test_response_cache.py test_catalog_onboarding.py
 
   board-image:
     runs-on: ubuntu-latest
@@ -94,6 +96,16 @@ jobs:
 
       - name: Build production board image
         run: docker build --build-arg DEPLOY_SHA="${GITHUB_SHA}" -f board/Dockerfile -t dpp-board-quality .
+
+  worker-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build production worker image
+        run: docker build -t dpp-worker-quality app
 
   qa-syntax:
     runs-on: ubuntu-latest
@@ -114,6 +126,7 @@ jobs:
           node --check qa/product_naming_qa.mjs
           node --check qa/geography_qa.mjs
           node --check qa/cache_performance_qa.mjs
+          node --check qa/catalog_onboarding_qa.mjs
 
   compose-config:
     runs-on: ubuntu-latest

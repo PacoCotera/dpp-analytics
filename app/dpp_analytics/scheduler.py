@@ -29,6 +29,7 @@ log = logging.getLogger("dpp.scheduler")
 STOP = False
 FINANCE_CLOSE_INTERVAL_SECONDS = 3600
 ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS = 86400
+CATALOG_ONBOARDING_RETRY_SECONDS = 1800
 
 
 def _stop(signum: int, frame: object) -> None:
@@ -82,32 +83,31 @@ def _next_due(source: str, job_name: str, interval: int) -> float:
 
 
 def _catalog_metadata_backfill_needed() -> bool:
-    """Run Catalog immediately after schema evolution when source metadata is absent.
+    """Return whether active seller offers with ASINs still need Catalog convergence.
 
-    The normal Catalog cadence is intentionally slow because catalog metadata is
-    stable. A new metadata column must not therefore wait almost a day for its
-    first population after deployment.
+    Listings is authoritative for seller SKU discovery and runs more frequently
+    than Catalog Items. A new SKU can therefore exist before Amazon exposes its
+    complete Catalog record. Only states Catalog can actually improve are
+    considered here; AWAITING_ASIN waits for the next listings snapshot.
     """
     try:
         with db.connect() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT count(*)::int AS total,
-                       count(*) FILTER (WHERE attributes IS NOT NULL OR relationships IS NOT NULL)::int AS enriched
-                FROM core.catalog_item
+                SELECT count(*)::int AS unresolved
+                FROM mart.catalog_onboarding_state
                 WHERE marketplace_id=%s
+                  AND lower(COALESCE(status,'')) <> 'inactive'
+                  AND source_state IN ('AWAITING_CATALOG','CATALOG_PROPAGATING')
                 """,
                 (settings.marketplace_id,),
             )
-            row = cur.fetchone() or {}
-        total = int(row.get("total") or 0)
-        enriched = int(row.get("enriched") or 0)
-        needed = total > 0 and enriched < total
-        if needed:
-            log.info("Catalog variation metadata backfill required enriched=%s total=%s", enriched, total)
-        return needed
+            unresolved = int((cur.fetchone() or {}).get("unresolved") or 0)
+        if unresolved:
+            log.info("Catalog onboarding enrichment pending offers=%s", unresolved)
+        return unresolved > 0
     except Exception:
-        log.exception("could not inspect Catalog variation metadata; using normal schedule")
+        log.exception("could not inspect Catalog onboarding state; using normal schedule")
         return False
 
 
@@ -222,6 +222,9 @@ def main() -> None:
         if now >= next_listings_report:
             _run("seller_listings_report", ingest_listings_report)
             next_listings_report = time.monotonic() + settings.listings_report_interval_seconds
+            if catalog_role_ready and _catalog_metadata_backfill_needed():
+                log.info("Seller listings exposed unresolved Catalog onboarding; pulling Catalog run forward")
+                next_catalog = min(next_catalog, time.monotonic())
 
         if now >= next_product_roles_probe:
             was_ready = catalog_role_ready
@@ -237,7 +240,11 @@ def main() -> None:
 
         if catalog_role_ready and now >= next_catalog:
             _run("catalog", ingest_catalog)
-            next_catalog = time.monotonic() + settings.catalog_interval_seconds
+            if _catalog_metadata_backfill_needed():
+                next_catalog = time.monotonic() + CATALOG_ONBOARDING_RETRY_SECONDS
+                log.info("Catalog onboarding still unresolved; retrying in %ss", CATALOG_ONBOARDING_RETRY_SECONDS)
+            else:
+                next_catalog = time.monotonic() + settings.catalog_interval_seconds
 
         if now >= next_data_kiosk:
             _run("data_kiosk", ingest_sales_traffic)

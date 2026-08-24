@@ -2,38 +2,19 @@ import { byId, escapeHtml, fetchJson, integer } from './ui-utils.js';
 
 let jobs = [];
 let expanded = false;
+let catalogHealth = {};
 
 const DOMAIN_DEFINITIONS = [
-  {
-    key: 'today',
-    label: 'Today',
-    terms: ['orders'],
-    critical: true,
-  },
-  {
-    key: 'sales',
-    label: 'Sales',
-    terms: ['data_kiosk', 'data kiosk'],
-    critical: true,
-  },
+  { key: 'today', label: 'Today', terms: ['orders'], critical: true },
+  { key: 'sales', label: 'Sales', terms: ['data_kiosk', 'data kiosk'], critical: true },
   {
     key: 'products',
     label: 'Products',
     terms: ['catalog', 'seller_listings', 'seller listings'],
     critical: true,
   },
-  {
-    key: 'inventory',
-    label: 'Inventory',
-    terms: ['inventory'],
-    critical: true,
-  },
-  {
-    key: 'finance',
-    label: 'Finance',
-    terms: ['finance', 'settlement'],
-    critical: true,
-  },
+  { key: 'inventory', label: 'Inventory', terms: ['inventory'], critical: true },
+  { key: 'finance', label: 'Finance', terms: ['finance', 'settlement'], critical: true },
 ];
 
 function duration(seconds, compact = false) {
@@ -51,7 +32,7 @@ function duration(seconds, compact = false) {
 }
 
 function timestamp(value) {
-  if (!value) return 'No successful run recorded';
+  if (!value) return 'Not recorded';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return new Intl.DateTimeFormat('en-MX', {
@@ -91,16 +72,16 @@ function domainState(definition) {
 
 function buildDomains(payload) {
   const core = DOMAIN_DEFINITIONS.map(domainState);
+  const catalogSummary = payload.catalog?.summary || {};
+  const catalogAttention =
+    Number(catalogSummary.source_attention || 0) + Number(catalogSummary.taxonomy_attention || 0);
+  const products = core.find((domain) => domain.key === 'products');
+  if (products && catalogAttention > 0 && products.state === 'healthy') products.state = 'degraded';
+
   const ads = payload.ads?.summary || {};
   const adsState =
     ads.state === 'HEALTHY' ? 'healthy' : ads.state === 'ATTENTION' ? 'degraded' : 'disconnected';
-  core.push({
-    key: 'ads',
-    label: 'Ads',
-    state: adsState,
-    jobs: [],
-    critical: false,
-  });
+  core.push({ key: 'ads', label: 'Ads', state: adsState, jobs: [], critical: false });
   return core;
 }
 
@@ -190,26 +171,10 @@ function renderAttention() {
         <p class="incident__purpose">${escapeHtml(item.purpose || '')}</p>
         <div class="incident__impact">Impacts <strong>${escapeHtml(item.domain || 'Warehouse')}</strong></div>
         <dl class="incident__metrics">
-          <div>
-            <dt>Data age</dt>
-            <dd>${duration(item.age_seconds)} old</dd>
-            <small>Last success ${timestamp(item.last_success_at)}</small>
-          </div>
-          <div>
-            <dt>Expected cadence</dt>
-            <dd>Every ${duration(item.expected_interval_seconds)}</dd>
-            <small>Stale after ${duration(item.stale_after_seconds)}</small>
-          </div>
-          <div>
-            <dt>Current wait</dt>
-            <dd>${scheduleCopy(item)}</dd>
-            <small>Waiting for ${escapeHtml(item.waiting_for || 'the next collection')}</small>
-          </div>
-          <div>
-            <dt>Last fetch</dt>
-            <dd>${rowsRead} read · ${rowsWritten} stored</dd>
-            <small>Attempt ${timestamp(item.last_started_at)}</small>
-          </div>
+          <div><dt>Data age</dt><dd>${duration(item.age_seconds)} old</dd><small>Last success ${timestamp(item.last_success_at)}</small></div>
+          <div><dt>Expected cadence</dt><dd>Every ${duration(item.expected_interval_seconds)}</dd><small>Stale after ${duration(item.stale_after_seconds)}</small></div>
+          <div><dt>Current wait</dt><dd>${scheduleCopy(item)}</dd><small>Waiting for ${escapeHtml(item.waiting_for || 'the next collection')}</small></div>
+          <div><dt>Last fetch</dt><dd>${rowsRead} read · ${rowsWritten} stored</dd><small>Attempt ${timestamp(item.last_started_at)}</small></div>
         </dl>
         <div class="incident__diagnostic ${item.error_message ? 'incident__diagnostic--error' : ''}">
           <span>${item.error_message ? 'Latest API / ingestion error' : 'Diagnostic'}</span>
@@ -221,9 +186,81 @@ function renderAttention() {
     .join('');
 }
 
+function catalogItemState(item) {
+  if (item.source_attention) return { label: 'Source overdue', tone: 'failed' };
+  if (item.taxonomy_state === 'MAPPING_REQUIRED') return { label: 'Map taxonomy', tone: 'degraded' };
+  if (item.taxonomy_state === 'ONBOARDING') return { label: 'Onboarding', tone: 'onboarding' };
+  return { label: 'Ready', tone: 'healthy' };
+}
+
+function catalogWaitCopy(item) {
+  if (item.source_state === 'AWAITING_ASIN') {
+    return 'Waiting for Amazon Seller Listings to expose an ASIN.';
+  }
+  if (item.source_state === 'AWAITING_CATALOG') {
+    return 'ASIN known; Catalog enrichment is queued or has not completed yet.';
+  }
+  if (item.source_state === 'CATALOG_PROPAGATING') {
+    return 'Catalog was queried, but Amazon has not returned complete enrichment yet.';
+  }
+  if (item.taxonomy_state === 'MAPPING_REQUIRED') {
+    return 'Amazon source data is ready; add the seller-facing taxonomy mapping.';
+  }
+  return 'Catalog source and seller taxonomy are ready.';
+}
+
+function renderCatalogOnboarding(payload) {
+  catalogHealth = payload.catalog || {};
+  const summary = catalogHealth.summary || {};
+  const items = (catalogHealth.items || []).filter(
+    (item) => item.taxonomy_state === 'ONBOARDING' || item.requires_seller_action,
+  );
+  const section = byId('catalogOnboardingSection');
+  const host = byId('catalogOnboarding');
+  if (!section || !host) return;
+
+  const onboarding = Number(summary.onboarding || 0);
+  const attention = Number(summary.source_attention || 0) + Number(summary.taxonomy_attention || 0);
+  section.hidden = onboarding === 0 && attention === 0;
+  if (section.hidden) {
+    host.innerHTML = '';
+    return;
+  }
+
+  host.innerHTML = `<div class="catalog-health-summary">
+      <div><strong>${integer(summary.source_ready || 0)}</strong><span>source ready</span></div>
+      <div><strong>${integer(onboarding)}</strong><span>onboarding</span></div>
+      <div><strong>${integer(summary.source_attention || 0)}</strong><span>source overdue</span></div>
+      <div><strong>${integer(summary.taxonomy_attention || 0)}</strong><span>taxonomy action</span></div>
+    </div>
+    <div class="catalog-health-list">
+      ${items
+        .map((item) => {
+          const state = catalogItemState(item);
+          return `<article class="catalog-health-item catalog-health-item--${state.tone}">
+            <div class="catalog-health-item__identity">
+              <strong>${escapeHtml(item.sku || 'Unknown SKU')}</strong>
+              <span>${escapeHtml(item.asin || 'ASIN pending')}</span>
+            </div>
+            <span class="health-status ${state.tone}">${escapeHtml(state.label)}</span>
+            <div class="catalog-health-item__state">
+              <strong>${escapeHtml(String(item.source_state || 'Unknown').replaceAll('_', ' '))}</strong>
+              <span>${escapeHtml(catalogWaitCopy(item))}</span>
+            </div>
+            <div class="catalog-health-item__timing">
+              <span>Seen ${duration(item.age_seconds)} ago</span>
+              <span>Catalog attempt ${timestamp(item.catalog_last_attempt_at)}</span>
+              <span>Enriched ${timestamp(item.catalog_enriched_at)}</span>
+            </div>
+          </article>`;
+        })
+        .join('')}
+    </div>
+    <p class="catalog-health-contract">New SKUs get a ${integer(summary.grace_hours || 48)}h propagation grace. When an ASIN is known but Catalog data is incomplete, enrichment retries every 30m.</p>`;
+}
+
 function renderJobs() {
   const rows = expanded ? jobs : problemJobs();
-
   if (!rows.length && !expanded) {
     byId('jobs').innerHTML =
       '<div class="empty"><strong>No pipeline exceptions.</strong> Every tracked stream is inside its own cadence and grace period.</div>';
@@ -241,13 +278,11 @@ function renderJobs() {
       <div class="health-job__status"><span class="health-status ${jobState(item)}">${stateLabel(jobState(item))}</span></div>
       <div class="health-job__age health-job__metric">
         <span class="health-job__metric-label">Last successful run</span>
-        <strong>${duration(item.age_seconds)} old</strong>
-        <small>Last success ${timestamp(item.last_success_at)}</small>
+        <strong>${duration(item.age_seconds)} old</strong><small>Last success ${timestamp(item.last_success_at)}</small>
       </div>
       <div class="health-job__cadence health-job__metric">
         <span class="health-job__metric-label">Frequency</span>
-        <strong>Every ${duration(item.expected_interval_seconds)}</strong>
-        <small>${scheduleCopy(item)}</small>
+        <strong>Every ${duration(item.expected_interval_seconds)}</strong><small>${scheduleCopy(item)}</small>
       </div>
       <div class="health-job__rows health-job__metric">
         <span class="health-job__metric-label">Last API fetch</span>
@@ -266,32 +301,39 @@ function render(payload) {
   const critical = domains.filter((domain) => domain.critical);
   const caution = critical.filter((domain) => domain.state !== 'healthy');
   const problems = problemJobs();
+  const catalogSummary = payload.catalog?.summary || {};
+  const catalogAttention =
+    Number(catalogSummary.source_attention || 0) + Number(catalogSummary.taxonomy_attention || 0);
+  const totalAttention = problems.length + catalogAttention;
 
   byId('clock').textContent = payload.local_time || '--:--';
   byId('healthUpdated').textContent = `Health checked ${timestamp(payload.checked_at)} · refreshes every 60s`;
-  byId('summaryCount').textContent = String(problems.length);
-  byId('summaryCount').dataset.state = problems.some((item) => jobState(item) === 'failed')
-    ? 'failed'
-    : problems.length
-      ? 'degraded'
-      : 'healthy';
+  byId('summaryCount').textContent = String(totalAttention);
+  byId('summaryCount').dataset.state =
+    problems.some((item) => jobState(item) === 'failed') || Number(catalogSummary.source_attention || 0) > 0
+      ? 'failed'
+      : totalAttention
+        ? 'degraded'
+        : 'healthy';
 
-  if (problems.length) {
+  if (totalAttention) {
     byId('summaryEyebrow').textContent =
-      `${problems.length} stream${problems.length === 1 ? '' : 's'} outside contract`;
+      `${totalAttention} condition${totalAttention === 1 ? '' : 's'} outside contract`;
     byId('healthTitle').textContent =
-      `${problems.length} data stream${problems.length === 1 ? ' needs' : 's need'} attention.`;
+      `${totalAttention} data condition${totalAttention === 1 ? ' needs' : 's need'} attention.`;
     byId('healthCopy').textContent = caution.length
-      ? `${caution.map((domain) => domain.label).join(', ')} ${caution.length === 1 ? 'is' : 'are'} affected. The exact source condition and last API attempt are below.`
-      : 'The affected stream is not currently blocking a decision-critical business surface.';
+      ? `${caution.map((domain) => domain.label).join(', ')} ${caution.length === 1 ? 'is' : 'are'} affected. Pipeline and catalog lifecycle detail are below.`
+      : 'The affected condition is not currently blocking a decision-critical business surface.';
   } else {
     byId('summaryEyebrow').textContent = 'All streams inside contract';
     byId('healthTitle').textContent = 'Decision-critical data is current.';
-    byId('healthCopy').textContent =
-      `All ${critical.length} decision surfaces are supported within each source’s own cadence and grace period.`;
+    byId('healthCopy').textContent = Number(catalogSummary.onboarding || 0)
+      ? `All ${critical.length} decision surfaces are supported. ${catalogSummary.onboarding} new catalog item${Number(catalogSummary.onboarding) === 1 ? ' is' : 's are'} still inside normal Amazon propagation.`
+      : `All ${critical.length} decision surfaces are supported within each source’s own cadence and grace period.`;
   }
 
   renderAttention();
+  renderCatalogOnboarding(payload);
   renderDomains(domains);
 
   const warehouseKeys = [
@@ -303,7 +345,6 @@ function render(payload) {
   warehouseKeys.forEach(([key, id]) => {
     byId(id).textContent = integer(warehouse[key]);
   });
-
   renderJobs();
 }
 

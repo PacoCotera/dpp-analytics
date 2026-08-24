@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 
+from catalog_onboarding import catalog_onboarding_snapshot
+
 
 def _one(cur, sql: str, params=()):
     cur.execute(sql, params)
@@ -263,9 +265,25 @@ def health_board_payload(connect, marketplace: str) -> dict:
                    to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') AS local_time
             """,
         )
+
+    catalog = catalog_onboarding_snapshot(connect, marketplace)
+    summary["catalog_onboarding"] = catalog["summary"]["onboarding"]
+    summary["catalog_attention"] = (
+        catalog["summary"]["source_attention"] + catalog["summary"]["taxonomy_attention"]
+    )
+
     return {
         "summary": summary,
         "warehouse": warehouse,
+        "catalog": {
+            **catalog,
+            "contract": {
+                "discovery": "Seller Listings is authoritative for seller SKU discovery and may surface a new offer before Catalog Items has propagated complete enrichment.",
+                "grace": "New/partial offers have a 48-hour onboarding grace. Catalog is retried every 30 minutes while an ASIN is known but source enrichment is unresolved.",
+                "source_attention": "After 48 hours, missing ASIN or unresolved Catalog evidence is a source-completeness exception.",
+                "taxonomy_attention": "Seller taxonomy becomes actionable only after source enrichment is ready and the onboarding grace has elapsed.",
+            },
+        },
         "ads": {
             "summary": ads_summary,
             "accounts": ads_quality,

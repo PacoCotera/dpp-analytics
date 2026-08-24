@@ -4,12 +4,19 @@ from http.server import ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 import server_legacy as legacy
+from catalog_api import catalog_payload as build_raw_catalog_payload
+from catalog_onboarding import apply_catalog_onboarding
 from geo_reference import postal_geometry
 from home_api import home_payload as build_home_payload
 from sales_geography_api import sales_geography_payload as build_sales_geography_payload
 
 
 legacy.home_payload = lambda: build_home_payload(legacy.connect, legacy.decorate_products, legacy.MARKETPLACE)
+legacy.build_catalog_payload = lambda connect, decorate_products, marketplace: apply_catalog_onboarding(
+    build_raw_catalog_payload(connect, decorate_products, marketplace),
+    connect,
+    marketplace,
+)
 
 
 class Handler(legacy.Handler):

@@ -1,0 +1,127 @@
+.catalog-health-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.catalog-health-summary > div {
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.catalog-health-summary strong,
+.catalog-health-summary span {
+  display: block;
+}
+
+.catalog-health-summary strong {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.catalog-health-summary span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.catalog-health-list {
+  display: grid;
+  gap: 9px;
+}
+
+.catalog-health-item {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) auto minmax(220px, 1.4fr) minmax(190px, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.catalog-health-item--failed {
+  border-left-color: var(--bad);
+}
+
+.catalog-health-item--degraded {
+  border-left-color: var(--warn);
+}
+
+.catalog-health-item--onboarding {
+  border-left-color: var(--accent);
+}
+
+.catalog-health-item__identity strong,
+.catalog-health-item__identity span,
+.catalog-health-item__state strong,
+.catalog-health-item__state span,
+.catalog-health-item__timing span {
+  display: block;
+}
+
+.catalog-health-item__identity strong {
+  font-size: 13px;
+}
+
+.catalog-health-item__identity span,
+.catalog-health-item__state span,
+.catalog-health-item__timing span {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.catalog-health-item__state strong {
+  margin-bottom: 3px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.catalog-health-item__timing {
+  display: grid;
+  gap: 2px;
+}
+
+.health-status.onboarding {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.catalog-health-contract {
+  margin: 10px 2px 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .catalog-health-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .catalog-health-item__state,
+  .catalog-health-item__timing {
+    grid-column: 1 / -1;
+    padding-top: 9px;
+    border-top: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 640px) {
+  .catalog-health-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-health-item {
+    padding: 12px;
+  }
+}

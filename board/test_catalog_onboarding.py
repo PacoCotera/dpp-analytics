@@ -1,0 +1,121 @@
+from __future__ import annotations
+
+import unittest
+from unittest.mock import patch
+
+from catalog_onboarding import catalog_onboarding_snapshot
+
+
+class FakeCursor:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def execute(self, sql, params=()):
+        return None
+
+    def fetchall(self):
+        return [dict(row) for row in self.rows]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class FakeConnection:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def cursor(self):
+        return FakeCursor(self.rows)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+def connect_with(rows):
+    return lambda: FakeConnection(rows)
+
+
+class CatalogOnboardingTest(unittest.TestCase):
+    def test_new_source_ready_unmapped_is_onboarding_not_actionable(self):
+        rows = [
+            {
+                "sku": "NEW-001",
+                "asin": "BNEW001",
+                "source_state": "SOURCE_READY",
+                "age_seconds": 3600,
+                "is_onboarding": True,
+                "source_attention": False,
+            }
+        ]
+        with patch("catalog_onboarding._taxonomy_skus", return_value=set()):
+            payload = catalog_onboarding_snapshot(connect_with(rows), "MX")
+        item = payload["items"][0]
+        self.assertEqual(item["taxonomy_state"], "ONBOARDING")
+        self.assertFalse(item["requires_seller_action"])
+        self.assertEqual(payload["summary"]["onboarding"], 1)
+        self.assertEqual(payload["summary"]["taxonomy_attention"], 0)
+
+    def test_established_source_ready_unmapped_requires_mapping(self):
+        rows = [
+            {
+                "sku": "OLD-001",
+                "asin": "BOLD001",
+                "source_state": "SOURCE_READY",
+                "age_seconds": 72 * 3600,
+                "is_onboarding": False,
+                "source_attention": False,
+            }
+        ]
+        with patch("catalog_onboarding._taxonomy_skus", return_value=set()):
+            payload = catalog_onboarding_snapshot(connect_with(rows), "MX")
+        item = payload["items"][0]
+        self.assertEqual(item["taxonomy_state"], "MAPPING_REQUIRED")
+        self.assertTrue(item["requires_seller_action"])
+        self.assertEqual(payload["summary"]["taxonomy_attention"], 1)
+
+    def test_overdue_source_gap_stays_source_attention_not_taxonomy_failure(self):
+        rows = [
+            {
+                "sku": "PROP-001",
+                "asin": "BPROP001",
+                "source_state": "CATALOG_PROPAGATING",
+                "age_seconds": 72 * 3600,
+                "is_onboarding": False,
+                "source_attention": True,
+            }
+        ]
+        with patch("catalog_onboarding._taxonomy_skus", return_value=set()):
+            payload = catalog_onboarding_snapshot(connect_with(rows), "MX")
+        item = payload["items"][0]
+        self.assertEqual(item["taxonomy_state"], "ONBOARDING")
+        self.assertTrue(item["requires_seller_action"])
+        self.assertEqual(payload["summary"]["source_attention"], 1)
+        self.assertEqual(payload["summary"]["taxonomy_attention"], 0)
+
+    def test_mapped_sku_is_mapped_even_while_source_is_propagating(self):
+        rows = [
+            {
+                "sku": "MAP-001",
+                "asin": "BMAP001",
+                "source_state": "CATALOG_PROPAGATING",
+                "age_seconds": 3600,
+                "is_onboarding": True,
+                "source_attention": False,
+            }
+        ]
+        with patch("catalog_onboarding._taxonomy_skus", return_value={"MAP-001"}):
+            payload = catalog_onboarding_snapshot(connect_with(rows), "MX")
+        item = payload["items"][0]
+        self.assertEqual(item["taxonomy_state"], "MAPPED")
+        self.assertFalse(item["requires_seller_action"])
+        self.assertEqual(payload["summary"]["seller_mapped"], 1)
+
+
+if __name__ == "__main__":
+    unittest.main()
