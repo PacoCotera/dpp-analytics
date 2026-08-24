@@ -1,5 +1,3 @@
-BEGIN;
-
 -- 048 introduced the durable lifecycle columns. Refine the read model without
 -- rewriting applied migration history: a known ASIN that has never been queried
 -- is AWAITING_CATALOG; once queried but not returned by Amazon it is explicitly
@@ -38,9 +36,3 @@ LEFT JOIN core.catalog_item ci
 
 COMMENT ON VIEW mart.catalog_onboarding_state IS
 'Catalog ingestion lifecycle. AWAITING_CATALOG means an ASIN is known but not yet queried; CATALOG_PROPAGATING means Catalog Items was queried but Amazon has not returned the item. Source attention begins only after a 48-hour grace window.';
-
-INSERT INTO ops.schema_migrations(filename)
-VALUES ('049_catalog_propagation_state.sql')
-ON CONFLICT (filename) DO NOTHING;
-
-COMMIT;
