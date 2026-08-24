@@ -13,6 +13,7 @@ class CacheResult:
     status: str
     age_seconds: int
     ttl_seconds: int
+    build_ms: int
 
 
 @dataclass(frozen=True)
@@ -45,7 +46,7 @@ class TTLResponseCache:
                 self._entries.pop(key, None)
                 return None
             self._entries.move_to_end(key)
-            return CacheResult(entry.value, "HIT", int(age), ttl_seconds)
+            return CacheResult(entry.value, "HIT", int(age), ttl_seconds, 0)
 
     def _lock_for(self, key: str) -> Lock:
         with self._guard:
@@ -82,9 +83,17 @@ class TTLResponseCache:
                 cached = self._lookup(key, ttl_seconds)
                 if cached is not None:
                     return cached
+            started_at = monotonic()
             value = builder()
+            build_ms = max(0, round((monotonic() - started_at) * 1000))
             self._store(key, value)
-            return CacheResult(value, "REFRESH" if refresh else "MISS", 0, ttl_seconds)
+            return CacheResult(
+                value,
+                "REFRESH" if refresh else "MISS",
+                0,
+                ttl_seconds,
+                build_ms,
+            )
 
     def clear(self) -> None:
         with self._guard:
