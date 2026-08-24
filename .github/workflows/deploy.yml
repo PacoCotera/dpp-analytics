@@ -28,6 +28,7 @@ jobs:
           sudo rm -rf /tmp/dpp-production-visual-qa
           sudo rm -f \
             /tmp/dpp-production-visual-qa-run.txt \
+            /tmp/dpp-production-visual-qa-exit-code.txt \
             /tmp/dpp-finance-close.json \
             /tmp/dpp-spapi-probe.json \
             /tmp/grafana-health.json \
@@ -253,6 +254,7 @@ jobs:
             http://127.0.0.1:8088 /out \
             | tee /tmp/dpp-production-visual-qa-run.txt
           rc=${PIPESTATUS[0]}
+          printf '%s\n' "$rc" >/tmp/dpp-production-visual-qa-exit-code.txt
           set -e
 
           sudo chown -R "$(id -u):$(id -g)" /tmp/dpp-production-visual-qa
@@ -270,6 +272,7 @@ jobs:
           path: |
             /tmp/dpp-production-visual-qa
             /tmp/dpp-production-visual-qa-run.txt
+            /tmp/dpp-production-visual-qa-exit-code.txt
           if-no-files-found: warn
           retention-days: 30
 
@@ -373,6 +376,11 @@ jobs:
             echo
             echo '## Production browser QA'
             echo '```text'
+            if [[ -s /tmp/dpp-production-visual-qa-exit-code.txt ]]; then
+              echo "suite_exit_code=$(cat /tmp/dpp-production-visual-qa-exit-code.txt)"
+            else
+              echo 'suite_exit_code=not_recorded'
+            fi
             if [[ -s /tmp/dpp-production-visual-qa/summary.json ]]; then
               python3 - <<'PY' || true
           import json
@@ -389,6 +397,60 @@ jobs:
             else
               echo 'Production browser QA did not produce summary.json.'
             fi
+            python3 - <<'PY' || true
+          import json
+          from pathlib import Path
+
+          root = Path('/tmp/dpp-production-visual-qa')
+          for summary_path in sorted(root.glob('*-summary.json')):
+              try:
+                  summary = json.loads(summary_path.read_text())
+              except Exception as error:
+                  print('%s: INVALID (%s)' % (summary_path.name, error))
+                  continue
+
+              failures = []
+              for key in ('failures', 'errors'):
+                  value = summary.get(key)
+                  if isinstance(value, list):
+                      failures.extend(str(item) for item in value if item)
+              if summary.get('error'):
+                  failures.append(str(summary['error']))
+
+              results = summary.get('results')
+              if isinstance(results, list):
+                  for result in results:
+                      if not isinstance(result, dict) or result.get('ok', True):
+                          continue
+                      name = result.get('name') or result.get('scenario') or 'check'
+                      detail = result.get('error')
+                      if not detail:
+                          detail = '; '.join(str(item) for item in result.get('errors', []) if item)
+                      failures.append('%s: %s' % (name, detail or 'failed'))
+
+              raw_status = summary.get('status')
+              if isinstance(raw_status, str):
+                  status = raw_status.upper()
+              elif isinstance(summary.get('ok'), bool):
+                  status = 'PASS' if summary['ok'] else 'FAIL'
+              else:
+                  status = 'FAIL' if failures else 'PASS'
+
+              checks = summary.get('checks')
+              if isinstance(checks, list):
+                  detail = ' checks=%s' % len(checks)
+              elif isinstance(results, list):
+                  detail = ' checks=%s/%s' % (
+                      sum(1 for result in results if isinstance(result, dict) and result.get('ok')),
+                      len(results),
+                  )
+              else:
+                  detail = ''
+
+              print('%s: %s%s' % (summary_path.stem, status, detail))
+              for failure in dict.fromkeys(failures):
+                  print('  - %s' % failure)
+          PY
             echo '```'
             echo
             echo '_This issue is updated automatically by the self-hosted deployment runner. No credentials are included._'
