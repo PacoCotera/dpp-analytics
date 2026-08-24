@@ -286,6 +286,20 @@
   line-height: 1.25;
 }
 
+.today-products-priority,
+.today-products-secondary {
+  display: flex;
+  flex-direction: column;
+}
+
+.today-products-reference {
+  border-top: 1px solid var(--line);
+}
+
+.today-products-reference > summary {
+  display: none;
+}
+
 .wall-mode .today-hero__metrics,
 .wall-mode .today-order.operational-order,
 .wall-mode .order-flow-rollup {
@@ -344,6 +358,46 @@
 
   .order-flow-stat span {
     font-size: 8px;
+  }
+
+  .today-products-reference > summary {
+    display: flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0 0;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .today-products-reference > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .today-products-reference > summary strong,
+  .today-products-reference > summary small {
+    display: block;
+  }
+
+  .today-products-reference > summary strong {
+    font-size: 12px;
+  }
+
+  .today-products-reference > summary small {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .today-products-reference > summary b {
+    flex: 0 0 auto;
+    color: #7b4a0d;
+    font-size: 11px;
+  }
+
+  .today-products-reference:not([open]) > .today-products-secondary {
+    display: none;
   }
 
   .operational-order-grid {
