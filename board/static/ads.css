@@ -94,15 +94,16 @@
   font-size: 12px;
 }
 .ads-metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  grid-auto-columns: minmax(0, 1fr);
 }
 .ads-metric {
   min-width: 0;
 }
-.ads-metric .metric-note {
+.ads-metric .kpi__note {
   line-height: 1.4;
+}
+.ads-page .data-table {
+  min-width: 760px;
 }
 .ads-chart {
   display: block;
@@ -364,7 +365,17 @@
 }
 @media (max-width: 760px) {
   .ads-metrics {
+    grid-auto-flow: row;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ads-metric {
+    border-left: 0;
+  }
+  .ads-metric:nth-child(even) {
+    border-left: 1px solid var(--line);
+  }
+  .ads-metric:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
   }
 }
 @media (max-width: 640px) {
@@ -400,7 +411,7 @@
     min-height: 112px;
     padding: 14px !important;
   }
-  .ads-metric .metric-value {
+  .ads-metric .kpi__value {
     font-size: 29px;
   }
   .ads-action-card {
@@ -421,38 +432,38 @@
   .ads-action {
     font-size: 10px;
   }
-  .ads-page .table thead {
+  .ads-page .data-table thead {
     display: none;
   }
-  .ads-page .table,
-  .ads-page .table tbody,
-  .ads-page .table tr,
-  .ads-page .table td {
+  .ads-page .data-table,
+  .ads-page .data-table tbody,
+  .ads-page .data-table tr,
+  .ads-page .data-table td {
     display: block;
     width: 100%;
   }
-  .ads-page .table tr {
+  .ads-page .data-table tr {
     padding: 13px 14px;
     border-bottom: 1px solid var(--line);
   }
-  .ads-page .table td {
+  .ads-page .data-table td {
     padding: 2px 0 !important;
     border: 0 !important;
     text-align: left !important;
   }
-  .ads-page .table td[data-label]::before {
+  .ads-page .data-table td[data-label]::before {
     color: var(--muted);
     font-size: 11px;
     font-weight: 700;
     content: attr(data-label) ' · ';
   }
-  .ads-page .table .product-cell::before {
+  .ads-page .data-table .product-cell::before {
     display: none;
   }
-  .ads-page .table .product-cell {
+  .ads-page .data-table .product-cell {
     margin-bottom: 7px;
   }
-  .ads-page .table-wrap {
+  .ads-page .data-table-scroll {
     overflow: visible !important;
   }
 }
