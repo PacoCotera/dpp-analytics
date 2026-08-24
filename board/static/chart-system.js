@@ -152,6 +152,12 @@
     data.forEach((d, i) => {
       const start = Math.max(0, i - 6);
       d.avg = d3.mean(data.slice(start, i + 1), (x) => x.value) || 0;
+      d.weekend = [0, 6].includes(d.date.getUTCDay());
+    });
+    const positiveDays = data.map((d) => d.value).filter((value) => value > 0);
+    const exceptionalThreshold = d3.quantile(positiveDays.sort(d3.ascending), 0.9) || Infinity;
+    data.forEach((d) => {
+      d.exceptional = d.value >= exceptionalThreshold;
     });
     const compact = window.innerWidth <= 640;
     const ctx = shell(
@@ -170,31 +176,107 @@
       .domain([0, d3.max(data, (d) => Math.max(d.value, d.avg)) || 1])
       .nice(3)
       .range([ctx.innerH, 0]);
+    const firstDate = data[0].date;
+    const latest = data[data.length - 1];
+    const currentWeekStart = d3.utcMonday.floor(latest.date);
+    const currentWeekX = Math.max(0, x(currentWeekStart));
+    const gradientId = `home-rhythm-area-${String(selector).replace(/[^a-z0-9]/gi, '')}`;
+    const gradient = ctx.svg
+      .append('defs')
+      .append('linearGradient')
+      .attr('id', gradientId)
+      .attr('x1', '0%')
+      .attr('x2', '0%')
+      .attr('y1', '0%')
+      .attr('y2', '100%');
+    gradient.append('stop').attr('offset', '0%').attr('stop-color', COLORS.sales).attr('stop-opacity', 0.22);
+    gradient
+      .append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', COLORS.sales)
+      .attr('stop-opacity', 0.02);
+    ctx.plot
+      .append('rect')
+      .attr('class', 'home-rhythm__current-week')
+      .attr('x', currentWeekX)
+      .attr('width', Math.max(0, ctx.innerW - currentWeekX))
+      .attr('height', ctx.innerH)
+      .attr('rx', 5);
+    ctx.plot
+      .selectAll('.home-rhythm__week-line')
+      .data(d3.utcMonday.range(d3.utcMonday.ceil(firstDate), latest.date))
+      .join('line')
+      .attr('class', 'home-rhythm__week-line')
+      .attr('x1', (d) => x(d))
+      .attr('x2', (d) => x(d))
+      .attr('y1', 0)
+      .attr('y2', ctx.innerH);
     grid(ctx, y, 3);
     const barW = Math.max(2, Math.min(8, (ctx.innerW / data.length) * 0.62));
     const bars = ctx.plot
       .selectAll('.dpp-bar')
       .data(data)
       .join('rect')
-      .attr('class', 'dpp-bar')
+      .attr(
+        'class',
+        (d) =>
+          `dpp-bar home-rhythm__bar${d.weekend ? ' home-rhythm__bar--weekend' : ''}${d.exceptional ? ' home-rhythm__bar--exceptional' : ''}`,
+      )
       .attr('x', (d) => x(d.date) - barW / 2)
       .attr('width', barW)
       .attr('y', (d) => y(d.value))
       .attr('height', (d) => Math.max(1, ctx.innerH - y(d.value)))
-      .attr('rx', 1.5)
-      .attr('fill', COLORS.salesLight)
-      .attr('opacity', 0.68);
+      .attr('rx', Math.min(3, barW / 2));
     const line = d3
       .line()
       .x((d) => x(d.date))
       .y((d) => y(d.avg))
       .curve(d3.curveMonotoneX);
-    ctx.plot.append('path').datum(data).attr('class', 'dpp-line-halo').attr('d', line);
-    ctx.plot.append('path').datum(data).attr('class', 'dpp-line').attr('d', line).attr('stroke', COLORS.ink);
+    const area = d3
+      .area()
+      .x((d) => x(d.date))
+      .y0(y(0))
+      .y1((d) => y(d.avg))
+      .curve(d3.curveMonotoneX);
+    ctx.plot
+      .append('path')
+      .datum(data)
+      .attr('class', 'home-rhythm__area')
+      .attr('fill', `url(#${gradientId})`)
+      .attr('d', area);
+    ctx.plot.append('path').datum(data).attr('class', 'dpp-line-halo home-rhythm__line-halo').attr('d', line);
+    ctx.plot.append('path').datum(data).attr('class', 'dpp-line home-rhythm__line').attr('d', line);
+    ctx.plot
+      .append('circle')
+      .attr('class', 'home-rhythm__latest-dot')
+      .attr('cx', x(latest.date))
+      .attr('cy', y(latest.avg))
+      .attr('r', 4);
+    const labelAbove = y(latest.avg) > 22;
+    ctx.plot
+      .append('text')
+      .attr('class', 'home-rhythm__latest-label')
+      .attr('x', x(latest.date) - 7)
+      .attr('y', y(latest.avg) + (labelAbove ? -9 : 17))
+      .attr('text-anchor', 'end')
+      .text(`7-day ${shortMoney(latest.avg)}`);
+    if (currentWeekX < ctx.innerW - 42) {
+      ctx.plot
+        .append('text')
+        .attr('class', 'home-rhythm__current-label')
+        .attr('x', ctx.innerW - 6)
+        .attr('y', 10)
+        .attr('text-anchor', 'end')
+        .text('PARTIAL');
+    }
     bottomAxis(ctx, x, d3.utcFormat('%b'), d3.utcMonth.every(1));
     interactive(bars, ctx, (d) => ({
       title: d3.utcFormat('%b %-d, %Y')(d.date),
-      lines: [`Sales ${fullMoney(d.value)}`, `7-day signal ${fullMoney(d.avg)}`],
+      lines: [
+        `Shopper spend ${fullMoney(d.value)}`,
+        `7-day signal ${fullMoney(d.avg)}`,
+        ...(d.exceptional ? ['High-spend day · top 10%'] : d.weekend ? ['Weekend'] : []),
+      ],
     }));
   }
 
