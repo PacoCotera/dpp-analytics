@@ -77,20 +77,27 @@ def ingest_catalog() -> dict[str, int]:
                 missing += len(set(batch) - returned_asins)
                 run["records_read"] += len(items)
                 with db.connect() as conn, conn.cursor() as cur:
-                    # Record the attempt even when Amazon has not propagated a new
-                    # ASIN into Catalog Items yet. This lets the board distinguish
-                    # "not attempted" from "attempted but still propagating".
+                    # Attempt state belongs in ops. Never create a core.catalog_item
+                    # placeholder for an ASIN Amazon did not return: existing marts
+                    # correctly use catalog-item existence as evidence of enrichment.
                     cur.execute(
                         """
-                        INSERT INTO core.catalog_item(
-                            marketplace_id, asin, catalog_last_attempt_at, updated_at
+                        INSERT INTO ops.catalog_item_attempt(
+                            marketplace_id, asin, last_attempt_at, last_returned_at
                         )
-                        SELECT %s, requested_asin, now(), now()
-                        FROM unnest(%s::text[]) AS requested_asin
+                        SELECT %s,
+                               requested_asin,
+                               now(),
+                               CASE WHEN requested_asin = ANY(%s::text[]) THEN now() END
+                        FROM unnest(%s::text[]) AS requested(requested_asin)
                         ON CONFLICT (marketplace_id, asin) DO UPDATE SET
-                            catalog_last_attempt_at=now()
+                            last_attempt_at=now(),
+                            last_returned_at=COALESCE(
+                                EXCLUDED.last_returned_at,
+                                ops.catalog_item_attempt.last_returned_at
+                            )
                         """,
-                        (settings.marketplace_id, batch),
+                        (settings.marketplace_id, list(returned_asins), batch),
                     )
                     for item in items:
                         asin = item.get("asin")
