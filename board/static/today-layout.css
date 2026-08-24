@@ -76,6 +76,10 @@
   padding-bottom: 22px;
 }
 
+.today-business-evidence > summary {
+  display: none;
+}
+
 @media (min-width: 981px) {
   .today-right-column {
     position: relative;
@@ -102,6 +106,37 @@
 }
 
 @media (max-width: 640px) {
+  .today-workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .today-left-column,
+  .today-right-column {
+    display: contents;
+  }
+
+  .today-hero {
+    order: 1;
+  }
+
+  .today-read-panel {
+    order: 2;
+  }
+
+  .order-flow-panel {
+    order: 3;
+  }
+
+  .today-drivers-panel {
+    order: 4;
+  }
+
+  .today-rhythm-panel {
+    order: 5;
+  }
+
   .today-workspace .today-hero {
     padding: 12px 14px 0;
   }
@@ -207,6 +242,53 @@
     font-weight: 760;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+  }
+
+  .today-business-evidence > summary {
+    display: flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 9px -15px -15px;
+    padding: 9px 15px;
+    border-top: 1px solid var(--line);
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .today-business-evidence > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .today-business-evidence > summary strong,
+  .today-business-evidence > summary small {
+    display: block;
+  }
+
+  .today-business-evidence > summary strong {
+    font-size: 12px;
+  }
+
+  .today-business-evidence > summary small {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .today-business-evidence > summary b {
+    flex: 0 0 auto;
+    color: #7b4a0d;
+    font-size: 11px;
+  }
+
+  .today-business-evidence[open] > summary {
+    margin-bottom: 0;
+  }
+
+  .today-business-evidence:not([open]) > .context-list,
+  .today-business-evidence:not([open]) > .latest {
+    display: none;
   }
 }
 
