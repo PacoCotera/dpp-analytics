@@ -12,6 +12,7 @@ COPY product_naming_qa.mjs ./
 COPY ads_surface_qa.mjs ./
 COPY footer_qa.mjs ./
 COPY cache_performance_qa.mjs ./
+COPY catalog_onboarding_qa.mjs ./
 COPY entrypoint.sh ./
 RUN chmod +x /qa/entrypoint.sh
 ENTRYPOINT ["/qa/entrypoint.sh"]
