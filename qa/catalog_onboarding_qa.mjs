@@ -22,9 +22,12 @@ try {
   if (Number(lifecycle.summary.grace_hours) !== 48) {
     throw new Error(`Expected 48h catalog onboarding grace, got ${lifecycle.summary.grace_hours}`);
   }
+  if ((catalog.body.summary?.taxonomy_unmapped_skus || []).length) {
+    throw new Error('Mutable taxonomy completeness leaked back into the legacy deployment-blocking field');
+  }
 
   const bySku = new Map(lifecycle.items.map((item) => [String(item.sku || ''), item]));
-  const actionableTaxonomy = catalog.body.summary?.taxonomy_unmapped_skus || [];
+  const actionableTaxonomy = catalog.body.summary?.taxonomy_attention_skus || [];
   const onboardingTaxonomy = catalog.body.summary?.taxonomy_onboarding_skus || [];
   const sourceAttention = catalog.body.summary?.catalog_source_attention_skus || [];
 
