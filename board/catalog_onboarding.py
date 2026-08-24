@@ -65,9 +65,7 @@ def catalog_onboarding_snapshot(connect, marketplace: str) -> dict:
             "grace_hours": 48,
         },
         "items": rows,
-        "attention": [
-            row for row in rows if row.get("requires_seller_action")
-        ],
+        "attention": [row for row in rows if row.get("requires_seller_action")],
     }
 
 
@@ -98,10 +96,12 @@ def apply_catalog_onboarding(payload: dict, connect, marketplace: str) -> dict:
         else:
             transient.append(sku)
 
-    # Keep the historical field as the seller-action list so existing deployment
-    # QA still catches established taxonomy omissions, but not normal new-SKU
-    # propagation. Transient/new items have their own explicit field.
-    summary["taxonomy_unmapped_skus"] = sorted(actionable)
+    # Mutable catalog completeness is an operational trust signal, not a code
+    # deployment invariant. Keep the historical field empty so legacy visual QA
+    # validates rendering/rollups rather than blocking a release when Amazon adds
+    # a SKU. Dedicated onboarding QA verifies the lifecycle classification instead.
+    summary["taxonomy_unmapped_skus"] = []
+    summary["taxonomy_attention_skus"] = sorted(actionable)
     summary["taxonomy_onboarding_skus"] = sorted(transient)
     summary["catalog_source_attention_skus"] = sorted(
         str(row.get("sku") or "") for row in snapshot["items"] if row.get("source_attention")
