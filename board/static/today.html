@@ -60,7 +60,7 @@
               </div>
             </section>
 
-            <section class="today-card today-panel">
+            <section class="today-card today-panel today-rhythm-panel">
               <div class="today-panel__head">
                 <div>
                   <div class="today-panel__title">Recent rhythm</div>
@@ -75,9 +75,7 @@
                 </div>
               </div>
               <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
-              <div class="rhythm-host">
-                <svg id="rhythm" class="rhythm" viewBox="0 0 900 190"></svg>
-              </div>
+              <div class="rhythm-host"><svg id="rhythm" class="rhythm" viewBox="0 0 900 190"></svg></div>
               <div class="rhythm-rail" id="rhythmRail"></div>
             </section>
           </div>
@@ -87,14 +85,18 @@
               <div class="today-eyebrow">Business read</div>
               <h2 id="pulseHeadline">Reading the business…</h2>
               <p id="pulseExplanation">Separating today’s signal from the broader trend.</p>
-              <div class="context-list" id="contextList"></div>
-              <section class="latest">
-                <div class="latest-title">Latest sale · shopper spend incl. IVA</div>
-                <div id="latest">
-                  <div class="empty">Waiting for today’s first order.</div>
-                </div>
-                <div class="latest-age" id="latestAge"></div>
-              </section>
+              <details class="today-business-evidence" id="todayBusinessEvidence" open>
+                <summary>
+                  <span><strong>Benchmark detail</strong><small>MTD, 30D, WTD and latest order</small></span
+                  ><b id="todayBusinessToggle">View ↓</b>
+                </summary>
+                <div class="context-list" id="contextList"></div>
+                <section class="latest">
+                  <div class="latest-title">Latest sale · shopper spend incl. IVA</div>
+                  <div id="latest"><div class="empty">Waiting for today’s first order.</div></div>
+                  <div class="latest-age" id="latestAge"></div>
+                </section>
+              </details>
             </section>
 
             <section class="today-card today-panel order-flow-panel" id="orderFlowPanel">
@@ -110,7 +112,7 @@
               <div class="order-flow-foot" id="orderFlowFoot"></div>
             </section>
 
-            <section class="today-card today-panel">
+            <section class="today-card today-panel today-drivers-panel">
               <div class="today-panel__head">
                 <div>
                   <div class="today-panel__title" id="productsTitle">What is driving today</div>
