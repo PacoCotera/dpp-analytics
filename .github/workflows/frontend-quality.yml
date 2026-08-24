@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'board/static/**'
+      - 'board/*.py'
       - 'board/package.json'
       - 'board/eslint.config.js'
       - 'board/.stylelintrc.json'
@@ -20,6 +21,7 @@ on:
   push:
     paths:
       - 'board/static/**'
+      - 'board/*.py'
       - 'board/package.json'
       - 'board/eslint.config.js'
       - 'board/.stylelintrc.json'
@@ -58,6 +60,27 @@ jobs:
 
       - name: Lint and verify formatting
         run: npm run quality
+
+  board-python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: board
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Compile board Python
+        run: python -m compileall -q .
+
+      - name: Test board response cache
+        run: python -m unittest -v test_response_cache.py
 
   qa-syntax:
     runs-on: ubuntu-latest
