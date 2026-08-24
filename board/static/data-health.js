@@ -7,7 +7,12 @@ let catalogHealth = {};
 const DOMAIN_DEFINITIONS = [
   { key: 'today', label: 'Today', terms: ['orders'], critical: true },
   { key: 'sales', label: 'Sales', terms: ['data_kiosk', 'data kiosk'], critical: true },
-  { key: 'products', label: 'Products', terms: ['catalog', 'seller_listings', 'seller listings'], critical: true },
+  {
+    key: 'products',
+    label: 'Products',
+    terms: ['catalog', 'seller_listings', 'seller listings'],
+    critical: true,
+  },
   { key: 'inventory', label: 'Inventory', terms: ['inventory'], critical: true },
   { key: 'finance', label: 'Finance', terms: ['finance', 'settlement'], critical: true },
 ];
@@ -53,7 +58,10 @@ function jobState(item) {
 
 function worstState(states) {
   const rank = { failed: 4, stale: 3, degraded: 2, healthy: 1, disconnected: 0 };
-  return states.reduce((worst, state) => (rank[state] > rank[worst] ? state : worst), 'disconnected');
+  return states.reduce(
+    (worst, state) => (rank[state] > rank[worst] ? state : worst),
+    'disconnected',
+  );
 }
 
 function domainState(definition) {
@@ -125,7 +133,9 @@ function problemJobs() {
 
 function scheduleCopy(item) {
   if (item.latest_status === 'running') return `Running for ${duration(item.attempt_age_seconds)}`;
-  if (Number(item.next_due_in_seconds || 0) > 0) return `Next due in ${duration(item.next_due_in_seconds)}`;
+  if (Number(item.next_due_in_seconds || 0) > 0) {
+    return `Next due in ${duration(item.next_due_in_seconds)}`;
+  }
   return `Overdue by ${duration(item.overdue_by_seconds)}`;
 }
 
@@ -187,10 +197,18 @@ function catalogItemState(item) {
 }
 
 function catalogWaitCopy(item) {
-  if (item.source_state === 'AWAITING_ASIN') return 'Waiting for Amazon Seller Listings to expose an ASIN.';
-  if (item.source_state === 'AWAITING_CATALOG') return 'ASIN known; Catalog enrichment is queued or has not completed yet.';
-  if (item.source_state === 'CATALOG_PROPAGATING') return 'Catalog was queried, but Amazon has not returned complete enrichment yet.';
-  if (item.taxonomy_state === 'MAPPING_REQUIRED') return 'Amazon source data is ready; add the seller-facing taxonomy mapping.';
+  if (item.source_state === 'AWAITING_ASIN') {
+    return 'Waiting for Amazon Seller Listings to expose an ASIN.';
+  }
+  if (item.source_state === 'AWAITING_CATALOG') {
+    return 'ASIN known; Catalog enrichment is queued or has not completed yet.';
+  }
+  if (item.source_state === 'CATALOG_PROPAGATING') {
+    return 'Catalog was queried, but Amazon has not returned complete enrichment yet.';
+  }
+  if (item.taxonomy_state === 'MAPPING_REQUIRED') {
+    return 'Amazon source data is ready; add the seller-facing taxonomy mapping.';
+  }
   return 'Catalog source and seller taxonomy are ready.';
 }
 
@@ -294,15 +312,19 @@ function render(payload) {
   byId('clock').textContent = payload.local_time || '--:--';
   byId('healthUpdated').textContent = `Health checked ${timestamp(payload.checked_at)} · refreshes every 60s`;
   byId('summaryCount').textContent = String(totalAttention);
-  byId('summaryCount').dataset.state = problems.some((item) => jobState(item) === 'failed') || Number(catalogSummary.source_attention || 0) > 0
-    ? 'failed'
-    : totalAttention
-      ? 'degraded'
-      : 'healthy';
+  byId('summaryCount').dataset.state =
+    problems.some((item) => jobState(item) === 'failed') ||
+    Number(catalogSummary.source_attention || 0) > 0
+      ? 'failed'
+      : totalAttention
+        ? 'degraded'
+        : 'healthy';
 
   if (totalAttention) {
-    byId('summaryEyebrow').textContent = `${totalAttention} condition${totalAttention === 1 ? '' : 's'} outside contract`;
-    byId('healthTitle').textContent = `${totalAttention} data condition${totalAttention === 1 ? ' needs' : 's need'} attention.`;
+    byId('summaryEyebrow').textContent =
+      `${totalAttention} condition${totalAttention === 1 ? '' : 's'} outside contract`;
+    byId('healthTitle').textContent =
+      `${totalAttention} data condition${totalAttention === 1 ? ' needs' : 's need'} attention.`;
     byId('healthCopy').textContent = caution.length
       ? `${caution.map((domain) => domain.label).join(', ')} ${caution.length === 1 ? 'is' : 'are'} affected. Pipeline and catalog lifecycle detail are below.`
       : 'The affected condition is not currently blocking a decision-critical business surface.';
