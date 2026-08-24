@@ -153,39 +153,52 @@ async function verifyBusiness(page) {
   await wait(page, '#stateHeadline');
   const state = await page.evaluate(async () => {
     const payload = await (await fetch('/api/home', { cache: 'no-store' })).json();
-    const exceptions = (payload.inventory || []).filter(item =>
-      ['STOCKOUT', 'PRODUCE', 'PLAN'].includes(String(item.action || '').toUpperCase())
+    const exceptions = (payload.inventory || []).filter((item) =>
+      ['STOCKOUT', 'PRODUCE', 'PLAN'].includes(String(item.action || '').toUpperCase()),
     );
     const total = Math.max(exceptions.length, Number(payload.inventory_summary?.needs_action || 0));
+    const brief = document.querySelector('.business-brief');
     const attention = document.querySelector('.attention-panel');
     const rhythm = document.querySelector('.rhythm-panel');
+    const health = document.querySelector('.business-health');
     const ads = document.getElementById('adsRead');
     const brand = document.querySelector('.topbar a.brand');
+    const top = (element) => element?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
     return {
-      title: document.querySelector('.page-header__title')?.textContent?.trim(),
       activeNav: document.querySelector('.nav-primary-set > a.active')?.textContent?.trim(),
       brandPath: brand ? new URL(brand.href).pathname : '',
-      attentionBeforeRhythm: Boolean(
-        attention && rhythm && attention.getBoundingClientRect().top < rhythm.getBoundingClientRect().top
+      singleRead: Boolean(
+        brief && !document.querySelector('.page-header') && !document.querySelector('.state-read'),
+      ),
+      hierarchy: Boolean(
+        top(brief) < top(rhythm) && top(rhythm) < top(attention) && top(attention) < top(health),
       ),
       exceptionItems: document.querySelectorAll('.attention-item').length,
+      severityBadges: document.querySelectorAll('.attention-item .severity-badge').length,
       clearState: Boolean(document.querySelector('.attention-clear')),
       moreVisible: Boolean(document.querySelector('.attention-more')),
       expectedItems: Math.min(4, exceptions.length),
       expectedMore: exceptions.length > 0 && total > Math.min(4, exceptions.length),
+      healthDomains: document.querySelectorAll('.business-health-card').length,
+      productDriversRemoved: !document.querySelector('.drivers, #movers, .driver'),
       adsVisible: Boolean(ads && !ads.hidden && getComputedStyle(ads).display !== 'none'),
       adsExpected: Boolean(payload.ads?.through_date),
+      adsAfterHealth: !ads || ads.hidden || top(health) < top(ads),
     };
   });
   if (
-    state.title !== 'Business' ||
     state.activeNav !== 'Business' ||
     state.brandPath !== '/today' ||
-    !state.attentionBeforeRhythm ||
+    !state.singleRead ||
+    !state.hierarchy ||
     state.exceptionItems !== state.expectedItems ||
+    state.severityBadges !== state.expectedItems ||
     state.clearState !== (state.expectedItems === 0) ||
     state.moreVisible !== state.expectedMore ||
-    state.adsVisible !== state.adsExpected
+    state.healthDomains !== 3 ||
+    !state.productDriversRemoved ||
+    state.adsVisible !== state.adsExpected ||
+    !state.adsAfterHealth
   ) {
     throw new Error(`Business decision-board contract mismatch: ${JSON.stringify(state)}`);
   }
