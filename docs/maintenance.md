@@ -19,7 +19,7 @@ The board is server-rendered only in the sense that Python serves static HTML an
 | --- | --- | --- | --- | --- |
 | `/today` | `board/today_api.py` | `board/static/today.html` | `today.css` | `today.js` + tiny synchronous `today-bootstrap.js` for wall mode |
 | `/`, `/home`, `/index.html` | `board/server.py` → `home_payload()` | `home.html` | `home.css` | `home.js` |
-| `/sales` | `board/sales_api.py` | `sales.html` | `sales.css` | `sales-canonical.js` |
+| `/sales` | canonical Sales adapter over `board/sales_api.py`; lazy Geography: `board/sales_geography_api.py` | `sales.html` | `sales.css` + `sales-geography.css` | `sales-canonical.js` + lazy `sales-geography.js` / `sales-geography-v2.js` |
 | `/catalog` | `board/catalog_api.py` | `catalog.html` | `catalog.css` | `catalog.js` |
 | `/product?sku=...` | `board/product_api.py` | `product.html` | `product.css` | `product.js` |
 | `/inventory` | `board/inventory_api.py` | `inventory.html` | `inventory.css` | `inventory.js` |
@@ -30,7 +30,7 @@ The board is server-rendered only in the sense that Python serves static HTML an
 
 ### Two filename traps
 
-1. **Sales:** `sales-canonical.js` is the live, single Sales renderer. “canonical” is historical naming, not a second implementation.
+1. **Sales:** `sales-canonical.js` is the live Sales Overview/Drivers renderer. “canonical” is historical naming, not a second implementation. Geography is intentionally a separate lazy runtime and payload because its postal history is optional heavy detail, not part of the default Sales snapshot.
 2. **Finance:** the current `board/Dockerfile` copies `board/finance_emergency.py` into the image as `/app/finance_api.py`. That file is therefore the **production Finance payload implementation** even though `board/finance_api.py` and `board/finance_safe.py` also exist in the repository. Do not infer Finance runtime ownership from the filename alone. Normalize this naming only as a deliberate behavior-neutral cleanup with Finance smoke validation.
 
 ## Shared frontend ownership
@@ -44,7 +44,8 @@ Before adding page-specific code, check whether the behavior belongs in one of t
 | `ui-shell.js` | primary navigation, active route, More menu, workspace identity, tab keyboard behavior and mobile swipe behavior |
 | `layout-system.css` | reusable page headers, KPI rails, panels, grids, segmented controls, tables and status strips |
 | `chart-system.css` / `chart-system.js` | reusable chart grammar, axes, tooltips, legends, period treatment and shared chart forms |
-| `ui-utils.js` | escaping, number/money formatting, DOM helpers and JSON fetching used by ES-module pages |
+| `data-cache.js` | session-scoped GET JSON cache, browser in-flight dedupe and endpoint freshness policy |
+| `ui-utils.js` | escaping, number/money formatting, DOM helpers and shared JSON-fetch facade used by ES-module pages |
 | `mobile-ux.css` | shared mobile compatibility behavior retained from earlier iterations |
 | `design-refine.css` | retained global design refinements; treat as legacy/shared foundation, not a place for new page-specific overrides |
 | `vendor/d3.v7.min.js` | vendored D3 runtime |
@@ -60,6 +61,8 @@ Today is deliberately provisional and near-real-time. Its operating pulse is dri
 ### Historical Sales and Trajectory
 
 Reconciled historical daily sales use Data Kiosk-backed `mart.business_daily` data. This is the basis for rolling windows and structural trajectory. Browser code may choose a display window but must not redefine the reconciled sales fact.
+
+The default `/api/sales` payload deliberately excludes postal geography. `/api/sales/geography` reads the existing reduced Orders geography marts only when the user opens Geography. The split is a transport/performance boundary, not a new sales fact or privacy policy.
 
 ### Catalog and Product Workspace
 
@@ -117,7 +120,7 @@ Repository JSON files are defaults/seeds unless the deployment workflow explicit
 ### Add a new board workspace
 
 1. Add a Python payload owner under `board/`.
-2. Register API and page routing in `board/server.py`.
+2. Register API and page routing in the canonical/legacy board server boundary as appropriate.
 3. Add one HTML composition file, one page stylesheet and one runtime module under `board/static/`.
 4. Add the route to `ui-shell.js` only if it belongs in application navigation.
 5. Reuse shared layout/chart/utilities explicitly.
@@ -144,21 +147,22 @@ Start in `chart-system.js`/`chart-system.css`. Page runtimes should provide data
 
 ### Application PR gate
 
-`.github/workflows/frontend-quality.yml` is intentionally broader than its historical filename now. The workflow is named **Application quality** and has two jobs:
+`.github/workflows/frontend-quality.yml` is intentionally broader than its historical filename. The workflow is named **Application quality** and has six independent jobs:
 
-- `frontend-lint` — ESLint + Stylelint through `npm run lint` in `board/`;
-- `compose-config` — `docker compose --env-file .env.example config --quiet` to catch invalid Compose/interpolation changes.
+- `frontend-lint` — frontend ownership contract, ESLint, Stylelint and Prettier through `npm run quality` in `board/`;
+- `board-python` — compiles board Python and runs response-cache unit tests;
+- `board-image` — builds the actual production board Dockerfile and runs its image import smoke test, catching missing `COPY` dependencies;
+- `qa-syntax` — syntax-checks the production browser QA scripts, including Sales Geography;
+- `compose-config` — `docker compose --env-file .env.example config --quiet` to catch invalid Compose/interpolation changes;
+- `migration-chain` — starts a clean PostgreSQL 18 database and applies the complete migration chain.
 
 For local frontend work:
 
 ```bash
 cd board
 npm install --no-package-lock --ignore-scripts
-npm run lint
-npm run format:check
+npm run quality
 ```
-
-`npm run lint` is blocking. `format:check` is currently an audit while older global foundation styles are normalized; new/touched files should still be kept readable.
 
 When changing `compose.yml` or `.env.example`, validate them together. The template is meant to be executable input to `docker compose config`, not prose that can drift away from the service definition.
 
@@ -201,9 +205,9 @@ For a normal code deployment, prefer the GitHub workflow over manual production 
 
 These are not reasons to recreate the old layering model:
 
-- `sales-canonical.js` retains a historical filename although it is the only live renderer.
+- `sales-canonical.js` retains a historical filename although it is the live Overview/Drivers renderer.
+- `sales-geography.js` remains a compatibility entrypoint for the current v2/fixes map renderer; consolidate that split separately rather than layering another geography runtime.
 - Finance has historical `finance_api.py` / `finance_safe.py` filenames while production currently packages `finance_emergency.py` as `finance_api.py`; normalize separately with Finance smoke coverage.
 - `mobile-ux.css` and `design-refine.css` remain shared global styles. Gradually move genuinely page-specific rules out when those files are touched, but do not create replacement override sheets.
-- Prettier is not yet a required repository-wide gate because forcing it today would create large legacy whitespace churn.
 
 When one of these debts is removed, delete its note here in the same PR.

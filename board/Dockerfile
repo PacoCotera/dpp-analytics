@@ -38,6 +38,7 @@ COPY board/home_api.py .
 # monetary-basis adapters the production module names imported by server_legacy.py.
 COPY board/sales_api.py ./sales_api_legacy.py
 COPY board/sales_api_canonical.py ./sales_api.py
+COPY board/sales_geography_api.py .
 COPY board/today_api.py ./today_api_legacy.py
 COPY board/today_api_canonical.py ./today_api.py
 COPY board/product_api.py ./product_api_legacy.py

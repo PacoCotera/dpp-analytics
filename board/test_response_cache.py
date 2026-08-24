@@ -23,11 +23,13 @@ class TTLResponseCacheTest(unittest.TestCase):
             first = cache.get_or_build("home", 5, builder)
             self.assertEqual(first.status, "MISS")
             self.assertEqual(first.value, b"payload-1")
+            self.assertEqual(first.build_ms, 0)
 
             clock.return_value = 12.0
             second = cache.get_or_build("home", 5, builder)
             self.assertEqual(second.status, "HIT")
             self.assertEqual(second.age_seconds, 2)
+            self.assertEqual(second.build_ms, 0)
             self.assertEqual(builds, 1)
 
             clock.return_value = 16.0
@@ -40,6 +42,16 @@ class TTLResponseCacheTest(unittest.TestCase):
             self.assertEqual(refreshed.status, "REFRESH")
             self.assertEqual(refreshed.value, b"payload-3")
             self.assertEqual(builds, 3)
+
+    def test_reports_cold_build_duration(self):
+        cache = TTLResponseCache(max_entries=4)
+        with patch(
+            "response_cache.monotonic",
+            side_effect=[10.0, 10.0, 10.0, 10.123, 10.123],
+        ):
+            result = cache.get_or_build("sales", 60, lambda: b"payload")
+        self.assertEqual(result.status, "MISS")
+        self.assertEqual(result.build_ms, 123)
 
     def test_concurrent_misses_build_once(self):
         cache = TTLResponseCache(max_entries=4)
@@ -71,6 +83,7 @@ class TTLResponseCacheTest(unittest.TestCase):
         self.assertEqual(sum(result.status == "MISS" for result in results), 1)
         self.assertEqual(sum(result.status == "HIT" for result in results), 3)
         self.assertTrue(all(result.value == b"shared" for result in results))
+        self.assertTrue(all(result.build_ms >= 0 for result in results))
 
 
 if __name__ == "__main__":

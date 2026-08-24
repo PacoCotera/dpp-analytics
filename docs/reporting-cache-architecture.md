@@ -2,7 +2,7 @@
 
 ## Problem
 
-The operating board currently rebuilds API payloads from PostgreSQL on every page load and many page runtimes explicitly request `cache: 'no-store'`. Because the board uses full-page navigation, moving between workspaces also discards page-local JavaScript state. The result is repeated PostgreSQL work, repeated JSON serialization and avoidable loading states even when the underlying Amazon data has not changed.
+The operating board historically rebuilt API payloads from PostgreSQL on every page load and many page runtimes explicitly requested `cache: 'no-store'`. Because the board uses full-page navigation, moving between workspaces also discards page-local JavaScript state. The result was repeated PostgreSQL work, repeated JSON serialization and avoidable loading states even when the underlying Amazon data had not changed.
 
 The objective is not to make stale data look live. It is to stop recomputing the same decision payload more frequently than its source can materially change.
 
@@ -73,7 +73,7 @@ Required behavior:
 - immutable byte payloads in cache;
 - endpoint-specific TTLs;
 - `refresh=1` bypass that rebuilds and replaces the cache entry;
-- response headers exposing HIT/MISS/REFRESH and cache age for diagnostics;
+- response headers exposing HIT/MISS/REFRESH, cache age and cold-build duration for diagnostics;
 - `/health` remains uncached because it is a liveness/dependency probe.
 
 Initial TTLs are intentionally conservative and can be tuned from observed behavior:
@@ -83,7 +83,8 @@ Initial TTLs are intentionally conservative and can be tuned from observed behav
 | `/api/today` current day | 15 s | near-real-time operating surface |
 | `/api/today?date=...` | 300 s | historical day is effectively stable |
 | `/api/home` | 30 s | mixes Today with rolling business state |
-| `/api/sales` | 60 s | contains live Today/recent-order context plus reconciled history |
+| `/api/sales` | 60 s | live Today/recent-order context plus reconciled history |
+| `/api/sales/geography` | 300 s | optional historical postal drill-down; loaded only when opened |
 | `/api/catalog` | 300 s | catalog/commercial history changes slowly |
 | `/api/inventory` | 60 s | operational, but source polling is much slower than page navigation |
 | `/api/finance` | 300 s | accounting source changes on a multi-hour cadence |
@@ -114,7 +115,9 @@ The browser cache is a transport optimization only. It does not own business tru
 
 Caching does not excuse oversized default payloads.
 
-The main known example is Sales: the current `/api/sales` response includes the full postal and SKU geography history even when the user lands on Overview. Geography is a drill-down and should move to a separately cached lazy endpoint. The Sales Overview/Drivers payload remains the canonical default snapshot; opening Geography loads its own snapshot once and then reuses it.
+Sales is the first implemented example. The default `/api/sales` snapshot contains Overview, Drivers and recent order evidence but no postal history. The Geography workspace is served separately by `/api/sales/geography`, is not requested during initial Sales navigation, and uses a five-minute board/browser cache once the Geography tab is opened.
+
+The geography split changes neither its data source nor its privacy boundary: it still reads the reduced Orders geography facts and exposes state/country/postal dimensions plus the local SEPOMEX reference dictionary. Recipient PII is not queried or returned.
 
 The same rule applies elsewhere: one page snapshot is preferred over many tiny requests for information needed immediately, but optional large drill-downs should not inflate the default snapshot.
 
@@ -130,11 +133,15 @@ Until ingestion-aware invalidation exists, TTL must never be longer than the per
 
 Performance work is incomplete if cache behavior is invisible.
 
-Board API responses should expose:
+Board API responses expose:
 
 - `X-DPP-Cache: HIT | MISS | REFRESH`;
 - `X-DPP-Cache-Age` in seconds;
-- `X-DPP-Cache-TTL` in seconds.
+- `X-DPP-Cache-TTL` in seconds;
+- `X-DPP-Build-Ms`, the cold payload build duration for MISS/REFRESH and `0` for a HIT;
+- standard `Content-Length`, which provides serialized response size.
+
+Sales Geography production QA records the serialized byte size and cache status of both the core Sales payload and the lazy geography payload. This creates an executable payload-shaping check without turning Data Health into a performance UI prematurely.
 
 A later Data Health extension should report per-endpoint request count, hit rate, build latency and last cold-build duration. PostgreSQL query profiling should then determine which `mart` views deserve persisted KPI tables.
 
@@ -154,18 +161,19 @@ These are application targets, not correctness substitutes:
 ### Phase 1 — stop avoidable recomputation
 
 - [x] define architecture and cache/freshness contract;
-- [ ] add board-process TTL response cache with per-key single-flight;
-- [ ] add cache diagnostic headers and `refresh=1` bypass;
-- [ ] add browser session JSON cache and in-flight request dedupe to the shared fetch utility;
-- [ ] move Sales classic runtimes onto the same shared browser cache;
-- [ ] add automated cache-behavior coverage;
+- [x] add board-process TTL response cache with per-key single-flight;
+- [x] add cache diagnostic headers and `refresh=1` bypass;
+- [x] add browser session JSON cache and in-flight request dedupe to the shared fetch utility;
+- [ ] move remaining classic runtimes, especially the canonical Sales overview loader, onto the shared browser cache;
+- [x] add automated cache-behavior coverage;
 - [ ] deploy and measure cold vs warm response behavior.
 
 ### Phase 2 — reduce cold payload cost
 
-- [ ] split Sales geography into a lazy cached endpoint;
+- [x] split Sales geography into a lazy cached endpoint;
 - [ ] inspect other default payloads for optional heavy detail;
-- [ ] add endpoint build-time instrumentation and Data Health visibility;
+- [x] expose per-response cold-build timing;
+- [ ] add aggregate cache/build visibility to Data Health if production measurements justify it;
 - [ ] rank slow SQL by measured cold-build contribution.
 
 ### Phase 3 — PostgreSQL KPI persistence

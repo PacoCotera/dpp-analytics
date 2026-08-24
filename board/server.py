@@ -399,6 +399,7 @@ class Handler(BaseHTTPRequestHandler):
                         "X-DPP-Cache": result.status,
                         "X-DPP-Cache-Age": result.age_seconds,
                         "X-DPP-Cache-TTL": result.ttl_seconds,
+                        "X-DPP-Build-Ms": result.build_ms,
                     },
                 )
                 return

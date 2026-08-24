@@ -628,9 +628,8 @@
 
   async function load() {
     try {
-      const response = await fetch('/api/sales', { cache: 'no-store' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      DATA = await response.json();
+      if (!window.DPPDataCache?.fetchJson) throw new Error('DPP data cache unavailable');
+      DATA = await window.DPPDataCache.fetchJson('/api/sales/geography');
       initControls();
       renderAll();
     } catch (error) {

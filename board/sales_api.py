@@ -25,24 +25,45 @@ def _all(cur, sql: str, params=()):
         raise
 
 
-def sales_payload(connect, decorate_products, marketplace: str) -> dict:
+def sales_payload(connect, decorate_products, marketplace: str, *, include_geography: bool = True) -> dict:
     """Sales-manager view.
 
     Historical metrics are reconciled through the latest Data Kiosk day.
     Today remains the near-real-time Orders API view. Advertising uses the
     canonical operating mart on its own reportable cutoff, so stale/provisional
     attribution is never presented as live sales. Customer identity/street
-    address PII is never selected. Geography exposes only state/country/postal
-    dimensions previously reduced from Orders v2026 RECIPIENT data.
+    address PII is never selected.
+
+    Geography remains available for legacy callers when ``include_geography`` is
+    true. The production canonical Sales snapshot passes false and serves
+    geography from its own lazy endpoint so the default Sales request does not
+    query or serialize postal history.
 
     Advertising is optional context. A failure in its mart contract must not take
     down the core Sales workspace, so the Ads read is isolated behind a database
     savepoint and degrades explicitly while the reconciled Sales facts remain live.
     """
     with connect() as conn, conn.cursor() as cur:
-        cutoff = _one(cur, "SELECT max(business_date) AS business_date FROM mart.business_daily WHERE marketplace_id=%s AND reconciled_daily_report", (marketplace,)).get("business_date")
+        cutoff = _one(
+            cur,
+            "SELECT max(business_date) AS business_date FROM mart.business_daily WHERE marketplace_id=%s AND reconciled_daily_report",
+            (marketplace,),
+        ).get("business_date")
         if cutoff is None:
-            return {"today": {}, "headline": {}, "months": [], "months_full": [], "series": [], "skus": [], "orders": [], "geography": {"coverage": {}, "daily": [], "sku_daily": [], "products": []}, "ads": {"status": "awaiting_ads_data"}, "local_time": None}
+            payload = {
+                "today": {},
+                "headline": {},
+                "months": [],
+                "months_full": [],
+                "series": [],
+                "skus": [],
+                "orders": [],
+                "ads": {"status": "awaiting_ads_data"},
+                "local_time": None,
+            }
+            if include_geography:
+                payload["geography"] = {"coverage": {}, "daily": [], "sku_daily": [], "products": []}
+            return payload
 
         today = _one(cur, "SELECT * FROM mart.today_operating WHERE marketplace_id=%s", (marketplace,))
         headline = _one(cur, """
@@ -139,46 +160,55 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
                 item_labels.append(f"{label} ×{quantity}" if quantity > 1 else label)
             order["items"] = ", ".join(item_labels)
 
-        geo_coverage = _one(cur, """
-            SELECT min(s.business_date) first_date,max(s.business_date) last_date,
-                   count(DISTINCT s.amazon_order_id)::bigint orders_total,
-                   count(DISTINCT s.amazon_order_id) FILTER (WHERE nullif(btrim(o.destination_postal_code),'') IS NOT NULL)::bigint orders_with_postal,
-                   count(DISTINCT nullif(btrim(o.destination_postal_code),''))::int postal_codes,
-                   count(DISTINCT nullif(btrim(o.destination_state_or_region),''))::int states
-            FROM mart.order_customer_spend s
-            JOIN core.amazon_order o USING (marketplace_id,amazon_order_id)
-            WHERE s.marketplace_id=%s
-        """, (marketplace,))
-        total_geo_orders = int(geo_coverage.get("orders_total") or 0)
-        geo_orders = int(geo_coverage.get("orders_with_postal") or 0)
-        geo_coverage["coverage_pct"] = round(100.0 * geo_orders / total_geo_orders, 1) if total_geo_orders else None
-        geo_coverage["status"] = "ready" if geo_orders else "backfill_pending"
-        geo_coverage["source"] = "Orders v2026 RECIPIENT · state/country/postal only"
-        geo_coverage["privacy"] = "No recipient name, street address, city, phone or recipient payload retained"
+        geography = None
+        if include_geography:
+            geo_coverage = _one(cur, """
+                SELECT min(s.business_date) first_date,max(s.business_date) last_date,
+                       count(DISTINCT s.amazon_order_id)::bigint orders_total,
+                       count(DISTINCT s.amazon_order_id) FILTER (WHERE nullif(btrim(o.destination_postal_code),'') IS NOT NULL)::bigint orders_with_postal,
+                       count(DISTINCT nullif(btrim(o.destination_postal_code),''))::int postal_codes,
+                       count(DISTINCT nullif(btrim(o.destination_state_or_region),''))::int states
+                FROM mart.order_customer_spend s
+                JOIN core.amazon_order o USING (marketplace_id,amazon_order_id)
+                WHERE s.marketplace_id=%s
+            """, (marketplace,))
+            total_geo_orders = int(geo_coverage.get("orders_total") or 0)
+            geo_orders = int(geo_coverage.get("orders_with_postal") or 0)
+            geo_coverage["coverage_pct"] = round(100.0 * geo_orders / total_geo_orders, 1) if total_geo_orders else None
+            geo_coverage["status"] = "ready" if geo_orders else "backfill_pending"
+            geo_coverage["source"] = "Orders v2026 RECIPIENT · state/country/postal only"
+            geo_coverage["privacy"] = "No recipient name, street address, city, phone or recipient payload retained"
 
-        geo_daily = _all(cur, """
-            SELECT business_date,country_code,state_or_region,postal_code,sales,orders,units,aov
-            FROM mart.order_geography_postal_daily
-            WHERE marketplace_id=%s
-            ORDER BY business_date,state_or_region,postal_code
-        """, (marketplace,))
-        geo_sku_daily = _all(cur, """
-            SELECT business_date,country_code,state_or_region,postal_code,seller_sku,asin,sales,orders,units
-            FROM mart.order_geography_postal_sku_daily
-            WHERE marketplace_id=%s
-            ORDER BY business_date,state_or_region,postal_code,seller_sku
-        """, (marketplace,))
-        geo_products = _all(cur, """
-            SELECT DISTINCT g.seller_sku sku,COALESCE(g.asin,s.asin) asin,
-                   COALESCE(sl.item_name,ci.title,s.title,g.seller_sku) product,
-                   COALESCE(sl.image_url,ci.image_url) image_url
-            FROM mart.order_geography_postal_sku_daily g
-            LEFT JOIN core.sku s ON s.sku=g.seller_sku
-            LEFT JOIN core.seller_listing sl ON sl.marketplace_id=g.marketplace_id AND sl.seller_sku=g.seller_sku
-            LEFT JOIN core.catalog_item ci ON ci.marketplace_id=g.marketplace_id AND ci.asin=COALESCE(g.asin,s.asin)
-            WHERE g.marketplace_id=%s
-            ORDER BY g.seller_sku
-        """, (marketplace,))
+            geo_daily = _all(cur, """
+                SELECT business_date,country_code,state_or_region,postal_code,sales,orders,units,aov
+                FROM mart.order_geography_postal_daily
+                WHERE marketplace_id=%s
+                ORDER BY business_date,state_or_region,postal_code
+            """, (marketplace,))
+            geo_sku_daily = _all(cur, """
+                SELECT business_date,country_code,state_or_region,postal_code,seller_sku,asin,sales,orders,units
+                FROM mart.order_geography_postal_sku_daily
+                WHERE marketplace_id=%s
+                ORDER BY business_date,state_or_region,postal_code,seller_sku
+            """, (marketplace,))
+            geo_products = _all(cur, """
+                SELECT DISTINCT g.seller_sku sku,COALESCE(g.asin,s.asin) asin,
+                       COALESCE(sl.item_name,ci.title,s.title,g.seller_sku) product,
+                       COALESCE(sl.image_url,ci.image_url) image_url
+                FROM mart.order_geography_postal_sku_daily g
+                LEFT JOIN core.sku s ON s.sku=g.seller_sku
+                LEFT JOIN core.seller_listing sl ON sl.marketplace_id=g.marketplace_id AND sl.seller_sku=g.seller_sku
+                LEFT JOIN core.catalog_item ci ON ci.marketplace_id=g.marketplace_id AND ci.asin=COALESCE(g.asin,s.asin)
+                WHERE g.marketplace_id=%s
+                ORDER BY g.seller_sku
+            """, (marketplace,))
+            geography = {
+                "coverage": geo_coverage,
+                "daily": geo_daily,
+                "sku_daily": geo_sku_daily,
+                "products": decorate_products(geo_products),
+            }
+
         local_clock = _one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
         try:
@@ -204,10 +234,17 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
                 "tacos_delta_points": ads.get("tacos_delta_points"),
             })
 
-    geography = {
-        "coverage": geo_coverage,
-        "daily": geo_daily,
-        "sku_daily": geo_sku_daily,
-        "products": decorate_products(geo_products),
+    payload = {
+        "today": today,
+        "headline": headline,
+        "months": months,
+        "months_full": months_full,
+        "series": series,
+        "skus": decorate_products(skus),
+        "orders": orders,
+        "ads": ads,
+        "local_time": local_clock.get("local_time"),
     }
-    return {"today":today,"headline":headline,"months":months,"months_full":months_full,"series":series,"skus":decorate_products(skus),"orders":orders,"geography":geography,"ads":ads,"local_time":local_clock.get("local_time")}
+    if geography is not None:
+        payload["geography"] = geography
+    return payload

@@ -9,6 +9,7 @@
   const policies = [
     [/^\/api\/today(?:\?|$)/, 15_000],
     [/^\/api\/home(?:\?|$)/, 30_000],
+    [/^\/api\/sales\/geography(?:\?|$)/, 300_000],
     [/^\/api\/sales(?:\?|$)/, 60_000],
     [/^\/api\/catalog(?:\?|$)/, 300_000],
     [/^\/api\/inventory(?:\?|$)/, 60_000],
