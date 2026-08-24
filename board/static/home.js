@@ -69,6 +69,17 @@ function renderAds(ads) {
   note.textContent = `${coverage} · through ${String(a.through_date).slice(0, 10)}. Amazon-attributed sales can revise and are not incremental sales. Residual sales are not exact organic sales.`;
 }
 
+function exceptionRead(item) {
+  const action = String(item.action || '').toUpperCase(),
+    cover = Number(item.days_cover);
+  if (action === 'STOCKOUT') return { severity: 'critical', label: 'Critical', reason: 'No sellable stock' };
+  if (action === 'PRODUCE')
+    return { severity: 'urgent', label: 'Produce now', reason: 'Below production threshold' };
+  if (Number.isFinite(cover) && cover <= 21)
+    return { severity: 'urgent', label: 'Plan soon', reason: 'Inside the near-term planning window' };
+  return { severity: 'watch', label: 'Watch', reason: 'Approaching the planning window' };
+}
+
 function renderAttention(data, decisionCount) {
   const attention = (data.inventory || []).filter((item) =>
     ['STOCKOUT', 'PRODUCE', 'PLAN'].includes(String(item.action || '').toUpperCase()),
@@ -80,7 +91,7 @@ function renderAttention(data, decisionCount) {
     title.textContent = 'Nothing needs attention';
     copy.textContent = 'No stockout, production or planning exception is currently flagged.';
     container.innerHTML =
-      '<div class="attention-clear"><strong>Operations are clear.</strong><p>Use the business rhythm and product drivers to understand performance; there is no immediate inventory action.</p></div>';
+      '<div class="attention-clear"><strong>Operations are clear.</strong><p>Use the demand pulse and business-health evidence to understand performance; there is no immediate inventory action.</p></div>';
     return;
   }
   const total = Math.max(attention.length, decisionCount),
@@ -88,38 +99,55 @@ function renderAttention(data, decisionCount) {
   title.textContent = total === 1 ? 'One decision needs attention' : `${total} decisions need attention`;
   copy.textContent = `Review ${total === 1 ? 'this inventory exception' : 'these inventory exceptions'} before the next availability and production decision.`;
   container.innerHTML = `${visible
-    .map(
-      (item) =>
-        `<a class="attention-item" href="/inventory"><div><div class="sku">${escapeHtml(item.sku)} · ${escapeHtml(item.action)}</div><div class="name">${escapeHtml(item.product || item.sku)}</div><div class="meta">${integer(item.available)} on hand · ${integer(item.inbound)} inbound</div></div><div class="attention-cover"><strong>${item.days_cover == null ? '—' : Number(item.days_cover).toFixed(0)}</strong><span>days cover</span></div></a>`,
-    )
+    .map((item) => {
+      const read = exceptionRead(item);
+      return `<a class="attention-item severity-${read.severity}" href="/inventory"><div class="attention-item__body"><div class="attention-item__head"><span class="severity-badge severity-badge--${read.severity}">${read.label}</span><span class="sku">${escapeHtml(item.sku)}</span></div><div class="name">${escapeHtml(item.product || item.sku)}</div><div class="meta">${integer(item.available)} on hand · ${integer(item.inbound)} inbound</div><div class="attention-reason">${read.reason}</div></div><div class="attention-cover"><strong>${item.days_cover == null ? '—' : Number(item.days_cover).toFixed(0)}</strong><span>days cover</span></div></a>`;
+    })
     .join(
       '',
     )}${total > visible.length ? `<a class="attention-more" href="/inventory"><span>Review all inventory decisions</span><strong>${integer(total - visible.length)} more →</strong></a>` : ''}`;
 }
 
-function renderDrivers(data, businessSales) {
-  const movers = (data.movers || []).slice(0, 3),
-    container = document.getElementById('movers');
-  if (!movers.length) {
-    container.innerHTML =
-      '<div class="empty"><strong>No product-driver data yet.</strong>Drivers will appear as history builds.</div>';
-    return;
-  }
-  container.innerHTML = movers
-    .map((item, index) => {
-      const deltaTone = tone(item.delta28_pct),
-        image = item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="" loading="lazy">` : '',
-        direction =
-          Number(item.delta28_pct) >= 8
-            ? 'accelerating'
-            : Number(item.delta28_pct) <= -8
-              ? 'declining'
-              : 'stable',
-        share = businessSales > 0 ? (100 * Number(item.sales_t28 || 0)) / businessSales : null,
-        read = `${index === 0 ? 'Largest driver · ' : ''}${share == null ? 'share unavailable' : `${share.toFixed(0)}% of 28D shopper spend`} · ${direction} ${percent(item.delta28_pct)}`;
-      return `<a class="driver" href="/product?sku=${encodeURIComponent(item.sku)}">${image}<div><div class="sku">${escapeHtml(item.sku)}</div><div class="name">${escapeHtml(item.product || item.sku)}</div><div class="read ${deltaTone}">${read}</div></div><div class="driver-value"><strong>${money(item.sales_t28)}</strong><small>28D shopper spend · incl. IVA</small></div></a>`;
-    })
-    .join('');
+function monthLabel(value) {
+  if (!value) return 'Latest month';
+  const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
+  return Number.isNaN(date.getTime())
+    ? String(value).slice(0, 7)
+    : date.toLocaleDateString('en', { month: 'short', year: 'numeric' });
+}
+
+function renderBusinessHealth(data) {
+  const finance = data.finance || {},
+    inventory = data.inventory_summary || {},
+    feeds = data.freshness || [],
+    feedIssues = feeds.filter(
+      (feed) =>
+        feed.is_stale || !['success', 'running'].includes(String(feed.latest_status || '').toLowerCase()),
+    ),
+    contribution = finance.contribution_after_product_cogs,
+    margin = finance.contribution_margin_pct,
+    needsAction = Number(inventory.needs_action || 0),
+    financeTone = contribution == null ? '' : Number(contribution) >= 0 ? 'positive' : 'negative',
+    container = document.getElementById('businessHealth');
+  container.innerHTML = `
+    <a class="business-health-card" href="/finance">
+      <div class="business-health-card__head"><span>Finance</span><span>${escapeHtml(String(finance.state || 'Not closed').replaceAll('_', ' '))}</span></div>
+      <strong class="business-health-card__value ${financeTone}">${contribution == null ? '—' : money(contribution)}</strong>
+      <div class="business-health-card__title">${escapeHtml(monthLabel(finance.month))} contribution</div>
+      <p>${margin == null ? 'No closed margin available yet.' : `${Number(margin).toFixed(1)}% after product COGS · net sales ex IVA`}</p>
+    </a>
+    <a class="business-health-card" href="/inventory">
+      <div class="business-health-card__head"><span>Inventory</span><span>${needsAction ? 'Action required' : 'Clear'}</span></div>
+      <strong class="business-health-card__value ${needsAction ? 'warning' : 'positive'}">${needsAction ? integer(needsAction) : 'Clear'}</strong>
+      <div class="business-health-card__title">Operating decisions</div>
+      <p>${integer(inventory.stockouts)} stockouts · ${integer(inventory.produce)} produce · ${integer(inventory.plan)} plan</p>
+    </a>
+    <a class="business-health-card" href="/data-health">
+      <div class="business-health-card__head"><span>Data confidence</span><span>${feedIssues.length ? 'Inspect' : 'Healthy'}</span></div>
+      <strong class="business-health-card__value ${feedIssues.length ? 'warning' : 'positive'}">${feeds.length ? `${integer(feeds.length - feedIssues.length)}/${integer(feeds.length)}` : '—'}</strong>
+      <div class="business-health-card__title">Core streams healthy</div>
+      <p>${feedIssues.length ? `${integer(feedIssues.length)} stream${feedIssues.length === 1 ? '' : 's'} need attention.` : 'Operating evidence is current and decision-ready.'}</p>
+    </a>`;
 }
 
 function render(data) {
@@ -143,11 +171,11 @@ function render(data) {
     `incl. IVA · ${integer(today.orders_today)} orders · ${integer(today.units_today)} units`;
   document.getElementById('decisionCount').textContent = integer(decisionCount);
   document.getElementById('decisionNote').textContent =
-    decisionCount === 1 ? 'decision needs attention' : 'decisions need attention';
+    decisionCount === 1 ? 'current operating flag' : 'current operating flags';
   document.getElementById('attentionCount').textContent = integer(decisionCount);
   renderAds(data.ads);
   renderAttention(data, decisionCount);
-  renderDrivers(data, Number(rolling.sales_t28 || 0));
+  renderBusinessHealth(data);
   if (window.DPPCharts?.homeRhythm) {
     const cutoff = String(rolling.business_date || '').slice(0, 10),
       reconciledSeries = (data.series || []).filter(
