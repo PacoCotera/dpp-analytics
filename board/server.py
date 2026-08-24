@@ -513,6 +513,56 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
 
+    def do_POST(self):
+        path = urlsplit(self.path).path
+        if path != "/api/manual-sync":
+            self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length < 1 or length > 2048:
+                raise ValueError("Invalid request size")
+            payload = json.loads(self.rfile.read(length))
+            job_name = str(payload.get("job_name") or "")
+            allowed = {
+                "orders_v2026", "fba_inventory_v1", "finances_v2024",
+                "settlement_reports_v2", "sales_traffic_2024_04_24",
+                "merchant_listings_all_data", "catalog_items_2022_04_01",
+                "orders_geography_state_v2026", "month_close",
+            }
+            if job_name not in allowed:
+                raise ValueError("Unknown sync job")
+            requested_by = self.client_address[0][:80]
+            with connect() as conn, conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id,status,requested_at FROM ops.manual_sync_request
+                    WHERE job_name=%s AND requested_at > now() - interval '15 minutes'
+                    ORDER BY requested_at DESC LIMIT 1
+                    """,
+                    (job_name,),
+                )
+                recent = cur.fetchone()
+                if recent:
+                    body = json.dumps({"accepted": False, "reason": "cooldown", **recent}, default=str).encode()
+                    self.send_bytes(409, "application/json", body)
+                    return
+                cur.execute(
+                    """
+                    INSERT INTO ops.manual_sync_request(job_name,requested_by)
+                    VALUES (%s,%s) RETURNING id,status,requested_at
+                    """,
+                    (job_name, requested_by),
+                )
+                queued = cur.fetchone()
+                conn.commit()
+            API_CACHE.clear()
+            self.send_bytes(202, "application/json", json.dumps({"accepted": True, **queued}, default=str).encode())
+        except ValueError as exc:
+            self.send_bytes(400, "application/json", json.dumps({"error": str(exc)}).encode())
+        except Exception as exc:
+            self.send_bytes(500, "application/json", json.dumps({"error": str(exc)[:300]}).encode())
+
 
 if __name__ == "__main__":
     ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()

@@ -274,6 +274,7 @@ function renderJobs() {
         <div class="health-job__name">${escapeHtml(item.label || item.job_name || '')}</div>
         <div class="health-job__source">${escapeHtml(item.operation || item.source || '')}</div>
         <div class="health-job__purpose">${escapeHtml(item.purpose || '')}</div>
+        <button class="btn sync-now" type="button" data-job="${escapeHtml(item.job_name || '')}">Sync now</button>
       </div>
       <div class="health-job__status"><span class="health-status ${jobState(item)}">${stateLabel(jobState(item))}</span></div>
       <div class="health-job__age health-job__metric">
@@ -354,6 +355,33 @@ function bindInteractions() {
     byId('toggle').textContent = expanded ? 'Show problems only' : 'Show all jobs';
     byId('toggle').setAttribute('aria-pressed', String(expanded));
     renderJobs();
+  });
+  byId('jobs').addEventListener('click', async (event) => {
+    const button = event.target.closest('.sync-now');
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    button.textContent = 'Queueing…';
+    try {
+      const response = await fetch('/api/manual-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_name: button.dataset.job }),
+      });
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(
+          payload.reason === 'cooldown' ? 'Recently requested' : payload.error || 'Request failed',
+        );
+      button.textContent = 'Queued';
+      window.setTimeout(refresh, 2500);
+    } catch (error) {
+      button.textContent = error.message;
+    } finally {
+      window.setTimeout(() => {
+        button.disabled = false;
+        button.textContent = 'Sync now';
+      }, 5000);
+    }
   });
 }
 
