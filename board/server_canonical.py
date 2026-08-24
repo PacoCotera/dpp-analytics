@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlsplit
 import server_legacy as legacy
 from geo_reference import postal_geometry
 from home_api import home_payload as build_home_payload
+from sales_geography_api import sales_geography_payload as build_sales_geography_payload
 
 
 legacy.home_payload = lambda: build_home_payload(legacy.connect, legacy.decorate_products, legacy.MARKETPLACE)
@@ -16,8 +17,20 @@ class Handler(legacy.Handler):
 
     def do_GET(self):
         parsed = urlsplit(self.path)
+        query = parse_qs(parsed.query)
+        if parsed.path == "/api/sales/geography":
+            self.json_endpoint(
+                lambda: build_sales_geography_payload(
+                    legacy.connect,
+                    legacy.decorate_products,
+                    legacy.MARKETPLACE,
+                ),
+                cache_key=legacy.api_cache_key(parsed.path, query),
+                ttl_seconds=300,
+                refresh=legacy.cache_refresh_requested(query),
+            )
+            return
         if parsed.path == "/api/geography/postal-geometry":
-            query = parse_qs(parsed.query)
             state = (query.get("state") or [""])[0]
             raw_codes = (query.get("codes") or [""])[0]
             codes = [value for value in raw_codes.split(",") if value]
