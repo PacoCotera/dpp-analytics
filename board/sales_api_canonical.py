@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from geo_reference import postal_dictionary
 from sales_api_legacy import sales_payload as _legacy_sales_payload
 
 
@@ -98,7 +97,12 @@ def _product_read(headline: dict, products: list[dict]) -> dict:
 
 
 def sales_payload(connect, decorate_products, marketplace: str) -> dict:
-    payload = _legacy_sales_payload(connect, decorate_products, marketplace)
+    payload = _legacy_sales_payload(
+        connect,
+        decorate_products,
+        marketplace,
+        include_geography=False,
+    )
     cutoff = (payload.get("headline") or {}).get("business_date")
 
     with connect() as conn, conn.cursor() as cur:
@@ -215,12 +219,6 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
         recent_orders = [dict(row) for row in cur.fetchall()]
         payload["orders"] = _decorate_recent_order_items(cur, decorate_products, recent_orders)
 
-    geography = payload.setdefault("geography", {})
-    geo_rows = list(geography.get("daily") or [])
-    codes = {str(row.get("postal_code") or "").strip().zfill(5) for row in geo_rows if row.get("postal_code")}
-    geography["postal_reference"] = postal_dictionary(codes)
-    geography["reference_source"] = "SEPOMEX textual catalog · open-mexico db_postal v1.2.0"
-
     payload["metric_basis"] = {
         "currency": market.get("currency") or "MXN",
         "timezone": market.get("timezone"),
@@ -246,4 +244,5 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
     }
     if payload.get("today"):
         payload["today"]["sales_basis"] = "GROSS_CUSTOMER_SPEND"
+    payload.pop("geography", None)
     return payload
