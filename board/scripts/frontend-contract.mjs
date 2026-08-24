@@ -26,6 +26,8 @@ const theme = readFileSync(join(staticRoot, 'theme.css'), 'utf8');
 const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
 const shellSelector =
   /\.(?:app|topbar|brand|brand-copy|brand-title|brand-sub|mark|top-meta|primary-nav|nav-more|footer)\b/;
+const retiredComponentSelector =
+  /\.(?:card|card-pad|metric|metric-label|metric-value|metric-note|table-wrap|table)\b/;
 
 function check(condition, page, message) {
   if (!condition) failures.push(`${page}: ${message}`);
@@ -37,11 +39,19 @@ for (const page of pages) {
     basename(match[1].split('?')[0]),
   );
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+  const classNames = [...html.matchAll(/\bclass=["']([^"']*)["']/gi)].flatMap((match) =>
+    match[1].trim().split(/\s+/),
+  );
 
   check(page in pageStyles, page, 'page stylesheet is not declared in the frontend contract');
   check(!/mobile-ux\.css/i.test(html), page, 'deprecated mobile compatibility shim is loaded');
   check(!/design-refine\.css/i.test(html), page, 'deprecated shared refinement layer is loaded');
   check(!/<style\b/i.test(html) && !/\sstyle\s*=/i.test(html), page, 'contains inline CSS');
+  check(
+    classNames.every((name) => !retiredComponentSelector.test(`.${name}`)),
+    page,
+    'uses a retired card, metric or table component class',
+  );
   check(
     !/\/assets\/[^"'?#]+\.(?:css|js)\?[^"']+/i.test(html),
     page,
@@ -96,6 +106,7 @@ check(
 );
 check(!shellSelector.test(theme), 'theme.css', 'application-shell rules belong to nav-shell.css');
 check(!shellSelector.test(layout), 'layout-system.css', 'application-shell rules belong to nav-shell.css');
+check(!retiredComponentSelector.test(theme), 'theme.css', 'retired component rules remain in the theme');
 
 if (failures.length) {
   console.error(`Frontend contract failed:\n${failures.map((failure) => `- ${failure}`).join('\n')}`);
