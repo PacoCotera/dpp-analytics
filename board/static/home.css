@@ -4,6 +4,35 @@ body.home-page .app {
 body.home-page .topbar {
   min-height: 46px;
 }
+body.home-page .mark {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 11px !important;
+  font-size: 14px !important;
+}
+body.home-page .brand {
+  gap: 10px !important;
+}
+body.home-page .brand-title {
+  font-size: 16px !important;
+}
+body.home-page .brand-sub {
+  margin-top: 1px !important;
+  font-size: 10px !important;
+}
+body.home-page .top-meta strong {
+  font-size: 14px !important;
+}
+body.home-page .primary-nav {
+  gap: 3px !important;
+  margin: 8px 0 12px !important;
+  padding-bottom: 5px !important;
+}
+body.home-page .primary-nav a {
+  min-height: 34px !important;
+  padding: 0 11px !important;
+  font-size: 11.5px !important;
+}
 .home-main {
   display: grid;
   gap: 14px;
@@ -377,5 +406,31 @@ body.home-page .topbar {
   }
   .business-health-card:last-child {
     grid-column: auto;
+  }
+}
+@media (max-width: 640px) {
+  body.home-page .topbar {
+    min-height: 40px !important;
+    align-items: center !important;
+  }
+  body.home-page .mark {
+    width: 34px !important;
+    height: 34px !important;
+  }
+  body.home-page .brand-title {
+    font-size: 14px !important;
+    letter-spacing: 0.065em !important;
+  }
+  body.home-page .brand-sub {
+    font-size: 9.5px !important;
+  }
+  body.home-page .primary-nav {
+    margin: 7px -14px 10px !important;
+    padding: 5px 14px 6px !important;
+  }
+  body.home-page .primary-nav a {
+    min-height: 42px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
   }
 }

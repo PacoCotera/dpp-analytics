@@ -22,6 +22,10 @@ const pageStyles = {
 };
 const sharedStyles = ['theme.css', 'design-refine.css', 'nav-shell.css', 'layout-system.css'];
 const failures = [];
+const sharedRefinements = readFileSync(join(staticRoot, 'design-refine.css'), 'utf8').replace(
+  /\/\*[\s\S]*?\*\//g,
+  '',
+);
 
 function check(condition, page, message) {
   if (!condition) failures.push(`${page}: ${message}`);
@@ -83,6 +87,17 @@ for (const page of pages) {
 for (const expected of Object.keys(pageStyles)) {
   check(pages.includes(expected), expected, 'declared page is missing from static');
 }
+
+check(
+  !/\bbody(?:\.|#|:has\()/i.test(sharedRefinements),
+  'design-refine.css',
+  'shared refinements must not target a page through body identity',
+);
+check(
+  !/#[a-z][\w-]*[^{}]*\{/i.test(sharedRefinements),
+  'design-refine.css',
+  'shared refinements must not target page DOM ids',
+);
 
 if (failures.length) {
   console.error(`Frontend contract failed:\n${failures.map((failure) => `- ${failure}`).join('\n')}`);
