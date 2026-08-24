@@ -8,7 +8,8 @@ await fs.mkdir(outDir, { recursive: true });
 async function getJson(route) {
   const response = await fetch(`${baseUrl}${route}`, { cache: 'no-store' });
   const body = await response.json();
-  if (!response.ok) throw new Error(`${route} returned ${response.status}: ${body?.error || 'unknown error'}`);
+  if (!response.ok)
+    throw new Error(`${route} returned ${response.status}: ${body?.error || 'unknown error'}`);
   return { response, body };
 }
 
@@ -26,9 +27,15 @@ try {
     throw new Error('Mutable taxonomy completeness leaked back into the legacy deployment-blocking field');
   }
 
+  const missingLifecycle = catalog.body.summary?.catalog_lifecycle_missing_skus || [];
+  if (missingLifecycle.length) {
+    throw new Error(`Catalog SKUs missing lifecycle evidence: ${missingLifecycle.join(', ')}`);
+  }
+
   const bySku = new Map(lifecycle.items.map((item) => [String(item.sku || ''), item]));
   const actionableTaxonomy = catalog.body.summary?.taxonomy_attention_skus || [];
   const onboardingTaxonomy = catalog.body.summary?.taxonomy_onboarding_skus || [];
+  const inactiveTaxonomy = catalog.body.summary?.taxonomy_inactive_skus || [];
   const sourceAttention = catalog.body.summary?.catalog_source_attention_skus || [];
 
   for (const sku of actionableTaxonomy) {
@@ -38,15 +45,25 @@ try {
       throw new Error(`Actionable taxonomy SKU ${sku} is not classified MAPPING_REQUIRED`);
     }
     if (item.source_state !== 'SOURCE_READY') {
-      throw new Error(`Taxonomy was made actionable before source readiness for ${sku}: ${item.source_state}`);
+      throw new Error(
+        `Taxonomy was made actionable before source readiness for ${sku}: ${item.source_state}`,
+      );
     }
   }
 
   for (const sku of onboardingTaxonomy) {
     const item = bySku.get(String(sku));
     if (!item) throw new Error(`Onboarding taxonomy SKU ${sku} is missing lifecycle evidence`);
-    if (item.taxonomy_state === 'MAPPING_REQUIRED') {
-      throw new Error(`Onboarding SKU ${sku} was incorrectly made a seller-taxonomy incident`);
+    if (item.taxonomy_state !== 'ONBOARDING' || item.requires_seller_action) {
+      throw new Error(`Onboarding SKU ${sku} is not classified as informational onboarding`);
+    }
+  }
+
+  for (const sku of inactiveTaxonomy) {
+    const item = bySku.get(String(sku));
+    if (!item) throw new Error(`Inactive taxonomy SKU ${sku} is missing lifecycle evidence`);
+    if (item.taxonomy_state !== 'INACTIVE' || item.requires_seller_action) {
+      throw new Error(`Inactive SKU ${sku} was incorrectly turned into seller action`);
     }
   }
 
@@ -70,22 +87,29 @@ try {
   if (Number(healthCatalog.summary.onboarding || 0) !== Number(lifecycle.summary.onboarding || 0)) {
     throw new Error('Catalog and Data Health disagree on onboarding count');
   }
-  if (Number(healthCatalog.summary.source_attention || 0) !== Number(lifecycle.summary.source_attention || 0)) {
+  if (
+    Number(healthCatalog.summary.source_attention || 0) !== Number(lifecycle.summary.source_attention || 0)
+  ) {
     throw new Error('Catalog and Data Health disagree on source-attention count');
   }
-  if (Number(healthCatalog.summary.taxonomy_attention || 0) !== Number(lifecycle.summary.taxonomy_attention || 0)) {
+  if (
+    Number(healthCatalog.summary.taxonomy_attention || 0) !==
+    Number(lifecycle.summary.taxonomy_attention || 0)
+  ) {
     throw new Error('Catalog and Data Health disagree on taxonomy-attention count');
   }
 
   const summary = {
     ok: true,
     activeListings: lifecycle.summary.active_listings,
+    inactiveListings: lifecycle.summary.inactive_listings,
     sourceReady: lifecycle.summary.source_ready,
     onboarding: lifecycle.summary.onboarding,
     sourceAttention: lifecycle.summary.source_attention,
     taxonomyAttention: lifecycle.summary.taxonomy_attention,
     actionableTaxonomy,
     onboardingTaxonomy,
+    inactiveTaxonomy,
     sourceAttentionSkus: sourceAttention,
     lifecycle: lifecycle.items.map((item) => ({
       sku: item.sku,
@@ -98,11 +122,17 @@ try {
       requiresSellerAction: item.requires_seller_action,
     })),
   };
-  await fs.writeFile(path.join(outDir, 'catalog-onboarding-summary.json'), JSON.stringify(summary, null, 2));
+  await fs.writeFile(
+    path.join(outDir, 'catalog-onboarding-summary.json'),
+    JSON.stringify(summary, null, 2),
+  );
   console.log(JSON.stringify(summary));
 } catch (error) {
   const summary = { ok: false, error: error.message };
-  await fs.writeFile(path.join(outDir, 'catalog-onboarding-summary.json'), JSON.stringify(summary, null, 2));
+  await fs.writeFile(
+    path.join(outDir, 'catalog-onboarding-summary.json'),
+    JSON.stringify(summary, null, 2),
+  );
   console.error(error);
   process.exit(1);
 }

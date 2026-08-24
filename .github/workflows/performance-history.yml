@@ -1,0 +1,107 @@
+name: Performance history
+
+on:
+  workflow_run:
+    workflows: ['Deploy DPP Analytics']
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download production QA artifact
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: dpp-production-visual-qa-${{ github.event.workflow_run.id }}
+          path: performance-artifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Append performance sample
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            function findFile(root, name) {
+              if (!fs.existsSync(root)) return null;
+              for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+                const candidate = path.join(root, entry.name);
+                if (entry.isDirectory()) {
+                  const nested = findFile(candidate, name);
+                  if (nested) return nested;
+                } else if (entry.name === name) {
+                  return candidate;
+                }
+              }
+              return null;
+            }
+
+            function readJson(name) {
+              const file = findFile('performance-artifact', name);
+              return file ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
+            }
+
+            const cache = readJson('cache-performance-summary.json');
+            const load = readJson('load-time-summary.json');
+            const baseline = readJson('performance-baseline-summary.json');
+            if (!cache?.ok || !load?.ok) {
+              core.info('No complete performance sample in this deployment artifact; nothing to publish.');
+              return;
+            }
+
+            const apiRows = [...(cache.measurements || [])]
+              .sort((a, b) => Number(b.cold?.build_ms || 0) - Number(a.cold?.build_ms || 0))
+              .slice(0, 6);
+            const pageRows = [...(load.results || [])]
+              .filter((item) => item.cold && item.revisit)
+              .sort((a, b) => Number(b.cold.data_ready_ms || 0) - Number(a.cold.data_ready_ms || 0))
+              .slice(0, 10);
+
+            const lines = [
+              `## ${process.env.RUN_SHA.slice(0, 8)} · ${process.env.RUN_CONCLUSION}`,
+              '',
+              `Deployment run: ${process.env.RUN_ID}`,
+              `Measured: ${cache.measured_at || load.measured_at || new Date().toISOString()}`,
+              `Baseline: ${baseline?.status || 'not evaluated'}${baseline?.accepted_baseline_commit ? ` · ${baseline.accepted_baseline_commit.slice(0, 8)}` : ''}`,
+              '',
+              '### Slowest API cold builds',
+              '',
+              '| API | Cold build | Warm request | Payload |',
+              '| --- | ---: | ---: | ---: |',
+              ...apiRows.map((item) => `| ${item.key} | ${item.cold.build_ms} ms | ${item.warm.request_ms} ms | ${(item.payload_bytes / 1024).toFixed(1)} KB |`),
+              '',
+              '### Page data-ready',
+              '',
+              '| Page | Cold | Revisit | Revisit API calls |',
+              '| --- | ---: | ---: | ---: |',
+              ...pageRows.map((item) => `| ${item.key} | ${item.cold.data_ready_ms} ms | ${item.revisit.data_ready_ms} ms | ${item.revisit.api_request_count} |`),
+            ];
+
+            if (baseline?.counts) {
+              lines.push(
+                '',
+                `Compared metrics: ${baseline.counts.compared || 0} · improved ${baseline.counts.improved || 0} · regressed ${baseline.counts.regressed || 0} · hard regressions ${baseline.counts.hard_regressions || 0}`,
+              );
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 122,
+              body: lines.join('\n'),
+            });
