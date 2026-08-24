@@ -82,6 +82,19 @@ jobs:
       - name: Test board response cache
         run: python -m unittest -v test_response_cache.py
 
+  board-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create deterministic main ref for image fallback
+        run: git update-ref refs/heads/main HEAD
+
+      - name: Build production board image
+        run: docker build --build-arg DEPLOY_SHA="${GITHUB_SHA}" -f board/Dockerfile -t dpp-board-quality .
+
   qa-syntax:
     runs-on: ubuntu-latest
 

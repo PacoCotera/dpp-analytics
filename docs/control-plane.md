@@ -85,18 +85,22 @@ Both Finance validations run only after a successful `Deploy DPP Analytics` work
 
 ## Application PR quality gate
 
-The workflow file remains `.github/workflows/frontend-quality.yml` for continuity, but the workflow is named **Application quality** because it validates frontend source, browser-QA syntax, Compose configuration and the database migration chain.
+The workflow file remains `.github/workflows/frontend-quality.yml` for continuity, but the workflow is named **Application quality** because it validates frontend source, board Python, the production board image, browser-QA syntax, Compose configuration and the database migration chain.
 
-It runs for changes affecting frontend source, the QA harness, the board image, Compose/environment configuration, SQL init/migrations, migration scripts or the workflow itself and has four independent jobs:
+It runs for changes affecting frontend source, board Python, the QA harness, the board image, Compose/environment configuration, SQL init/migrations, migration scripts or the workflow itself and has six independent jobs:
 
-- `frontend-lint` — installs the board's Node tooling and runs `npm run lint` (ESLint + Stylelint);
+- `frontend-lint` — installs the board's Node tooling and runs `npm run quality` (frontend ownership contract, ESLint, Stylelint and Prettier check);
+- `board-python` — compiles board Python and runs the response-cache behavior tests;
+- `board-image` — builds the actual production `board/Dockerfile`, including its import smoke test, so missing `COPY` dependencies or image-only import failures are caught before merge;
 - `qa-syntax` — runs `node --check` over the production browser/navigation QA scripts so QA harness edits cannot ship with JavaScript syntax errors;
 - `compose-config` — runs `docker compose --env-file .env.example config --quiet` so the committed environment template and service definition cannot silently drift into an invalid configuration;
 - `migration-chain` — starts a clean PostgreSQL 18 instance and applies the complete repository migration chain through `scripts/migrate.sh`.
 
+The board-image job exists specifically because source-level Python compilation cannot prove that every runtime dependency is packaged into the production Docker image. Any board module imported at runtime must be present in the image and survive the Dockerfile import smoke test.
+
 The clean migration-chain job is specifically intended to catch migration ordering, dependency and `CREATE OR REPLACE VIEW` compatibility problems before the self-hosted production runner sees them. When replacing an existing PostgreSQL view that has dependents, preserve the existing column names/order/types and append genuinely new columns at the end unless the migration deliberately rebuilds the dependency graph.
 
-Prettier remains a separate audit (`npm run format:check`) until retained global legacy styles are normalized deliberately; it is not a substitute for browser QA.
+Formatting is part of `npm run quality`; it remains a mechanical source gate and is not a substitute for browser QA.
 
 ## Production-owned state
 
