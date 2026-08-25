@@ -247,16 +247,39 @@ jobs:
       - name: Test the deployed UI in a browser
         run: |
           set -uo pipefail
+          qa_container="dpp-production-visual-qa-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+          cleanup_qa() {
+            sudo docker rm -f "$qa_container" >/dev/null 2>&1 || true
+          }
+          trap cleanup_qa EXIT INT TERM
+
+          # Recover automatically from any previously interrupted labeled run.
+          mapfile -t stale_qa < <(
+            sudo docker ps -aq \
+              --filter label=com.dpp-analytics.role=production-browser-qa
+          )
+          if [[ "${#stale_qa[@]}" -gt 0 ]]; then
+            sudo docker rm -f "${stale_qa[@]}" >/dev/null
+          fi
+
           sudo rm -rf /tmp/dpp-production-visual-qa
           sudo install -d -m 0777 /tmp/dpp-production-visual-qa
+          cleanup_qa
 
           set +e
-          sudo docker run --rm --network host \
-            -v /tmp/dpp-production-visual-qa:/out \
-            dpp-production-visual-qa:local \
-            http://127.0.0.1:8088 /out \
+          timeout --signal=TERM --kill-after=30s 15m \
+            sudo docker run --rm \
+              --name "$qa_container" \
+              --label com.dpp-analytics.role=production-browser-qa \
+              --label "com.dpp-analytics.run-id=${GITHUB_RUN_ID}" \
+              --network host \
+              -v /tmp/dpp-production-visual-qa:/out \
+              dpp-production-visual-qa:local \
+              http://127.0.0.1:8088 /out \
             | tee /tmp/dpp-production-visual-qa-run.txt
           rc=${PIPESTATUS[0]}
+          cleanup_qa
           printf '%s\n' "$rc" >/tmp/dpp-production-visual-qa-exit-code.txt
           set -e
 
