@@ -6,6 +6,9 @@ let period = '30';
 let selectedDate = new URLSearchParams(window.location.search).get('date') || '';
 let refreshTimer = null;
 let lastWidth = 0;
+const mobileHierarchy = window.matchMedia('(max-width: 640px)');
+
+const AMAZON_PROCESSING = new Set(['PENDING', 'PENDING_AVAILABILITY', 'INVOICE_UNCONFIRMED']);
 
 function parseDate(value) {
   return value ? new Date(`${String(value).slice(0, 10)}T12:00:00Z`) : null;
@@ -53,6 +56,170 @@ function age(seconds) {
   if (value < 3600) return `${Math.max(1, Math.round(value / 60))}m`;
   if (value < 86400) return `${(value / 3600).toFixed(value < 10800 ? 1 : 0)}h`;
   return `${(value / 86400).toFixed(1)}d`;
+}
+
+function statusLabel(status) {
+  const key = String(status || '').toUpperCase();
+  return (
+    {
+      PENDING: 'Amazon processing',
+      PENDING_AVAILABILITY: 'Amazon processing · availability',
+      INVOICE_UNCONFIRMED: 'Amazon processing · invoice',
+      UNSHIPPED: 'Unshipped',
+      PARTIALLY_SHIPPED: 'Partially shipped',
+      SHIPPED: 'Shipped',
+      CANCELLED: 'Cancelled',
+      UNFULFILLABLE: 'Unfulfillable',
+    }[key] ||
+    key.replaceAll('_', ' ').toLowerCase() ||
+    'Unknown'
+  );
+}
+
+function statusTone(status) {
+  const key = String(status || '').toUpperCase();
+  if (AMAZON_PROCESSING.has(key)) return 'pending';
+  if (['UNSHIPPED', 'PARTIALLY_SHIPPED', 'SHIPPED'].includes(key)) return 'active';
+  if (['UNFULFILLABLE', 'CANCELLED'].includes(key)) return 'problem';
+  return '';
+}
+
+function fulfillmentLabel(order) {
+  if (order.fulfillment_model && order.fulfillment_model !== '—') return order.fulfillment_model;
+  const fulfilledBy = String(order.fulfilled_by || '').toUpperCase();
+  if (fulfilledBy === 'AMAZON') return 'FBA';
+  if (fulfilledBy === 'MERCHANT') return 'FBM';
+  return '—';
+}
+
+function renderOrderCard(order) {
+  const items = order.items || [];
+  const itemHtml = items.length
+    ? items
+        .map((item) => {
+          const image = item.image_url
+            ? `<img src="${escapeHtml(item.image_url)}" alt="">`
+            : '<span class="item-image-placeholder"></span>';
+          const identity = [item.sku ? `SKU ${item.sku}` : '', item.asin ? `ASIN ${item.asin}` : '']
+            .filter(Boolean)
+            .join(' · ');
+          return `<div class="operational-order__item">
+            ${image}
+            <div>
+              <div class="item-name">${escapeHtml(item.product || item.sku || item.asin || 'Item')}</div>
+              <div class="item-identity">${escapeHtml(identity || 'Identity unavailable')}</div>
+              <div class="item-id">Item ${escapeHtml(item.order_item_id || '—')}</div>
+            </div>
+            <div class="item-qty">×${integer(item.quantity_ordered || 0)}</div>
+          </div>`;
+        })
+        .join('')
+    : `<div class="operational-order__item"><span class="item-image-placeholder"></span><div><div class="item-name">${escapeHtml(order.product || order.sku || 'Order')}</div><div class="item-identity">${escapeHtml([order.sku ? `SKU ${order.sku}` : '', order.asin ? `ASIN ${order.asin}` : ''].filter(Boolean).join(' · ') || 'Item detail pending')}</div></div><div class="item-qty">×${integer(order.units || 0)}</div></div>`;
+
+  const rawStatus = String(order.status || '').toUpperCase();
+  const status = statusLabel(rawStatus);
+  const fulfillment = fulfillmentLabel(order);
+  const total = order.sales === null || order.sales === undefined ? '—' : money(order.sales);
+  const timing = [
+    order.local_time || '',
+    order.age_seconds !== null && order.age_seconds !== undefined ? age(order.age_seconds) : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const fulfilled = Number(order.quantity_fulfilled || 0);
+  const unfulfilled = Number(order.quantity_unfulfilled || 0);
+  const units = Number(
+    order.units || items.reduce((sum, item) => sum + Number(item.quantity_ordered || 0), 0),
+  );
+  const unitLabel = `${integer(units)} unit${units === 1 ? '' : 's'}`;
+  const fulfillmentState = AMAZON_PROCESSING.has(rawStatus)
+    ? `${unitLabel} · fulfillment not started`
+    : `${unitLabel} · ${fulfilled} fulfilled · ${unfulfilled} unfulfilled`;
+  const channel = order.channel_name || 'Amazon';
+
+  return `<article class="today-order operational-order ops-owned">
+    <div class="operational-order__top">
+      <div class="operational-order__badges">
+        <span class="order-badge ${statusTone(rawStatus)}" title="Amazon status: ${escapeHtml(rawStatus || 'unknown')}">${escapeHtml(status)}</span>
+        <span class="order-badge fulfillment">${escapeHtml(fulfillment)}</span>
+      </div>
+      <strong>${total}</strong>
+    </div>
+    <div class="operational-order__meta">
+      <code>${escapeHtml(order.order_id || 'Order ID unavailable')}</code>
+      <span>${escapeHtml(timing)}</span>
+    </div>
+    <div class="operational-order__items">${itemHtml}</div>
+    <div class="operational-order__foot">
+      <span>${fulfillmentState}</span>
+      <span>${escapeHtml(channel)} · shopper spend incl. IVA</span>
+    </div>
+  </article>`;
+}
+
+function renderOrderFlow(payload) {
+  const flow = payload.order_flow || payload.today?.order_flow || null;
+  if (!flow) {
+    byId('pendingOrdersKpi').textContent = '—';
+    byId('pendingOrdersKpiNote').textContent = 'current queue';
+    byId('orderFlowGrid').innerHTML =
+      '<div class="empty ops-owned">Current order queue is shown on live Today.</div>';
+    byId('orderFlowFoot').textContent = 'Operational status is current state, not selected-day history.';
+    byId('openOrderSummary').textContent = 'Current order queue is not attached to historical day views';
+    byId('openOrderGrid').innerHTML =
+      '<div class="empty ops-owned">Open orders are available on live Today.</div>';
+    return;
+  }
+
+  const open = Number(flow.open_orders || 0);
+  const pending = Number(flow.pending_orders || 0);
+  const unshipped = Number(flow.unshipped_orders || 0);
+  const partial = Number(flow.partially_shipped_orders || 0);
+  const fba = Number(flow.fba_open_orders || 0);
+  const fbm = Number(flow.fbm_open_orders || 0);
+  const unknown = Number(flow.unknown_fulfillment_open_orders || 0);
+
+  byId('pendingOrdersKpi').textContent = integer(pending);
+  byId('pendingOrdersKpiNote').textContent = pending
+    ? open === pending
+      ? 'awaiting Amazon'
+      : `${pending} of ${open} open`
+    : 'none awaiting Amazon';
+
+  byId('orderFlowGrid').innerHTML = `<div class="order-flow-rollup ops-owned">
+      <div><span>Open now</span><small>Amazon processing + unshipped + partial</small></div>
+      <strong>${integer(open)}</strong>
+    </div>
+    <div class="order-flow-children ops-owned">
+      <div class="order-flow-stat"><strong>${integer(pending)}</strong><span>Amazon processing</span></div>
+      <div class="order-flow-stat"><strong>${integer(unshipped)}</strong><span>Unshipped</span></div>
+      <div class="order-flow-stat"><strong>${integer(partial)}</strong><span>Partial</span></div>
+    </div>`;
+
+  const notes = [
+    `Shipped today ${integer(flow.shipped_today || 0)}`,
+    `Open fulfillment · FBA ${fba} · FBM ${fbm}${unknown ? ` · ${unknown} other` : ''}`,
+  ];
+  if (Number(flow.problem_orders || 0)) notes.push(`${integer(flow.problem_orders)} needs attention`);
+  byId('orderFlowFoot').textContent = notes.join(' · ');
+
+  const openOrders = payload.open_orders || payload.today?.open_orders || [];
+  if (!open) {
+    byId('openOrderSummary').textContent = 'No open Amazon orders';
+  } else if (open === pending && unshipped === 0 && partial === 0) {
+    byId('openOrderSummary').textContent =
+      `${open} open · all awaiting Amazon processing · current fulfillment state`;
+  } else {
+    const components = [];
+    if (pending) components.push(`${pending} Amazon processing`);
+    if (unshipped) components.push(`${unshipped} unshipped`);
+    if (partial) components.push(`${partial} partial`);
+    byId('openOrderSummary').textContent =
+      `${open} open · ${components.join(' · ')} · current fulfillment state`;
+  }
+  byId('openOrderGrid').innerHTML = openOrders.length
+    ? openOrders.map(renderOrderCard).join('')
+    : '<div class="empty ops-owned">No open orders.</div>';
 }
 
 function median(values) {
@@ -136,7 +303,6 @@ function renderDayRead() {
 
 function renderBusinessRead() {
   const context = data.context || {};
-  const today = data.today || {};
   const mtd = Number(context.mtd_delta_pct);
   const last30 = Number(context.last30_delta_pct);
   const wtd = Number(context.week_delta_pct);
@@ -388,42 +554,65 @@ function renderLatestOrder(latest, live) {
   byId('latestAge').textContent = '';
 }
 
-function renderProducts(products, totalSales, live) {
+function renderProducts(payload) {
+  const products = payload.sku_today || [];
+  const totalSales = Number(payload.today?.sales_today || 0);
+  const live = Boolean(payload.is_live);
+  const previousReferenceOpen = Boolean(byId('todayProductsReference')?.open);
   byId('productsTitle').textContent = live ? 'What is driving today' : 'What drove that day';
-  byId('products').innerHTML = products.length
-    ? products
-        .slice(0, 6)
-        .map((item) => {
-          const image = item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="">` : '';
-          const contribution = totalSales > 0 ? (100 * Number(item.sales || 0)) / totalSales : 0;
-          return `<a class="today-product" href="/product?sku=${encodeURIComponent(item.sku || '')}">
-          ${image}
-          <div>
-            <div class="name">${escapeHtml(item.product || item.sku)}</div>
-            <div class="meta">${integer(item.units)} units · ${integer(item.orders)} orders</div>
-            <div class="share-track"><i style="width:${Math.max(2, Math.min(100, contribution))}%"></i></div>
-          </div>
-          <div class="value">${money(item.sales)}<span class="share">${contribution.toFixed(0)}% of shopper spend</span></div>
-        </a>`;
-        })
-        .join('')
-    : `<div class="empty">${live ? 'Products will appear as orders arrive.' : 'No product sales recorded for this day.'}</div>`;
+  if (products.length) {
+    const cards = products.slice(0, 8).map((item) => {
+      const image = item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="">` : '';
+      const contribution = totalSales > 0 ? (100 * Number(item.sales || 0)) / totalSales : 0;
+      const identity = [item.sku ? `SKU ${item.sku}` : '', item.asin ? `ASIN ${item.asin}` : '']
+        .filter(Boolean)
+        .join(' · ');
+      return `<a class="today-product ops-owned" href="/product?sku=${encodeURIComponent(item.sku || '')}">
+            ${image}
+            <div>
+              <div class="name">${escapeHtml(item.product || item.sku || item.asin || 'Product')}</div>
+              <div class="product-identity">${escapeHtml(identity)}</div>
+              <div class="meta">${integer(item.units || 0)} units · ${integer(item.orders || 0)} orders</div>
+              <div class="share-track"><i style="width:${Math.max(2, Math.min(100, contribution))}%"></i></div>
+            </div>
+            <div class="value">${money(item.sales || 0)}<span class="share">${contribution.toFixed(0)}% of shopper spend</span></div>
+          </a>`;
+    });
+    const secondary = cards.slice(3);
+    byId('products').innerHTML =
+      `<div class="today-products-priority ops-owned">${cards.slice(0, 3).join('')}</div>
+      ${
+        secondary.length
+          ? `<details class="today-products-reference ops-owned" id="todayProductsReference" open>
+        <summary><span><strong>${secondary.length} more product${secondary.length === 1 ? '' : 's'}</strong><small>Secondary contribution</small></span><b>View ↓</b></summary>
+        <div class="today-products-secondary">${secondary.join('')}</div>
+      </details>`
+          : ''
+      }`;
+    const reference = byId('todayProductsReference');
+    if (reference) {
+      reference.open = mobileHierarchy.matches ? previousReferenceOpen : true;
+      const toggle = reference.querySelector('summary b');
+      const updateToggle = () => {
+        if (toggle) toggle.textContent = reference.open ? 'Hide ↑' : 'View ↓';
+      };
+      reference.addEventListener('toggle', updateToggle);
+      updateToggle();
+    }
+  } else {
+    byId('products').innerHTML =
+      `<div class="empty ops-owned">${live ? 'Products will appear as orders arrive.' : 'No product sales recorded for this day.'}</div>`;
+  }
 }
 
-function renderOrders(orders, today, live) {
+function renderSelectedOrders(payload) {
+  const orders = payload.recent_orders || [];
+  const today = payload.today || {};
   byId('orderSummary').textContent =
-    `${integer(today.orders_today)} orders · ${integer(today.units_today)} units · ${money(today.sales_today)} shopper spend incl. IVA`;
+    `${integer(today.orders_today || 0)} orders · ${integer(today.units_today || 0)} units · ${money(today.sales_today || 0)} shopper spend incl. IVA`;
   byId('orderGrid').innerHTML = orders.length
-    ? orders
-        .map(
-          (order) => `<div class="today-order">
-        <strong>${money(order.sales)}</strong>
-        <div class="name">${escapeHtml(order.product || order.sku || 'Order')}</div>
-        <div class="meta">${escapeHtml(order.local_time || '')}${live ? ` · ${age(order.age_seconds)}` : ''}</div>
-      </div>`,
-        )
-        .join('')
-    : '<div class="empty">No orders recorded.</div>';
+    ? orders.map(renderOrderCard).join('')
+    : '<div class="empty ops-owned">No orders recorded for this day.</div>';
 }
 
 function render(payload) {
@@ -445,8 +634,9 @@ function render(payload) {
   renderDayRead();
   renderBusinessRead();
   renderLatestOrder(payload.latest_order, live);
-  renderProducts(payload.sku_today || [], Number(today.sales_today || 0), live);
-  renderOrders(payload.recent_orders || [], today, live);
+  renderOrderFlow(payload);
+  renderProducts(payload);
+  renderSelectedOrders(payload);
   drawChart();
 
   if (refreshTimer) {
@@ -478,6 +668,29 @@ function bindInteractions() {
 
   byId('ordersPanel').addEventListener('toggle', () => {
     byId('orderToggle').textContent = byId('ordersPanel').open ? 'Hide ↑' : 'View ↓';
+  });
+
+  const openPanel = byId('openOrdersPanel');
+  if (openPanel) {
+    openPanel.addEventListener('toggle', () => {
+      byId('openOrderToggle').textContent = openPanel.open ? 'Hide ↑' : 'View ↓';
+    });
+  }
+
+  const businessEvidence = byId('todayBusinessEvidence');
+  if (businessEvidence) {
+    const updateBusinessToggle = () => {
+      byId('todayBusinessToggle').textContent = businessEvidence.open ? 'Hide ↑' : 'View ↓';
+    };
+    businessEvidence.open = !mobileHierarchy.matches;
+    businessEvidence.addEventListener('toggle', updateBusinessToggle);
+    updateBusinessToggle();
+  }
+
+  mobileHierarchy.addEventListener('change', (event) => {
+    if (businessEvidence) businessEvidence.open = !event.matches;
+    const productReference = byId('todayProductsReference');
+    if (productReference) productReference.open = !event.matches;
   });
 
   window.addEventListener('popstate', () => {
