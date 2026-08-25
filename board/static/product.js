@@ -3,6 +3,9 @@ import { byId, escapeHtml, fetchJson, integer, money, percent } from './ui-utils
 const sku = new URLSearchParams(window.location.search).get('sku') || '';
 let data = null;
 let days = 28;
+let metric = 'sales';
+let ordersExpanded = false;
+const ORDER_PREVIEW_LIMIT = 6;
 
 function age(seconds) {
   const value = Number(seconds || 0);
@@ -32,6 +35,27 @@ function orderStatusTone(status) {
   return 'neutral';
 }
 
+function fulfillmentLabel(order) {
+  if (order.fulfillment_model) return order.fulfillment_model;
+  const fulfilledBy = String(order.fulfilled_by || '').toUpperCase();
+  if (fulfilledBy === 'AMAZON') return 'FBA';
+  if (fulfilledBy === 'MERCHANT') return 'FBM';
+  return 'Amazon';
+}
+
+function listedDate(value) {
+  if (!value) return 'date unavailable';
+  const parsed = new Date(`${String(value).slice(0, 10)}T12:00:00Z`);
+  return Number.isNaN(parsed.getTime())
+    ? String(value)
+    : new Intl.DateTimeFormat('en', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }).format(parsed);
+}
+
 function ratioPercent(value) {
   return value === null || value === undefined ? '—' : percent(100 * Number(value), { sign: false });
 }
@@ -45,9 +69,11 @@ function decimal(value, digits = 2) {
 function draw() {
   if (!data || !window.DPPCharts) return;
   const rows = (data.series || []).slice(-days);
-  window.DPPCharts.productDemand('#chart', rows);
+  window.DPPCharts.productDemand('#chart', rows, { metric });
   byId('chartSub').textContent =
-    `Shopper spend incl. IVA · reconciled Amazon Sales & Traffic · last ${days} days`;
+    metric === 'units'
+      ? `Units ordered · reconciled Amazon Sales & Traffic · last ${days} days`
+      : `Shopper spend incl. IVA · reconciled Amazon Sales & Traffic · last ${days} days`;
 }
 
 function renderHealth(payload) {
@@ -99,16 +125,29 @@ function renderHealth(payload) {
   byId('healthRead').textContent = reasons.join(' ');
 }
 
-function renderHero(profile) {
+function renderHero(profile, commercial) {
   const action = profile.inventory_action || '';
   const image = profile.image_url
     ? `<img class="hero-img" src="${escapeHtml(profile.image_url)}" alt="${escapeHtml(profile.product || profile.sku || '')}">`
     : '<div class="hero-img" aria-hidden="true"></div>';
   const actionTone =
     action === 'OK' ? 'good' : action === 'STOCKOUT' || action === 'PRODUCE' ? 'bad' : 'warn';
+  const attributes = Object.values(commercial.variation_attributes || {});
+  const fulfillment = String(profile.fulfillment_channel || '')
+    .toUpperCase()
+    .includes('AMAZON')
+    ? 'FBA'
+    : profile.fulfillment_channel || 'Fulfillment unavailable';
   const chips = [
     action ? `<span class="chip ${actionTone}">${escapeHtml(action)}</span>` : '',
     profile.listing_status ? `<span class="chip">${escapeHtml(profile.listing_status)}</span>` : '',
+    commercial.family_name ? `<span class="hero-meta">${escapeHtml(commercial.family_name)}</span>` : '',
+    attributes.length ? `<span class="hero-meta">${escapeHtml(attributes.join(' · '))}</span>` : '',
+    commercial.parent_asin
+      ? `<span class="hero-meta">Parent ${escapeHtml(commercial.parent_asin)}</span>`
+      : '',
+    `<span class="hero-meta">${escapeHtml(fulfillment)}</span>`,
+    `<span class="hero-meta">Listed ${escapeHtml(listedDate(profile.open_date))}</span>`,
   ].join('');
   const amazonLink = profile.amazon_url
     ? `<a class="btn" href="${escapeHtml(profile.amazon_url)}" target="_blank" rel="noopener">Amazon ↗</a>`
@@ -118,12 +157,26 @@ function renderHero(profile) {
     <div>
       <div class="hero-sku">${escapeHtml(profile.sku)} · ${escapeHtml(profile.asin || '')}</div>
       <div class="hero-name">${escapeHtml(profile.product || profile.sku)}</div>
+      ${profile.catalog_title && profile.catalog_title !== profile.product ? `<div class="hero-catalog-title">${escapeHtml(profile.catalog_title)}</div>` : ''}
       <div class="hero-details">${chips}</div>
     </div>
     <div class="hero-price">
       <strong>${profile.listing_price == null ? '—' : money(profile.listing_price)}</strong>
       <span>listing price</span>
       ${amazonLink}
+    </div>
+    <div class="hero-command">
+      <div class="hero-signal">
+        <div class="product-health__kicker">Product health</div>
+        <strong id="healthHeadline">Reading the product…</strong>
+        <p id="healthRead">Connecting demand, traffic, availability, listing state and economics.</p>
+      </div>
+      <div class="product-health__facts">
+        <div class="product-health__fact"><div class="label">Listing</div><strong>${escapeHtml(profile.listing_status || '—')}</strong><small>${escapeHtml(fulfillment)}</small></div>
+        <div class="product-health__fact"><div class="label">Family</div><strong>${escapeHtml(commercial.family_name || 'Standalone')}</strong><small>${escapeHtml(commercial.product_role || 'commercial identity')}</small></div>
+        <div class="product-health__fact"><div class="label">Variation</div><strong>${escapeHtml(attributes.slice(0, 2).join(' · ') || '—')}</strong><small>${escapeHtml(attributes.slice(2).join(' · ') || commercial.amazon_variation_theme || 'catalog attributes')}</small></div>
+        <div class="product-health__fact"><div class="label">Parent ASIN</div><strong>${escapeHtml(commercial.parent_asin || 'None')}</strong><small>${commercial.parent_asin ? 'Amazon variation family' : 'standalone offer'}</small></div>
+      </div>
     </div>`;
 }
 
@@ -179,6 +232,9 @@ function renderMetrics(profile, performance, traffic, economics) {
   byId('units28').textContent = integer(performance.units_t28);
   byId('delta28').textContent =
     performance.delta28_pct == null ? 'no prior baseline' : `${percent(performance.delta28_pct)} vs prior`;
+  const delta = Number(performance.delta28_pct);
+  byId('delta28').className =
+    performance.delta28_pct == null ? 'warn' : delta > 0 ? 'good' : delta < 0 ? 'bad' : '';
   byId('sessions28').textContent = integer(traffic.sessions_t28);
   byId('cvr28').textContent = traffic.cvr_t28 == null ? '—' : percent(traffic.cvr_t28, { sign: false });
   byId('stockRead').textContent = `${integer(profile.available)} + ${integer(profile.inbound)}`;
@@ -242,6 +298,13 @@ function renderVariationContext(profile, commercial, familyVariations) {
   byId('variationChips').innerHTML = Object.entries(attributes)
     .map(([key, value]) => `<span class="variation-chip">${escapeHtml(key)} · ${escapeHtml(value)}</span>`)
     .join('');
+  byId('variationIdentity').textContent = [
+    commercial.parent_asin ? `Parent ${commercial.parent_asin}` : '',
+    commercial.asin ? `ASIN ${commercial.asin}` : '',
+    commercial.amazon_variation_theme ? `Theme ${commercial.amazon_variation_theme}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const siblings = familyVariations || [];
   byId('siblings').innerHTML =
@@ -251,11 +314,12 @@ function renderVariationContext(profile, commercial, familyVariations) {
           .slice(0, 4)
           .map(
             (item) => `<a class="sibling" href="/product?sku=${encodeURIComponent(item.sku)}">
+          ${item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="">` : '<span class="sibling-image-placeholder"></span>'}
           <div>
             <strong>${escapeHtml(item.product || item.sku)}</strong>
             <span>${integer(item.units_t28)} units · ${integer(item.sessions_t28)} sessions · ${item.conversion_t28_pct == null ? '—' : percent(item.conversion_t28_pct, { sign: false })} CVR</span>
+            <b>${money(item.sales_t28)}</b>
           </div>
-          <b>${money(item.sales_t28)}</b>
         </a>`,
           )
           .join('')
@@ -288,34 +352,50 @@ function renderAds(ads) {
   }
 }
 
-function renderOrders(orders = []) {
+function renderOrders(orders = [], profile = {}) {
   byId('orderSummary').textContent =
     `${orders.length} recent order${orders.length === 1 ? '' : 's'} · shopper spend incl. IVA · evidence only`;
   byId('orders').innerHTML = orders.length
     ? orders
-        .map(
-          (order) => `<article class="product-order">
-          <div class="product-order__moment">
-            <strong>${age(order.age_seconds)} ago</strong>
-            <span>${escapeHtml(order.local_time || '')}</span>
-            <code>${escapeHtml(order.order_short || '')}</code>
-          </div>
-          <div class="product-order__metric">
-            <span>Units</span>
-            <strong>${integer(order.units)}</strong>
-          </div>
-          <div class="product-order__metric product-order__spend">
-            <span>Shopper spend incl. IVA</span>
+        .map((order, index) => {
+          const image = profile.image_url
+            ? `<img src="${escapeHtml(profile.image_url)}" alt="">`
+            : '<span class="product-order__image-placeholder"></span>';
+          return `<article class="product-order${index >= ORDER_PREVIEW_LIMIT ? ' reference-order' : ''}">
+          <div class="product-order__top">
+            <div class="product-order__badges">
+              <span class="order-status-pill ${orderStatusTone(order.status)}">${escapeHtml(orderStatus(order.status))}</span>
+              <span class="order-badge fulfillment">${escapeHtml(fulfillmentLabel(order))}</span>
+            </div>
             <strong>${money(order.sales)}</strong>
           </div>
-          <div class="product-order__fulfillment">
-            <span>Fulfillment</span>
-            <strong class="order-status-pill ${orderStatusTone(order.status)}">${escapeHtml(orderStatus(order.status))}</strong>
+          <div class="product-order__meta">
+            <code>${escapeHtml(order.order_id || order.order_short || 'Order ID unavailable')}</code>
+            <span>${escapeHtml(order.local_time || '')} · ${age(order.age_seconds)} ago</span>
           </div>
-        </article>`,
-        )
+          <div class="product-order__item">
+            ${image}
+            <div>
+              <div class="product-order__item-name">${escapeHtml(profile.product || profile.sku || 'Product')}</div>
+              <div class="product-order__item-id">${escapeHtml([profile.sku ? `SKU ${profile.sku}` : '', profile.asin ? `ASIN ${profile.asin}` : ''].filter(Boolean).join(' · '))}</div>
+            </div>
+            <div class="product-order__qty">×${integer(order.units)}</div>
+          </div>
+          <div class="product-order__foot">
+            <span>${integer(order.units)} unit${Number(order.units) === 1 ? '' : 's'} · ${escapeHtml(orderStatus(order.status))}</span>
+            <span>${escapeHtml(order.channel_name || 'Amazon')} · shopper spend incl. IVA</span>
+          </div>
+        </article>`;
+        })
         .join('')
     : '<div class="empty"><strong>No recent orders.</strong></div>';
+  const hidden = Math.max(0, orders.length - ORDER_PREVIEW_LIMIT);
+  byId('ordersMore').hidden = hidden === 0;
+  byId('ordersMoreCount').textContent = hidden ? `${hidden} more` : '';
+  ordersExpanded = false;
+  byId('orders').classList.remove('orders-expanded');
+  byId('ordersMore').setAttribute('aria-expanded', 'false');
+  byId('ordersMoreLabel').textContent = 'Show all recent orders';
 }
 
 function render(payload) {
@@ -331,7 +411,7 @@ function render(payload) {
   byId('clock').textContent = payload.local_time || '--:--';
   byId('asof').textContent = `Historical through ${String(payload.business_date || '').slice(5)}`;
 
-  renderHero(profile);
+  renderHero(profile, commercial);
   renderHealth(payload);
   renderListingAndInventory(profile, commercial, ads);
   renderMetrics(profile, performance, traffic, economics);
@@ -339,7 +419,7 @@ function render(payload) {
   renderEconomicsDecision(economics);
   renderVariationContext(profile, commercial, payload.family_variations);
   renderAds(ads);
-  renderOrders(payload.recent_orders);
+  renderOrders(payload.recent_orders, profile);
   draw();
 }
 
@@ -357,8 +437,31 @@ function bindInteractions() {
     });
   });
 
+  document.querySelectorAll('[data-metric]').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('[data-metric]').forEach((item) => {
+        item.classList.remove('active');
+        item.setAttribute('aria-selected', 'false');
+      });
+      button.classList.add('active');
+      button.setAttribute('aria-selected', 'true');
+      metric = button.dataset.metric || 'sales';
+      draw();
+    });
+  });
+
   byId('ordersPanel').addEventListener('toggle', () => {
     byId('orderToggle').textContent = byId('ordersPanel').open ? 'Hide ↑' : 'View ↓';
+  });
+
+  byId('ordersMore').addEventListener('click', () => {
+    ordersExpanded = !ordersExpanded;
+    byId('orders').classList.toggle('orders-expanded', ordersExpanded);
+    byId('ordersMore').setAttribute('aria-expanded', String(ordersExpanded));
+    byId('ordersMoreLabel').textContent = ordersExpanded ? 'Show fewer orders' : 'Show all recent orders';
+    byId('ordersMoreCount').textContent = ordersExpanded
+      ? 'all shown'
+      : `${Math.max(0, Number(data?.recent_orders?.length || 0) - ORDER_PREVIEW_LIMIT)} more`;
   });
 
   const reference = byId('productReference');

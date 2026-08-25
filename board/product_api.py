@@ -106,9 +106,17 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
         recent_orders = _all(cur,"""
             SELECT to_char(o.created_time AT TIME ZONE mp.timezone,'MM-DD HH24:MI') local_time,
                    extract(epoch FROM (CURRENT_TIMESTAMP-o.created_time))::bigint age_seconds,
-                   right(o.amazon_order_id,9) order_short,i.quantity_ordered units,
+                   o.amazon_order_id order_id,right(o.amazon_order_id,9) order_short,
+                   i.quantity_ordered units,
                    COALESCE(i.proceeds_total_amount,i.proceeds_item_amount,i.unit_price_amount*i.quantity_ordered,0)::numeric(14,2) sales,
-                   COALESCE(o.fulfillment_status,'') status
+                   COALESCE(o.fulfillment_status,'') status,
+                   COALESCE(o.fulfilled_by,'') fulfilled_by,
+                   CASE upper(COALESCE(o.fulfilled_by,''))
+                     WHEN 'AMAZON' THEN 'FBA'
+                     WHEN 'MERCHANT' THEN 'FBM'
+                     ELSE 'Amazon'
+                   END fulfillment_model,
+                   COALESCE(o.channel_name,'Amazon') channel_name
             FROM core.amazon_order_item i
             JOIN core.amazon_order o ON o.amazon_order_id=i.amazon_order_id
             JOIN core.marketplace mp ON mp.marketplace_id=o.marketplace_id

@@ -452,23 +452,34 @@ async function verifyProductWorkspace(page) {
       mobile,
       referenceOpen: Boolean(reference?.hasAttribute('open')),
       factsVisible: Boolean(facts && window.getComputedStyle(facts).display !== 'none'),
-      decisionsBeforeChart: Boolean(
-        decisions && chart && decisions.getBoundingClientRect().top < chart.getBoundingClientRect().top
+      decisionsAfterChart: Boolean(
+        decisions && chart && decisions.getBoundingClientRect().top >= chart.getBoundingClientRect().top
       ),
       referenceSummaryHeight: summary?.getBoundingClientRect().height || 0,
+      catalogTitleVisible: Boolean(
+        document.querySelector('.hero-catalog-title')?.getBoundingClientRect().height,
+      ),
+      metricControls: document.querySelectorAll('[data-metric]').length,
     };
   });
   if (
     mobileHierarchy.mobile &&
     (mobileHierarchy.referenceOpen ||
       mobileHierarchy.factsVisible ||
-      !mobileHierarchy.decisionsBeforeChart ||
+      !mobileHierarchy.decisionsAfterChart ||
+      !mobileHierarchy.catalogTitleVisible ||
+      mobileHierarchy.metricControls !== 2 ||
       mobileHierarchy.referenceSummaryHeight < 44)
   ) {
     throw new Error(`Product mobile hierarchy mismatch: ${JSON.stringify(mobileHierarchy)}`);
   }
   if (!mobileHierarchy.mobile && !mobileHierarchy.referenceOpen)
     throw new Error('Product desktop secondary context is collapsed');
+
+  await page.locator('[data-metric="units"]').click();
+  const unitsChartLabel = await page.locator('#chart').getAttribute('aria-label');
+  if (!String(unitsChartLabel || '').includes('daily units'))
+    throw new Error(`Product units chart toggle failed: ${unitsChartLabel || 'missing label'}`);
 
   await page.locator('#ordersPanel > summary').click();
   await wait(page, '.product-order');
@@ -477,16 +488,21 @@ async function verifyProductWorkspace(page) {
     return {
       count: orders.length,
       structured: orders.every(order =>
-        order.querySelector('.product-order__moment') &&
-        order.querySelectorAll('.product-order__metric').length === 2 &&
-        order.querySelector('.product-order__fulfillment') &&
-        order.querySelector('.order-status-pill')
+        order.querySelector('.product-order__top') &&
+        order.querySelector('.product-order__meta') &&
+        order.querySelector('.product-order__item') &&
+        order.querySelector('.product-order__foot') &&
+        order.querySelector('.order-status-pill') &&
+        order.querySelector('.order-badge.fulfillment')
       ),
+      visible: orders.filter(order => order.getBoundingClientRect().height > 0).length,
       statuses: orders.map(order => order.querySelector('.order-status-pill')?.textContent || ''),
     };
   });
   if (!orderEvidence.count || !orderEvidence.structured)
     throw new Error(`Product order evidence structure mismatch: ${JSON.stringify(orderEvidence)}`);
+  if (orderEvidence.count > 6 && orderEvidence.visible !== 6)
+    throw new Error(`Product order evidence preview mismatch: ${JSON.stringify(orderEvidence)}`);
   const leakedOrderPending = orderEvidence.statuses.filter(status =>
     /^pending(?:_availability)?$/i.test(status.trim())
   );
