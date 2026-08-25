@@ -835,12 +835,14 @@
     }));
   }
 
-  function productDemand(selector, rows) {
+  function productDemand(selector, rows, options = {}) {
+    const metric = options.metric === 'units' ? 'units' : 'sales';
     const data = (rows || [])
       .map((d) => ({
         ...d,
         date: parseDate(d.business_date),
-        value: Number(d.sales || 0),
+        value: Number(metric === 'units' ? d.units || 0 : d.sales || 0),
+        sales: Number(d.sales || 0),
         units: Number(d.units || 0),
       }))
       .filter((d) => d.date)
@@ -853,8 +855,10 @@
     const ctx = shell(
       selector,
       300,
-      'Product daily sales and seven-day trend',
-      { top: 18, right: 14, bottom: 38, left: compact ? 54 : 62 },
+      metric === 'units'
+        ? 'Product daily units and seven-day trend'
+        : 'Product daily sales and seven-day trend',
+      { top: 18, right: 6, bottom: 38, left: compact ? 42 : 48 },
       compact ? 520 : 960,
     );
     const x = d3
@@ -866,7 +870,7 @@
       .domain([0, d3.max(data, (d) => Math.max(d.value, d.avg)) || 1])
       .nice(4)
       .range([ctx.innerH, 0]);
-    grid(ctx, y, 4);
+    grid(ctx, y, 4, metric === 'units' ? d3.format('~g') : shortMoney);
     const barW = Math.max(2.5, Math.min(18, (ctx.innerW / data.length) * 0.58));
     const bars = ctx.plot
       .selectAll('.dpp-bar')
@@ -897,13 +901,19 @@
       .attr('y2', -4)
       .attr('stroke', COLORS.ink)
       .attr('stroke-width', 3);
-    legend.append('text').attr('x', 27).attr('y', 0).text('7-day demand signal');
+    legend
+      .append('text')
+      .attr('x', 27)
+      .attr('y', 0)
+      .text(metric === 'units' ? '7-day unit signal' : '7-day demand signal');
     interactive(bars, ctx, (d) => ({
       title: d3.utcFormat('%b %-d, %Y')(d.date),
       lines: [
-        `Sales ${fullMoney(d.value)}`,
+        `Sales ${fullMoney(d.sales)}`,
         `${d.units} unit${d.units === 1 ? '' : 's'}`,
-        `7-day signal ${fullMoney(d.avg)}`,
+        metric === 'units'
+          ? `7-day signal ${d.avg.toFixed(d.avg < 10 ? 1 : 0)} units`
+          : `7-day signal ${fullMoney(d.avg)}`,
       ],
     }));
   }

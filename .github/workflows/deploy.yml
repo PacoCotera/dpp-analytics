@@ -11,7 +11,10 @@ permissions:
 
 concurrency:
   group: dpp-analytics-production
-  cancel-in-progress: true
+  # Docker/Playwright children can outlive a cancelled self-hosted job and
+  # exhaust the runner's inotify/file-descriptor allowance. Queue releases so
+  # each deployment reaches its cleanup and heartbeat steps.
+  cancel-in-progress: false
 
 jobs:
   deploy:

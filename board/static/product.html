@@ -26,36 +26,11 @@
       </header>
       <nav class="primary-nav"></nav>
       <main>
-        <section class="product-hero" id="hero">
+        <section class="product-hero panel" id="hero">
           <div class="hero-img skeleton"></div>
           <div>
             <div class="hero-sku">Loading product</div>
             <div class="hero-name">One moment…</div>
-          </div>
-        </section>
-        <section class="product-health">
-          <div>
-            <div class="product-health__kicker">Product health</div>
-            <h1 id="healthHeadline">Reading the product…</h1>
-            <p id="healthRead">Connecting demand, traffic, availability, listing state and economics.</p>
-          </div>
-          <div class="product-health__facts">
-            <div class="product-health__fact">
-              <div class="label">Listing</div>
-              <strong id="listingState">—</strong><small id="listingNote">sellability</small>
-            </div>
-            <div class="product-health__fact">
-              <div class="label">Variation</div>
-              <strong id="variationRead">—</strong><small id="variationNote">commercial identity</small>
-            </div>
-            <div class="product-health__fact">
-              <div class="label">Inventory</div>
-              <strong id="inventoryState">—</strong><small id="inventoryNote">availability</small>
-            </div>
-            <div class="product-health__fact">
-              <div class="label">Paid support</div>
-              <strong id="adsState">—</strong><small id="adsNote">advertising context</small>
-            </div>
           </div>
         </section>
         <section class="kpi-rail product-kpi-rail" aria-label="Product key metrics">
@@ -63,21 +38,24 @@
             class="kpi product-kpi"
             title="Reconciled Amazon Sales &amp; Traffic shopper spend including IVA. Finance derives net revenue ex IVA separately."
           >
-            <div class="label">28D shopper spend incl. IVA</div>
-            <strong id="sales28">—</strong
-            ><span><b id="units28">—</b> units · <span id="delta28">—</span></span>
+            <div class="kpi__label">28D shopper spend incl. IVA</div>
+            <strong class="kpi__value" id="sales28">—</strong>
+            <span class="kpi__note"><b id="units28">—</b> units · <span id="delta28">—</span></span>
           </div>
           <div class="kpi product-kpi">
-            <div class="label">Traffic → CVR</div>
-            <strong id="sessions28">—</strong><span>sessions · <b id="cvr28">—</b> CVR</span>
+            <div class="kpi__label">Traffic → conversion</div>
+            <strong class="kpi__value" id="sessions28">—</strong>
+            <span class="kpi__note">sessions · <b id="cvr28">—</b> CVR</span>
           </div>
           <div class="kpi product-kpi">
-            <div class="label">Stock → cover</div>
-            <strong id="stockRead">—</strong><span><b id="cover">—</b> days incl. inbound</span>
+            <div class="kpi__label">Stock → cover</div>
+            <strong class="kpi__value" id="stockRead">—</strong>
+            <span class="kpi__note"><b id="cover">—</b> days incl. inbound</span>
           </div>
           <div class="kpi product-kpi">
-            <div class="label">Economics</div>
-            <strong id="cogsRead">—</strong><span id="economicsNote">standard COGS</span>
+            <div class="kpi__label">Unit economics</div>
+            <strong class="kpi__value" id="cogsRead">—</strong>
+            <span class="kpi__note" id="economicsNote">standard COGS</span>
           </div>
         </section>
         <section class="dashboard-grid product-workspace">
@@ -89,23 +67,42 @@
                   Shopper spend incl. IVA · reconciled Amazon Sales &amp; Traffic · daily + seven-day signal
                 </div>
               </div>
-              <div class="segmented-control product-range" role="group" aria-label="Demand chart range">
-                <button
-                  class="segmented-control__item active"
-                  type="button"
-                  data-days="28"
-                  aria-selected="true"
-                >
-                  28D</button
-                ><button class="segmented-control__item" type="button" data-days="90" aria-selected="false">
-                  90D
-                </button>
+              <div class="product-chart-controls">
+                <div class="segmented-control product-metric" role="group" aria-label="Demand chart metric">
+                  <button
+                    class="segmented-control__item active"
+                    type="button"
+                    data-metric="sales"
+                    aria-selected="true"
+                  >
+                    Money</button
+                  ><button
+                    class="segmented-control__item"
+                    type="button"
+                    data-metric="units"
+                    aria-selected="false"
+                  >
+                    Units
+                  </button>
+                </div>
+                <div class="segmented-control product-range" role="group" aria-label="Demand chart range">
+                  <button
+                    class="segmented-control__item active"
+                    type="button"
+                    data-days="28"
+                    aria-selected="true"
+                  >
+                    28D</button
+                  ><button class="segmented-control__item" type="button" data-days="90" aria-selected="false">
+                    90D
+                  </button>
+                </div>
               </div>
             </div>
             <div class="panel__body"><svg id="chart" class="product-chart" viewBox="0 0 900 260"></svg></div>
           </div>
-          <aside class="panel decision-rail" aria-label="Product decisions">
-            <div class="decision-block">
+          <aside class="decision-rail" aria-label="Product decisions">
+            <div class="panel decision-block decision-block--inventory">
               <div class="decision-label">Inventory</div>
               <strong id="invDecision">—</strong>
               <p id="invRead">Reading stock position.</p>
@@ -115,7 +112,7 @@
                 <div><b id="velocity">—</b><span>units/day</span></div>
               </div>
             </div>
-            <div class="decision-block">
+            <div class="panel decision-block decision-block--economics">
               <div class="decision-label">Economics</div>
               <strong id="econDecision">—</strong>
               <p id="econRead">
@@ -123,26 +120,22 @@
                 IVA.
               </p>
             </div>
-            <details class="product-reference" id="productReference" open>
-              <summary>
-                <span>
-                  <strong>Variation and advertising context</strong>
-                  <small>Secondary product evidence</small>
-                </span>
-                <b id="productReferenceToggle">Hide ↑</b>
-              </summary>
-              <div class="decision-block">
-                <div class="decision-label">Variation context</div>
-                <strong id="familyRead">—</strong>
-                <div class="variation-chips" id="variationChips"></div>
-                <div class="sibling-list" id="siblings"></div>
+            <div class="panel decision-block decision-block--listing">
+              <div class="decision-label">Commercial state</div>
+              <strong id="listingState">—</strong>
+              <p id="listingNote">Reading listing and variation identity.</p>
+              <div class="commercial-status-line">
+                <span><b id="inventoryState">—</b> inventory</span>
+                <span><b id="adsState">—</b> paid support</span>
               </div>
-              <div class="decision-block">
-                <div class="decision-label">Advertising</div>
-                <strong id="adsDecision">—</strong>
-                <p id="adsRead">Paid-support context is separate from seller demand.</p>
-              </div>
-            </details>
+              <span class="sr-only" id="inventoryNote">availability</span>
+              <span class="sr-only" id="adsNote">advertising context</span>
+            </div>
+            <div class="panel decision-block decision-block--ads">
+              <div class="decision-label">Advertising</div>
+              <strong id="adsDecision">—</strong>
+              <p id="adsRead">Paid-support context is separate from seller demand.</p>
+            </div>
           </aside>
         </section>
         <details class="evidence" id="ordersPanel">
@@ -152,7 +145,32 @@
               ><small id="orderSummary">Recent orders · shopper spend incl. IVA</small></span
             ><b id="orderToggle">View ↓</b>
           </summary>
-          <div class="order-list"><div class="list" id="orders"></div></div>
+          <div class="order-list">
+            <div class="product-order-grid" id="orders"></div>
+            <button class="orders-more" id="ordersMore" type="button" aria-expanded="false" hidden>
+              <span id="ordersMoreLabel">Show all recent orders</span><strong id="ordersMoreCount"></strong>
+            </button>
+          </div>
+        </details>
+        <details class="panel product-reference" id="productReference" open>
+          <summary>
+            <span>
+              <strong>Variation family</strong>
+              <small>Catalog identity and sibling performance</small>
+            </span>
+            <b id="productReferenceToggle">Hide ↑</b>
+          </summary>
+          <div class="product-reference__body">
+            <div class="variation-context">
+              <div class="decision-label">Catalog family</div>
+              <strong id="familyRead">—</strong>
+              <div class="variation-chips" id="variationChips"></div>
+              <div class="variation-identity" id="variationIdentity"></div>
+              <span class="sr-only" id="variationRead">—</span>
+              <span class="sr-only" id="variationNote">commercial identity</span>
+            </div>
+            <div class="sibling-list" id="siblings"></div>
+          </div>
         </details>
       </main>
       <footer class="footer">
