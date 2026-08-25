@@ -32,6 +32,7 @@ PY
 COPY board/server.py ./server_legacy.py
 COPY board/server_canonical.py ./server.py
 COPY board/response_cache.py .
+COPY board/response_transport.py .
 COPY board/geo_reference.py .
 COPY board/home_api.py .
 # Keep the mature API implementations as legacy readers and make the canonical
