@@ -52,9 +52,7 @@ identified AS (
         t.page_views_t28,
         t.sales_prior_t28,
         t.units_prior_t28,
-        t.orders_prior_t28,
-        t.sessions_prior_t28,
-        t.page_views_prior_t28
+        t.sessions_prior_t28
     FROM ranked r
     LEFT JOIN mart.catalog_traffic_t56_cache t
       ON t.marketplace_id=r.marketplace_id AND t.asin=r.asin
