@@ -24,6 +24,8 @@ const sharedStyles = ['theme.css', 'nav-shell.css', 'layout-system.css'];
 const failures = [];
 const theme = readFileSync(join(staticRoot, 'theme.css'), 'utf8');
 const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
+const todayHtml = readFileSync(join(staticRoot, 'today.html'), 'utf8');
+const todayScript = readFileSync(join(staticRoot, 'today.js'), 'utf8');
 const shellSelector =
   /\.(?:app|topbar|brand|brand-copy|brand-title|brand-sub|mark|top-meta|primary-nav|nav-more|footer)\b/;
 const retiredComponentNames = new Set([
@@ -130,6 +132,27 @@ check(
   'static',
   'deprecated refinement layer still exists',
 );
+check(
+  !readdirSync(staticRoot).includes('today-operations.js'),
+  'today.html',
+  'Today must have one renderer and data owner',
+);
+check(
+  (todayHtml.match(/<script\b[^>]*\btype=["']module["'][^>]*>/gi) || []).length === 1,
+  'today.html',
+  'Today must load exactly one page module',
+);
+check(
+  (todayScript.match(/fetchJson\(`\/api\/today/g) || []).length === 1,
+  'today.js',
+  'Today must have exactly one API fetch owner',
+);
+check(
+  (todayScript.match(/setInterval\(load, 20000\)/g) || []).length === 1,
+  'today.js',
+  'Today must have exactly one live refresh loop',
+);
+check(!/MutationObserver/.test(todayScript), 'today.js', 'Today must not use post-render correction observers');
 check(!shellSelector.test(theme), 'theme.css', 'application-shell rules belong to nav-shell.css');
 check(!shellSelector.test(layout), 'layout-system.css', 'application-shell rules belong to nav-shell.css');
 check(!retiredComponentSelector.test(theme), 'theme.css', 'retired component rules remain in the theme');
