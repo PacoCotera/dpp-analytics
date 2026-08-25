@@ -21,6 +21,7 @@ from health_api import health_board_payload as build_health_board_payload
 from inventory_api import inventory_payload as build_inventory_payload
 from product_api import product_payload as build_product_payload
 from response_cache import TTLResponseCache
+from response_transport import compress_response, read_asset
 from sales_api import sales_payload as build_sales_payload
 from today_api import today_payload as build_today_payload
 from trajectory_api import trajectory_payload as build_trajectory_payload
@@ -367,11 +368,18 @@ class Handler(BaseHTTPRequestHandler):
         print(f"{self.address_string()} {fmt % args}")
 
     def send_bytes(self, status, content_type, body, cache="no-store", headers=None):
+        response_headers = dict(headers or {})
+        body, transport_headers = compress_response(
+            content_type,
+            body,
+            self.headers.get("Accept-Encoding", ""),
+        )
+        response_headers.update(transport_headers)
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Cache-Control", cache)
-        if headers:
-            for name, value in headers.items():
+        if response_headers:
+            for name, value in response_headers.items():
                 self.send_header(name, str(value))
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -428,7 +436,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
                 return
             cache = "public, max-age=31536000, immutable" if "/vendor/" in path else "public, max-age=300"
-            self.send_bytes(200, asset_content_type(asset), asset.read_bytes(), cache=cache)
+            self.send_bytes(200, asset_content_type(asset), read_asset(asset), cache=cache)
             return
 
         if path == "/health":
