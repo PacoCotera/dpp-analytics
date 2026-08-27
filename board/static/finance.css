@@ -320,6 +320,10 @@
   margin-top: 11px;
 }
 
+.bridge.bridge--closed {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .bridge-step {
   min-width: 0;
   padding: 10px 9px;
@@ -497,7 +501,7 @@
 
 .history-row {
   display: grid;
-  grid-template-columns: 85px repeat(6, minmax(88px, 1fr));
+  grid-template-columns: 85px repeat(7, minmax(88px, 1fr));
   gap: 12px;
   align-items: center;
   padding: 10px 0;
@@ -749,6 +753,10 @@
   }
 
   .bridge {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .bridge.bridge--closed {
     grid-template-columns: 1fr 1fr;
   }
 

@@ -78,6 +78,22 @@ The cash settlement is a different grain. Finance shows the latest Amazon settle
 
 `= payout cash`
 
+Immutable closed-month contribution is a separate business-period bridge:
+
+`Net sales ex IVA`
+
+`+ Amazon order effect`
+
+`+ Other Amazon postings`
+
+`+ Advertising`
+
+`- Product COGS`
+
+`= Contribution after product COGS`
+
+`Other Amazon postings` is the signed total of released service fees, adjustments, miscellaneous ledger adjustments and FBA inventory reimbursements posted in the accounting month. Closed-month and YTD API amounts use two-decimal MXN values; the Finance report shows those cent values so visible operands reconcile exactly.
+
 Every canonical source line belongs to exactly one of those broad signed buckets. Amazon can expose more than one `report_id` for the same `settlement_id`; raw copies/revisions remain immutable evidence, but trusted cash selects exactly one report copy per marketplace + settlement. Selection first prefers a report whose signed lines reconcile to Amazon's own report total within MX$0.02, then the newest processed copy. Duplicate or revised reports therefore cannot be double-counted in payout evidence.
 
 DPP Analytics marks the bridge `RECONCILED` only when the selected report's signed line sum equals Amazon's settlement report total within MX$0.02. The production trust audit checks recent canonical settlements, reports duplicate-report evidence explicitly, and fails if any checked canonical settlement does not reconcile. Raw `core.settlement_line` remains available for forensic comparison and is never deleted by canonicalization.

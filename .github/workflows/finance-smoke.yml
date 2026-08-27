@@ -44,6 +44,11 @@ jobs:
             echo '```text'
             python3 - <<'PY'
           import json
+          from decimal import Decimal
+
+          def money(value):
+              return Decimal(str(value or 0)).quantize(Decimal('0.01'))
+
           p=json.load(open('/tmp/finance-smoke.json'))
           c=p.get('current_month') or {}
           a=p.get('closed_aggregate') or {}
@@ -59,6 +64,7 @@ jobs:
           print('closed months:', len(closed))
           print('finalizing months:', [(m.get('month'), m.get('close_waits_for')) for m in finalizing])
           print('closed sales:', a.get('net_sales_ex_vat'))
+          print('closed other Amazon postings:', a.get('other_amazon_postings'))
           print('closed contribution:', a.get('contribution_after_product_cogs'))
           print('closed margin:', a.get('contribution_margin_pct'))
           print('diagnostic:', p.get('diagnostic'))
@@ -73,7 +79,17 @@ jobs:
               print(line.rstrip())
           print('\nclosed detail:')
           for m in closed:
-              print(m.get('month'), 'sales=',m.get('net_sales_ex_vat'),'amazon_effect=',m.get('amazon_order_effect'),'ads=',m.get('advertising'),'cogs=',m.get('product_cogs'),'contribution=',m.get('contribution_after_product_cogs'),'margin=',m.get('contribution_margin_pct'),'release=',m.get('release_coverage_pct'))
+              operands=money(m.get('net_sales_ex_vat'))+money(m.get('amazon_order_effect'))+money(m.get('other_amazon_postings'))+money(m.get('advertising'))-abs(money(m.get('product_cogs')))
+              contribution=money(m.get('contribution_after_product_cogs'))
+              print(m.get('month'), 'sales=',m.get('net_sales_ex_vat'),'amazon_effect=',m.get('amazon_order_effect'),'other_postings=',m.get('other_amazon_postings'),'ads=',m.get('advertising'),'cogs=',m.get('product_cogs'),'contribution=',m.get('contribution_after_product_cogs'),'reconciliation_delta=',contribution-operands,'margin=',m.get('contribution_margin_pct'),'release=',m.get('release_coverage_pct'))
+              assert contribution == operands, f"closed month does not reconcile: {m.get('month')}"
+
+          y=p.get('ytd_closed_aggregate') or {}
+          if y:
+              ytd_operands=money(y.get('net_sales_ex_vat'))+money(y.get('amazon_order_effect'))+money(y.get('other_amazon_postings'))+money(y.get('advertising'))-abs(money(y.get('product_cogs')))
+              ytd_contribution=money(y.get('contribution_after_product_cogs'))
+              print('\nclosed YTD reconciliation:', 'other_postings=',y.get('other_amazon_postings'),'operands=',ytd_operands,'contribution=',ytd_contribution,'delta=',ytd_contribution-ytd_operands)
+              assert ytd_contribution == ytd_operands, 'closed YTD does not reconcile'
           PY
             echo '```'
             if [[ "$code" != "200" ]]; then
