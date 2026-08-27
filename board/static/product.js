@@ -133,6 +133,7 @@ function renderHero(profile, commercial) {
   const actionTone =
     action === 'OK' ? 'good' : action === 'STOCKOUT' || action === 'PRODUCE' ? 'bad' : 'warn';
   const attributes = Object.values(commercial.variation_attributes || {});
+  const identity = commercial.identity || {};
   const fulfillment = String(profile.fulfillment_channel || '')
     .toUpperCase()
     .includes('AMAZON')
@@ -173,7 +174,7 @@ function renderHero(profile, commercial) {
       </div>
       <div class="product-health__facts">
         <div class="product-health__fact"><div class="label">Listing</div><strong>${escapeHtml(profile.listing_status || '—')}</strong><small>${escapeHtml(fulfillment)}</small></div>
-        <div class="product-health__fact"><div class="label">Family</div><strong>${escapeHtml(commercial.family_name || 'Standalone')}</strong><small>${escapeHtml(commercial.product_role || 'commercial identity')}</small></div>
+        <div class="product-health__fact"><div class="label">Family</div><strong>${escapeHtml(identity.family_label || 'Identity unavailable')}</strong><small>${escapeHtml(identity.role || commercial.product_role || 'commercial identity')}</small></div>
         <div class="product-health__fact"><div class="label">Variation</div><strong>${escapeHtml(attributes.slice(0, 2).join(' · ') || '—')}</strong><small>${escapeHtml(attributes.slice(2).join(' · ') || commercial.amazon_variation_theme || 'catalog attributes')}</small></div>
         <div class="product-health__fact"><div class="label">Parent ASIN</div><strong>${escapeHtml(commercial.parent_asin || 'None')}</strong><small>${commercial.parent_asin ? 'Amazon variation family' : 'standalone offer'}</small></div>
       </div>
@@ -287,13 +288,8 @@ function renderEconomicsDecision(economics) {
 
 function renderVariationContext(profile, commercial, familyVariations) {
   const attributes = commercial.variation_attributes || {};
-  byId('familyRead').textContent =
-    commercial.family_name ||
-    (commercial.family_asin
-      ? commercial.parent_asin
-        ? 'Variation family'
-        : 'Commercial family'
-      : 'Standalone product');
+  const identity = commercial.identity || {};
+  byId('familyRead').textContent = identity.family_label || 'Identity unavailable';
 
   byId('variationChips').innerHTML = Object.entries(attributes)
     .map(([key, value]) => `<span class="variation-chip">${escapeHtml(key)} · ${escapeHtml(value)}</span>`)

@@ -108,6 +108,36 @@ try {
     throw new Error(`Product hero did not render the mapped short name: ${heroName || 'blank'}`);
   }
 
+  const auditedProductResponse = await page.evaluate(async () => {
+    const response = await fetch('/api/product?sku=PNC-001L', { cache: 'no-store' });
+    return { status: response.status, body: await response.json() };
+  });
+  if (auditedProductResponse.status !== 200)
+    throw new Error(`/api/product?sku=PNC-001L returned ${auditedProductResponse.status}`);
+  const auditedIdentity = auditedProductResponse.body.commercial?.identity || {};
+  await page.goto(`${baseUrl}/product?sku=PNC-001L`, { waitUntil: 'networkidle', timeout: 20000 });
+  await page.locator('.product-health__facts').waitFor({ state: 'visible', timeout: 15000 });
+  const renderedFamilyIdentity = await page.evaluate(() => {
+    const facts = [...document.querySelectorAll('.product-health__fact')];
+    const family = facts.find(fact => fact.querySelector('.label')?.textContent?.trim() === 'Family');
+    return {
+      label: family?.querySelector('strong')?.textContent?.trim() || '',
+      role: family?.querySelector('small')?.textContent?.trim() || '',
+    };
+  });
+  if (
+    auditedIdentity.kind !== 'CHILD_VARIATION' ||
+    renderedFamilyIdentity.label !== auditedIdentity.family_label ||
+    renderedFamilyIdentity.role !== 'SELLABLE_VARIATION' ||
+    /standalone/i.test(renderedFamilyIdentity.label)
+  ) {
+    throw new Error(
+      `PNC-001L rendered contradictory family identity: ${JSON.stringify({ auditedIdentity, renderedFamilyIdentity })}`,
+    );
+  }
+  summary.auditedProductIdentity = auditedIdentity;
+  summary.renderedFamilyIdentity = renderedFamilyIdentity;
+
   await page.goto(`${baseUrl}/catalog`, { waitUntil: 'networkidle', timeout: 20000 });
   await page.locator('.family').first().waitFor({ state: 'visible', timeout: 15000 });
   const renderedFamilyNames = await page.locator('.family-name').allTextContents();

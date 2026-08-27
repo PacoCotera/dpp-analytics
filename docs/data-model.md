@@ -69,6 +69,8 @@ Trajectory is a view over reconciled historical sales plus portfolio breadth/con
 
 Commercial product identity is assembled server-side from normalized SKU/ASIN records, seller listings, catalog enrichment, configured variation relationships and local label/image overrides.
 
+Every sellable product exposes one canonical identity object from the Catalog API owner. A `SELLABLE_VARIATION` must have a distinct parent ASIN and use that same parent as its family ASIN. A `SELLABLE_STANDALONE` has no canonical parent and uses its own ASIN as its family ASIN; a source self-parent is retained only as audit evidence. Seller-owned family names may replace generic display labels, but their absence must not turn a child variation into “Standalone.”
+
 The browser may group/sort/filter data for presentation, but canonical family/variation membership and role semantics should come from the API/data layer. During catalog onboarding, missing dimensions or seller taxonomy may be provisional; consumers must use the lifecycle/source-readiness fields instead of assuming a newly discovered SKU is fully populated.
 
 ### Inventory
