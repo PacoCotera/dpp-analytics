@@ -410,6 +410,20 @@ def _family_state(family: dict, traffic_median: float, conversion_median: float)
     return "DORMANT", "Active family with no meaningful recent demand signal"
 
 
+def _pooled_days_cover(available, inbound, units_t28):
+    """Return 28-day pooled cover from the same operands shown for a family.
+
+    Zero or unavailable velocity has no finite cover value.  A child with zero
+    velocity still contributes its stock to the family pool when other children
+    are selling; child-level inventory risk remains a separate family signal.
+    """
+    units = float(units_t28 or 0)
+    if units <= 0:
+        return None
+    stock = float(available or 0) + float(inbound or 0)
+    return round(stock / (units / 28.0), 1)
+
+
 def _rollup_bucket(bucket: dict, row: dict):
     bucket["sales_t28"] += float(row.get("sales_t28") or 0)
     bucket["units_t28"] += int(row.get("units_t28") or 0)
@@ -522,6 +536,15 @@ def _family_rollup(rows: list[dict], traffic_median: float, conversion_median: f
         family["image_url"] = lead.get("image_url")
         family["image_source"] = lead.get("image_source")
         family["conversion_t28_pct"] = round(100.0 * family["units_t28"] / family["sessions_t28"], 2) if family["sessions_t28"] > 0 else None
+        family["days_cover_with_inbound"] = _pooled_days_cover(
+            family["available"], family["inbound"], family["units_t28"]
+        )
+        family["cover_basis"] = {
+            "method": "POOLED_28D",
+            "stock_units": family["available"] + family["inbound"],
+            "velocity_units_t28": family["units_t28"],
+            "period_days": 28,
+        }
         family["ad_tacos_t28"] = family["ad_spend_t28"] / family["sales_t28"] if family["sales_t28"] > 0 and family["ad_spend_t28"] > 0 else None
         family["ad_roas_t28"] = family["ad_attributed_sales_t28"] / family["ad_spend_t28"] if family["ad_spend_t28"] > 0 else None
         family["ad_attribution_state"] = "PROVISIONAL" if family["ad_observed_days"] > family["ad_mature_days"] else ("MATURE" if family["ad_observed_days"] else "UNAVAILABLE")

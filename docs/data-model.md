@@ -77,6 +77,8 @@ The browser may group/sort/filter data for presentation, but canonical family/va
 
 FBA inventory snapshots are combined with recent reconciled selling velocity to produce coverage and action states. `STOCKOUT`, `PRODUCE`, `PLAN`, `OK` and `HOLD` are business semantics owned by the data/API layer, not CSS/JavaScript convenience labels.
 
+Catalog family cover uses the same pooled rule as portfolio inventory cover: `(sum available + sum inbound) / (sum units sold over 28 days / 28)`, rounded to one decimal day. Children with zero recent velocity contribute stock but no velocity to the pool; if the entire family has zero or unavailable velocity, family cover is unavailable rather than zero. Child-level cover and inventory-risk states remain visible separately and are not replaced by the pooled family value.
+
 ### Advertising
 
 Amazon Ads metrics are attribution data. ACOS and ROAS use Amazon-attributed sales; TACOS uses an independent total-seller-sales denominator.

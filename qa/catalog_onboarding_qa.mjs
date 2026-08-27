@@ -66,6 +66,22 @@ try {
     throw new Error(`PNC-001L canonical identity is contradictory: ${JSON.stringify(auditedIdentity)}`);
   }
 
+  const auditedFamily = (catalog.body.families || []).find(
+    family => family.family_asin === 'B0GGQHV45F',
+  );
+  if (!auditedFamily) throw new Error('Audited Pocket family is missing from Catalog');
+  const stock = Number(auditedFamily.available || 0) + Number(auditedFamily.inbound || 0);
+  const velocity = Number(auditedFamily.units_t28 || 0);
+  const expectedCover = velocity > 0 ? Math.round((stock / (velocity / 28)) * 10) / 10 : null;
+  if (
+    auditedFamily.cover_basis?.method !== 'POOLED_28D' ||
+    Number(auditedFamily.days_cover_with_inbound) !== expectedCover ||
+    Number(auditedFamily.cover_basis?.stock_units) !== stock ||
+    Number(auditedFamily.cover_basis?.velocity_units_t28) !== velocity
+  ) {
+    throw new Error(`Pocket family cover does not reconcile: ${JSON.stringify(auditedFamily)}`);
+  }
+
   const missingLifecycle = catalog.body.summary?.catalog_lifecycle_missing_skus || [];
   if (missingLifecycle.length) {
     throw new Error(`Catalog SKUs missing lifecycle evidence: ${missingLifecycle.join(', ')}`);
@@ -152,6 +168,13 @@ try {
     sourceAttentionSkus: sourceAttention,
     identityInvariantCheckedSkus: sellable.length,
     auditedProductIdentity: auditedIdentity,
+    auditedFamilyCover: {
+      familyAsin: auditedFamily.family_asin,
+      stock,
+      velocityUnitsT28: velocity,
+      daysCover: auditedFamily.days_cover_with_inbound,
+      basis: auditedFamily.cover_basis,
+    },
     lifecycle: lifecycle.items.map((item) => ({
       sku: item.sku,
       asin: item.asin,

@@ -77,13 +77,6 @@ function dimensionSummary(family) {
   return parts.length ? ` · ${parts.join(' · ')}` : '';
 }
 
-function minCover(family) {
-  const values = members(family)
-    .map((item) => Number(item.days_cover_with_inbound ?? item.days_cover_on_hand))
-    .filter(Number.isFinite);
-  return values.length ? Math.min(...values) : null;
-}
-
 function explanation(family) {
   return family.commercial_explanation || labels[family.primary_state] || 'Portfolio signal';
 }
@@ -213,7 +206,10 @@ function childRow(product) {
 function familyRow(family) {
   const familyMembers = members(family);
   const name = compactFamilyName(family);
-  const cover = minCover(family);
+  const cover =
+    family.days_cover_with_inbound === null || family.days_cover_with_inbound === undefined
+      ? null
+      : Number(family.days_cover_with_inbound);
   const stock = stockTotal(family);
   const state = family.primary_state || 'HEALTHY';
   const children = familyMembers.map(childRow).join('');
@@ -232,7 +228,7 @@ function familyRow(family) {
       <div class="signal ${stateClass(state)}"><strong>${esc(labels[state] || state)}</strong><span>${esc(explanation(family))}</span></div>
       <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(family.sales_t28)}</strong><span data-mobile-label="28D">${num(family.units_t28)} units</span></div>
       <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(family.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(family.conversion_t28_pct)}</b> CVR</span></div>
-      <div class="cell metric-stock" data-mobile-title="Available"><strong>${num(family.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock${cover === null ? '' : ` · ${cover.toFixed(0)}d cover`}</span></div>
+      <div class="cell metric-stock" data-mobile-title="Available"><strong>${num(family.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock${cover === null ? ' · no velocity' : ` · ${cover.toFixed(0)}d pooled cover`}</span></div>
       <div class="cell economics">${economicsFamily(family)}</div>
       <span class="chev">›</span>
     </summary>
