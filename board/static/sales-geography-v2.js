@@ -61,6 +61,11 @@
           "'": '&#39;',
         })[c],
     );
+  const sortText = (value) =>
+    String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('es-MX');
   const postal = (value) =>
     String(value || '')
       .trim()
@@ -453,11 +458,11 @@
     return rows.slice().sort((a, b) => {
       let comparison;
       if (SORT_FIELD === 'area')
-        comparison = d3.ascending(normalize(areaSortValue(a)), normalize(areaSortValue(b)));
+        comparison = d3.ascending(sortText(areaSortValue(a)), sortText(areaSortValue(b)));
       else comparison = d3.ascending(Number(a?.[SORT_FIELD] || 0), Number(b?.[SORT_FIELD] || 0));
       if (SORT_DIRECTION === 'desc') comparison *= -1;
       if (comparison) return comparison;
-      return d3.ascending(normalize(areaSortValue(a)), normalize(areaSortValue(b)));
+      return d3.ascending(sortText(areaSortValue(a)), sortText(areaSortValue(b)));
     });
   }
 
