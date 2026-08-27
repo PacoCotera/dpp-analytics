@@ -59,6 +59,8 @@ Home is a control-center composition. It intentionally combines current operatin
 
 Historical daily sales use reconciled Data Kiosk-backed `mart.business_daily` rows. Rolling 7D/28D/56D/90D windows and monthly history should be derived from the reconciled daily fact, not from live Orders API totals.
 
+Sales Geography uses privacy-minimized Amazon Orders destination state and postal-code evidence. Before any state aggregation, the API resolves each postal code through the packaged SEPOMEX reference to its two-digit federal-entity key. Raw recipient state labels are evidence only: they never define a state bucket. `unmapped_orders` is total orders minus orders with a resolved federal entity. `alias_resolution_pct` is resolved entity orders divided by orders with postal evidence; `alias_resolved_orders` counts resolved orders whose normalized raw state label differs from the SEPOMEX entity name. These measures, canonical entity count and postal coverage remain separate in the API and UI.
+
 ### Trajectory
 
 Trajectory is a view over reconciled historical sales plus portfolio breadth/concentration. Its horizon comparisons are analytical interpretations of the underlying mart data; it does not own a separate sales fact.

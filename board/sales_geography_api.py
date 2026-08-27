@@ -1,11 +1,134 @@
 from __future__ import annotations
 
+import re
+import unicodedata
+from decimal import Decimal, ROUND_HALF_UP
+
 from geo_reference import postal_dictionary
+
+
+MONEY_QUANTUM = Decimal("0.01")
 
 
 def _all(cur, sql: str, params=()):
     cur.execute(sql, params)
     return list(cur.fetchall())
+
+
+def _postal(value: object) -> str:
+    raw = str(value or "").strip()
+    return raw.zfill(5) if raw.isdigit() and len(raw) <= 5 else raw
+
+
+def _normalized_label(value: object) -> str:
+    text = unicodedata.normalize("NFD", str(value or ""))
+    text = "".join(character for character in text if unicodedata.category(character) != "Mn")
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
+def _decimal(value: object) -> Decimal:
+    return Decimal(str(value or 0))
+
+
+def _canonicalize_rows(
+    rows: list[dict],
+    references: list[dict],
+    *,
+    dimensions: tuple[str, ...] = (),
+) -> tuple[list[dict], dict]:
+    """Resolve postal demand to SEPOMEX federal-entity keys before aggregation."""
+    reference_by_postal = {
+        _postal(item.get("postal_code")): item
+        for item in references
+        if item.get("postal_code") and item.get("state_code") and item.get("state_name")
+    }
+    grouped: dict[tuple, dict] = {}
+    unresolved_orders = 0
+    alias_resolved_orders = 0
+
+    for source in rows:
+        orders = int(source.get("orders") or 0)
+        postal_code = _postal(source.get("postal_code"))
+        reference = reference_by_postal.get(postal_code)
+        if not reference:
+            unresolved_orders += orders
+            continue
+
+        state_code = str(reference["state_code"]).strip().zfill(2)
+        state_name = str(reference["state_name"]).strip()
+        source_label = str(source.get("state_or_region") or "").strip()
+        if _normalized_label(source_label) != _normalized_label(state_name):
+            alias_resolved_orders += orders
+
+        key = (
+            source.get("business_date"),
+            source.get("country_code"),
+            state_code,
+            postal_code,
+            *(source.get(dimension) for dimension in dimensions),
+        )
+        item = grouped.setdefault(
+            key,
+            {
+                "business_date": source.get("business_date"),
+                "country_code": source.get("country_code"),
+                "state_code": state_code,
+                "state_name": state_name,
+                "state_or_region": state_name,
+                "postal_code": postal_code,
+                **{dimension: source.get(dimension) for dimension in dimensions},
+                "sales": Decimal("0"),
+                "orders": 0,
+                "units": 0,
+            },
+        )
+        item["sales"] += _decimal(source.get("sales"))
+        item["orders"] += orders
+        item["units"] += int(source.get("units") or 0)
+
+    canonical = []
+    for item in grouped.values():
+        item["sales"] = item["sales"].quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+        if not dimensions:
+            item["aov"] = (
+                (item["sales"] / item["orders"]).quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+                if item["orders"]
+                else Decimal("0.00")
+            )
+        canonical.append(item)
+    canonical.sort(
+        key=lambda item: (
+            item.get("business_date"),
+            item.get("state_code"),
+            item.get("postal_code"),
+            *(str(item.get(dimension) or "") for dimension in dimensions),
+        )
+    )
+    return canonical, {
+        "resolved_orders": sum(int(item.get("orders") or 0) for item in canonical),
+        "unresolved_orders": unresolved_orders,
+        "alias_resolved_orders": alias_resolved_orders,
+        "canonical_states": len({item["state_code"] for item in canonical}),
+    }
+
+
+def _canonical_coverage(coverage: dict, resolution: dict) -> dict:
+    result = dict(coverage)
+    total_orders = int(result.get("orders_total") or 0)
+    postal_orders = int(result.get("orders_with_postal") or 0)
+    resolved_orders = int(resolution.get("resolved_orders") or 0)
+    result["raw_state_labels"] = int(result.get("states", 0) or 0)
+    result["canonical_states"] = int(resolution.get("canonical_states") or 0)
+    result["states"] = result["canonical_states"]
+    result["resolved_state_orders"] = resolved_orders
+    result["unmapped_orders"] = max(0, total_orders - resolved_orders)
+    result["unmapped_postal_orders"] = int(resolution.get("unresolved_orders") or 0)
+    result["alias_resolved_orders"] = int(resolution.get("alias_resolved_orders") or 0)
+    result["alias_resolution_pct"] = (
+        round(100.0 * resolved_orders / postal_orders, 1) if postal_orders else None
+    )
+    result["alias_resolution_basis"] = "SEPOMEX postal code → federal entity"
+    return result
 
 
 def sales_geography_payload(connect, decorate_products, marketplace: str) -> dict:
@@ -88,13 +211,21 @@ def sales_geography_payload(connect, decorate_products, marketplace: str) -> dic
         for row in daily
         if row.get("postal_code")
     }
+    references = postal_dictionary(codes)
+    daily, resolution = _canonicalize_rows(daily, references)
+    sku_daily, _ = _canonicalize_rows(
+        sku_daily,
+        references,
+        dimensions=("seller_sku", "asin"),
+    )
+    coverage = _canonical_coverage(coverage, resolution)
     return {
         "geography": {
             "coverage": coverage,
             "daily": daily,
             "sku_daily": sku_daily,
             "products": decorate_products(products),
-            "postal_reference": postal_dictionary(codes),
+            "postal_reference": references,
             "reference_source": "SEPOMEX textual catalog · open-mexico db_postal v1.2.0",
         }
     }

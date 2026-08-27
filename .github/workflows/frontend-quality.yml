@@ -118,8 +118,8 @@ jobs:
       - name: Compile board Python
         run: python -m compileall -q .
 
-      - name: Test board cache, transport, Finance and catalog lifecycle
-        run: python -m unittest -v test_response_cache.py test_response_transport.py test_finance_reconciliation.py test_catalog_onboarding.py
+      - name: Test board cache, transport, Finance, geography and catalog lifecycle
+        run: python -m unittest -v test_response_cache.py test_response_transport.py test_finance_reconciliation.py test_sales_geography.py test_catalog_onboarding.py
 
   board-image:
     needs: changes

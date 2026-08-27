@@ -59,6 +59,17 @@ try {
   if (Number(coverage.orders_with_postal || 0) <= 0) throw new Error('No orders have postal geography');
   if (Number(coverage.postal_codes || 0) <= 0) throw new Error('No postal codes reported');
   if (Number(coverage.coverage_pct || 0) <= 0) throw new Error('Postal coverage is zero');
+  if (Number(coverage.canonical_states || 0) <= 0 || Number(coverage.canonical_states || 0) > 32) {
+    throw new Error(`Canonical state count is invalid: ${JSON.stringify(coverage)}`);
+  }
+  if (Number(coverage.unmapped_orders || 0) !== Number(coverage.orders_total || 0) - Number(coverage.resolved_state_orders || 0)) {
+    throw new Error(`Unmapped order count does not reconcile: ${JSON.stringify(coverage)}`);
+  }
+  if (Number(coverage.alias_resolution_pct || 0) <= 0) throw new Error('State alias resolution coverage is zero');
+  const nonCanonicalRows = [...(geo.daily || []), ...(geo.sku_daily || [])].filter(row =>
+    !/^\d{2}$/.test(String(row.state_code || '')) || !String(row.state_name || '').trim()
+  );
+  if (nonCanonicalRows.length) throw new Error(`Geography payload contains noncanonical state rows: ${nonCanonicalRows.length}`);
 
   const references = Array.isArray(geo.postal_reference) ? geo.postal_reference : [];
   if (!references.length) throw new Error('SEPOMEX postal reference dictionary is empty');
@@ -108,7 +119,9 @@ try {
       pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
     };
   });
-  if (!national.coverage.includes('orders geocoded')) throw new Error(`Coverage copy not rendered: ${national.coverage}`);
+  if (!national.coverage.includes('canonical states') || !national.coverage.includes('unmapped orders') || !national.coverage.includes('alias resolution')) {
+    throw new Error(`Canonical coverage copy not rendered: ${national.coverage}`);
+  }
   if (national.rankedRows <= 0 || national.stateShapes < 30) throw new Error(`Geography rendering incomplete: ${JSON.stringify(national)}`);
   if (national.kpis.length !== 4) throw new Error(`Expected four geography KPIs, got ${national.kpis.length}`);
   if (national.headerColumns !== 5 || national.sortableColumns !== 5) throw new Error(`Expected five sortable geography columns: ${JSON.stringify(national)}`);
