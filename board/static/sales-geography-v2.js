@@ -6,39 +6,39 @@
 
   const STATES_URL = 'https://raw.githubusercontent.com/strotgen/mexico-leaflet/master/states.geojson';
   const STATE_META = [
-    ['01', 'Aguascalientes', ['aguascalientes', 'ags']],
-    ['02', 'Baja California', ['baja california', 'bc']],
-    ['03', 'Baja California Sur', ['baja california sur', 'bcs']],
-    ['04', 'Campeche', ['campeche', 'camp']],
-    ['05', 'Coahuila', ['coahuila', 'coahuila de zaragoza', 'coah']],
-    ['06', 'Colima', ['colima', 'col']],
-    ['07', 'Chiapas', ['chiapas', 'chis']],
-    ['08', 'Chihuahua', ['chihuahua', 'chih']],
-    ['09', 'Ciudad de México', ['ciudad de mexico', 'cdmx', 'distrito federal', 'df']],
-    ['10', 'Durango', ['durango', 'dgo']],
-    ['11', 'Guanajuato', ['guanajuato', 'gto']],
-    ['12', 'Guerrero', ['guerrero', 'gro']],
-    ['13', 'Hidalgo', ['hidalgo', 'hgo']],
-    ['14', 'Jalisco', ['jalisco', 'jal']],
-    ['15', 'Estado de México', ['estado de mexico', 'mexico', 'edomex', 'mex']],
-    ['16', 'Michoacán', ['michoacan', 'michoacan de ocampo', 'mich']],
-    ['17', 'Morelos', ['morelos', 'mor']],
-    ['18', 'Nayarit', ['nayarit', 'nay']],
-    ['19', 'Nuevo León', ['nuevo leon', 'nl', 'n l']],
-    ['20', 'Oaxaca', ['oaxaca', 'oax']],
-    ['21', 'Puebla', ['puebla', 'pue']],
-    ['22', 'Querétaro', ['queretaro', 'queretaro de arteaga', 'qro']],
-    ['23', 'Quintana Roo', ['quintana roo', 'qroo', 'q roo']],
-    ['24', 'San Luis Potosí', ['san luis potosi', 'slp']],
-    ['25', 'Sinaloa', ['sinaloa', 'sin']],
-    ['26', 'Sonora', ['sonora', 'son']],
-    ['27', 'Tabasco', ['tabasco', 'tab']],
-    ['28', 'Tamaulipas', ['tamaulipas', 'tamps', 'tmps']],
-    ['29', 'Tlaxcala', ['tlaxcala', 'tlax']],
-    ['30', 'Veracruz', ['veracruz', 'veracruz de ignacio de la llave', 'ver']],
-    ['31', 'Yucatán', ['yucatan', 'yuc']],
-    ['32', 'Zacatecas', ['zacatecas', 'zac']],
-  ].map(([code, name, aliases]) => ({ code, name, aliases }));
+    ['01', 'Aguascalientes'],
+    ['02', 'Baja California'],
+    ['03', 'Baja California Sur'],
+    ['04', 'Campeche'],
+    ['05', 'Coahuila'],
+    ['06', 'Colima'],
+    ['07', 'Chiapas'],
+    ['08', 'Chihuahua'],
+    ['09', 'Ciudad de México'],
+    ['10', 'Durango'],
+    ['11', 'Guanajuato'],
+    ['12', 'Guerrero'],
+    ['13', 'Hidalgo'],
+    ['14', 'Jalisco'],
+    ['15', 'Estado de México'],
+    ['16', 'Michoacán'],
+    ['17', 'Morelos'],
+    ['18', 'Nayarit'],
+    ['19', 'Nuevo León'],
+    ['20', 'Oaxaca'],
+    ['21', 'Puebla'],
+    ['22', 'Querétaro'],
+    ['23', 'Quintana Roo'],
+    ['24', 'San Luis Potosí'],
+    ['25', 'Sinaloa'],
+    ['26', 'Sonora'],
+    ['27', 'Tabasco'],
+    ['28', 'Tamaulipas'],
+    ['29', 'Tlaxcala'],
+    ['30', 'Veracruz'],
+    ['31', 'Yucatán'],
+    ['32', 'Zacatecas'],
+  ].map(([code, name]) => ({ code, name }));
   const META_BY_CODE = new Map(STATE_META.map((x) => [x.code, x]));
   const SORT_LABELS = {
     area: 'Area',
@@ -61,13 +61,6 @@
           "'": '&#39;',
         })[c],
     );
-  const normalize = (s) =>
-    String(s || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
   const postal = (value) =>
     String(value || '')
       .trim()
@@ -83,12 +76,6 @@
   let STATES_GEO = null;
   const POSTAL_CACHE = new Map();
   let renderToken = 0;
-
-  function stateMeta(raw) {
-    const n = normalize(raw);
-    if (!n) return null;
-    return STATE_META.find((m) => m.aliases.some((a) => n === normalize(a))) || null;
-  }
 
   function postalReferences() {
     return new Map((DATA?.geography?.postal_reference || []).map((r) => [postal(r.postal_code), r]));
@@ -159,22 +146,19 @@
   }
 
   function stateRows() {
-    return aggregate(
-      (r) => stateMeta(r.state_or_region)?.code || `raw:${String(r.state_or_region || 'Unknown')}`,
-    ).map((r) => {
+    return aggregate((r) => String(r.state_code || '')).map((r) => {
       const meta = META_BY_CODE.get(r.key);
-      const raw = r.rows.find((x) => x.state_or_region)?.state_or_region;
       return {
         ...r,
         code: meta?.code || null,
-        label: meta?.name || raw || 'Unknown',
+        label: meta?.name || r.rows[0]?.state_name || 'Unknown',
       };
     });
   }
 
   function postalRows(code) {
     return aggregate((r) => postal(r.postal_code))
-      .filter((r) => !code || r.rows.some((x) => stateMeta(x.state_or_region)?.code === code))
+      .filter((r) => !code || r.rows.some((x) => String(x.state_code || '') === code))
       .map((r) => ({ ...r, postal_code: r.key }));
   }
 
@@ -205,9 +189,10 @@
   function coverageCopy() {
     const c = DATA?.geography?.coverage || {};
     const pct = c.coverage_pct == null ? '—' : `${Number(c.coverage_pct).toFixed(1)}%`;
+    const resolution = c.alias_resolution_pct == null ? '—' : `${Number(c.alias_resolution_pct).toFixed(1)}%`;
     if (!Number(c.orders_with_postal || 0))
       return 'Postal geography authorized · historical backfill is populating.';
-    return `${nf.format(c.orders_with_postal)} of ${nf.format(c.orders_total)} orders geocoded · ${pct} coverage · ${nf.format(c.postal_codes || 0)} postal codes · ${nf.format(c.states || 0)} states`;
+    return `${nf.format(c.canonical_states || 0)} canonical states · ${nf.format(c.unmapped_orders || 0)} unmapped orders · ${resolution} alias resolution across ${nf.format(c.orders_with_postal || 0)} postal orders · ${nf.format(c.alias_resolved_orders || 0)} alias-labelled orders resolved · ${nf.format(c.postal_codes || 0)} postal codes · ${pct} postal coverage`;
   }
 
   function selectedWindowLabel() {
