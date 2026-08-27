@@ -267,6 +267,82 @@ def _is_offer(row: dict) -> bool:
     return row.get("product_role") in {"SELLABLE_VARIATION", "SELLABLE_STANDALONE"}
 
 
+def _apply_canonical_identity(row: dict) -> dict:
+    """Attach one role/relationship identity derived from the canonical portfolio row."""
+    role = str(row.get("product_role") or "").strip()
+    asin = str(row.get("asin") or "").strip() or None
+    parent_asin = str(row.get("parent_asin") or "").strip() or None
+    family_asin = str(row.get("family_asin") or "").strip() or None
+
+    # Amazon sometimes echoes an offer's own ASIN as its parent. The canonical
+    # portfolio role already treats that evidence as standalone; normalize the
+    # public relationship while retaining the source value for auditability.
+    if role == "SELLABLE_STANDALONE" and parent_asin == asin:
+        row["source_parent_asin"] = parent_asin
+        parent_asin = None
+        row["parent_asin"] = None
+
+    conflicts = []
+    if role == "SELLABLE_VARIATION":
+        kind = "CHILD_VARIATION"
+        family_label = row.get("family_name") or "Variation family"
+        if not parent_asin or parent_asin == asin:
+            conflicts.append("child variation requires a distinct parent ASIN")
+        if not family_asin or family_asin != parent_asin:
+            conflicts.append("child variation family ASIN must equal parent ASIN")
+    elif role == "SELLABLE_STANDALONE":
+        kind = "STANDALONE_OFFER"
+        family_label = row.get("family_name") or "Standalone product"
+        if parent_asin:
+            conflicts.append("standalone offer cannot carry a distinct parent ASIN")
+        if not asin or family_asin != asin:
+            conflicts.append("standalone family ASIN must equal offer ASIN")
+    elif role == "STRUCTURAL_PARENT":
+        kind = "VARIATION_CONTAINER"
+        family_label = row.get("family_name") or row.get("product") or "Variation family"
+    elif role == "SELLER_SKU_ALIAS":
+        kind = "OFFER_ALIAS"
+        family_label = row.get("family_name") or "SKU alias"
+    else:
+        kind = "UNKNOWN"
+        family_label = row.get("family_name") or "Identity unavailable"
+        conflicts.append("unknown product role")
+
+    if not asin:
+        conflicts.append("identity requires an ASIN")
+    row["identity"] = {
+        "kind": kind,
+        "role": role,
+        "family_label": str(family_label),
+        "asin": asin,
+        "parent_asin": parent_asin,
+        "family_asin": family_asin,
+        "is_sellable": role in {"SELLABLE_VARIATION", "SELLABLE_STANDALONE"},
+        "consistent": not conflicts,
+        "conflicts": conflicts,
+    }
+    return row
+
+
+def _identity_violations(rows: list[dict]) -> list[dict]:
+    violations = []
+    for row in rows:
+        if not _is_offer(row):
+            continue
+        identity = row.get("identity") or {}
+        conflicts = list(identity.get("conflicts") or [])
+        if not identity.get("consistent") or conflicts:
+            violations.append(
+                {
+                    "sku": row.get("sku"),
+                    "asin": row.get("asin"),
+                    "role": row.get("product_role"),
+                    "conflicts": conflicts or ["canonical identity missing"],
+                }
+            )
+    return violations
+
+
 def _commercial_state(row: dict, traffic_median: float, conversion_median: float) -> tuple[str, str]:
     role = row.get("product_role")
     if role == "STRUCTURAL_PARENT":
@@ -541,6 +617,7 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         local_taxonomy = taxonomy["products"].get(sku, {})
         row["family_name"] = local_taxonomy.get("family_name")
         row["variation_attributes"], row["variation_attribute_source"] = _variation_taxonomy_for_row(row, taxonomy)
+        _apply_canonical_identity(row)
         row["unit_cogs"] = unit_cogs
         row["estimated_cogs_t28"] = round(unit_cogs * int(row.get("units_t28") or 0), 2) if unit_cogs is not None and _is_offer(row) else None
         observed, mature = int(row.get("ad_observed_days") or 0), int(row.get("ad_mature_days") or 0)
@@ -548,6 +625,7 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         row.pop("catalog_attributes", None)
 
     taxonomy_warnings = _repair_variation_taxonomy(rows)
+    identity_violations = _identity_violations(rows)
     active_offers = [r for r in rows if _is_offer(r) and _is_active(r)]
     traffic_values = [float(r.get("sessions_t28") or 0) for r in active_offers if float(r.get("sessions_t28") or 0) > 0]
     conversion_values = [float(r["conversion_t28_pct"]) for r in active_offers if r.get("conversion_t28_pct") is not None]
@@ -582,6 +660,8 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         "taxonomy_override_configured": taxonomy["configured"],
         "taxonomy_mapped_skus": sum(1 for r in rows if _is_offer(r) and str(r.get("sku") or "") in taxonomy["products"]),
         "taxonomy_unmapped_skus": sorted({str(r.get("sku") or "") for r in rows if _is_offer(r) and str(r.get("sku") or "") not in taxonomy["products"]}),
+        "identity_invariant_checked_skus": sum(1 for row in rows if _is_offer(row)),
+        "identity_invariant_violation_count": len(identity_violations),
     })
     summary["conversion_t28_pct"] = round(100.0 * summary["units_t28"] / summary["sessions_t28"], 2) if summary["sessions_t28"] else None
     summary["ad_tacos_t28"] = summary["ad_spend_t28"] / summary["sales_t28"] if summary["sales_t28"] > 0 and summary["ad_spend_t28"] > 0 else None
@@ -594,6 +674,7 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         "dimensions": dimensions,
         "dimension_pairs": dimension_pairs,
         "taxonomy_warnings": taxonomy_warnings,
+        "identity_violations": identity_violations,
         "attention": sorted(attention, key=lambda r: (-float(r.get("sales_t28") or 0), r.get("sku") or "")),
         "drivers": drivers[:5],
         "diagnostic_basis": {
@@ -601,6 +682,7 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
             "traffic_grain": "child ASIN from Data Kiosk; one canonical seller SKU owns each customer-facing offer",
             "family_grain": "structural parent is a non-sellable container; family metrics are recomputed from sellable child facts",
             "variation_grain": "Amazon Catalog variation dimensions/values by child ASIN, normalized to seller-facing dimensions; optional host-side product_variations.json overrides names/values without replacing Amazon identity",
+            "identity_invariant": "every sellable variation has a distinct parent and matching family ASIN; every standalone offer has no canonical parent and uses its own ASIN as family",
             "dimension_semantics": "dimension rollups recompute additive facts and conversion from total units / total sessions; pair rollups support design × ruling analysis without averaging conversion percentages",
             "taxonomy_repair": "cross-dimension collisions are repaired only when one dimension is clearly established and exactly one observed sibling value is present in the product title; all repairs/removals remain auditable in taxonomy_warnings",
             "traffic_median_t28": round(traffic_median, 1),
@@ -610,4 +692,3 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         },
         "local_time": local_clock.get("local_time"),
     }
-

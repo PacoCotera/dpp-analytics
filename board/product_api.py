@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ads_context import product_t28
 from catalog_api import (
+    _apply_canonical_identity,
     _product_costs,
     _product_taxonomy,
     _repair_variation_taxonomy,
@@ -163,6 +164,7 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
     taxonomy_rows = [commercial] + siblings if commercial else siblings
     for row in taxonomy_rows:
         row['variation_attributes'],row['variation_attribute_source']=_variation_taxonomy_for_row(row,taxonomy)
+        _apply_canonical_identity(row)
     taxonomy_warnings = _repair_variation_taxonomy(taxonomy_rows)
     for row in taxonomy_rows:
         row.pop('catalog_attributes',None)
@@ -181,4 +183,3 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
     return {'profile':decorate_products([profile])[0],'commercial':decorated_commercial,'performance':performance,'traffic':traffic,
             'economics':economics,'ads':ads,'family_variations':decorate_products(siblings),'taxonomy_warnings':taxonomy_warnings,
             'series':series,'recent_orders':recent_orders,'inventory_history':inventory_history,'business_date':cutoff,'local_time':local_clock.get('local_time')}
-

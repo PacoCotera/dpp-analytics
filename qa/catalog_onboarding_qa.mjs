@@ -27,6 +27,45 @@ try {
     throw new Error('Mutable taxonomy completeness leaked back into the legacy deployment-blocking field');
   }
 
+  const sellable = (catalog.body.products || []).filter(item =>
+    ['SELLABLE_VARIATION', 'SELLABLE_STANDALONE'].includes(String(item.product_role || '')),
+  );
+  if (Number(catalog.body.summary?.identity_invariant_checked_skus || 0) !== sellable.length) {
+    throw new Error('Catalog identity invariant did not check every sellable SKU');
+  }
+  if (Number(catalog.body.summary?.identity_invariant_violation_count || 0) !== 0) {
+    throw new Error(`Catalog identity violations: ${JSON.stringify(catalog.body.identity_violations || [])}`);
+  }
+  for (const item of sellable) {
+    const identity = item.identity || {};
+    if (!identity.consistent || identity.role !== item.product_role || !identity.family_label) {
+      throw new Error(`Sellable SKU ${item.sku} has no consistent canonical identity`);
+    }
+    if (
+      item.product_role === 'SELLABLE_VARIATION' &&
+      (!item.parent_asin || item.parent_asin === item.asin || item.family_asin !== item.parent_asin)
+    ) {
+      throw new Error(`Child variation ${item.sku} has contradictory parent/family identity`);
+    }
+    if (
+      item.product_role === 'SELLABLE_STANDALONE' &&
+      (item.parent_asin || item.family_asin !== item.asin)
+    ) {
+      throw new Error(`Standalone offer ${item.sku} has contradictory parent/family identity`);
+    }
+  }
+
+  const auditedProduct = await getJson('/api/product?sku=PNC-001L&refresh=1');
+  const auditedIdentity = auditedProduct.body.commercial?.identity || {};
+  if (
+    auditedIdentity.kind !== 'CHILD_VARIATION' ||
+    auditedIdentity.family_label === 'Standalone product' ||
+    auditedIdentity.parent_asin !== 'B0GGQHV45F' ||
+    auditedIdentity.family_asin !== 'B0GGQHV45F'
+  ) {
+    throw new Error(`PNC-001L canonical identity is contradictory: ${JSON.stringify(auditedIdentity)}`);
+  }
+
   const missingLifecycle = catalog.body.summary?.catalog_lifecycle_missing_skus || [];
   if (missingLifecycle.length) {
     throw new Error(`Catalog SKUs missing lifecycle evidence: ${missingLifecycle.join(', ')}`);
@@ -111,6 +150,8 @@ try {
     onboardingTaxonomy,
     inactiveTaxonomy,
     sourceAttentionSkus: sourceAttention,
+    identityInvariantCheckedSkus: sellable.length,
+    auditedProductIdentity: auditedIdentity,
     lifecycle: lifecycle.items.map((item) => ({
       sku: item.sku,
       asin: item.asin,
