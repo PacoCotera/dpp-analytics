@@ -192,6 +192,8 @@ def finance_payload(connect, marketplace: str) -> dict:
         "finance_net_sales": "Gross Sales & Traffic shopper spend / (1 + VAT rate)",
         "iva_withheld": "Gross shopper spend - net sales ex IVA",
         "gross_customer_spend": "Amazon Sales & Traffic shopper spend including IVA",
+        "closed_contribution": "net_sales_ex_vat + amazon_order_effect + other_amazon_postings + advertising - product_cogs",
+        "other_amazon_postings": "Released service fees, adjustments, miscellaneous ledger adjustments and FBA inventory reimbursements posted in the accounting month",
         "payout": "Amazon settlement cash after withheld tax and signed settlement deductions/additions; never revenue",
         "cash_bridge": "One canonical report copy per settlement; latest settlement signed line sum reconciled to Amazon report total",
     }

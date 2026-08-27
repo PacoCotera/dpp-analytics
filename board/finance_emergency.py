@@ -17,12 +17,14 @@ import calendar
 import json
 import os
 from datetime import date, datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 VAT_RATE = float(os.getenv("MX_VAT_RATE", "0.16"))
 TZ = "America/Mexico_City"
 CLOSE_GRACE_DAYS = int(os.getenv("FINANCE_ADS_CLOSE_GRACE_DAYS", "10"))
+MONEY_QUANTUM = Decimal("0.01")
 
 
 def _one(cur, sql, params=()):
@@ -210,6 +212,56 @@ def _ads_close_for_month(cur, marketplace: str, month: date) -> dict:
     """, (marketplace, nxt, _next_month(nxt)))
 
 
+def _money(value) -> Decimal:
+    return Decimal(str(value or 0)).quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+
+
+def _sum_money(rows: list[dict], field: str) -> float:
+    return float(sum((_money(row.get(field)) for row in rows), Decimal("0.00")))
+
+
+def _closed_bridge_total(row: dict) -> float:
+    """Return the cent-level contribution implied by the closed-month operands."""
+    total = (
+        _money(row.get("net_sales_ex_vat"))
+        + _money(row.get("amazon_order_effect"))
+        + _money(row.get("advertising"))
+        + _money(row.get("other_amazon_postings"))
+        - abs(_money(row.get("product_cogs")))
+    )
+    return float(total.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP))
+
+
+def _closed_bridge_delta(row: dict) -> float:
+    """Return zero when a closed-month contribution reconciles to its operands."""
+    return float(
+        (_money(row.get("contribution_after_product_cogs")) - _money(_closed_bridge_total(row))).quantize(
+            MONEY_QUANTUM,
+            rounding=ROUND_HALF_UP,
+        )
+    )
+
+
+def _aggregate_closed_months(rows: list[dict]) -> dict:
+    """Aggregate every operand used by the immutable closed-month contribution bridge."""
+    agg_sales = _sum_money(rows, "net_sales_ex_vat")
+    agg_contribution = _sum_money(rows, "contribution_after_product_cogs")
+    return {
+        "months": len(rows),
+        "net_sales_ex_vat": agg_sales,
+        "shopper_product_spend": _sum_money(rows, "shopper_product_spend"),
+        "amazon_order_effect": _sum_money(rows, "amazon_order_effect"),
+        "advertising": _sum_money(rows, "advertising"),
+        "other_amazon_postings": _sum_money(rows, "other_amazon_postings"),
+        "product_cogs": _sum_money(rows, "product_cogs"),
+        "contribution_after_product_cogs": agg_contribution,
+        "contribution_margin_pct": (
+            round(100.0 * agg_contribution / agg_sales, 1) if agg_sales else None
+        ),
+        "cash_transferred": _sum_money(rows, "cash_transferred"),
+    }
+
+
 def _canonical_month_state(cur, marketplace: str, month: date) -> dict:
     return _one(cur, """
         SELECT month,is_current_month,core_orders,released_orders,deferred_events,
@@ -335,6 +387,7 @@ def finance_payload(connect, marketplace: str) -> dict:
                 "orders": int(sales.get("orders") or 0), "units": int(sales.get("units") or 0),
                 "amazon_order_net": round(order_net, 2),
                 "amazon_order_effect": round(order_net - net_sales, 2),
+                "other_amazon_postings": round(other_postings, 2),
                 "refunds": float(fin.get("refunds") or 0),
                 "deferred_events": int(fin.get("deferred_events") or 0),
                 "released_orders": int(fin.get("released_orders") or 0),
@@ -389,28 +442,13 @@ def finance_payload(connect, marketplace: str) -> dict:
                         errors.append(f"probe_{cursor}:{type(exc).__name__}:{exc}")
                 cursor = _next_month(cursor)
 
-            def aggregate_months(rows: list[dict]) -> dict:
-                agg_sales = round(sum(float(m.get("net_sales_ex_vat") or 0) for m in rows), 2)
-                agg_contribution = round(sum(float(m.get("contribution_after_product_cogs") or 0) for m in rows), 2)
-                return {
-                    "months": len(rows),
-                    "net_sales_ex_vat": agg_sales,
-                    "shopper_product_spend": round(sum(float(m.get("shopper_product_spend") or 0) for m in rows), 2),
-                    "amazon_order_effect": round(sum(float(m.get("amazon_order_effect") or 0) for m in rows), 2),
-                    "advertising": round(sum(float(m.get("advertising") or 0) for m in rows), 2),
-                    "product_cogs": round(sum(float(m.get("product_cogs") or 0) for m in rows), 2),
-                    "contribution_after_product_cogs": agg_contribution,
-                    "contribution_margin_pct": round(100.0 * agg_contribution / agg_sales, 1) if agg_sales else None,
-                    "cash_transferred": round(sum(float(m.get("cash_transferred") or 0) for m in rows), 2),
-                }
-
-            aggregate = aggregate_months(closed)
+            aggregate = _aggregate_closed_months(closed)
             ytd_aggregate = {}
             if closed:
                 latest_closed = str(closed[0].get("month") or "")
                 latest_year = latest_closed[:4]
                 ytd_rows = [m for m in closed if str(m.get("month") or "").startswith(f"{latest_year}-")]
-                ytd_aggregate = aggregate_months(ytd_rows)
+                ytd_aggregate = _aggregate_closed_months(ytd_rows)
                 ytd_aggregate.update({"year": int(latest_year), "through_month": latest_closed})
 
             types = _all(cur, """

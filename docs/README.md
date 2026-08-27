@@ -12,6 +12,7 @@ This directory is the maintainer-facing map of the application. The goal is to m
 | How are repeated API queries cached, how fresh may a page be, and where should KPI precomputation live? | [`reporting-cache-architecture.md`](reporting-cache-architecture.md) |
 | Which source is authoritative for Today, Sales, Finance, Ads, Catalog or Inventory? | [`data-model.md`](data-model.md) |
 | What exactly does a money number mean: shopper spend, Amazon sales, Finance net sales, payout or Ads attribution? | [`metric-basis.md`](metric-basis.md) |
+| Which confirmed production defects are queued, and how are they closed? | [`audits/dpp-analytics-2026-08-27.md`](audits/dpp-analytics-2026-08-27.md) and [tracker #161](https://github.com/PacoCotera/dpp-analytics/issues/161) |
 | How does production deploy and where do I inspect its health? | [`control-plane.md`](control-plane.md) |
 
 ## Documentation contract

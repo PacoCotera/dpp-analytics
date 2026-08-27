@@ -31,7 +31,7 @@ The board is server-rendered only in the sense that Python serves static HTML an
 ### Two filename traps
 
 1. **Sales:** `sales-canonical.js` is the live Sales Overview/Drivers renderer. “canonical” is historical naming, not a second implementation. Geography is intentionally a separate lazy runtime and payload because its postal history is optional heavy detail, not part of the default Sales snapshot.
-2. **Finance:** the current `board/Dockerfile` copies `board/finance_emergency.py` into the image as `/app/finance_api.py`. That file is therefore the **production Finance payload implementation** even though `board/finance_api.py` and `board/finance_safe.py` also exist in the repository. Do not infer Finance runtime ownership from the filename alone. Normalize this naming only as a deliberate behavior-neutral cleanup with Finance smoke validation.
+2. **Finance:** the current `board/Dockerfile` copies `board/finance_emergency.py` into the image as `/app/finance_api_legacy.py`, then copies `board/finance_api_corrected.py` as `/app/finance_api.py`. The adapter is the production entry point; the legacy module still owns period state and immutable-close aggregation. `board/finance_api.py` and `board/finance_safe.py` are not the packaged runtime. Do not infer Finance ownership from repository filenames alone. Normalize this naming only as a deliberate behavior-neutral cleanup with Finance smoke validation.
 
 ## Shared frontend ownership
 

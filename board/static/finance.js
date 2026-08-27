@@ -1,6 +1,10 @@
 import { byId, escapeHtml, fetchJson, integer } from './ui-utils.js';
 
 const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const number2 = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 const viewState = {
   payload: null,
   window: 'ytd',
@@ -13,6 +17,13 @@ function financeMoney(value) {
   const numeric = Number(value);
   const prefix = numeric < 0 ? '−$' : '$';
   return `${prefix}${number0.format(Math.abs(Math.round(numeric)))}`;
+}
+
+function financeMoneyExact(value) {
+  if (value === null || value === undefined) return '—';
+  const numeric = Number(value);
+  const prefix = numeric < 0 ? '−$' : '$';
+  return `${prefix}${number2.format(Math.abs(numeric))}`;
 }
 
 function valueClass(value) {
@@ -81,6 +92,10 @@ function bridgeStep(label, value, kind = '') {
   return `<div class="bridge-step ${kind}"><span>${escapeHtml(label)}</span><strong class="${stringValue ? '' : valueClass(value)}">${stringValue ? escapeHtml(value) : financeMoney(value)}</strong></div>`;
 }
 
+function bridgeStepExact(label, value, kind = '') {
+  return `<div class="bridge-step ${kind}"><span>${escapeHtml(label)}</span><strong class="${valueClass(value)}">${financeMoneyExact(value)}</strong></div>`;
+}
+
 function chartMonthParts(value) {
   const date = monthDate(value);
   return {
@@ -131,7 +146,7 @@ function currentContributionRow(current) {
   const sales = Number(current.net_sales_ex_vat || 0);
   const amazonEffect = Number(current.amazon_order_effect || 0);
   const productCogs = Math.abs(Number(current.product_cogs || 0));
-  const other = estimate == null ? null : Number(estimate) - (sales + amazonEffect - productCogs);
+  const other = Number(current.other_amazon_postings || 0);
   const adsRaw = current.current_month_advertising;
   const adsPending = adsRaw === null || adsRaw === undefined;
   const advertising = adsPending ? null : -Math.abs(Number(adsRaw || 0));
@@ -142,7 +157,7 @@ function currentContributionRow(current) {
     month: current.month,
     net_sales_ex_vat: sales,
     amazon_order_effect: amazonEffect,
-    other_finance_effect: other,
+    other_amazon_postings: other,
     advertising,
     product_cogs: productCogs,
     contribution_after_product_cogs: contribution,
@@ -158,13 +173,13 @@ function closedContributionRow(item) {
   const advertising = Number(item.advertising || 0);
   const productCogs = Math.abs(Number(item.product_cogs || 0));
   const contribution = Number(item.contribution_after_product_cogs || 0);
-  const explained = sales + amazonEffect + advertising - productCogs;
+  const otherAmazonPostings = Number(item.other_amazon_postings || 0);
 
   return {
     ...item,
     net_sales_ex_vat: sales,
     amazon_order_effect: amazonEffect,
-    other_finance_effect: contribution - explained,
+    other_amazon_postings: otherAmazonPostings,
     advertising,
     product_cogs: productCogs,
     contribution_after_product_cogs: contribution,
@@ -345,7 +360,7 @@ function renderMonthWaterfall(svg, row) {
     {
       label: 'Other',
       detail: open ? 'Other postings / timing' : 'Other finance postings',
-      delta: Number(row.other_finance_effect || 0),
+      delta: Number(row.other_amazon_postings || 0),
     },
     {
       label: 'Ads',
@@ -469,7 +484,7 @@ function renderCurrentBridge(current) {
     financeLine(
       'Other Amazon postings / timing',
       'Released service fees, adjustments and reimbursements posted this month.',
-      row.other_finance_effect,
+      row.other_amazon_postings,
     ),
     financeLine(
       'Product COGS',
@@ -496,7 +511,7 @@ function renderCurrentBridge(current) {
   byId('currentBridge').innerHTML = [
     bridgeStep('Sales ex IVA', current.net_sales_ex_vat),
     bridgeStep('Amazon effect', current.amazon_order_effect),
-    bridgeStep('Other postings', row.other_finance_effect),
+    bridgeStep('Other postings', row.other_amazon_postings),
     bridgeStep('Product COGS', -Math.abs(Number(current.product_cogs || 0))),
     bridgeStep(ads == null ? 'Contribution pre-ads' : 'Contribution', contribution, 'warn'),
   ].join('');
@@ -509,13 +524,15 @@ function renderYtd(ytd) {
     return;
   }
 
-  byId('ytdSub').textContent = `${ytd.months} closed months through ${monthLabel(ytd.through_month)}.`;
+  byId('ytdSub').textContent =
+    `${ytd.months} closed months through ${monthLabel(ytd.through_month)}. Amounts shown to cents.`;
   byId('ytdBridge').innerHTML = [
-    bridgeStep('Sales ex IVA', ytd.net_sales_ex_vat),
-    bridgeStep('Amazon effect', ytd.amazon_order_effect),
-    bridgeStep('Advertising', ytd.advertising),
-    bridgeStep('Product COGS', -Math.abs(Number(ytd.product_cogs || 0))),
-    bridgeStep('Contribution', ytd.contribution_after_product_cogs, 'final'),
+    bridgeStepExact('Sales ex IVA', ytd.net_sales_ex_vat),
+    bridgeStepExact('Amazon effect', ytd.amazon_order_effect),
+    bridgeStepExact('Other Amazon postings', ytd.other_amazon_postings),
+    bridgeStepExact('Advertising', ytd.advertising),
+    bridgeStepExact('Product COGS', -Math.abs(Number(ytd.product_cogs || 0))),
+    bridgeStepExact('Contribution', ytd.contribution_after_product_cogs, 'final'),
   ].join('');
 }
 
@@ -563,7 +580,7 @@ function renderHistory(current, closed) {
     .map(closedContributionRow);
   const rows = currentRow.month ? [currentRow, ...closedRows] : closedRows;
   const header =
-    '<div class="history-row head"><div>Month</div><div>Sales</div><div>Amazon effect</div><div>Advertising</div><div>Product cost</div><div>Contribution</div><div>State</div></div>';
+    '<div class="history-row head"><div>Month</div><div>Sales</div><div>Amazon effect</div><div>Other Amazon postings</div><div>Advertising</div><div>Product cost</div><div>Contribution</div><div>State</div></div>';
 
   byId('history').innerHTML =
     header +
@@ -579,17 +596,18 @@ function renderHistory(current, closed) {
         const advertising =
           open && item._adsPending
             ? '<strong class="pending-value">Pending</strong><small>not accrued</small>'
-            : `<strong class="${valueClass(item.advertising)}">${financeMoney(item.advertising)}</strong>`;
+            : `<strong class="${valueClass(item.advertising)}">${financeMoneyExact(item.advertising)}</strong>`;
         const state = open ? 'OPEN' : stateLabel(item.state || 'CLOSED');
         const stateNote = open ? 'provisional' : `v${integer(item.version || 1)}`;
 
         return `<div class="history-row${open ? ' open-month' : ''}">
         <div>${monthLabel(item.month)}${open ? '<small>current</small>' : ''}</div>
-        <div data-label="Sales"><strong>${financeMoney(item.net_sales_ex_vat)}</strong><small>ex IVA</small></div>
-        <div data-label="Amazon effect"><strong class="${valueClass(item.amazon_order_effect)}">${financeMoney(item.amazon_order_effect)}</strong></div>
+        <div data-label="Sales"><strong>${financeMoneyExact(item.net_sales_ex_vat)}</strong><small>ex IVA</small></div>
+        <div data-label="Amazon effect"><strong class="${valueClass(item.amazon_order_effect)}">${financeMoneyExact(item.amazon_order_effect)}</strong></div>
+        <div data-label="Other Amazon postings"><strong class="${valueClass(item.other_amazon_postings)}">${financeMoneyExact(item.other_amazon_postings)}</strong></div>
         <div data-label="Advertising">${advertising}</div>
-        <div data-label="Product cost"><strong class="neg">${financeMoney(-Math.abs(Number(item.product_cogs || 0)))}</strong></div>
-        <div data-label="Contribution"><strong class="${valueClass(item.contribution_after_product_cogs)}">${financeMoney(item.contribution_after_product_cogs)}</strong><small>${margin}</small></div>
+        <div data-label="Product cost"><strong class="neg">${financeMoneyExact(-Math.abs(Number(item.product_cogs || 0)))}</strong></div>
+        <div data-label="Contribution"><strong class="${valueClass(item.contribution_after_product_cogs)}">${financeMoneyExact(item.contribution_after_product_cogs)}</strong><small>${margin}</small></div>
         <div data-label="State"><span class="history-state">${escapeHtml(state)}</span><small>${escapeHtml(stateNote)}</small></div>
       </div>`;
       })
