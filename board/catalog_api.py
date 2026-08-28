@@ -527,8 +527,12 @@ def _family_rollup(rows: list[dict], traffic_median: float, conversion_median: f
     priority = {"INVENTORY_RISK": 0, "TRAFFIC_NOT_CONVERTING": 1, "CONVERTS_NEEDS_TRAFFIC": 2, "WATCH": 3, "DORMANT": 4, "INACTIVE": 5, "HEALTHY": 6, "STRUCTURAL_PARENT": 7}
     for family in families.values():
         sellable = family["members"]
-        candidates = sellable or ([family["parent"]] if family.get("parent") else family["aliases"])
-        if not candidates: continue
+        # A parent is hierarchy evidence, never a commercial family on its own.
+        # Retain it only when at least one sellable child gives the family a
+        # demand/inventory context.
+        if not sellable:
+            continue
+        candidates = sellable
         lead = max(candidates, key=lambda r: float(r.get("sales_t28") or 0))
         parent = family.get("parent")
         configured_family_names = [m.get("family_name") for m in sellable if m.get("family_name")]
@@ -582,7 +586,9 @@ def _catalog_summary(rows: list[dict]) -> dict:
         if row.get("traffic_through_date")
     ]
     families = {
-        row.get("family_asin") for row in rows if row.get("family_asin") is not None
+        row.get("family_asin")
+        for row in sellable
+        if row.get("family_asin") is not None
     }
 
     return {

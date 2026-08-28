@@ -55,6 +55,41 @@ try {
     }
   }
 
+  const structuralParents = (catalog.body.products || []).filter(
+    item => item.product_role === 'STRUCTURAL_PARENT',
+  );
+  const structuralParentSkus = new Set(structuralParents.map(item => String(item.sku || '')));
+  const auditedParent = structuralParents.find(item => item.sku === 'PNC-CURRENT');
+  if (
+    !auditedParent ||
+    auditedParent.asin !== 'B0HGNS3FHB' ||
+    auditedParent.identity?.kind !== 'VARIATION_CONTAINER' ||
+    auditedParent.identity?.is_sellable !== false ||
+    auditedParent.is_offer_owner !== false
+  ) {
+    throw new Error(`PNC-CURRENT is not a canonical structural parent: ${JSON.stringify(auditedParent)}`);
+  }
+  const lifecycleParentSkus = (lifecycle.items || [])
+    .filter(item => structuralParentSkus.has(String(item.sku || '')))
+    .map(item => item.sku);
+  if (lifecycleParentSkus.length) {
+    throw new Error(`Structural parents leaked into onboarding: ${lifecycleParentSkus.join(', ')}`);
+  }
+  const parentOnlyFamilies = (catalog.body.families || []).filter(
+    family => !(family.members || []).length,
+  );
+  if (parentOnlyFamilies.length) {
+    throw new Error(`Parent-only containers leaked into commercial families: ${JSON.stringify(parentOnlyFamilies)}`);
+  }
+  if (Number(catalog.body.summary?.families || 0) !== (catalog.body.families || []).length) {
+    throw new Error('Commercial family KPI includes a parent-only container');
+  }
+  for (const family of catalog.body.families || []) {
+    if ((family.members || []).some(item => structuralParentSkus.has(String(item.sku || '')))) {
+      throw new Error(`Structural parent leaked into sellable family members: ${family.family_asin}`);
+    }
+  }
+
   const auditedProduct = await getJson('/api/product?sku=PNC-001L&refresh=1');
   const auditedIdentity = auditedProduct.body.commercial?.identity || {};
   if (
@@ -167,6 +202,13 @@ try {
     inactiveTaxonomy,
     sourceAttentionSkus: sourceAttention,
     identityInvariantCheckedSkus: sellable.length,
+    structuralParentSkus: [...structuralParentSkus].sort(),
+    auditedStructuralParent: {
+      sku: auditedParent.sku,
+      asin: auditedParent.asin,
+      role: auditedParent.product_role,
+      identity: auditedParent.identity,
+    },
     auditedProductIdentity: auditedIdentity,
     auditedFamilyCover: {
       familyAsin: auditedFamily.family_asin,

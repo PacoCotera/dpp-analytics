@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from catalog_api import _apply_canonical_identity, _identity_violations
+from catalog_api import _apply_canonical_identity, _catalog_summary, _identity_violations
 
 
 class CatalogIdentityTest(unittest.TestCase):
@@ -69,6 +69,47 @@ class CatalogIdentityTest(unittest.TestCase):
         )
         self.assertTrue(row["identity"]["consistent"])
         self.assertEqual(_identity_violations([row]), [])
+
+    def test_structural_parent_is_a_non_sellable_container(self):
+        row = _apply_canonical_identity(
+            {
+                "sku": "PNC-CURRENT",
+                "asin": "B0HGNS3FHB",
+                "parent_asin": None,
+                "family_asin": "B0HGNS3FHB",
+                "product_role": "STRUCTURAL_PARENT",
+                "product": "Pocket collections",
+            }
+        )
+
+        self.assertEqual(row["identity"]["kind"], "VARIATION_CONTAINER")
+        self.assertFalse(row["identity"]["is_sellable"])
+        self.assertTrue(row["identity"]["consistent"])
+
+    def test_structural_parent_is_excluded_from_sellable_summary(self):
+        rows = [
+            {
+                "sku": "PARENT-ONLY",
+                "family_asin": "PARENT-FAMILY",
+                "product_role": "STRUCTURAL_PARENT",
+                "status": "Inactive",
+            },
+            {
+                "sku": "CHILD",
+                "family_asin": "CHILD-FAMILY",
+                "product_role": "SELLABLE_VARIATION",
+                "status": "Active",
+            },
+        ]
+
+        summary = _catalog_summary(rows)
+
+        self.assertEqual(summary["listing_records"], 2)
+        self.assertEqual(summary["structural_parents"], 1)
+        self.assertEqual(summary["sellable_offers"], 1)
+        self.assertEqual(summary["active_sellable"], 1)
+        self.assertEqual(summary["inactive_sellable"], 0)
+        self.assertEqual(summary["families"], 1)
 
     def test_every_contradictory_sellable_role_is_reported(self):
         rows = [

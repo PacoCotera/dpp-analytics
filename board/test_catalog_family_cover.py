@@ -66,6 +66,34 @@ class CatalogFamilyCoverTest(unittest.TestCase):
         self.assertEqual(family["cover_basis"]["stock_units"], 15)
         self.assertEqual(family["cover_basis"]["velocity_units_t28"], 0)
 
+    def test_parent_only_container_is_not_a_commercial_family(self):
+        rows = [
+            {
+                "sku": "PNC-CURRENT",
+                "asin": "B0HGNS3FHB",
+                "family_asin": "B0HGNS3FHB",
+                "product_role": "STRUCTURAL_PARENT",
+                "product": "Pocket collections",
+            }
+        ]
+
+        self.assertEqual(_family_rollup(rows, 0, 0), [])
+
+    def test_parent_is_retained_as_context_for_sellable_children(self):
+        parent = {
+            "sku": "PARENT",
+            "asin": "FAMILY",
+            "family_asin": "FAMILY",
+            "product_role": "STRUCTURAL_PARENT",
+            "product": "Family container",
+        }
+        child = self._member("CHILD", 5, 0, 1)
+
+        family = _family_rollup([parent, child], 0, 0)[0]
+
+        self.assertEqual(family["parent"]["sku"], "PARENT")
+        self.assertEqual([row["sku"] for row in family["members"]], ["CHILD"])
+
 
 if __name__ == "__main__":
     unittest.main()
