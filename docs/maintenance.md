@@ -45,7 +45,7 @@ Before adding page-specific code, check whether the behavior belongs in one of t
 | `layout-system.css` | reusable page headers, KPI rails, panels, grids, segmented controls, tables and status strips |
 | `chart-system.css` / `chart-system.js` | reusable chart grammar, axes, tooltips, legends, period treatment and shared chart forms |
 | `data-cache.js` | session-scoped GET JSON cache, browser in-flight dedupe and endpoint freshness policy |
-| `ui-utils.js` | escaping, number/money formatting, DOM helpers and shared JSON-fetch facade used by ES-module pages |
+| `ui-utils.js` | escaping, number/money formatting, DOM helpers, shared interpretation-rule disclosure and JSON-fetch facade used by ES-module pages |
 | `mobile-ux.css` | shared mobile compatibility behavior retained from earlier iterations |
 | `design-refine.css` | retained global design refinements; treat as legacy/shared foundation, not a place for new page-specific overrides |
 | `vendor/d3.v7.min.js` | vendored D3 runtime |
@@ -53,6 +53,18 @@ Before adding page-specific code, check whether the behavior belongs in one of t
 A page should not add a second nav, duplicate generic panel geometry, inject CSS from JavaScript, or create a post-render “enhancer” layer.
 
 ## Where business truth lives
+
+### Shared interpretation rules
+
+`board/interpretation_rules.py` owns the named and versioned decision rules used by Business, Today, Sales, Catalog and Trajectory. API evaluations expose their current inputs and eligibility beside `interpretation_rules`; `board/static/ui-utils.js` only renders the shared in-workflow Rule detail. Do not reintroduce label thresholds in a page runtime.
+
+When changing an interpretation rule:
+
+1. Change its evaluator and metadata together, including the input list, window, exact boundary operators and eligibility.
+2. Increment the rule version when an existing label can change for the same inputs.
+3. Add exact-boundary tests in `board/test_interpretation_rules.py`.
+4. Keep Catalog's 28-day demand eligibility separate from its 48-hour Amazon source-propagation grace.
+5. Verify `qa/interpretation_rules_qa.mjs` against production so every active surface exposes the rule and current evidence.
 
 ### Today
 

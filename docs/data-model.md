@@ -54,6 +54,10 @@ Seller taxonomy is a separate responsibility layered on top of Amazon source rea
 
 Operating timestamps are rendered in the marketplace business timezone, `America/Mexico_City`, through the shared UI time formatter. Header clocks and absolute freshness/sync timestamps carry the visible `Mexico City` label; browser or host timezone is never used as an implicit fallback. Relative ages remain elapsed-time values.
 
+Interpretive labels are API-owned evaluations of named, versioned rules in `board/interpretation_rules.py`. Each affected payload exposes the relevant `interpretation_rules` definitions plus the current evaluation's `rule_id`, `rule_version`, inputs, eligibility result and label. The shared in-page Rule control displays the window, eligibility, thresholds and current operands without navigating away. Browsers may format the explanation, but must not independently classify the inputs.
+
+Catalog demand labels use a full-window eligibility rule distinct from the 48-hour source-onboarding grace. A current active offer needs 28 calendar days from Amazon `open_date` through the latest traffic cutoff before a 28-day demand judgment such as `DORMANT`, `ACCELERATING`, `DECLINING`, or a funnel comparison is eligible. Until then it is `LEARNING`, with observed and required days exposed. A factual inventory constraint can still take priority during learning because it does not depend on a complete demand window.
+
 ### Shared decision-health contract
 
 Business and Data Health use the same server-owned `BUSINESS_DECISION_HEALTH_V1` contract from `board/health_contract.py`. The browser does not infer domain health from job names or independently combine pipeline and catalog conditions.

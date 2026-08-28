@@ -1,4 +1,13 @@
-import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, money, percent } from './ui-utils.js';
+import {
+  byId,
+  escapeHtml,
+  fetchJson,
+  formatBusinessClock,
+  integer,
+  money,
+  mountRuleTrigger,
+  percent,
+} from './ui-utils.js';
 
 const sku = new URLSearchParams(window.location.search).get('sku') || '';
 let data = null;
@@ -77,46 +86,13 @@ function draw() {
 }
 
 function renderHealth(payload) {
-  const performance = payload.performance || {};
   const traffic = payload.traffic || {};
   const profile = payload.profile || {};
   const commercial = payload.commercial || {};
-  const delta = performance.delta28_pct == null ? null : Number(performance.delta28_pct);
   const cover = profile.days_cover_with_inbound == null ? null : Number(profile.days_cover_with_inbound);
   const conversion = traffic.cvr_t28 == null ? null : Number(traffic.cvr_t28);
-  const sellable = commercial.listing_sellable !== false;
-  const reasons = [];
-  let headline = 'Product is stable.';
-
-  if (commercial.catalog_membership === 'DELETED') {
-    headline = 'SKU is deleted from the current Amazon catalog.';
-    reasons.push('Historical transactions remain available, but this record is not a current offer.');
-  } else if (!sellable) {
-    headline = 'Listing is not currently sellable.';
-    reasons.push('Demand interpretation is secondary until listing state is resolved.');
-  } else if (profile.inventory_action === 'STOCKOUT') {
-    headline = 'Demand is being constrained by stock.';
-    reasons.push('The offer is stocked out.');
-  } else if (profile.inventory_action === 'PRODUCE') {
-    headline = 'Replenishment is the immediate priority.';
-    reasons.push('Inventory cover is below two weeks at recent velocity.');
-  } else if (delta != null && delta >= 20) {
-    headline = 'Demand is accelerating.';
-    reasons.push(`${percent(delta)} sales versus the prior 28 days.`);
-  } else if (delta != null && delta <= -20) {
-    headline = 'Demand has softened materially.';
-    reasons.push(`${percent(delta)} sales versus the prior 28 days.`);
-  } else if (Number(performance.units_t28 || 0) > 0) {
-    headline = 'Product is selling without a major exception.';
-    reasons.push(
-      delta == null ? 'Recent sales are active.' : `${percent(delta)} sales versus the prior 28 days.`,
-    );
-  } else if (Number(traffic.sessions_t28 || 0) > 0) {
-    headline = 'Traffic is arriving, but units are not.';
-    reasons.push(`${integer(traffic.sessions_t28)} sessions produced no recent units.`);
-  } else {
-    headline = 'There is little recent demand signal.';
-  }
+  const read = commercial.commercial_evaluation || {};
+  const reasons = commercial.commercial_explanation ? [commercial.commercial_explanation] : [];
 
   if (conversion != null)
     reasons.push(
@@ -124,8 +100,9 @@ function renderHealth(payload) {
     );
   if (cover != null) reasons.push(`${cover.toFixed(0)} days cover including inbound.`);
 
-  byId('healthHeadline').textContent = headline;
+  byId('healthHeadline').textContent = read.label || 'Product state unavailable';
   byId('healthRead').textContent = reasons.join(' ');
+  mountRuleTrigger(byId('healthHeadline'), read, payload.interpretation_rules);
 }
 
 function renderHero(profile, commercial) {

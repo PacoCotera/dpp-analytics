@@ -1,4 +1,13 @@
-import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, money } from './ui-utils.js';
+import {
+  bindRuleDisclosure,
+  byId,
+  escapeHtml,
+  fetchJson,
+  formatBusinessClock,
+  integer,
+  money,
+  ruleTrigger,
+} from './ui-utils.js';
 
 const $ = byId;
 const esc = escapeHtml;
@@ -18,6 +27,7 @@ const labels = {
   HEALTHY: 'Healthy',
   WATCH: 'Watch',
   DORMANT: 'Dormant',
+  LEARNING: 'Learning',
   INACTIVE: 'Inactive',
   CLOSED: 'Closed',
   INCOMPLETE: 'Incomplete',
@@ -199,7 +209,7 @@ function childRow(product) {
       </div>
     </div>
     <div class="signal ${stateClass(product.commercial_state)}">
-      <strong>${esc(labels[product.commercial_state] || product.commercial_state || 'Product')}</strong>
+      <strong>${esc(labels[product.commercial_state] || product.commercial_state || 'Product')}</strong>${ruleTrigger(product.commercial_evaluation, DATA.interpretation_rules)}
       <span>${esc(product.commercial_explanation || '')}</span>
     </div>
     <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(product.sales_t28)}</strong><span data-mobile-label="28D">${num(product.units_t28)} units${delta === null || delta === undefined ? '' : ` · ${Number(delta) >= 0 ? '+' : ''}${Number(delta).toFixed(0)}%`}</span></div>
@@ -231,7 +241,7 @@ function familyRow(family) {
           <div class="family-meta">${familyMembers.length} sellable ${familyMembers.length === 1 ? 'offer' : 'variations'} · ${family.active_sellable_count || 0} active${family.parent ? ' · variation family' : ''}${exceptions ? ` · ${exceptions} child exception${exceptions === 1 ? '' : 's'}` : ''}${esc(dimensionSummary(family))}</div>
         </div>
       </div>
-      <div class="signal ${stateClass(state)}"><strong>${esc(labels[state] || state)}</strong><span>${esc(explanation(family))}</span></div>
+      <div class="signal ${stateClass(state)}"><strong>${esc(labels[state] || state)}</strong>${ruleTrigger(family.commercial_evaluation, DATA.interpretation_rules)}<span>${esc(explanation(family))}</span></div>
       <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(family.sales_t28)}</strong><span data-mobile-label="28D">${num(family.units_t28)} units</span></div>
       <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(family.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(family.conversion_t28_pct)}</b> CVR</span></div>
       <div class="cell metric-stock" data-mobile-title="Available"><strong>${num(family.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock${cover === null ? ' · no velocity' : ` · ${cover.toFixed(0)}d pooled cover`}</span></div>
@@ -248,22 +258,11 @@ function familyRow(family) {
 
 function comparativeRead(row) {
   const total = Number(DATA.summary?.sales_t28 || 0);
-  const overall = Number(DATA.summary?.conversion_t28_pct || 0);
   const share = total > 0 ? (100 * Number(row.sales_t28 || 0)) / total : 0;
-  const conversion =
-    row.conversion_t28_pct === null || row.conversion_t28_pct === undefined
-      ? null
-      : Number(row.conversion_t28_pct);
-  let headline = 'Portfolio comparison';
-
-  if (conversion !== null && overall > 0 && conversion >= overall * 1.2)
-    headline = 'Converts above portfolio';
-  else if (conversion !== null && overall > 0 && conversion <= overall * 0.8)
-    headline = 'Converts below portfolio';
-  else if (conversion !== null) headline = 'Near portfolio conversion';
+  const evaluation = row.conversion_evaluation || {};
 
   return [
-    headline,
+    evaluation.label || 'Portfolio comparison',
     `${share.toFixed(0)}% of 28D sales · ${row.family_count || 0} ${Number(row.family_count || 0) === 1 ? 'family' : 'families'}`,
   ];
 }
@@ -276,7 +275,7 @@ function dimensionRow(row, kind) {
 
   return `<div class="analysis-row">
     <div class="analysis-identity"><strong><span class="analysis-mark"></span>${esc(name)}</strong><span>${esc(scope)} · ${row.sku_count || 0} SKUs · ${row.active_sku_count || 0} active</span></div>
-    <div class="signal"><strong>${esc(read[0])}</strong><span>${esc(read[1])}</span></div>
+    <div class="signal"><strong>${esc(read[0])}</strong>${ruleTrigger(row.conversion_evaluation, DATA.interpretation_rules)}<span>${esc(read[1])}</span></div>
     <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(row.sales_t28)}</strong><span data-mobile-label="28D">${num(row.units_t28)} units</span></div>
     <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(row.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(row.conversion_t28_pct)}</b> CVR</span></div>
     <div class="cell metric-stock" data-mobile-title="Available"><strong>${num(row.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock</span></div>
@@ -312,7 +311,7 @@ function skuAnalysisRow(product) {
 
   return `<a class="analysis-row analysis-link" href="/product?sku=${encodeURIComponent(product.sku || '')}">
     <div class="analysis-identity"><strong>${esc(product.product || product.sku || product.asin)}</strong><span>${esc(product.sku || '')} · ${esc(attributes || 'standalone')}</span></div>
-    <div class="signal ${stateClass(product.commercial_state)}"><strong>${esc(labels[product.commercial_state] || product.commercial_state || 'Product')}</strong><span>${esc(product.commercial_explanation || '')}</span></div>
+    <div class="signal ${stateClass(product.commercial_state)}"><strong>${esc(labels[product.commercial_state] || product.commercial_state || 'Product')}</strong>${ruleTrigger(product.commercial_evaluation, DATA.interpretation_rules)}<span>${esc(product.commercial_explanation || '')}</span></div>
     <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(product.sales_t28)}</strong><span data-mobile-label="28D">${num(product.units_t28)} units</span></div>
     <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(product.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(product.conversion_t28_pct)}</b> CVR</span></div>
     <div class="cell metric-stock" data-mobile-title="Available"><strong>${num(product.units_t28)} units</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock</span></div>
@@ -486,7 +485,7 @@ function renderAttention() {
           const exceptions = Number(family.child_exception_count || 0);
           return `<div class="attention-item ${BAD_STATES.has(state) ? 'bad' : 'warn'}">
             <strong>${esc(compactFamilyName(family))}</strong>
-            <span>${esc(labels[state] || state)} · ${esc(explanation(family))}${exceptions ? ` · ${exceptions} child exception${exceptions === 1 ? '' : 's'}` : ''}</span>
+            <span>${esc(labels[state] || state)} ${ruleTrigger(family.commercial_evaluation, DATA.interpretation_rules)} · ${esc(explanation(family))}${exceptions ? ` · ${exceptions} child exception${exceptions === 1 ? '' : 's'}` : ''}</span>
           </div>`;
         })
         .join('')
@@ -495,6 +494,7 @@ function renderAttention() {
 
 function render(data) {
   DATA = data;
+  bindRuleDisclosure(data.interpretation_rules);
   const summary = data.summary || {};
   const familyAttention = (data.families || []).filter((family) => family.needs_attention).length;
 

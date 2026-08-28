@@ -1,4 +1,12 @@
-import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, money } from './ui-utils.js';
+import {
+  byId,
+  escapeHtml,
+  fetchJson,
+  formatBusinessClock,
+  integer,
+  money,
+  mountRuleTrigger,
+} from './ui-utils.js';
 
 const d3 = window.d3;
 let data = null;
@@ -273,32 +281,28 @@ function renderDayRead() {
   const live = Boolean(data.is_live);
   const orders = Number(today.orders_today || 0);
   const sales = Number(today.sales_today || 0);
-  const pace = Number(today.pace_vs_same_weekday_pct);
+  const pace = today.pace_vs_same_weekday_pct == null ? Number.NaN : Number(today.pace_vs_same_weekday_pct);
   const day = weekday(data.selected_date || data.local_today);
-  let headline;
+  const read = data.day_read || {};
+  const headline = read.label || 'Pace unavailable';
   let explanation;
 
-  if (live && orders < 3) {
-    headline = orders === 0 ? 'Too early to call today' : 'Today is still low-signal';
+  if (!read.eligible && live && orders < 3) {
     const expected = Number.isFinite(pace) && pace > -99 && sales > 0 ? sales / (1 + pace / 100) : null;
     explanation =
       expected && expected > 0
         ? `${orders} order${orders === 1 ? '' : 's'} so far. A typical ${day.toLowerCase()} would be around ${money(expected)} in shopper spend by this point, so wait for more volume before judging pace.`
         : `${orders} order${orders === 1 ? '' : 's'} so far. Wait for more volume before judging today against a typical ${day.toLowerCase()}.`;
-  } else if (pace >= 15) {
-    headline = `Ahead of a typical ${day}`;
-    explanation = `Shopper spend is ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`;
-  } else if (pace <= -15) {
-    headline = `Behind a typical ${day}`;
-    explanation = `Shopper spend is ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`;
   } else {
-    headline = `Tracking near a typical ${day}`;
-    explanation = `Shopper spend is ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`;
+    explanation = Number.isFinite(pace)
+      ? `Shopper spend is ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`
+      : 'A comparable same-weekday pace is not available.';
   }
 
   byId('dayHeadline').textContent = headline;
   byId('dayHeadline').className = tone(pace);
   byId('dayExplanation').textContent = explanation;
+  mountRuleTrigger(byId('dayHeadline'), read, data.interpretation_rules);
 }
 
 function renderBusinessRead() {
@@ -306,15 +310,7 @@ function renderBusinessRead() {
   const mtd = Number(context.mtd_delta_pct);
   const last30 = Number(context.last30_delta_pct);
   const wtd = Number(context.week_delta_pct);
-  const finite = [mtd, last30].filter(Number.isFinite);
-  const positive = finite.filter((value) => value >= 5).length;
-  const negative = finite.filter((value) => value <= -5).length;
-
-  let headline = 'Momentum';
-  if (positive === finite.length && finite.length) headline = 'Positive momentum';
-  else if (negative === finite.length && finite.length) headline = 'Negative momentum';
-  else if (positive && negative) headline = 'Mixed momentum';
-  else if (finite.every((value) => Math.abs(value) < 5)) headline = 'Mostly flat';
+  const read = data.business_context_read || {};
 
   const benchmarks = [
     ['MTD', mtd],
@@ -322,7 +318,8 @@ function renderBusinessRead() {
     ['WTD', wtd],
   ];
 
-  byId('pulseHeadline').textContent = headline;
+  byId('pulseHeadline').textContent = read.label || 'Momentum unavailable';
+  mountRuleTrigger(byId('pulseHeadline'), read, data.interpretation_rules);
   byId('pulseExplanation').className = 'business-benchmarks';
   byId('pulseExplanation').innerHTML = benchmarks
     .map(

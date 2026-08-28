@@ -100,3 +100,74 @@ export function setText(id, value) {
   if (element) element.textContent = value;
   return element;
 }
+
+let interpretationRules = {};
+let ruleDialogBound = false;
+
+function ruleValue(value) {
+  if (value === null || value === undefined) return 'unavailable';
+  if (typeof value === 'boolean') return value ? 'yes' : 'no';
+  return String(value);
+}
+
+function ensureRuleDialog() {
+  let dialog = byId('interpretationRuleDialog');
+  if (dialog) return dialog;
+  dialog = document.createElement('dialog');
+  dialog.id = 'interpretationRuleDialog';
+  dialog.className = 'rule-dialog';
+  dialog.innerHTML = '<div class="rule-dialog__body"></div>';
+  document.body.append(dialog);
+  return dialog;
+}
+
+export function bindRuleDisclosure(rules = {}) {
+  interpretationRules = rules || {};
+  if (ruleDialogBound) return;
+  ruleDialogBound = true;
+  document.addEventListener('click', (event) => {
+    const trigger = event.target.closest('.rule-trigger');
+    if (!trigger) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const evaluation = JSON.parse(trigger.dataset.ruleEvaluation || '{}');
+    const rule = interpretationRules[evaluation.rule_id] || {};
+    const dialog = ensureRuleDialog();
+    const inputs = Object.entries(evaluation.inputs || {})
+      .map(
+        ([name, value]) =>
+          `<li><span>${escapeHtml(name.replaceAll('_', ' '))}</span><strong>${escapeHtml(ruleValue(value))}</strong></li>`,
+      )
+      .join('');
+    const thresholds = (rule.thresholds || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+    dialog.querySelector('.rule-dialog__body').innerHTML = `
+      <div class="rule-dialog__head">
+        <div><small>${escapeHtml(rule.id || evaluation.rule_id || 'Interpretation rule')} · v${escapeHtml(rule.version || evaluation.rule_version || '—')}</small><h2>${escapeHtml(rule.name || 'Interpretation rule')}</h2></div>
+        <button class="rule-dialog__close" type="button" aria-label="Close rule detail">×</button>
+      </div>
+      <div class="rule-dialog__result"><span>Current result</span><strong>${escapeHtml(evaluation.label || 'Unavailable')}</strong><small>${escapeHtml(evaluation.eligibility || '')}</small></div>
+      <dl><dt>Window</dt><dd>${escapeHtml(rule.window || 'Not documented')}</dd><dt>Eligibility</dt><dd>${escapeHtml(rule.eligibility || 'Not documented')}</dd></dl>
+      <h3>Current inputs</h3><ul class="rule-dialog__inputs">${inputs || '<li>No inputs available</li>'}</ul>
+      <h3>Thresholds</h3><ul>${thresholds || '<li>No thresholds documented</li>'}</ul>`;
+    dialog.querySelector('.rule-dialog__close').addEventListener('click', () => dialog.close());
+    dialog.showModal();
+  });
+}
+
+export function ruleTrigger(evaluation, rules = interpretationRules) {
+  if (!evaluation?.rule_id || !rules?.[evaluation.rule_id]) return '';
+  const encoded = escapeHtml(JSON.stringify(evaluation));
+  return `<button class="rule-trigger" type="button" data-rule-id="${escapeHtml(evaluation.rule_id)}" data-rule-version="${escapeHtml(evaluation.rule_version)}" data-rule-evaluation="${encoded}" aria-label="Open ${escapeHtml(evaluation.label || 'interpretation')} rule">Rule v${escapeHtml(evaluation.rule_version)}</button>`;
+}
+
+export function mountRuleTrigger(target, evaluation, rules = {}) {
+  if (!target) return;
+  bindRuleDisclosure(rules);
+  const selector = `.rule-trigger[data-rule-for="${CSS.escape(target.id)}"]`;
+  target.parentElement?.querySelector(selector)?.remove();
+  const html = ruleTrigger(evaluation, rules).replace(
+    'class="rule-trigger"',
+    `class="rule-trigger" data-rule-for="${escapeHtml(target.id)}"`,
+  );
+  if (html) target.insertAdjacentHTML('afterend', html);
+}

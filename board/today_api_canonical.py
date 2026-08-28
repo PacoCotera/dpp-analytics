@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from statistics import median
 
+from interpretation_rules import rule_catalog, today_business_context, today_pace
 from today_api_legacy import today_payload as _legacy_today_payload
 
 
@@ -342,4 +343,16 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
     payload["metric_basis"] = basis
     payload["product_contribution_sales_basis"] = "GROSS_CUSTOMER_SPEND"
     payload["order_operations_basis"] = "CURRENT_AMAZON_FULFILLMENT_STATE"
+    payload["day_read"] = today_pace(
+        payload.get("is_live"),
+        today.get("orders_today"),
+        today.get("pace_vs_same_weekday_pct"),
+        target.strftime("%A"),
+    )
+    payload["business_context_read"] = today_business_context(
+        context.get("mtd_delta_pct"), context.get("last30_delta_pct")
+    )
+    payload["interpretation_rules"] = rule_catalog(
+        "TODAY_PACE_V1", "TODAY_BUSINESS_CONTEXT_V1"
+    )
     return payload

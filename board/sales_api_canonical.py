@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+from interpretation_rules import (
+    rule_catalog,
+    sales_breadth,
+    sales_concentration,
+    sales_product_change,
+    today_pace,
+)
 from sales_api_legacy import sales_payload as _legacy_sales_payload
 
 
@@ -61,31 +68,23 @@ def _product_read(headline: dict, products: list[dict]) -> dict:
         key=lambda row: abs(float(row.get("sales_change_t28") or 0)),
         default={},
     )
-    if top_three_share is None:
-        concentration_state = "Unavailable"
-    elif top_three_share >= 75:
-        concentration_state = "Concentrated"
-    elif top_three_share <= 55:
-        concentration_state = "Broad"
-    else:
-        concentration_state = "Balanced"
-    if growing >= declining + 2:
-        breadth_state = "Broad improvement"
-    elif declining >= growing + 2:
-        breadth_state = "Broad weakening"
-    else:
-        breadth_state = "Mixed movement"
+    change_evaluation = sales_product_change(headline.get("sales_change_t28"))
+    concentration_evaluation = sales_concentration(top_three_share)
+    breadth_evaluation = sales_breadth(growing, declining, stable)
     return {
         "sales_t28": headline.get("sales_t28"),
         "sales_prior_t28": headline.get("sales_prior_t28"),
         "sales_change_t28": headline.get("sales_change_t28"),
         "delta28_pct": headline.get("delta28_pct"),
         "top_three_share_pct": top_three_share,
-        "concentration_state": concentration_state,
+        "concentration_state": concentration_evaluation["label"],
         "growing": growing,
         "declining": declining,
         "stable": stable,
-        "breadth_state": breadth_state,
+        "breadth_state": breadth_evaluation["label"],
+        "change_evaluation": change_evaluation,
+        "concentration_evaluation": concentration_evaluation,
+        "breadth_evaluation": breadth_evaluation,
         "leading_mover": {
             "sku": leading_mover.get("sku"),
             "product": leading_mover.get("product"),
@@ -244,5 +243,18 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
     }
     if payload.get("today"):
         payload["today"]["sales_basis"] = "GROSS_CUSTOMER_SPEND"
+    today = payload.get("today") or {}
+    payload["today_read"] = today_pace(
+        True,
+        today.get("orders_today"),
+        today.get("pace_vs_same_weekday_pct"),
+        "day",
+    )
+    payload["interpretation_rules"] = rule_catalog(
+        "TODAY_PACE_V1",
+        "SALES_PRODUCT_CHANGE_V1",
+        "SALES_CONCENTRATION_V1",
+        "SALES_BREADTH_V1",
+    )
     payload.pop("geography", None)
     return payload
