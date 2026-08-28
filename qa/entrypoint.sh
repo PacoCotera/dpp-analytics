@@ -22,6 +22,8 @@ node /qa/ads_surface_qa.mjs "$base_url" "$work_dir"
 ads_surface_rc=$?
 node /qa/footer_qa.mjs "$base_url" "$work_dir"
 footer_rc=$?
+node /qa/asset_revision_qa.mjs "$base_url" "$work_dir"
+asset_revision_rc=$?
 node /qa/timezone_qa.mjs "$base_url" "$work_dir"
 timezone_rc=$?
 node /qa/cache_performance_qa.mjs "$base_url" "$work_dir"
@@ -48,6 +50,7 @@ if [ "$order_operations_rc" -ne 0 ]; then exit "$order_operations_rc"; fi
 if [ "$product_naming_rc" -ne 0 ]; then exit "$product_naming_rc"; fi
 if [ "$ads_surface_rc" -ne 0 ]; then exit "$ads_surface_rc"; fi
 if [ "$footer_rc" -ne 0 ]; then exit "$footer_rc"; fi
+if [ "$asset_revision_rc" -ne 0 ]; then exit "$asset_revision_rc"; fi
 if [ "$timezone_rc" -ne 0 ]; then exit "$timezone_rc"; fi
 if [ "$cache_performance_rc" -ne 0 ]; then exit "$cache_performance_rc"; fi
 if [ "$load_time_rc" -ne 0 ]; then exit "$load_time_rc"; fi

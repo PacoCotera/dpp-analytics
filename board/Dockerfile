@@ -37,6 +37,7 @@ RUN python bundle_geography_reference.py
 # replaces only payload owners that need stronger canonical contracts.
 COPY board/server.py ./server_legacy.py
 COPY board/server_canonical.py ./server.py
+COPY board/asset_release.py .
 COPY board/response_cache.py .
 COPY board/response_transport.py .
 COPY board/interpretation_rules.py .

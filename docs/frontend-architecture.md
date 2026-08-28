@@ -120,7 +120,9 @@ The served workspaces now follow this model: Home, Today, Sales, Catalog, Produc
 
 Frontend dependencies are source-controlled. The Docker build no longer rewrites pages to inject stylesheets, scripts, tabs or enhancement layers. Its only HTML mutation is the visible deployment SHA in the footer.
 
-This makes local/source behavior and deployed behavior materially easier to compare: what is reviewed in Git is what the browser loads in production.
+At server startup, the complete static tree is hashed into one release manifest. The server attaches that revision to every page dependency and to transitive local CSS/JavaScript references, and injects the same revision into the HTML metadata and response headers. This transport transformation does not inject behavior or alter business logic. Fingerprinted responses are immutable; intentionally stable routes use validators.
+
+This makes local/source behavior and deployed behavior materially easier to compare: what is reviewed in Git is what the browser loads in production, and one page cannot silently combine assets from different releases.
 
 ## Retained global styles
 
