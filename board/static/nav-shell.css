@@ -627,7 +627,9 @@ body.shell-drawer-open {
   }
 
   .shell-global-header.topbar {
+    width: 100vw;
     gap: 10px;
+    margin-inline: calc(50% - 50vw);
     margin-bottom: 20px;
     padding-top: 7px;
     padding-bottom: 7px;
