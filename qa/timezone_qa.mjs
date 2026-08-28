@@ -29,6 +29,7 @@ const dateCases = await page.evaluate(async () => {
     summer2021: formatBusinessClock("2021-07-15T12:00:00Z"),
     winter2026: formatBusinessClock("2026-01-15T12:00:00Z"),
     summer2026: formatBusinessClock("2026-07-15T12:00:00Z"),
+    todayOrder: formatBusinessClock("Aug 27 · 16:33"),
     timestamp2026: formatBusinessTimestamp("2026-07-15T12:34:00Z"),
   };
 });
@@ -39,6 +40,7 @@ const expectedCases = {
   summer2021: "07:00 Mexico City",
   winter2026: "06:00 Mexico City",
   summer2026: "06:00 Mexico City",
+  todayOrder: "Aug 27 · 16:33 Mexico City",
   timestamp2026: "Jul 15, 6:34 AM Mexico City",
 };
 for (const [key, expected] of Object.entries(expectedCases)) {
@@ -70,6 +72,8 @@ for (const route of routes) {
     const clock = ((await page.locator("#clock").textContent()) || "").trim();
     if (!clock.endsWith(" Mexico City"))
       throw new Error(`ambiguous clock ${JSON.stringify(clock)}`);
+    if (await page.getByText("--:-- Mexico City", { exact: false }).count())
+      throw new Error("invalid local-time placeholder is visible");
     clocks.push({ route, clock });
   } catch (error) {
     errors.push(`${route}: ${error.message}`);
