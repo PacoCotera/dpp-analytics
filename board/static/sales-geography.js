@@ -8,7 +8,7 @@
 
   try {
     version = new URL(current, window.location.href).search;
-  } catch (_) {
+  } catch {
     version = '';
   }
 

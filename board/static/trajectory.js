@@ -5,7 +5,6 @@ import {
   formatBusinessClock,
   formatCount,
   formatMetricWindow,
-  integer,
   money,
   mountRuleTrigger,
   percent,

@@ -1038,7 +1038,7 @@ import { formatCount, money } from './format-core.js';
           return !event.button;
         })
         .on('start', () => {
-          hideTip();
+          window.hideTip?.();
           svgNode.classList.add('geo-map--panning');
         })
         .on('zoom', (event) => {
@@ -1114,7 +1114,7 @@ import { formatCount, money } from './format-core.js';
         const coversViewport = box.width > width * 0.96 && box.height > height * 0.96;
         node.style.display = coversViewport ? 'none' : '';
         if (coversViewport) node.dataset.geometryRejected = 'viewport-complement';
-      } catch (_) {
+      } catch {
         // SVG may not be measurable during an intermediate render frame.
       }
     });
