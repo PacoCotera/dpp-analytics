@@ -352,6 +352,8 @@ Observed:
 - Most pages load `ui-utils.js` and `data-cache.js` without a version token; Sales used a versioned `data-cache.js` URL.
 - Warm navigation did produce browser cache hits, so caching is active. No stale page was reproduced during the audit.
 
+Continuity note, 2026-08-28: production at `22c9c7f2` still mixes one page revision across versioned top-level assets and unversioned transitive assets. Sales loads unversioned `ui-utils.js`, `data-cache.js`, and national geometry alongside query-versioned CSS and JavaScript. Versioned and stable asset URLs both return `public,max-age=300` without ETag, Last-Modified, or release-revision headers. Scope is unchanged.
+
 Impact: A deployment can temporarily combine a new page bundle with an older shared script, while fingerprinted assets still incur short-TTL network work.
 
 Acceptance criteria:

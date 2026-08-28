@@ -6,6 +6,8 @@ The operating board historically rebuilt API payloads from PostgreSQL on every p
 
 The objective is not to make stale data look live. It is to stop recomputing the same decision payload more frequently than its source can materially change.
 
+Static release assets follow a separate identity contract from business-data caches. A content-derived manifest revision covers the complete frontend tree, all page and transitive asset references carry that revision, and those URLs are immutable for one year. Intentionally stable asset and HTML URLs use ETag revalidation. This prevents shared code from crossing deployment generations while leaving the API freshness rules below unchanged.
+
 ## User-facing behavior
 
 The board should behave like an application rather than a set of disconnected reports:

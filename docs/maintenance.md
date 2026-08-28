@@ -52,6 +52,18 @@ Before adding page-specific code, check whether the behavior belongs in one of t
 
 A page should not add a second nav, duplicate generic panel geometry, inject CSS from JavaScript, or create a post-render “enhancer” layer.
 
+### Static asset release contract
+
+`board/asset_release.py` owns one content-derived revision manifest for the complete `board/static/` tree. `board/server.py` applies that revision to page dependencies and to transitive local CSS/JavaScript references before serving them. Page code must not invent a second asset token or leave a dynamic asset outside this contract; dynamic loaders must propagate the query string of their versioned entrypoint.
+
+- Versioned `/assets/...?...v=<revision>` responses use a one-year immutable cache lifetime and expose both `ETag` and `X-DPP-Asset-Revision`.
+- Stable asset URLs remain available for diagnostics and compatibility, but require revalidation and bind any transitive import to the current revision.
+- Stable HTML routes use `no-cache` plus ETag validation and expose the same release header and `<meta name="dpp-asset-revision">` value.
+- `/assets/manifest.json?v=<revision>` lists every source asset and its exact release URL. A request for a revision other than the active manifest fails with `409` and `no-store` so a mixed release cannot be mistaken for a valid asset response.
+- `qa/asset_revision_qa.mjs` is the production gate for one revision across all workspaces, complete manifest membership, immutable caching, stable validators, and revision-mismatch rejection.
+
+When adding a local asset type or constructing a URL dynamically, extend `board/asset_release.py` and the production QA in the same change. Do not restore short-TTL caching on fingerprinted URLs.
+
 `board/metric_windows.py` is the shared server owner for rolling 28-day source and cutoff contracts. Home, Sales and Trajectory reuse `RECONCILED_BUSINESS_T28`; Sales Drivers, Catalog and Product Workspace reuse `RECONCILED_PRODUCT_T28`; Inventory and Product Workspace reuse `INVENTORY_ORDER_VELOCITY_T28`. `ui-utils.js` formats those API contracts for display. Page runtimes must not reconstruct a cutoff or relabel order-based inventory velocity as reconciled product demand.
 
 ## Where business truth lives

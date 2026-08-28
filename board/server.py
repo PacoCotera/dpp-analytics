@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import re
-from hashlib import sha256
 from datetime import date, datetime
 from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -14,13 +13,22 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ads_api import ads_payload as build_ads_payload
+from asset_release import (
+    asset_etag,
+    build_asset_manifest,
+    etag_matches,
+    manifest_bytes,
+    release_asset_bytes,
+    release_revision,
+    version_page,
+)
 from catalog_api import catalog_payload as build_catalog_payload
 from finance_api import finance_payload as build_finance_payload
 from health_api import health_board_payload as build_health_board_payload
 from inventory_api import inventory_payload as build_inventory_payload
 from product_api import product_payload as build_product_payload
 from response_cache import TTLResponseCache
-from response_transport import asset_content_type, compress_response, read_asset
+from response_transport import asset_content_type, compress_response
 from sales_api import sales_payload as build_sales_payload
 from today_api import today_payload as build_today_payload
 from trajectory_api import trajectory_payload as build_trajectory_payload
@@ -35,7 +43,6 @@ LABELS_PATH = Path(
         "/config/product_labels.json" if Path("/config").exists() else DEFAULT_LABELS_PATH,
     )
 )
-VERSIONED_ASSET_RE = re.compile(r'''(/assets/[^"'?#]+\.(?:css|js))''')
 BUILD_TOKEN = "__DPP_BUILD_SHA__"
 
 
@@ -50,27 +57,18 @@ def deployment_sha() -> str:
 BUILD_SHA = deployment_sha()
 
 
-def frontend_asset_version() -> str:
-    digest = sha256()
-    for asset in sorted(
-        path for path in STATIC.rglob("*") if path.is_file() and path.suffix.lower() in {".css", ".js"}
-    ):
-        digest.update(asset.relative_to(STATIC).as_posix().encode())
-        digest.update(asset.read_bytes())
-    return digest.hexdigest()[:12]
-
-
-ASSET_VERSION = frontend_asset_version()
+ASSET_MANIFEST = build_asset_manifest(STATIC)
+ASSET_VERSION = release_revision(ASSET_MANIFEST)
+ASSET_MANIFEST_BODY = manifest_bytes(ASSET_MANIFEST, ASSET_VERSION)
 
 
 def versioned_page(name: str) -> bytes:
-    """Attach one content-derived generation to every local CSS/JS dependency."""
+    """Attach one content-derived generation to every local asset dependency."""
     text = (STATIC / name).read_text()
     if text.count(BUILD_TOKEN) != 1:
         raise RuntimeError(f"{name}: expected exactly one build token")
     text = text.replace(BUILD_TOKEN, BUILD_SHA)
-    text = VERSIONED_ASSET_RE.sub(lambda match: f"{match.group(1)}?v={ASSET_VERSION}", text)
-    return text.encode()
+    return version_page(text, ASSET_VERSION).encode()
 
 
 def asset_path(request_path: str) -> Path | None:
@@ -420,12 +418,38 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
 
         if path.startswith("/assets/"):
-            asset = asset_path(path)
-            if asset is None:
-                self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
+            requested_revision = (query.get("v") or [None])[0]
+            if requested_revision is not None and requested_revision != ASSET_VERSION:
+                self.send_bytes(
+                    409,
+                    "text/plain; charset=utf-8",
+                    b"Asset revision mismatch; reload the page",
+                    cache="no-store",
+                    headers={"X-DPP-Asset-Revision": ASSET_VERSION},
+                )
                 return
-            cache = "public, max-age=31536000, immutable" if "/vendor/" in path else "public, max-age=300"
-            self.send_bytes(200, asset_content_type(asset), read_asset(asset), cache=cache)
+            if path == "/assets/manifest.json":
+                asset_body = ASSET_MANIFEST_BODY
+                content_type = "application/json"
+            else:
+                asset = asset_path(path)
+                if asset is None:
+                    self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
+                    return
+                asset_body = release_asset_bytes(asset, ASSET_VERSION)
+                content_type = asset_content_type(asset)
+            etag = asset_etag(asset_body)
+            immutable = requested_revision == ASSET_VERSION
+            cache = (
+                "public, max-age=31536000, immutable"
+                if immutable
+                else "public, max-age=0, must-revalidate"
+            )
+            headers = {"ETag": etag, "X-DPP-Asset-Revision": ASSET_VERSION}
+            if not immutable and etag_matches(self.headers.get("If-None-Match", ""), etag):
+                self.send_bytes(304, content_type, b"", cache=cache, headers=headers)
+                return
+            self.send_bytes(200, content_type, asset_body, cache=cache, headers=headers)
             return
 
         if path == "/health":
@@ -506,7 +530,19 @@ class Handler(BaseHTTPRequestHandler):
             "/data-health": DATA_HEALTH_INDEX,
         }
         if path in pages:
-            self.send_bytes(200, "text/html; charset=utf-8", pages[path], cache="no-cache")
+            page_body = pages[path]
+            etag = asset_etag(page_body)
+            headers = {"ETag": etag, "X-DPP-Asset-Revision": ASSET_VERSION}
+            if etag_matches(self.headers.get("If-None-Match", ""), etag):
+                self.send_bytes(304, "text/html; charset=utf-8", b"", cache="no-cache", headers=headers)
+            else:
+                self.send_bytes(
+                    200,
+                    "text/html; charset=utf-8",
+                    page_body,
+                    cache="no-cache",
+                    headers=headers,
+                )
             return
         self.send_bytes(404, "text/plain; charset=utf-8", b"Not found")
 
