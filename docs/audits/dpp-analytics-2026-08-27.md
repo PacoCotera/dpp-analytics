@@ -461,6 +461,9 @@ Observed:
 
 - The zero-demand chart for `PNC-001L` renders repeated rounded `$1` and `$0` y-axis labels despite the series being entirely zero.
 
+Continuity note, 2026-08-28: deployed main `a94bb5ef` still renders three `$1` ticks and three `$0`
+ticks for the all-zero PNC-001L 28-day demand series. Scope is unchanged.
+
 Impact: The scale suggests nonzero demand and looks mathematically unstable.
 
 Acceptance criteria:

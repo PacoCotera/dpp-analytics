@@ -215,6 +215,8 @@ When changing `compose.yml` or `.env.example`, validate them together. The templ
 10. updates the deployment heartbeat.
 
 Production browser QA records page/viewport captures plus browser console errors, failed responses and horizontal-overflow checks. Treat it as a deployment requirement, not decorative screenshots.
+Its Product scenarios cover both a populated demand chart and the all-zero PNC-001L sales/units states. An
+all-zero selected metric must render the explicit range-empty message with no bars or numeric axis ticks.
 The same suite runs `qa/accessibility_qa.mjs` across every primary workspace. It rejects missing/duplicate level-one
 headings, unnamed visible links, missing toggle-button state, broken native keyboard activation, and loss of the
 Finance monthly report's table relationships.

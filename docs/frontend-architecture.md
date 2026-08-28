@@ -62,10 +62,13 @@ These primitives are intentionally data-agnostic. Variable-length content such a
 - current/partial period treatment
 - month/year boundaries
 - empty/loading states
+- all-zero selected-metric states without synthetic positive domains
 - supported chart forms
 - responsive behavior for charts that need more horizontal reading width than a phone viewport can provide
 
-Pages choose the correct analytical chart but should not independently recreate generic chart primitives.
+Pages choose the correct analytical chart but should not independently recreate generic chart primitives. Product
+demand pages pass canonical series to the shared owner; `chart-system.js` renders an explicit range-empty state
+when the selected metric is all zero.
 
 Dense multi-period charts may opt into `.dpp-chart-scroll` on the containing chart region and `.dpp-chart--wide` on the chart itself. At phone widths the shared chart system preserves a readable minimum chart width and contains horizontal scrolling inside that chart region. Do not shrink a dense analytical chart into an unreadable thumbnail merely to avoid scrolling, and do not allow the chart to create horizontal overflow on the page itself.
 
