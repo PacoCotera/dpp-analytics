@@ -146,8 +146,7 @@
     const closeButton = sidebar.querySelector('.shell-drawer-close');
     closeButton?.focus({ preventScroll: true });
     window.requestAnimationFrame(() => {
-      if (closeButton && document.activeElement !== closeButton)
-        closeButton.focus({ preventScroll: true });
+      if (closeButton && document.activeElement !== closeButton) closeButton.focus({ preventScroll: true });
     });
   }
 

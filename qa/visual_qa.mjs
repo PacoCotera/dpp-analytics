@@ -181,11 +181,12 @@ async function verifyBusiness(page) {
     const sections = main
       ? [...main.children].filter(element => element.classList.contains('home-section'))
       : [];
-    const overview = document.querySelector('[data-dpp-qa="business-overview"]');
-    const demand = document.querySelector('[data-dpp-qa="business-demand"]');
-    const operations = document.querySelector('[data-dpp-qa="business-operations"]');
-    const decisions = document.querySelector('[data-dpp-qa="business-decisions"]');
-    const health = document.querySelector('[data-dpp-qa="business-health"]');
+    const overview = document.querySelector('.home-overview');
+    const demand = document.querySelector('.home-demand');
+    const operations = document.querySelector('.home-operations');
+    const operationsLayout = operations?.querySelector('.operations-layout');
+    const decisions = document.querySelector('.decisions-module');
+    const health = document.querySelector('.health-module');
     const dataHealthCard = document.querySelector('.business-health-card[href="/data-health"]');
     const healthContract = payload.health_contract || {};
     const pipelineScope = healthContract.pipeline_scope || {};
@@ -193,6 +194,12 @@ async function verifyBusiness(page) {
     const ads = document.getElementById('adsRead');
     const brand = document.querySelector('.topbar a.brand');
     const top = (element) => element?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+    const precedes = (before, after) =>
+      Boolean(
+        before &&
+          after &&
+          (before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING),
+      );
     return {
       activeNav: document.querySelector('.nav-primary-set > a.active')?.textContent?.trim(),
       brandPath: brand ? new URL(brand.href).pathname : '',
@@ -207,11 +214,14 @@ async function verifyBusiness(page) {
         sections[0] === overview &&
           sections[1] === demand &&
           sections[2] === operations &&
-          top(overview) < top(demand) &&
-          top(demand) < top(operations) &&
-          operations?.contains(decisions) &&
-          operations?.contains(health) &&
-          top(decisions) <= top(health),
+          overview?.parentElement === main &&
+          demand?.parentElement === main &&
+          operations?.parentElement === main &&
+          decisions?.parentElement === operationsLayout &&
+          health?.parentElement === operationsLayout &&
+          precedes(overview, demand) &&
+          precedes(demand, decisions) &&
+          precedes(decisions, health),
       ),
       exceptionItems: document.querySelectorAll('.attention-item').length,
       severityBadges: document.querySelectorAll('.attention-item .severity-badge').length,
@@ -238,7 +248,7 @@ async function verifyBusiness(page) {
       ).length,
       rhythmWeekendDays: document.querySelectorAll('#spark .home-rhythm__bar--weekend').length,
       signalCopy: document
-        .querySelector('[data-dpp-qa="business-demand"] .section-header__description')
+        .querySelector('.home-demand .section-header__description')
         ?.textContent?.replace(/\s+/g, ' ')
         .toLowerCase()
         .includes('seven-day signal'),
