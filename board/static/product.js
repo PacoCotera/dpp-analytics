@@ -137,6 +137,7 @@ function renderHero(profile, commercial) {
     action === 'OK' ? 'good' : action === 'STOCKOUT' || action === 'PRODUCE' ? 'bad' : 'warn';
   const attributes = Object.values(commercial.variation_attributes || {});
   const identity = commercial.identity || {};
+  const deleted = commercial.catalog_membership === 'DELETED';
   const fulfillment = String(profile.fulfillment_channel || '')
     .toUpperCase()
     .includes('AMAZON')
@@ -150,8 +151,8 @@ function renderHero(profile, commercial) {
     commercial.parent_asin
       ? `<span class="hero-meta">Parent ${escapeHtml(commercial.parent_asin)}</span>`
       : '',
-    `<span class="hero-meta">${escapeHtml(fulfillment)}</span>`,
-    `<span class="hero-meta">Listed ${escapeHtml(listedDate(profile.open_date))}</span>`,
+    `<span class="hero-meta">${deleted ? 'Last reported ' : ''}${escapeHtml(fulfillment)}</span>`,
+    `<span class="hero-meta">${deleted ? 'Last listed' : 'Listed'} ${escapeHtml(listedDate(profile.open_date))}</span>`,
   ].join('');
   const amazonLink = profile.amazon_url
     ? `<a class="btn" href="${escapeHtml(profile.amazon_url)}" target="_blank" rel="noopener">Amazon ↗</a>`
@@ -166,7 +167,7 @@ function renderHero(profile, commercial) {
     </div>
     <div class="hero-price">
       <strong>${profile.listing_price == null ? '—' : money(profile.listing_price)}</strong>
-      <span>listing price</span>
+      <span>${deleted ? 'last listing price' : 'listing price'}</span>
       ${amazonLink}
     </div>
     <div class="hero-command">
@@ -179,7 +180,7 @@ function renderHero(profile, commercial) {
         <div class="product-health__fact"><div class="label">Listing</div><strong>${escapeHtml(profile.listing_status || '—')}</strong><small>${profile.listing_status === 'Deleted' ? `Last Amazon status ${escapeHtml(profile.source_listing_status || 'unknown')}` : escapeHtml(fulfillment)}</small></div>
         <div class="product-health__fact"><div class="label">Family</div><strong>${escapeHtml(identity.family_label || 'Identity unavailable')}</strong><small>${escapeHtml(identity.role || commercial.product_role || 'commercial identity')}</small></div>
         <div class="product-health__fact"><div class="label">Variation</div><strong>${escapeHtml(attributes.slice(0, 2).join(' · ') || '—')}</strong><small>${escapeHtml(attributes.slice(2).join(' · ') || commercial.amazon_variation_theme || 'catalog attributes')}</small></div>
-        <div class="product-health__fact"><div class="label">Parent ASIN</div><strong>${escapeHtml(commercial.parent_asin || 'None')}</strong><small>${commercial.parent_asin ? 'Amazon variation family' : 'standalone offer'}</small></div>
+        <div class="product-health__fact"><div class="label">Parent ASIN</div><strong>${escapeHtml(commercial.parent_asin || 'None')}</strong><small>${deleted ? (commercial.parent_asin ? 'last known Amazon family' : 'historical relationship unavailable') : commercial.parent_asin ? 'Amazon variation family' : 'standalone offer'}</small></div>
       </div>
     </div>`;
 }
@@ -198,10 +199,16 @@ function renderListingAndInventory(profile, commercial, ads) {
   const attributeValues = Object.values(attributes);
   byId('variationRead').textContent = attributeValues.length
     ? attributeValues.join(' · ')
-    : commercial.product_role === 'SELLABLE_STANDALONE'
-      ? 'Standalone'
-      : '—';
-  byId('variationNote').textContent = commercial.parent_asin ? 'child variation' : 'commercial offer';
+    : deleted
+      ? 'Historical record'
+      : commercial.product_role === 'SELLABLE_STANDALONE'
+        ? 'Standalone'
+        : '—';
+  byId('variationNote').textContent = deleted
+    ? 'not a current offer'
+    : commercial.parent_asin
+      ? 'child variation'
+      : 'commercial offer';
 
   const action = profile.inventory_action || '—';
   byId('inventoryState').textContent = action;
@@ -219,7 +226,11 @@ function renderListingAndInventory(profile, commercial, ads) {
       : `${Number(profile.days_cover_with_inbound).toFixed(0)} days cover`;
 
   const hasAds = Boolean(ads.through_date && Number(ads.observed_ads_days || 0) > 0);
-  if (!hasAds) {
+  if (deleted) {
+    byId('adsState').textContent = 'Historical only';
+    byId('adsState').className = 'warn';
+    byId('adsNote').textContent = 'not a current offer';
+  } else if (!hasAds) {
     byId('adsState').textContent = 'Ads access pending';
     byId('adsState').className = 'warn';
     byId('adsNote').textContent = 'seller demand remains available';
@@ -255,7 +266,7 @@ function renderMetrics(profile, performance, traffic, economics) {
       : `${money(economics.estimated_cogs_t28)} estimated 28D COGS`;
 }
 
-function renderInventoryDecision(profile) {
+function renderInventoryDecision(profile, commercial) {
   byId('available').textContent = integer(profile.available);
   byId('inbound').textContent = integer(profile.inbound);
   byId('velocity').textContent = Number(profile.units_per_day || 0).toFixed(2);
@@ -263,7 +274,10 @@ function renderInventoryDecision(profile) {
   let decision = 'Inventory is stable.';
   let read = 'Coverage is healthy at the current selling velocity.';
 
-  if (profile.inventory_action === 'STOCKOUT') {
+  if (commercial.catalog_membership === 'DELETED') {
+    decision = 'No current inventory decision.';
+    read = 'Deleted SKUs are excluded from replenishment decisions.';
+  } else if (profile.inventory_action === 'STOCKOUT') {
     decision = 'Replenish now.';
     read = 'Stocked out with recent demand.';
   } else if (profile.inventory_action === 'PRODUCE') {
@@ -281,7 +295,12 @@ function renderInventoryDecision(profile) {
   byId('invRead').textContent = read;
 }
 
-function renderEconomicsDecision(economics) {
+function renderEconomicsDecision(economics, commercial) {
+  if (commercial.catalog_membership === 'DELETED') {
+    byId('econDecision').textContent = 'Historical record';
+    byId('econRead').textContent = 'Deleted SKUs are excluded from current product economics decisions.';
+    return;
+  }
   if (economics.unit_cogs == null) {
     byId('econDecision').textContent = 'COGS not configured';
     byId('econRead').textContent = 'Add standard product cost before using product-level economics.';
@@ -329,7 +348,13 @@ function renderVariationContext(profile, commercial, familyVariations) {
       : '<div class="product-wait">No sibling variations to compare.</div>';
 }
 
-function renderAds(ads) {
+function renderAds(ads, commercial) {
+  if (commercial.catalog_membership === 'DELETED') {
+    byId('adsDecision').textContent = 'No current Ads decision';
+    byId('adsRead').textContent =
+      'Deleted SKUs are excluded from current paid-support decisions; historical order evidence remains available.';
+    return;
+  }
   const observed = Number(ads.observed_ads_days || 0);
   const mature = Number(ads.mature_ads_days || 0);
   const hasAds = Boolean(ads.through_date && observed > 0);
@@ -418,10 +443,10 @@ function render(payload) {
   renderHealth(payload);
   renderListingAndInventory(profile, commercial, ads);
   renderMetrics(profile, performance, traffic, economics);
-  renderInventoryDecision(profile);
-  renderEconomicsDecision(economics);
+  renderInventoryDecision(profile, commercial);
+  renderEconomicsDecision(economics, commercial);
   renderVariationContext(profile, commercial, payload.family_variations);
-  renderAds(ads);
+  renderAds(ads, commercial);
   renderOrders(payload.recent_orders, profile);
   draw();
 }
