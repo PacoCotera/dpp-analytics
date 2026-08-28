@@ -113,6 +113,9 @@ try {
       kpis: [...document.querySelectorAll('#geoKpis .geo-kpi strong')].map(x => x.textContent?.trim() || ''),
       headerColumns: document.querySelectorAll('.geo-table thead th').length,
       sortableColumns: document.querySelectorAll('.geo-table thead th[data-geo-sort] button').length,
+      rowDisclosure: document.getElementById('geoSortStatus')?.textContent?.trim() || '',
+      showAllLabel: document.getElementById('geoShowAll')?.textContent?.trim() || '',
+      showAllHidden: document.getElementById('geoShowAll')?.hidden,
       widths,
       tableWidth,
       tableOverflow: scroll ? scroll.scrollWidth - scroll.clientWidth : 999,
@@ -123,6 +126,14 @@ try {
     throw new Error(`Canonical coverage copy not rendered: ${national.coverage}`);
   }
   if (national.rankedRows <= 0 || national.stateShapes < 30) throw new Error(`Geography rendering incomplete: ${JSON.stringify(national)}`);
+  const nationalCountMatch = national.rowDisclosure.match(/Showing (\d+) of (\d+) states/);
+  if (!nationalCountMatch || Number(nationalCountMatch[1]) !== national.rankedRows || !national.rowDisclosure.includes('sorted by Spend ↓')) {
+    throw new Error(`National row count or sort disclosure is incomplete: ${JSON.stringify(national)}`);
+  }
+  const nationalTotalRows = Number(nationalCountMatch[2]);
+  if (nationalTotalRows > 20 && (national.showAllHidden || national.showAllLabel !== `Show all ${nationalTotalRows}`)) {
+    throw new Error(`National Show all control is incomplete: ${JSON.stringify(national)}`);
+  }
   if (national.kpis.length !== 4) throw new Error(`Expected four geography KPIs, got ${national.kpis.length}`);
   if (national.headerColumns !== 5 || national.sortableColumns !== 5) throw new Error(`Expected five sortable geography columns: ${JSON.stringify(national)}`);
   if (national.widths.length !== 5 || national.tableWidth <= 0) throw new Error(`Geography column sizing unavailable: ${JSON.stringify(national)}`);
@@ -154,8 +165,36 @@ try {
   await page.locator('th[data-geo-sort="sales"] button').click();
   await page.screenshot({ path: path.join(outDir, 'sales-geography-desktop.png'), fullPage: true });
 
+  const geographyDates = (geo.daily || []).map(row => String(row.business_date || '').slice(0, 10)).filter(Boolean).sort();
+  const maxGeographyDate = geographyDates.at(-1);
+  const geographyStart = new Date(`${maxGeographyDate}T12:00:00Z`);
+  geographyStart.setUTCDate(geographyStart.getUTCDate() - 89);
+  const shortStatePostals = new Map();
+  for (const row of geo.daily || []) {
+    const date = new Date(`${String(row.business_date || '').slice(0, 10)}T12:00:00Z`);
+    if (date < geographyStart || date > new Date(`${maxGeographyDate}T12:00:00Z`)) continue;
+    const code = String(row.state_code || '');
+    if (!shortStatePostals.has(code)) shortStatePostals.set(code, new Set());
+    shortStatePostals.get(code).add(String(row.postal_code || '').padStart(5, '0'));
+  }
+  const shortState = [...shortStatePostals.entries()].find(([, codes]) => codes.size > 0 && codes.size <= 20);
+  if (!shortState) throw new Error('No short postal drill-down is available to verify the complete-list edge case');
+  await page.locator('#geoStateSelect').selectOption(shortState[0]);
+  const shortPostalTable = await page.evaluate(() => ({
+    visibleRows: document.querySelectorAll('#geoRankedRows tr').length,
+    status: document.getElementById('geoSortStatus')?.textContent?.trim() || '',
+    showAllHidden: document.getElementById('geoShowAll')?.hidden,
+  }));
+  if (shortPostalTable.visibleRows !== shortState[1].size || !shortPostalTable.status.includes(`Showing all ${shortState[1].size} postal codes`) || !shortPostalTable.showAllHidden) {
+    throw new Error(`Short postal list should render completely without an expansion control: ${JSON.stringify({ shortState: shortState[0], expected: shortState[1].size, shortPostalTable })}`);
+  }
+  await page.locator('#geoStateSelect').selectOption('all');
+
   const postalResponsePromise = page.waitForResponse(
-    r => r.url().includes('/api/geography/postal-geometry?') && r.request().method() === 'GET',
+    r => {
+      const url = new URL(r.url());
+      return url.pathname === '/api/geography/postal-geometry' && url.searchParams.get('state') === '15' && r.request().method() === 'GET';
+    },
     { timeout: 60000 },
   );
   await page.locator('#geoStateSelect').selectOption('15');
@@ -206,6 +245,44 @@ try {
   await page.waitForFunction(() => /active postal polygons mapped/.test(document.getElementById('geoMapStatus')?.textContent || ''), null, { timeout: 60000 });
   await page.locator('#geoRankedRows .geo-area-cell small').first().waitFor({ state: 'visible', timeout: 8000 });
 
+  const postalTableBeforeExpansion = await page.evaluate(() => ({
+    visibleRows: document.querySelectorAll('#geoRankedRows tr').length,
+    status: document.getElementById('geoSortStatus')?.textContent?.trim() || '',
+    showAllHidden: document.getElementById('geoShowAll')?.hidden,
+    showAllLabel: document.getElementById('geoShowAll')?.textContent?.trim() || '',
+    expanded: document.getElementById('geoShowAll')?.getAttribute('aria-expanded'),
+  }));
+  const expectedPostalRows = Number(postalPayload.requested_codes || 0);
+  const expectedLimitedRows = Math.min(20, expectedPostalRows);
+  if (postalTableBeforeExpansion.visibleRows !== expectedLimitedRows) {
+    throw new Error(`Postal table limit is not explicit and deterministic: ${JSON.stringify({ expectedPostalRows, postalTableBeforeExpansion })}`);
+  }
+  const expectedCountCopy = expectedPostalRows > 20
+    ? `Showing 20 of ${expectedPostalRows} postal codes`
+    : `Showing all ${expectedPostalRows} postal codes`;
+  if (!postalTableBeforeExpansion.status.includes(expectedCountCopy) || !postalTableBeforeExpansion.status.includes('sorted by Spend ↓')) {
+    throw new Error(`Postal row count or sort disclosure is incomplete: ${JSON.stringify(postalTableBeforeExpansion)}`);
+  }
+  if (expectedPostalRows > 20) {
+    if (postalTableBeforeExpansion.showAllHidden || postalTableBeforeExpansion.showAllLabel !== `Show all ${expectedPostalRows}` || postalTableBeforeExpansion.expanded !== 'false') {
+      throw new Error(`Postal Show all control is incomplete: ${JSON.stringify(postalTableBeforeExpansion)}`);
+    }
+    await page.locator('#geoShowAll').click();
+    const expandedPostalTable = await page.evaluate(() => ({
+      visibleRows: document.querySelectorAll('#geoRankedRows tr').length,
+      status: document.getElementById('geoSortStatus')?.textContent?.trim() || '',
+      button: document.getElementById('geoShowAll')?.textContent?.trim() || '',
+      expanded: document.getElementById('geoShowAll')?.getAttribute('aria-expanded'),
+    }));
+    if (expandedPostalTable.visibleRows !== expectedPostalRows || !expandedPostalTable.status.includes(`Showing all ${expectedPostalRows} postal codes`) || expandedPostalTable.button !== 'Show top 20' || expandedPostalTable.expanded !== 'true') {
+      throw new Error(`Postal Show all did not expose the complete set: ${JSON.stringify(expandedPostalTable)}`);
+    }
+    await page.locator('#geoShowAll').click();
+    if (await page.locator('#geoRankedRows tr').count() !== 20) throw new Error('Postal Show top 20 did not restore the limited view');
+  } else if (!postalTableBeforeExpansion.showAllHidden) {
+    throw new Error(`Postal Show all should be hidden for a complete short list: ${JSON.stringify(postalTableBeforeExpansion)}`);
+  }
+
   const postal = await page.evaluate(() => {
     const scroll = document.querySelector('.geo-ranked-panel .data-table-scroll');
     const svg = document.getElementById('geoMap');
@@ -231,6 +308,8 @@ try {
       postalShapes: paths.length,
       contextShapes: document.querySelectorAll('#geoMap path.geo-state-context').length,
       placeLabel: label,
+      visibleRows: document.querySelectorAll('#geoRankedRows tr').length,
+      rowDisclosure: document.getElementById('geoSortStatus')?.textContent?.trim() || '',
       invalidBoxes: invalidBoxes.length,
       svgOverflow: svg ? getComputedStyle(svg).overflow : '',
       tableOverflow: scroll ? scroll.scrollWidth - scroll.clientWidth : 999,
