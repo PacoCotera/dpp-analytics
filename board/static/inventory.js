@@ -213,8 +213,12 @@ function bindInteractions() {
 
   document.querySelectorAll('.filter').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('.filter').forEach((item) => item.classList.remove('active'));
+      document.querySelectorAll('.filter').forEach((item) => {
+        item.classList.remove('active');
+        item.setAttribute('aria-pressed', 'false');
+      });
       button.classList.add('active');
+      button.setAttribute('aria-pressed', 'true');
       state.filter = button.dataset.filter;
       renderRows();
     });

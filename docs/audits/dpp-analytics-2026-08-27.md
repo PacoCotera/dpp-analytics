@@ -414,6 +414,12 @@ Observed:
 - The Finance monthly report is visually tabular but does not expose table semantics.
 - Sales tabs were correctly exposed as a tablist, demonstrating the expected pattern.
 
+Continuity note, 2026-08-28: production at `f3915a15` no longer has the audited empty overlay links;
+visible Catalog destinations have descriptive text. The remaining contract still reproduces: Catalog has two
+level-one headings, Today and Product have none, the named button groups expose only visual selected state, and
+the Finance monthly report contains no table element. Scope is narrowed to preserve the corrected links while
+adding a route-wide regression gate against unnamed links returning.
+
 Impact: Keyboard and assistive-technology users cannot reliably identify destinations, selected states, or financial row/column relationships.
 
 Acceptance criteria:

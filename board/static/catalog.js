@@ -363,7 +363,7 @@ function renderModes() {
   $('analysisModes').innerHTML = buttons
     .map(
       ([key, label]) =>
-        `<button class="mode ${key === mode ? 'active' : ''}" data-mode="${esc(key)}">${esc(label)}</button>`,
+        `<button class="mode ${key === mode ? 'active' : ''}" type="button" data-mode="${esc(key)}" aria-pressed="${key === mode}">${esc(label)}</button>`,
     )
     .join('');
 
@@ -373,9 +373,11 @@ function renderModes() {
       button.addEventListener('click', () => {
         mode = button.dataset.mode;
         filter = 'all';
-        document
-          .querySelectorAll('.filter')
-          .forEach((item) => item.classList.toggle('active', item.dataset.filter === 'all'));
+        document.querySelectorAll('.filter').forEach((item) => {
+          const selected = item.dataset.filter === 'all';
+          item.classList.toggle('active', selected);
+          item.setAttribute('aria-pressed', String(selected));
+        });
         renderModes();
         renderPortfolio();
       });
@@ -538,8 +540,12 @@ function bindInteractions() {
   $('sort').addEventListener('change', renderPortfolio);
   document.querySelectorAll('.filter').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('.filter').forEach((item) => item.classList.remove('active'));
+      document.querySelectorAll('.filter').forEach((item) => {
+        item.classList.remove('active');
+        item.setAttribute('aria-pressed', 'false');
+      });
       button.classList.add('active');
+      button.setAttribute('aria-pressed', 'true');
       filter = button.dataset.filter;
       renderPortfolio();
     });

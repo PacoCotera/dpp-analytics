@@ -103,14 +103,22 @@
           <div class="inventory-tools">
             <input id="search" class="search" type="search" placeholder="Search product or SKU…" />
             <div class="filters" role="group" aria-label="Inventory status filter">
-              <button class="filter active" type="button" data-filter="current">Current stock</button>
-              <button class="filter" type="button" data-filter="attention">Needs action</button>
-              <button class="filter" type="button" data-filter="ok">Healthy</button>
-              <button class="filter" type="button" data-filter="no_velocity">No velocity</button>
-              <button class="filter" type="button" data-filter="alias">Aliases</button>
-              <button class="filter" type="button" data-filter="retired">Retired</button>
-              <button class="filter" type="button" data-filter="archived">Archived</button>
-              <button class="filter" type="button" data-filter="all">All records</button>
+              <button class="filter active" type="button" data-filter="current" aria-pressed="true">
+                Current stock
+              </button>
+              <button class="filter" type="button" data-filter="attention" aria-pressed="false">
+                Needs action
+              </button>
+              <button class="filter" type="button" data-filter="ok" aria-pressed="false">Healthy</button>
+              <button class="filter" type="button" data-filter="no_velocity" aria-pressed="false">
+                No velocity
+              </button>
+              <button class="filter" type="button" data-filter="alias" aria-pressed="false">Aliases</button>
+              <button class="filter" type="button" data-filter="retired" aria-pressed="false">Retired</button>
+              <button class="filter" type="button" data-filter="archived" aria-pressed="false">
+                Archived
+              </button>
+              <button class="filter" type="button" data-filter="all" aria-pressed="false">All records</button>
             </div>
             <span class="export-link">Reference view</span>
           </div>

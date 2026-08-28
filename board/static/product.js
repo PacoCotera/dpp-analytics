@@ -139,7 +139,7 @@ function renderHero(profile, commercial) {
   byId('hero').innerHTML = `${image}
     <div>
       <div class="hero-sku">${escapeHtml(profile.sku)} · ${escapeHtml(profile.asin || '')}</div>
-      <div class="hero-name">${escapeHtml(profile.product || profile.sku)}</div>
+      <h1 class="hero-name">${escapeHtml(profile.product || profile.sku)}</h1>
       ${profile.catalog_title && profile.catalog_title !== profile.product ? `<div class="hero-catalog-title">${escapeHtml(profile.catalog_title)}</div>` : ''}
       <div class="hero-details">${chips}</div>
     </div>
@@ -431,10 +431,10 @@ function bindInteractions() {
     button.addEventListener('click', () => {
       document.querySelectorAll('[data-days]').forEach((item) => {
         item.classList.remove('active');
-        item.setAttribute('aria-selected', 'false');
+        item.setAttribute('aria-pressed', 'false');
       });
       button.classList.add('active');
-      button.setAttribute('aria-selected', 'true');
+      button.setAttribute('aria-pressed', 'true');
       days = Number(button.dataset.days);
       draw();
     });
@@ -444,10 +444,10 @@ function bindInteractions() {
     button.addEventListener('click', () => {
       document.querySelectorAll('[data-metric]').forEach((item) => {
         item.classList.remove('active');
-        item.setAttribute('aria-selected', 'false');
+        item.setAttribute('aria-pressed', 'false');
       });
       button.classList.add('active');
-      button.setAttribute('aria-selected', 'true');
+      button.setAttribute('aria-pressed', 'true');
       metric = button.dataset.metric || 'sales';
       draw();
     });

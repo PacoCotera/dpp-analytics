@@ -31,6 +31,7 @@
       <nav class="primary-nav"></nav>
 
       <main>
+        <h1 class="sr-only">Today</h1>
         <section class="today-workspace">
           <div class="today-left-column">
             <section
@@ -39,7 +40,13 @@
             >
               <div class="today-hero__top">
                 <div class="today-eyebrow" id="salesLabel">Shopper spend today · incl. IVA</div>
-                <div class="day-picker" id="dayPicker" data-no-swipe></div>
+                <div
+                  class="day-picker"
+                  id="dayPicker"
+                  role="group"
+                  aria-label="Operating day"
+                  data-no-swipe
+                ></div>
               </div>
               <div class="today-hero__value"><span class="currency">$</span><span id="sales">—</span></div>
               <div class="today-hero__read">
@@ -66,10 +73,12 @@
                     Same shopper-spend incl.-IVA basis across the selected window
                   </div>
                 </div>
-                <div class="periods" data-no-swipe>
-                  <button class="period" type="button" data-period="7">7D</button>
-                  <button class="period" type="button" data-period="mtd">MTD</button>
-                  <button class="period active" type="button" data-period="30">30D</button>
+                <div class="periods" role="group" aria-label="Sales rhythm window" data-no-swipe>
+                  <button class="period" type="button" data-period="7" aria-pressed="false">7D</button>
+                  <button class="period" type="button" data-period="mtd" aria-pressed="false">MTD</button>
+                  <button class="period active" type="button" data-period="30" aria-pressed="true">
+                    30D
+                  </button>
                 </div>
               </div>
               <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
