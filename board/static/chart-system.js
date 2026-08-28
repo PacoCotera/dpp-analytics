@@ -851,6 +851,13 @@
     data.forEach((d, i) => {
       d.avg = d3.mean(data.slice(Math.max(0, i - 6), i + 1), (x) => x.value) || 0;
     });
+    const maximum = d3.max(data, (d) => Math.max(d.value, d.avg)) || 0;
+    if (maximum === 0) {
+      return empty(
+        selector,
+        metric === 'units' ? 'No units ordered in this range.' : 'No demand in this range.',
+      );
+    }
     const compact = window.innerWidth <= 640;
     const ctx = shell(
       selector,
@@ -865,11 +872,7 @@
       .scaleUtc()
       .domain(d3.extent(data, (d) => d.date))
       .range([0, ctx.innerW]);
-    const y = d3
-      .scaleLinear()
-      .domain([0, d3.max(data, (d) => Math.max(d.value, d.avg)) || 1])
-      .nice(4)
-      .range([ctx.innerH, 0]);
+    const y = d3.scaleLinear().domain([0, maximum]).nice(4).range([ctx.innerH, 0]);
     grid(ctx, y, 4, metric === 'units' ? d3.format('~g') : shortMoney);
     const barW = Math.max(2.5, Math.min(18, (ctx.innerW / data.length) * 0.58));
     const bars = ctx.plot

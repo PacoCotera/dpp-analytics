@@ -462,6 +462,7 @@ async function verifyCatalogMode(page, mode) {
 
 async function verifyProductWorkspace(page) {
   await wait(page, '.hero-name');
+  await wait(page, '#chart .dpp-bar');
   const payload = await page.evaluate(async () =>
     (await (await fetch('/api/product?sku=PNC-001', { cache: 'no-store' })).json()),
   );
@@ -551,6 +552,49 @@ async function verifyProductWorkspace(page) {
   if (leakedOrderPending.length)
     throw new Error(`Product order evidence leaked raw pending language: ${JSON.stringify(leakedOrderPending)}`);
   if (mobileHierarchy.mobile) await page.locator('#ordersPanel > summary').click();
+}
+
+async function verifyProductZeroDemand(page) {
+  await wait(page, '#chart .dpp-muted');
+  const salesState = await page.evaluate(async () => {
+    const payload = await (await fetch('/api/product?sku=PNC-001L', { cache: 'no-store' })).json();
+    const rows = (payload.series || []).slice(-28);
+    return {
+      seriesAllZero: rows.length > 0 && rows.every(row => Number(row.sales || 0) === 0),
+      message: document.querySelector('#chart .dpp-muted')?.textContent?.trim(),
+      ticks: [...document.querySelectorAll('#chart .dpp-axis text')].map(node => node.textContent.trim()),
+      bars: document.querySelectorAll('#chart .dpp-bar').length,
+    };
+  });
+  if (
+    !salesState.seriesAllZero ||
+    salesState.message !== 'No demand in this range.' ||
+    salesState.ticks.length ||
+    salesState.bars
+  ) {
+    throw new Error(`Product zero-sales chart mismatch: ${JSON.stringify(salesState)}`);
+  }
+
+  await page.locator('[data-metric="units"]').click();
+  await wait(page, '#chart .dpp-muted');
+  const unitsState = await page.evaluate(async () => {
+    const payload = await (await fetch('/api/product?sku=PNC-001L', { cache: 'no-store' })).json();
+    const rows = (payload.series || []).slice(-28);
+    return {
+      seriesAllZero: rows.length > 0 && rows.every(row => Number(row.units || 0) === 0),
+      message: document.querySelector('#chart .dpp-muted')?.textContent?.trim(),
+      ticks: [...document.querySelectorAll('#chart .dpp-axis text')].map(node => node.textContent.trim()),
+      bars: document.querySelectorAll('#chart .dpp-bar').length,
+    };
+  });
+  if (
+    !unitsState.seriesAllZero ||
+    unitsState.message !== 'No units ordered in this range.' ||
+    unitsState.ticks.length ||
+    unitsState.bars
+  ) {
+    throw new Error(`Product zero-units chart mismatch: ${JSON.stringify(unitsState)}`);
+  }
 }
 
 
@@ -856,6 +900,7 @@ const scenarios = [
   ['catalog-combinations', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'pair')],
   ['catalog-sku', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'sku')],
   ['product-pnc-001', '/product?sku=PNC-001', ['mobile', 'desktop'], verifyProductWorkspace],
+  ['product-pnc-001l-zero', '/product?sku=PNC-001L', ['desktop'], verifyProductZeroDemand],
   ['inventory', '/inventory', ['mobile', 'tablet', 'desktop'], verifyInventory],
   ['ads-overview', '/ads', ['mobile', 'tablet', 'desktop'], p => verifyAds(p)],
   ['ads-campaigns', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'campaigns')],
