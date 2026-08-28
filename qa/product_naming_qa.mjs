@@ -190,10 +190,7 @@ try {
     waitUntil: 'networkidle',
     timeout: 20000,
   });
-  await page.getByText('SKU is deleted from the current Amazon catalog.', { exact: true }).waitFor({
-    state: 'visible',
-    timeout: 10000,
-  });
+  await page.locator('#healthHeadline').waitFor({ state: 'visible', timeout: 10000 });
   const deletedProductUi = await page.evaluate(() => {
     const fact = [...document.querySelectorAll('.product-health__fact')].find(
       item => item.querySelector('.label')?.textContent?.trim() === 'Listing',
@@ -202,6 +199,8 @@ try {
       item => item.querySelector('.label')?.textContent?.trim() === 'Parent ASIN',
     );
     return {
+      headline: document.querySelector('#healthHeadline')?.childNodes?.[0]?.textContent?.trim() || '',
+      explanation: document.querySelector('#healthRead')?.textContent?.trim() || '',
       listing: {
         value: fact?.querySelector('strong')?.textContent?.trim() || '',
         note: fact?.querySelector('small')?.textContent?.trim() || '',
@@ -214,6 +213,8 @@ try {
     };
   });
   if (
+    deletedProductUi.headline !== 'Deleted' ||
+    deletedProductUi.explanation !== 'Absent from the latest Amazon seller-catalog snapshot' ||
     deletedProductUi.listing.value !== 'Deleted' ||
     !deletedProductUi.listing.note.startsWith('Last Amazon status ') ||
     deletedProductUi.parentNote !== 'historical relationship unavailable' ||
