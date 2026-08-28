@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import mimetypes
 from functools import lru_cache
 from pathlib import Path
 
@@ -13,6 +14,19 @@ COMPRESSIBLE_CONTENT_TYPES = (
     "text/",
 )
 MIN_COMPRESSIBLE_BYTES = 1024
+
+
+def asset_content_type(path: Path) -> str:
+    if path.suffix == ".js":
+        return "text/javascript; charset=utf-8"
+    if path.suffix == ".css":
+        return "text/css; charset=utf-8"
+    if path.suffix == ".geojson":
+        return "application/geo+json"
+    content_type, _ = mimetypes.guess_type(path.name)
+    if content_type and content_type.startswith("text/"):
+        return f"{content_type}; charset=utf-8"
+    return content_type or "application/octet-stream"
 
 
 def accepts_gzip(value: str) -> bool:

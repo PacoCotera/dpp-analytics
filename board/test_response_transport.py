@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import gzip
 import unittest
+from pathlib import Path
 
 from response_transport import (
     accepts_gzip,
+    asset_content_type,
     compress_response,
     compressible_content_type,
     gzip_body,
@@ -12,6 +14,10 @@ from response_transport import (
 
 
 class ResponseTransportTest(unittest.TestCase):
+    def test_asset_content_type_is_deterministic_for_geojson(self):
+        self.assertEqual(asset_content_type(Path("states.geojson")), "application/geo+json")
+        self.assertEqual(asset_content_type(Path("board.js")), "text/javascript; charset=utf-8")
+
     def test_accepts_supported_gzip_header(self):
         self.assertTrue(accepts_gzip("br, gzip"))
         self.assertTrue(accepts_gzip("br, gzip;q=0.5"))
