@@ -4,6 +4,7 @@ COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 COPY visual_qa.mjs ./
 COPY nav_qa.mjs ./
+COPY presentation_profiles_qa.mjs ./
 COPY accessibility_qa.mjs ./
 COPY analysis_state_qa.mjs ./
 COPY numeric_ui_qa.mjs ./

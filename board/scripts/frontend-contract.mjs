@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { EXPECTED_PROFILE_IDS } from './presentation-contract.mjs';
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const staticRoot = join(root, 'static');
 const pages = readdirSync(staticRoot)
@@ -22,9 +24,23 @@ const pageStyles = {
   'trajectory.html': 'trajectory.css',
 };
 const sharedStyles = ['theme.css', 'nav-shell.css', 'layout-system.css'];
+const presentationAssets = [
+  'presentation-registry.js',
+  'presentation.js',
+  'theme.css',
+  'nav-shell.css',
+  'layout-system.css',
+  'presentation-profiles.css',
+  'ui-shell.js',
+];
 const failures = [];
 const theme = readFileSync(join(staticRoot, 'theme.css'), 'utf8');
 const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
+const presentationRuntime = readFileSync(join(staticRoot, 'presentation.js'), 'utf8');
+const presentationCss = readFileSync(join(staticRoot, 'presentation-profiles.css'), 'utf8');
+const presentationRegistry = JSON.parse(
+  readFileSync(join(root, 'presentation', 'profiles.json'), 'utf8'),
+);
 const todayHtml = readFileSync(join(staticRoot, 'today.html'), 'utf8');
 const todayScript = readFileSync(join(staticRoot, 'today.js'), 'utf8');
 const shellSelector =
@@ -68,11 +84,39 @@ for (const page of pages) {
     basename(match[1].split('?')[0]),
   );
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+  const localAssets = [
+    ...html.matchAll(
+      /<(script|link)\b[^>]*(?:src|href)=["'](\/assets\/[^"']+)["'][^>]*>/gi,
+    ),
+  ].map((match) => ({
+    tag: match[1].toLowerCase(),
+    name: basename(match[2].split('?')[0]),
+    markup: match[0],
+    index: match.index,
+  }));
   const classNames = [...html.matchAll(/\bclass=["']([^"']*)["']/gi)].flatMap((match) =>
     match[1].trim().split(/\s+/),
   );
+  const qaMarkers = [...html.matchAll(/\bdata-dpp-qa=["']([^"']+)["']/gi)].map(
+    (match) => match[1],
+  );
 
   check(page in pageStyles, page, 'page stylesheet is not declared in the frontend contract');
+  check(
+    qaMarkers.every((marker) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(marker)),
+    page,
+    'data-dpp-qa markers must use stable lowercase kebab-case names',
+  );
+  check(
+    new Set(qaMarkers).size === qaMarkers.length,
+    page,
+    'data-dpp-qa markers must be unique within a workspace',
+  );
+  check(
+    !/<meta\b[^>]*\bname=["']theme-color["'][^>]*>/i.test(html),
+    page,
+    'must not hardcode theme-color; presentation.js owns browser chrome',
+  );
   check(!/mobile-ux\.css/i.test(html), page, 'deprecated mobile compatibility shim is loaded');
   check(!/design-refine\.css/i.test(html), page, 'deprecated shared refinement layer is loaded');
   check(!/<style\b/i.test(html) && !/\sstyle\s*=/i.test(html), page, 'contains inline CSS');
@@ -96,9 +140,40 @@ for (const page of pages) {
     previous = index;
   }
 
+  let presentationAssetIndex = -1;
+  for (const asset of presentationAssets) {
+    const matches = localAssets.filter(({ name }) => name === asset);
+    check(matches.length === 1, page, `must load ${asset} exactly once`);
+    if (matches.length === 1) {
+      check(
+        matches[0].index > presentationAssetIndex,
+        page,
+        `${asset} is outside the canonical presentation asset order`,
+      );
+      presentationAssetIndex = matches[0].index;
+    }
+  }
+
+  const registryScript = localAssets.find(({ name }) => name === 'presentation-registry.js');
+  const runtimeScript = localAssets.find(({ name }) => name === 'presentation.js');
+  check(
+    registryScript?.tag === 'script' &&
+      !/\b(?:async|defer)\b/i.test(registryScript.markup) &&
+      runtimeScript?.tag === 'script' &&
+      !/\b(?:async|defer)\b/i.test(runtimeScript.markup),
+    page,
+    'presentation registry and runtime must run synchronously before styles paint',
+  );
+
   const pageStyle = pageStyles[page];
   const pageStyleIndex = css.indexOf(pageStyle);
   check(pageStyleIndex > previous, page, `${pageStyle} must load after shared layout layers`);
+  const presentationStyleIndex = css.indexOf('presentation-profiles.css');
+  check(
+    presentationStyleIndex > pageStyleIndex && presentationStyleIndex === css.length - 1,
+    page,
+    'presentation-profiles.css must be the final stylesheet',
+  );
   const chartIndex = css.indexOf('chart-system.css');
   check(
     chartIndex < 0 || (chartIndex > previous && chartIndex < pageStyleIndex),
@@ -124,8 +199,48 @@ for (const page of pages) {
   check((html.match(/__DPP_BUILD_SHA__/g) || []).length === 1, page, 'must contain exactly one build token');
 }
 
+check(pages.length === 11, 'static', `expected exactly 11 HTML workspaces; found ${pages.length}`);
+check(
+  JSON.stringify(pages) === JSON.stringify(Object.keys(pageStyles).sort()),
+  'static',
+  'served HTML workspaces differ from the declared presentation contract',
+);
+
 for (const expected of Object.keys(pageStyles)) {
   check(pages.includes(expected), expected, 'declared page is missing from static');
+}
+
+const registryProfileIds = presentationRegistry.profiles.map(({ id }) => id);
+check(
+  presentationRegistry.profiles.length === 6 &&
+    JSON.stringify(registryProfileIds) === JSON.stringify(EXPECTED_PROFILE_IDS),
+  'presentation',
+  'must contain exactly the six approved presentation profiles in canonical order',
+);
+const cssProfileIds = [
+  ...new Set(
+    [...presentationCss.matchAll(/:root\[data-dpp-theme=["']([^"']+)["']\]/g)].map(
+      (match) => match[1],
+    ),
+  ),
+];
+check(
+  JSON.stringify(cssProfileIds) === JSON.stringify(EXPECTED_PROFILE_IDS),
+  'presentation-profiles.css',
+  'generated CSS must expose exactly one asset scope for each approved profile',
+);
+for (const marker of [
+  'data-dpp-theme',
+  'dppPresentation',
+  'setProfile',
+  'reset',
+  "meta[name='theme-color']",
+]) {
+  check(
+    presentationRuntime.includes(marker),
+    'presentation.js',
+    `presentation runtime is missing required behavior marker: ${marker}`,
+  );
 }
 
 check(

@@ -39,7 +39,11 @@ Before adding page-specific code, check whether the behavior belongs in one of t
 
 | File | Owns |
 | --- | --- |
-| `theme.css` | global tokens, typography and base visual language |
+| `board/presentation/profiles.json` / `profile.schema.json` | authoritative, schema-validated six-profile presentation configuration |
+| `scripts/build-presentation-profiles.mjs` | generates the source-controlled browser registry and profile CSS; `--check` rejects drift |
+| `presentation-registry.js` / `presentation-profiles.css` | generated browser registry and semantic token scopes; do not edit directly |
+| `presentation.js` | synchronous profile restoration, root attributes, browser chrome, local preference and public apply/reset API |
+| `theme.css` | global token aliases, typography and base visual language |
 | `nav-shell.css` | application navigation presentation |
 | `ui-shell.js` | primary navigation, active route, More menu, workspace identity, tab keyboard behavior and mobile swipe behavior |
 | `layout-system.css` | reusable page headers, KPI rails, panels, grids, segmented controls, tables and status strips |
@@ -250,6 +254,14 @@ headings, unnamed visible links, missing toggle-button state, broken native keyb
 Finance monthly report's table relationships.
 `qa/analysis_state_qa.mjs` exercises Sales and Catalog direct links, refresh, Back, and Forward. When adding a
 persistent view choice, document its URL key in `frontend-architecture.md` and extend this browser gate.
+`qa/presentation_profiles_qa.mjs` checks the six-profile registry and apply/persistence contract on the Business
+reference workspace without multiplying every route by every appearance.
+
+After each deployed UI-revamp block, use the standalone, parameterized DPP Playwright runner for acceptance. Do
+not substitute the desktop-only Playwright integration. Run Chromium desktop, Chromium with the Pixel 5 device,
+WebKit desktop, and WebKit with the iPhone 12 device. Each run must record the exact deployed SHA from the footer
+and the active asset revision before navigation and visual evidence are accepted. The repository QA/deployment
+suite remains an independent regression gate.
 
 ### Finance validation
 

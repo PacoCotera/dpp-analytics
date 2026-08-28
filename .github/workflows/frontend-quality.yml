@@ -5,6 +5,8 @@ on:
     paths:
       - 'app/**'
       - 'board/static/**'
+      - 'board/presentation/**'
+      - 'board/scripts/**'
       - 'board/*.py'
       - 'board/package.json'
       - 'board/eslint.config.js'
@@ -67,7 +69,7 @@ jobs:
             echo "$name=$value" >>"$GITHUB_OUTPUT"
           }
 
-          emit frontend '^(board/static/|board/(package\.json|eslint\.config\.js|\.stylelintrc\.json|\.prettierrc\.json)$)'
+          emit frontend '^(board/(static/|presentation/|scripts/)|board/(package\.json|eslint\.config\.js|\.stylelintrc\.json|\.prettierrc\.json)$)'
           emit board_python '^board/[^/]+\.py$'
           emit board_image '^(board/(Dockerfile|[^/]+\.py)$|compose\.yml$|\.env\.example$)'
           emit worker_image '^app/'
