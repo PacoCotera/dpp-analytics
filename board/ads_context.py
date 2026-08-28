@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ads_state import ads_connection_state
+
 
 _INTERPRETATION = {
     "attributed_sales": "Amazon-attributed sales; not incremental sales.",
@@ -93,7 +95,9 @@ def product_t28(cur, marketplace: str, sku: str) -> dict:
         WHERE marketplace_id=%s AND sku=%s ORDER BY through_date DESC LIMIT 1""", (marketplace, sku))
     row = cur.fetchone() or {}
     quality = _quality_for_period(cur, marketplace, row.get("period_start"), row.get("through_date"))
-    return _finalize_context(row, expected_days=28, quality=quality, require_complete=False)
+    context = _finalize_context(row, expected_days=28, quality=quality, require_complete=False)
+    context["connection"] = ads_connection_state(cur)
+    return context
 
 
 def business_daily(cur, marketplace: str, days: int = 90) -> list[dict]:

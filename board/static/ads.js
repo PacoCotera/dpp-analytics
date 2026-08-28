@@ -216,7 +216,8 @@ function renderReady(p) {
   byId('emptyState').hidden = true;
   const s = p.summary || {},
     f = p.freshness || {};
-  byId('asof').textContent = `Ads through ${String(f.through_date || '').slice(5)}`;
+  byId('asof').textContent =
+    `${p.connection?.badge || 'Ads ready'} · through ${String(f.through_date || '').slice(5)}`;
   renderQuality(p);
   setMetric('spend', money(s.spend));
   setMetric('spendDelta', deltaPercent(s.spend_delta_pct), normalTone(s.spend_delta_pct));
@@ -251,7 +252,12 @@ function renderUnavailable(p) {
   operatingTrusted = false;
   byId('emptyState').hidden = false;
   byId('readyState').hidden = true;
-  byId('asof').textContent = p.status === 'awaiting_ads_data' ? 'Awaiting Ads data' : 'Ads not initialized';
+  const connection = p.connection || {};
+  byId('emptyState').querySelector('h2').textContent =
+    connection.headline || 'Amazon Ads state is unavailable.';
+  byId('emptyState').querySelector('p').textContent =
+    connection.detail || 'The current Amazon Ads connection state could not be read.';
+  byId('asof').textContent = connection.badge || 'Ads state unavailable';
   renderTargets([]);
   renderSearchTerms([]);
 }
@@ -266,7 +272,7 @@ async function start() {
   try {
     const p = await fetchJson('/api/ads');
     byId('clock').textContent = formatBusinessClock(p.local_time);
-    if (p.status === 'ready') renderReady(p);
+    if (p.connection?.state === 'READY' && p.status === 'ready') renderReady(p);
     else renderUnavailable(p);
   } catch (e) {
     operatingTrusted = false;

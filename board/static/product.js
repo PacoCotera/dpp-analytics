@@ -203,24 +203,16 @@ function renderListingAndInventory(profile, commercial, ads) {
       ? 'cover unavailable'
       : `${Number(profile.days_cover_with_inbound).toFixed(0)} days cover`;
 
-  const hasAds = Boolean(ads.through_date && Number(ads.observed_ads_days || 0) > 0);
+  const connection = ads.connection || {};
   if (deleted) {
     byId('adsState').textContent = 'Historical only';
     byId('adsState').className = 'warn';
     byId('adsNote').textContent = 'not a current offer';
-  } else if (!hasAds) {
-    byId('adsState').textContent = 'Ads access pending';
-    byId('adsState').className = 'warn';
-    byId('adsNote').textContent = 'seller demand remains available';
-  } else if (ads.trusted_for_operating_decisions) {
-    byId('adsState').textContent = 'Decision-grade';
-    byId('adsState').className = 'good';
-    byId('adsNote').textContent = `through ${String(ads.through_date).slice(5)}`;
   } else {
-    byId('adsState').textContent = 'Review';
-    byId('adsState').className = 'warn';
-    byId('adsNote').textContent =
-      `${String(ads.coverage_state || 'partial').toLowerCase()} · ${String(ads.attribution_state || 'provisional').toLowerCase()}`;
+    byId('adsState').textContent = connection.badge || 'Ads state unavailable';
+    byId('adsState').className =
+      connection.state === 'READY' ? 'good' : connection.state === 'FAILED' ? 'bad' : 'warn';
+    byId('adsNote').textContent = connection.note || 'connection state unavailable';
   }
 }
 
@@ -333,13 +325,14 @@ function renderAds(ads, commercial) {
       'Deleted SKUs are excluded from current paid-support decisions; historical order evidence remains available.';
     return;
   }
+  const connection = ads.connection || {};
   const observed = Number(ads.observed_ads_days || 0);
   const mature = Number(ads.mature_ads_days || 0);
   const hasAds = Boolean(ads.through_date && observed > 0);
-  if (!hasAds) {
-    byId('adsDecision').textContent = 'Ads integration ready';
-    byId('adsRead').textContent =
-      'Seller demand, conversion, inventory and COGS remain fully usable. Paid-support metrics will populate after Amazon Ads authorizes access and the initial backfill completes.';
+  byId('adsDecision').textContent = connection.headline || 'Amazon Ads state is unavailable.';
+  byId('adsRead').textContent =
+    connection.detail || 'The current Amazon Ads connection state could not be read.';
+  if (connection.state !== 'READY' || !hasAds) {
     return;
   }
 
@@ -347,10 +340,8 @@ function renderAds(ads, commercial) {
   const trusted = Boolean(ads.trusted_for_operating_decisions);
   const trust = trusted ? 'Decision-grade' : 'Review';
   const attribution = ads.attribution_state || (mature >= observed ? 'MATURE' : 'PROVISIONAL');
-  byId('adsDecision').textContent =
-    `${money(spend)} spend · ${decimal(ads.roas)}× ROAS · ${ratioPercent(ads.tacos)} TACOS`;
   byId('adsRead').textContent =
-    `${money(ads.attributed_sales || 0)} Amazon-attributed sales · ${integer(ads.clicks || 0)} clicks · ${ratioPercent(ads.ctr)} CTR · ${ads.cpc == null ? '—' : money(ads.cpc)} CPC · ${ratioPercent(ads.acos)} ACOS · ${observed} observed Ads day${observed === 1 ? '' : 's'}${mature < observed ? ` · ${mature} mature` : ''}. ${trust} ${String(attribution).toLowerCase()} attribution through ${ads.through_date}. Attributed sales are not exact incremental sales, and total seller sales minus attributed sales is not exact organic sales.`;
+    `${connection.detail} Current product read: ${money(spend)} spend · ${money(ads.attributed_sales || 0)} Amazon-attributed sales · ${integer(ads.clicks || 0)} clicks · ${ratioPercent(ads.ctr)} CTR · ${ads.cpc == null ? '—' : money(ads.cpc)} CPC · ${ratioPercent(ads.acos)} ACOS · ${decimal(ads.roas)}× ROAS · ${ratioPercent(ads.tacos)} TACOS · ${observed} observed Ads day${observed === 1 ? '' : 's'}${mature < observed ? ` · ${mature} mature` : ''}. ${trust} ${String(attribution).toLowerCase()} attribution through ${ads.through_date}. Attributed sales are not exact incremental sales, and total seller sales minus attributed sales is not exact organic sales.`;
 
   const healthRead = byId('healthRead');
   if (healthRead && spend > 0 && !healthRead.textContent.includes('Paid support is active')) {

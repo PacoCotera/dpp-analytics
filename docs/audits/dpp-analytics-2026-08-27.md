@@ -373,6 +373,8 @@ Observed:
 - The adjacent decision card headline says `Ads integration ready` and explains that metrics will populate only after authorization and backfill.
 - The Ads page itself correctly says it is waiting for authorization.
 
+Continuity note, 2026-08-28: production at `062ec8d5` still returns `awaiting_ads_data` from both Product and Ads APIs. Product renders `Ads access pending` beside the contradictory headline `Ads integration ready`; Data Health has no Ads account or ingestion-job evidence. Scope is unchanged.
+
 Impact: The headline communicates a completed capability while the detailed state says it is unavailable.
 
 Acceptance criteria:

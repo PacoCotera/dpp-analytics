@@ -140,6 +140,38 @@ def set_cursor(source: str, job_name: str, value: str, cursor_name: str = "defau
         conn.commit()
 
 
+def set_integration_state(
+    integration: str,
+    state: str,
+    detail_code: str,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Publish a non-secret integration lifecycle for board APIs."""
+    allowed = {
+        "NOT_CONNECTED",
+        "AUTHORIZATION_PENDING",
+        "BACKFILL_RUNNING",
+        "READY",
+        "FAILED",
+    }
+    if state not in allowed:
+        raise ValueError(f"Unsupported integration state: {state}")
+    with connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO ops.integration_state(integration,state,detail_code,metadata,updated_at)
+            VALUES(%s,%s,%s,%s::jsonb,now())
+            ON CONFLICT(integration) DO UPDATE SET
+              state=EXCLUDED.state,
+              detail_code=EXCLUDED.detail_code,
+              metadata=EXCLUDED.metadata,
+              updated_at=now()
+            """,
+            (integration, state, detail_code, json.dumps(metadata or {})),
+        )
+        conn.commit()
+
+
 def seconds_since_last_success(source: str, job_name: str) -> float | None:
     """Return the age of the most recent successful run, or None if none exists."""
     with connect() as conn, conn.cursor() as cur:
