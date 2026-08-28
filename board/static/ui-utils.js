@@ -39,6 +39,17 @@ export function formatBusinessTimestamp(value) {
   return `${businessTimestampFormatter.format(date)} ${BUSINESS_TIME_ZONE_LABEL}`;
 }
 
+export function formatMetricWindow(window) {
+  if (!window?.id) return 'Metric window unavailable';
+  const start = String(window.start_date || 'start unavailable').slice(0, 10);
+  const through = String(window.through_date || 'cutoff unavailable').slice(0, 10);
+  const includedDays = Number(window.included_days || 0);
+  const sourceUpdate = window.source_as_of
+    ? formatBusinessTimestamp(window.source_as_of)
+    : 'source update unavailable';
+  return `${window.label} · ${window.source} · ${start} to ${through} · ${includedDays} included days · source updated ${sourceUpdate}`;
+}
+
 export function money(value, { compact = false } = {}) {
   const numeric = Number(value || 0);
   if (!compact || Math.abs(numeric) < 1000) return `$${number0.format(Math.round(numeric))}`;

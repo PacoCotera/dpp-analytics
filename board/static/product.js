@@ -3,6 +3,7 @@ import {
   escapeHtml,
   fetchJson,
   formatBusinessClock,
+  formatMetricWindow,
   integer,
   money,
   mountRuleTrigger,
@@ -415,6 +416,12 @@ function render(payload) {
   document.title = `${profile.product || profile.sku || 'Product'} · DPP`;
   byId('clock').textContent = formatBusinessClock(payload.local_time);
   byId('asof').textContent = `Historical through ${String(payload.business_date || '').slice(5)}`;
+  byId('productDemandWindow').textContent = formatMetricWindow(
+    payload.metric_windows?.RECONCILED_PRODUCT_T28,
+  );
+  byId('productVelocityWindow').textContent = formatMetricWindow(
+    payload.metric_windows?.INVENTORY_ORDER_VELOCITY_T28,
+  );
 
   renderHero(profile, commercial);
   renderHealth(payload);

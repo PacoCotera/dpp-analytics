@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from product_api_legacy import product_payload as _legacy_product_payload
+from metric_windows import (
+    INVENTORY_ORDER_VELOCITY_T28,
+    RECONCILED_PRODUCT_T28,
+    load_metric_windows,
+)
 
 
 def product_payload(connect, decorate_products, marketplace: str, sku: str) -> dict:
     payload = _legacy_product_payload(connect, decorate_products, marketplace, sku)
-    cutoff = payload.get("business_date")
     commercial = payload.get("commercial") or {}
     asin = (payload.get("profile") or {}).get("asin") or commercial.get("asin") or ""
 
@@ -15,8 +19,20 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
             (marketplace,),
         )
         market = cur.fetchone() or {}
+        metric_windows = load_metric_windows(
+            cur,
+            marketplace,
+            (RECONCILED_PRODUCT_T28, INVENTORY_ORDER_VELOCITY_T28),
+            timezone=market.get("timezone"),
+        )
+        product_cutoff = (
+            metric_windows.get(RECONCILED_PRODUCT_T28) or {}
+        ).get("through_date")
+        payload["metric_windows"] = metric_windows
+        if product_cutoff:
+            payload["business_date"] = product_cutoff
 
-        if cutoff and asin:
+        if product_cutoff and asin:
             # Production Data Kiosk product demand is CHILD-ASIN grain. Product
             # Workspace is a commercial-offer view, so use that reconciled ASIN
             # fact rather than an unpopulated seller-SKU Sales & Traffic table.
@@ -41,12 +57,28 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
                        CASE WHEN orders_t28>0 THEN round(sales_t28/orders_t28,2) END AS aov_t28
                 FROM x
                 """,
-                (cutoff, marketplace, asin),
+                (product_cutoff, marketplace, asin),
             )
             performance = cur.fetchone() or {}
             performance["sales_basis"] = "AMAZON_ORDERED_PRODUCT_SALES"
             performance["sales_grain"] = "CHILD_ASIN"
             payload["performance"] = performance
+
+            cur.execute(
+                """
+                WITH c AS (SELECT %s::date AS d)
+                SELECT COALESCE(sum(sessions),0)::bigint AS sessions_t28,
+                       COALESCE(sum(page_views),0)::bigint AS page_views_t28,
+                       COALESCE(sum(units_ordered),0)::bigint AS traffic_units_t28,
+                       CASE WHEN COALESCE(sum(sessions),0)>0
+                            THEN round(100.0*COALESCE(sum(units_ordered),0)/sum(sessions),1) END AS cvr_t28
+                FROM core.asin_sales_traffic_daily,c
+                WHERE marketplace_id=%s AND asin=%s
+                  AND business_date BETWEEN c.d-27 AND c.d
+                """,
+                (product_cutoff, marketplace, asin),
+            )
+            payload["traffic"] = cur.fetchone() or {}
 
             cur.execute(
                 """
@@ -72,7 +104,7 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
                 FROM days d LEFT JOIN s USING(business_date) LEFT JOIN ad USING(business_date)
                 ORDER BY d.business_date
                 """,
-                (cutoff, marketplace, asin, marketplace, sku, asin),
+                (product_cutoff, marketplace, asin, marketplace, sku, asin),
             )
             payload["series"] = list(cur.fetchall())
 

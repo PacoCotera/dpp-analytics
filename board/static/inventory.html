@@ -35,13 +35,14 @@
               Velocity turns stock counts into decisions. Start with the action queue, then use coverage and
               SKU detail when you need to understand why.
             </p>
+            <p class="metric-window-note" id="inventoryVelocityWindow">Loading velocity basis</p>
           </div>
           <div class="page-header__aside inventory-header-actions">
             <div class="kpi-rail" aria-label="Inventory key metrics">
               <div class="kpi">
                 <strong class="kpi__value" id="coverPortfolio">—</strong
                 ><span class="kpi__label">Days of cover</span
-                ><small class="kpi__note">portfolio · 28D velocity</small>
+                ><small class="kpi__note">portfolio · 28D order velocity</small>
               </div>
               <div class="kpi">
                 <strong class="kpi__value" id="available">—</strong><span class="kpi__label">Available</span
@@ -129,7 +130,7 @@
                     <th class="num">Available</th>
                     <th class="num">Inbound</th>
                     <th class="num">Reserved</th>
-                    <th class="num">28D units</th>
+                    <th class="num">28D order units</th>
                     <th class="num">Days cover</th>
                     <th>Status</th>
                   </tr>
@@ -140,14 +141,16 @@
             <div id="inventoryCards" class="inventory-cards"></div>
           </div>
           <div class="inventory-foot">
-            <span>Velocity = recent 28-day units sold. Days of cover = (Available + inbound) / velocity.</span
+            <span
+              >Velocity = recent 28-day Amazon order units by seller SKU. Days of cover = (Available +
+              inbound) / velocity.</span
             ><span id="snapshotFoot">Snapshot —</span>
           </div>
         </section>
       </main>
 
       <footer class="footer">
-        <span>Coverage uses last-28-day selling velocity · not a demand forecast</span
+        <span>Coverage uses 28-day Amazon Orders velocity · not a demand forecast</span
         ><span>Dirty Pawz Press Analytics</span>
         <span class="footer-build">main __DPP_BUILD_SHA__</span>
       </footer>
