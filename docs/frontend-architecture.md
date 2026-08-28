@@ -102,6 +102,18 @@ tab panels and use the shared tab keyboard behavior. Financial row/column report
 keyboard target, the named toggle-button groups, and Finance monthly-report table relationships. New primary
 routes and new persistent interactive view controls must be added to that gate in the same change.
 
+## Shareable analysis state
+
+Persistent analytical choices are URL state, not session-only UI state. Sales owns `view` and `range`; its lazy
+Geography renderer owns `geo_range`, `metric`, `sku`, and canonical two-digit `state`. Catalog owns `mode` and
+`filter`. Default values are omitted, invalid values normalize to documented defaults, and unrelated parameters
+are preserved. Changing a choice pushes browser history; direct load, refresh, Back, and Forward must render the
+same state.
+
+Session scroll/tab restoration is subordinate to the URL. `ui-shell.js` may restore saved context only when the
+saved query string exactly matches the current query string. New stable tabs, filters, windows, or drill-down keys
+must define their URL key and join `qa/analysis_state_qa.mjs` in the same change.
+
 ## Grid system
 
 Use CSS Grid directly rather than a third-party grid framework. The product needs a small number of explicit responsive analytical compositions, not a generic 12-column marketing-site abstraction. Native Grid provides fewer dependencies, predictable min/max behavior and better control over tables, charts and variable-height decision panels.

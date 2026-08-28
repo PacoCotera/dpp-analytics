@@ -18,6 +18,7 @@ const BAD_STATES = new Set(['INVENTORY_RISK', 'TRAFFIC_NOT_CONVERTING', 'DECLINI
 const FUNNEL_STATES = new Set(['TRAFFIC_NOT_CONVERTING', 'CONVERTS_NEEDS_TRAFFIC']);
 const DORMANT_STATES = new Set(['DORMANT', 'WATCH']);
 const MOBILE_ROW_LIMIT = 6;
+const CATALOG_FILTERS = new Set(['all', 'attention', 'funnel', 'stock', 'dormant', 'inactive']);
 
 const labels = {
   INVENTORY_RISK: 'Inventory risk',
@@ -49,6 +50,46 @@ let DATA = {
 };
 let filter = 'all';
 let mode = 'family';
+
+function availableModes() {
+  const modes = new Set(['family', 'sku']);
+  Object.keys(DATA.dimensions || {}).forEach((dimension) => modes.add(`dimension:${dimension}`));
+  if ((DATA.dimension_pairs || []).length) modes.add('pair');
+  if ((DATA.deleted_products || []).length) modes.add('deleted');
+  return modes;
+}
+
+function readCatalogUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedMode = params.get('mode') || 'family';
+  mode = availableModes().has(requestedMode) ? requestedMode : 'family';
+  const requestedFilter = params.get('filter') || 'all';
+  filter = mode === 'family' && CATALOG_FILTERS.has(requestedFilter) ? requestedFilter : 'all';
+}
+
+function writeCatalogUrlState({ replace = false } = {}) {
+  const url = new URL(window.location.href);
+  if (mode === 'family') url.searchParams.delete('mode');
+  else url.searchParams.set('mode', mode);
+  if (mode === 'family' && filter !== 'all') url.searchParams.set('filter', filter);
+  else url.searchParams.delete('filter');
+  window.history[replace ? 'replaceState' : 'pushState']({}, '', url);
+}
+
+function syncFilterButtons() {
+  document.querySelectorAll('.filter').forEach((item) => {
+    const selected = item.dataset.filter === filter;
+    item.classList.toggle('active', selected);
+    item.setAttribute('aria-pressed', String(selected));
+  });
+}
+
+function restoreCatalogUrlState() {
+  readCatalogUrlState();
+  syncFilterButtons();
+  renderModes();
+  renderPortfolio();
+}
 
 function pct(value) {
   return value === null || value === undefined ? '—' : `${Number(value).toFixed(1)}%`;
@@ -371,13 +412,11 @@ function renderModes() {
     .querySelectorAll('.mode')
     .forEach((button) => {
       button.addEventListener('click', () => {
+        if (button.dataset.mode === mode && filter === 'all') return;
         mode = button.dataset.mode;
         filter = 'all';
-        document.querySelectorAll('.filter').forEach((item) => {
-          const selected = item.dataset.filter === 'all';
-          item.classList.toggle('active', selected);
-          item.setAttribute('aria-pressed', String(selected));
-        });
+        syncFilterButtons();
+        writeCatalogUrlState();
         renderModes();
         renderPortfolio();
       });
@@ -503,6 +542,7 @@ function renderAttention() {
 
 function render(data) {
   DATA = data;
+  readCatalogUrlState();
   bindRuleDisclosure(data.interpretation_rules);
   const summary = data.summary || {};
   const familyAttention = (data.families || []).filter((family) => family.needs_attention).length;
@@ -522,8 +562,10 @@ function render(data) {
     `Data Kiosk through ${summary.traffic_through_date || '—'} · listings ${String(summary.listings_fetched_at || '').slice(0, 10) || '—'} · FBA current`;
 
   renderAttention();
+  syncFilterButtons();
   renderModes();
   renderPortfolio();
+  writeCatalogUrlState({ replace: true });
 }
 
 async function load() {
@@ -540,6 +582,7 @@ function bindInteractions() {
   $('sort').addEventListener('change', renderPortfolio);
   document.querySelectorAll('.filter').forEach((button) => {
     button.addEventListener('click', () => {
+      if (button.dataset.filter === filter) return;
       document.querySelectorAll('.filter').forEach((item) => {
         item.classList.remove('active');
         item.setAttribute('aria-pressed', 'false');
@@ -547,10 +590,12 @@ function bindInteractions() {
       button.classList.add('active');
       button.setAttribute('aria-pressed', 'true');
       filter = button.dataset.filter;
+      writeCatalogUrlState();
       renderPortfolio();
     });
   });
 }
 
 bindInteractions();
+window.addEventListener('popstate', restoreCatalogUrlState);
 load();

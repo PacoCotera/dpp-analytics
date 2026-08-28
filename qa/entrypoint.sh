@@ -10,6 +10,8 @@ node /qa/nav_qa.mjs "$base_url" "$work_dir"
 nav_rc=$?
 node /qa/accessibility_qa.mjs "$base_url" "$work_dir"
 accessibility_rc=$?
+node /qa/analysis_state_qa.mjs "$base_url" "$work_dir"
+analysis_state_rc=$?
 node /qa/numeric_ui_qa.mjs "$base_url" "$work_dir"
 numeric_rc=$?
 node /qa/geography_qa.mjs "$base_url" "$work_dir"
@@ -46,6 +48,7 @@ cp -a "$work_dir"/. "$out_root"/ 2>/dev/null || true
 if [ "$visual_rc" -ne 0 ]; then exit "$visual_rc"; fi
 if [ "$nav_rc" -ne 0 ]; then exit "$nav_rc"; fi
 if [ "$accessibility_rc" -ne 0 ]; then exit "$accessibility_rc"; fi
+if [ "$analysis_state_rc" -ne 0 ]; then exit "$analysis_state_rc"; fi
 if [ "$numeric_rc" -ne 0 ]; then exit "$numeric_rc"; fi
 if [ "$geography_rc" -ne 0 ]; then exit "$geography_rc"; fi
 if [ "$geography_zoom_rc" -ne 0 ]; then exit "$geography_zoom_rc"; fi

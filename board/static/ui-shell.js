@@ -227,6 +227,8 @@
     }
     if (!context || context.path !== rawPath() || Date.now() - Number(context.at || 0) > 6 * 60 * 60 * 1000)
       return;
+    const contextUrl = new URL(context.href, location.href);
+    if (contextUrl.search !== location.search) return;
     const groups = workspaceGroups();
     (context.tabs || []).forEach((target, index) => {
       const group = groups[index];

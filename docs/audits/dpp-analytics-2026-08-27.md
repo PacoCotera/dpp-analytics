@@ -440,6 +440,11 @@ Observed:
 - Catalog Family/SKU mode and filter changes leave the URL at `/catalog`.
 - Today correctly encodes a selected date in `?date=…`, proving the shareable-state pattern is available.
 
+Continuity note, 2026-08-28: production at `c8d10213` still leaves the URL unchanged after opening Sales
+Drivers/Geography, changing the Geography window, drilling into Ciudad de México, or switching Catalog to SKU.
+Direct URLs containing `view`, `geo_range`, `metric`, `state`, `mode`, or `filter` parameters still restore the
+default Overview/90D/Mexico and Family/All states. Scope is unchanged.
+
 Impact: A user cannot bookmark or send the exact analytical view used to support a decision.
 
 Acceptance criteria:
