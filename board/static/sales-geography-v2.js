@@ -75,6 +75,7 @@
       .padStart(5, '0');
 
   let DATA = null;
+  let LOAD_PROMISE = null;
   let RANGE = '90d';
   let METRIC = 'sales';
   let SKU = 'all';
@@ -783,19 +784,25 @@
     );
   }
 
-  async function load() {
-    try {
-      if (!window.DPPDataCache?.fetchJson) throw new Error('DPP data cache unavailable');
-      DATA = await window.DPPDataCache.fetchJson('/api/sales/geography');
-      readGeographyUrlState();
-      initControls();
-      renderAll();
-      writeGeographyUrlState({ replace: true });
-    } catch (error) {
-      console.error(error);
-      setText('geoCoverage', 'Geography data unavailable');
-      setText('geoMapStatus', 'Geography data unavailable');
-    }
+  function load() {
+    if (LOAD_PROMISE) return LOAD_PROMISE;
+    LOAD_PROMISE = (async () => {
+      try {
+        if (!window.DPPDataCache?.fetchJson) throw new Error('DPP data cache unavailable');
+        DATA = await window.DPPDataCache.fetchJson('/api/sales/geography');
+        readGeographyUrlState();
+        initControls();
+        renderAll();
+        writeGeographyUrlState({ replace: true });
+      } catch (error) {
+        console.error(error);
+        setText('geoCoverage', 'Geography data unavailable');
+        setText('geoMapStatus', 'Geography data unavailable');
+      }
+    })().finally(() => {
+      LOAD_PROMISE = null;
+    });
+    return LOAD_PROMISE;
   }
 
   bind();
