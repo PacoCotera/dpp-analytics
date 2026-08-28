@@ -71,6 +71,10 @@ try {
     throw new Error(`Unmapped order count does not reconcile: ${JSON.stringify(coverage)}`);
   }
   if (Number(coverage.alias_resolution_pct || 0) <= 0) throw new Error('State alias resolution coverage is zero');
+  const canonicalGeographyDates = (geo.daily || []).map(row => String(row.business_date || '').slice(0, 10)).filter(Boolean).sort();
+  if (String(coverage.geography_last_date || '').slice(0, 10) !== canonicalGeographyDates.at(-1)) {
+    throw new Error(`Geography cutoff does not match resolved postal evidence: ${JSON.stringify(coverage)}`);
+  }
   const nonCanonicalRows = [...(geo.daily || []), ...(geo.sku_daily || [])].filter(row =>
     !/^\d{2}$/.test(String(row.state_code || '')) || !String(row.state_name || '').trim()
   );
@@ -136,7 +140,7 @@ try {
   await page.locator('#geoMap path.state-shape').first().waitFor({ state: 'visible', timeout: 15000 });
   if (geographyRequests <= requestsBeforeOpen) throw new Error('Opening Geography did not request its lazy payload');
 
-  const maxProductDate = new Date(`${String(coverage.last_date || '').slice(0, 10)}T12:00:00Z`);
+  const maxProductDate = new Date(`${String(coverage.geography_last_date || '').slice(0, 10)}T12:00:00Z`);
   const productStart90 = new Date(maxProductDate);
   productStart90.setUTCDate(productStart90.getUTCDate() - 89);
   const productEvidence90 = new Set((geo.sku_daily || []).filter(row => {

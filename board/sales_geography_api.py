@@ -112,7 +112,11 @@ def _canonicalize_rows(
     }
 
 
-def _canonical_coverage(coverage: dict, resolution: dict) -> dict:
+def _canonical_coverage(
+    coverage: dict,
+    resolution: dict,
+    canonical_rows: list[dict] | None = None,
+) -> dict:
     result = dict(coverage)
     total_orders = int(result.get("orders_total") or 0)
     postal_orders = int(result.get("orders_with_postal") or 0)
@@ -128,6 +132,16 @@ def _canonical_coverage(coverage: dict, resolution: dict) -> dict:
         round(100.0 * resolved_orders / postal_orders, 1) if postal_orders else None
     )
     result["alias_resolution_basis"] = "SEPOMEX postal code → federal entity"
+    dates = sorted(
+        {
+            row.get("business_date")
+            for row in canonical_rows or []
+            if row.get("business_date") is not None
+        }
+    )
+    result["geography_first_date"] = dates[0] if dates else None
+    result["geography_last_date"] = dates[-1] if dates else None
+    result["geography_date_basis"] = "resolved SEPOMEX postal-order evidence"
     return result
 
 
@@ -246,7 +260,7 @@ def _canonical_product_analysis(
         "historical_products": sum(not item["is_current_offer"] for item in products),
         "collapsed_alias_source_skus": len(alias_skus),
         "ambiguous_current_asins": sorted(duplicate_current_asins),
-        "window_anchor": "geography.coverage.last_date",
+        "window_anchor": "geography.coverage.geography_last_date",
         "definition": (
             "Current Amazon seller-catalog offers own product identity; historical seller SKUs "
             "remain transaction evidence and aliases sharing a current offer ASIN roll into that "
@@ -362,7 +376,7 @@ def sales_geography_payload(connect, decorate_products, marketplace: str) -> dic
         decorate_products(current_products),
         decorate_products(source_products),
     )
-    coverage = _canonical_coverage(coverage, resolution)
+    coverage = _canonical_coverage(coverage, resolution, daily)
     return {
         "geography": {
             "coverage": coverage,
