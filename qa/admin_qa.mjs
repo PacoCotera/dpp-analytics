@@ -22,15 +22,13 @@ try {
   if (!response?.ok()) throw new Error(`Admin navigation returned ${response?.status() || 'no response'}`);
   await page.locator('#loginPanel').waitFor({ state: 'visible', timeout: 5000 });
 
-  const unauthenticated = await page.evaluate(async () => {
-    const session = await fetch('/api/admin/session', { cache: 'no-store' });
-    const protectedResponse = await fetch('/api/admin/catalog', { cache: 'no-store' });
-    return {
-      sessionStatus: session.status,
-      session: await session.json(),
-      protectedStatus: protectedResponse.status,
-    };
-  });
+  const sessionResponse = await context.request.get(`${baseUrl}/api/admin/session`);
+  const protectedResponse = await context.request.get(`${baseUrl}/api/admin/catalog`);
+  const unauthenticated = {
+    sessionStatus: sessionResponse.status(),
+    session: await sessionResponse.json(),
+    protectedStatus: protectedResponse.status(),
+  };
   if (
     unauthenticated.sessionStatus !== 200 ||
     unauthenticated.session.authenticated !== false ||
@@ -107,9 +105,7 @@ try {
 
   await page.locator('#logout').click();
   await page.locator('#loginPanel').waitFor({ state: 'visible', timeout: 5000 });
-  const deniedAfterLogout = await page.evaluate(async () =>
-    (await fetch('/api/admin/catalog', { cache: 'no-store' })).status
-  );
+  const deniedAfterLogout = (await context.request.get(`${baseUrl}/api/admin/catalog`)).status();
   if (deniedAfterLogout !== 401) throw new Error(`Admin session survived logout: ${deniedAfterLogout}`);
   if (errors.length) throw new Error(errors.join('; '));
 

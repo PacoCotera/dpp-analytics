@@ -26,3 +26,8 @@ The operating defect is the missing management surface, tracked in [#197](https:
 ## Other production evidence
 
 At the time of inspection, the board reported eight current seller offers and fourteen deleted historical records with no overlap. All nine Data Health pipelines were healthy; the only Product attention was the seller-taxonomy mapping for `PNC-001L`. The absence of its COGS was correctly surfaced as configuration readiness rather than an ingestion failure.
+
+## Release verification findings
+
+- [#200](https://github.com/PacoCotera/dpp-analytics/issues/200): the first Admin production QA attempt entered through Docker's published host port, so the application correctly rejected it as non-loopback. QA now shares the board container's network namespace and exercises the same loopback-only path as an SSH-tunneled operator without relaxing public denial.
+- [#202](https://github.com/PacoCotera/dpp-analytics/issues/202): intentional pre-login and post-logout HTTP 401 probes were made from the page JavaScript context. Chromium emitted console resource errors for those expected denials, and the QA subsequently classified its own security assertions as unexpected browser errors. Intentional denial probes now use Playwright's request context, which shares session cookies but does not contaminate the page console; unexpected page and console errors remain release failures.
