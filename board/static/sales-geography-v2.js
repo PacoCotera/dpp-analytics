@@ -113,7 +113,9 @@
   }
 
   function geographyMaxDate() {
-    const coverageDate = rowDate({ business_date: DATA?.geography?.coverage?.last_date });
+    const coverageDate = rowDate({
+      business_date: DATA?.geography?.coverage?.geography_last_date || DATA?.geography?.coverage?.last_date,
+    });
     if (coverageDate) return coverageDate;
     const dates = (DATA?.geography?.daily || []).map(rowDate).filter(Boolean);
     return dates.length ? d3.max(dates) : null;

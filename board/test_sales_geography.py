@@ -94,6 +94,7 @@ class CanonicalGeographyTests(unittest.TestCase):
                 "states": 1,
             },
             resolution,
+            canonical,
         )
 
         self.assertEqual(canonical, [])
@@ -102,6 +103,7 @@ class CanonicalGeographyTests(unittest.TestCase):
         self.assertEqual(coverage["unmapped_postal_orders"], 2)
         self.assertEqual(coverage["alias_resolution_pct"], 0.0)
         self.assertEqual(coverage["raw_state_labels"], 1)
+        self.assertIsNone(coverage["geography_last_date"])
 
     def test_coverage_separates_canonical_unmapped_and_alias_resolution(self):
         canonical, resolution = _canonicalize_rows(
@@ -118,6 +120,7 @@ class CanonicalGeographyTests(unittest.TestCase):
                 "states": 3,
             },
             resolution,
+            canonical,
         )
 
         self.assertEqual(len(canonical), 2)
@@ -128,6 +131,8 @@ class CanonicalGeographyTests(unittest.TestCase):
         self.assertEqual(coverage["unmapped_orders"], 1)
         self.assertEqual(coverage["alias_resolved_orders"], 2)
         self.assertEqual(coverage["alias_resolution_pct"], 100.0)
+        self.assertEqual(coverage["geography_first_date"], "2026-08-01")
+        self.assertEqual(coverage["geography_last_date"], "2026-08-01")
 
     def test_sku_dimensions_remain_separate_after_state_normalization(self):
         rows = [
