@@ -194,22 +194,40 @@ try {
     state: 'visible',
     timeout: 10000,
   });
-  const listingFact = await page.evaluate(() => {
+  const deletedProductUi = await page.evaluate(() => {
     const fact = [...document.querySelectorAll('.product-health__fact')].find(
       item => item.querySelector('.label')?.textContent?.trim() === 'Listing',
     );
+    const parentFact = [...document.querySelectorAll('.product-health__fact')].find(
+      item => item.querySelector('.label')?.textContent?.trim() === 'Parent ASIN',
+    );
     return {
-      value: fact?.querySelector('strong')?.textContent?.trim() || '',
-      note: fact?.querySelector('small')?.textContent?.trim() || '',
+      listing: {
+        value: fact?.querySelector('strong')?.textContent?.trim() || '',
+        note: fact?.querySelector('small')?.textContent?.trim() || '',
+      },
+      parentNote: parentFact?.querySelector('small')?.textContent?.trim() || '',
+      variationNote: document.querySelector('#variationNote')?.textContent?.trim() || '',
+      inventoryDecision: document.querySelector('#invDecision')?.textContent?.trim() || '',
+      economicsDecision: document.querySelector('#econDecision')?.textContent?.trim() || '',
+      adsDecision: document.querySelector('#adsDecision')?.textContent?.trim() || '',
     };
   });
-  if (listingFact.value !== 'Deleted' || !listingFact.note.startsWith('Last Amazon status ')) {
-    throw new Error(`Deleted Product UI is ambiguous: ${JSON.stringify(listingFact)}`);
+  if (
+    deletedProductUi.listing.value !== 'Deleted' ||
+    !deletedProductUi.listing.note.startsWith('Last Amazon status ') ||
+    deletedProductUi.parentNote !== 'historical relationship unavailable' ||
+    deletedProductUi.variationNote !== 'not a current offer' ||
+    deletedProductUi.inventoryDecision !== 'No current inventory decision.' ||
+    deletedProductUi.economicsDecision !== 'Historical record' ||
+    deletedProductUi.adsDecision !== 'No current Ads decision'
+  ) {
+    throw new Error(`Deleted Product UI is ambiguous: ${JSON.stringify(deletedProductUi)}`);
   }
   summary.deletedCatalog = {
     sku: deletedPnc.sku,
     sourceStatus: deletedPnc.source_listing_status,
-    listingFact,
+    deletedProductUi,
   };
 
   summary.ok = true;
