@@ -21,17 +21,22 @@ class AssetReleaseContractTest(unittest.TestCase):
             root = Path(directory)
             (root / "app.js").write_text("import './shared.js';")
             (root / "shared.js").write_text("export const value = 1;")
+            (root / "favicon.svg").write_text('<svg viewBox="0 0 1 1"></svg>')
             (root / "map.geojson").write_text('{"type":"FeatureCollection","features":[]}')
 
             manifest = build_asset_manifest(root)
             revision = release_revision(manifest)
 
-            self.assertEqual(sorted(manifest), ["app.js", "map.geojson", "shared.js"])
+            self.assertEqual(
+                sorted(manifest),
+                ["app.js", "favicon.svg", "map.geojson", "shared.js"],
+            )
             self.assertEqual(len(revision), 12)
             payload = manifest_bytes(manifest, revision).decode()
             self.assertIn(f'"revision":"{revision}"', payload)
             self.assertIn('"/assets/map.geojson"', payload)
             self.assertIn(f'"url":"/assets/map.geojson?v={revision}"', payload)
+            self.assertIn(f'"url":"/assets/favicon.svg?v={revision}"', payload)
 
             (root / "map.geojson").write_text('{"type":"FeatureCollection","features":[{}]}')
             self.assertNotEqual(release_revision(build_asset_manifest(root)), revision)
@@ -39,11 +44,13 @@ class AssetReleaseContractTest(unittest.TestCase):
     def test_page_and_transitive_module_references_share_revision(self):
         revision = "123456789abc"
         page = version_page(
-            '<html><head></head><body><script type="module" src="/assets/app.js"></script></body></html>',
+            '<html><head><link rel="icon" href="/assets/favicon.svg"></head>'
+            '<body><script type="module" src="/assets/app.js"></script></body></html>',
             revision,
         )
         self.assertIn(f'<meta name="dpp-asset-revision" content="{revision}"', page)
         self.assertIn(f'/assets/app.js?v={revision}', page)
+        self.assertIn(f'/assets/favicon.svg?v={revision}', page)
 
         with tempfile.TemporaryDirectory() as directory:
             script = Path(directory) / "app.js"

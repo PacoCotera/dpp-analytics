@@ -15,6 +15,7 @@ COPY product_naming_qa.mjs ./
 COPY ads_surface_qa.mjs ./
 COPY footer_qa.mjs ./
 COPY asset_revision_qa.mjs ./
+COPY favicon_qa.mjs ./
 COPY timezone_qa.mjs ./
 COPY cache_performance_qa.mjs ./
 COPY load_time_qa.mjs ./

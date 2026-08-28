@@ -31,6 +31,7 @@ Owns only global visual tokens and typography:
 - workspace identity
 - mobile page/workspace swipes
 - tab keyboard accessibility
+- shared favicon declaration and brand mark
 
 A page must not implement a second primary navigation system.
 

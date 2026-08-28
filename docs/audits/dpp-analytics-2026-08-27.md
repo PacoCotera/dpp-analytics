@@ -506,6 +506,11 @@ Observed:
 - The first cold page load requests `/favicon.ico` and receives HTTP 404.
 - This was the only application console/network error observed during the audit.
 
+Continuity note, 2026-08-28: in a fresh DPP Chromium session on deployed main `9ca6a3a4`, the browser did
+not make an implicit favicon request during the cold Business load. The page still declared no icon, and a
+direct request to `/favicon.ico` returned HTTP 404. The user-agent behavior differs from the audit, but the
+underlying missing-icon contract remains and scope is unchanged.
+
 Acceptance criteria:
 
 - Serve a valid favicon or declare an existing icon explicitly.
