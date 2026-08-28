@@ -142,17 +142,17 @@ def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
             SELECT band, count(*)::int sku_count
             FROM (
               SELECT CASE
-                WHEN units_per_day=0 THEN 'No velocity'
-                WHEN days_cover_with_inbound < 14 THEN '<14 days'
-                WHEN days_cover_with_inbound < 28 THEN '14–27 days'
-                WHEN days_cover_with_inbound < 56 THEN '28–55 days'
+                WHEN a.units_per_day=0 THEN 'No velocity'
+                WHEN a.days_cover_with_inbound < 14 THEN '<14 days'
+                WHEN a.days_cover_with_inbound < 28 THEN '14–27 days'
+                WHEN a.days_cover_with_inbound < 56 THEN '28–55 days'
                 ELSE '56+ days'
               END band,
               CASE
-                WHEN units_per_day=0 THEN 5
-                WHEN days_cover_with_inbound < 14 THEN 1
-                WHEN days_cover_with_inbound < 28 THEN 2
-                WHEN days_cover_with_inbound < 56 THEN 3
+                WHEN a.units_per_day=0 THEN 5
+                WHEN a.days_cover_with_inbound < 14 THEN 1
+                WHEN a.days_cover_with_inbound < 28 THEN 2
+                WHEN a.days_cover_with_inbound < 56 THEN 3
                 ELSE 4
               END sort_key
               FROM mart.inventory_attention a
