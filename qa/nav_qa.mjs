@@ -50,14 +50,40 @@ async function assertDomainContract(page, activeLabel) {
   assert((await page.locator('.nav-more').count()) === 0, 'retired More navigation is still present');
 }
 
+async function assertNoDocumentOverflow(page, label) {
+  await page.evaluate(
+    () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  const geometry = await page.evaluate(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    const viewportWidth = root.clientWidth;
+    const documentWidth = Math.max(root.scrollWidth, body?.scrollWidth || 0);
+    return { viewportWidth, documentWidth, overflow: documentWidth - viewportWidth };
+  });
+  assert(
+    geometry.overflow <= 1,
+    `${label} overflows the mobile document: ${JSON.stringify(geometry)}`,
+  );
+  return { label, ...geometry };
+}
+
 const cases = [
   { name: 'business-desktop', url: '/', width: 1600, height: 1000, active: 'Business' },
   {
+    name: 'today-mobile',
+    url: '/today',
+    width: 390,
+    height: 844,
+    active: 'Today',
+  },
+  {
     name: 'product-mobile',
     url: '/product?sku=PNC-001',
-    width: 412,
-    height: 915,
+    width: 393,
+    height: 852,
     active: 'Products',
+    drawerDestination: { label: 'Products', href: '/catalog' },
   },
 ];
 
@@ -73,6 +99,7 @@ for (const testCase of cases) {
   });
   const page = await context.newPage();
   const errors = [];
+  const overflowChecks = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
@@ -86,6 +113,8 @@ for (const testCase of cases) {
     assert(response?.ok(), `navigation failed with ${response?.status()}`);
     await page.locator('#app-sidebar .primary-nav.app-navigation').waitFor({ timeout: 5_000 });
     await assertDomainContract(page, testCase.active);
+    if (mobile)
+      overflowChecks.push(await assertNoDocumentOverflow(page, `${testCase.name} direct load`));
 
     const brandHref = await page.locator('#app-sidebar a.brand').getAttribute('href');
     assert(brandHref === '/today', `brand link ${brandHref} != /today`);
@@ -123,13 +152,34 @@ for (const testCase of cases) {
         'drawer focus did not move inside',
       );
 
-      await page.keyboard.press('Escape');
-      await page.locator('body:not(.shell-drawer-open)').waitFor({ timeout: 2_000 });
-      assert((await menuButton.getAttribute('aria-expanded')) === 'false', 'Escape did not close drawer');
-      assert(
-        await menuButton.evaluate((element) => element === document.activeElement),
-        'drawer focus did not return to its trigger',
-      );
+      if (testCase.drawerDestination) {
+        const destination = sidebar.getByRole('link', {
+          name: testCase.drawerDestination.label,
+          exact: true,
+        });
+        await Promise.all([
+          page.waitForURL(url => url.pathname === testCase.drawerDestination.href, {
+            timeout: 10_000,
+          }),
+          destination.click(),
+        ]);
+        await page.locator('#app-sidebar .primary-nav.app-navigation').waitFor({ timeout: 5_000 });
+        await assertDomainContract(page, testCase.drawerDestination.label);
+        overflowChecks.push(
+          await assertNoDocumentOverflow(
+            page,
+            `${testCase.name} drawer navigation to ${testCase.drawerDestination.href}`,
+          ),
+        );
+      } else {
+        await page.keyboard.press('Escape');
+        await page.locator('body:not(.shell-drawer-open)').waitFor({ timeout: 2_000 });
+        assert((await menuButton.getAttribute('aria-expanded')) === 'false', 'Escape did not close drawer');
+        assert(
+          await menuButton.evaluate((element) => element === document.activeElement),
+          'drawer focus did not return to its trigger',
+        );
+      }
     }
 
     await page.screenshot({
@@ -140,7 +190,7 @@ for (const testCase of cases) {
     errors.push(error.message);
   }
 
-  results.push({ ...testCase, errors, ok: errors.length === 0 });
+  results.push({ ...testCase, overflowChecks, errors, ok: errors.length === 0 });
   await context.close();
 }
 
