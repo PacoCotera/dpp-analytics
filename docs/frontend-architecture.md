@@ -141,6 +141,10 @@ React/Vite is no longer blocked by cleanup debt, but it is also not currently ju
 
 If adopted, React should replace the existing page runtime coherently rather than appear as isolated islands inside otherwise imperative pages.
 
+### UI revamp decision · 2026-08-28
+
+The UI revamp retains native HTML, CSS Grid/Flexbox and ES modules. Visual templating, tokenized appearances, page recipes and shell composition do not materially meet the gate above. React/Vite/TypeScript would require a coherent replacement of all 11 served workspace runtimes plus their build, asset-release and QA contracts; isolated islands remain prohibited. That migration adds substantial scope and production risk without solving a presentation requirement the native architecture cannot meet. Reassess React only through a separate, evidence-backed application-complexity decision.
+
 ## Source ownership pattern
 
 A workspace should be boring to inspect:
