@@ -69,9 +69,11 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
       button.setAttribute('aria-selected', String(active));
       button.setAttribute('tabindex', active ? '0' : '-1');
     });
-    document
-      .querySelectorAll('.view')
-      .forEach((panel) => panel.classList.toggle('active', panel.id === VIEW));
+    document.querySelectorAll('.view').forEach((panel) => {
+      const active = panel.id === VIEW;
+      panel.classList.toggle('active', active);
+      panel.hidden = !active;
+    });
     window.dispatchEvent(new CustomEvent('dpp:sales-view', { detail: { view: VIEW } }));
   }
 
@@ -933,6 +935,19 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
         activateView();
       }),
     );
+    document.querySelector('.tabs[role="tablist"]')?.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      const tabs = [...document.querySelectorAll('.tabs [role="tab"]')];
+      const current = Math.max(0, tabs.indexOf(event.target.closest('[role="tab"]')));
+      let next = current;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = tabs.length - 1;
+      if (event.key === 'ArrowLeft') next = (current - 1 + tabs.length) % tabs.length;
+      if (event.key === 'ArrowRight') next = (current + 1) % tabs.length;
+      event.preventDefault();
+      tabs[next].focus();
+      tabs[next].click();
+    });
     document.querySelector('.sales-range')?.addEventListener('click', (e) => {
       const b = e.target.closest('button[data-range]');
       if (!b || b.dataset.range === RANGE) return;

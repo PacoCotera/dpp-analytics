@@ -1,11 +1,11 @@
 .story-number {
   color: var(--ink);
-  font-size: 44px;
+  font-size: 30px;
   font-weight: 830;
   letter-spacing: -0.05em;
 }
 
-.paid-context {
+.trajectory-main .paid-context {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -91,16 +91,16 @@
   background: var(--dpp-data-incomplete);
 }
 .trajectory-horizon__track.good::-webkit-progress-value {
-  background: var(--dpp-healthy);
+  background: var(--dpp-data4);
 }
 .trajectory-horizon__track.good::-moz-progress-bar {
-  background: var(--dpp-healthy);
+  background: var(--dpp-data4);
 }
 .trajectory-horizon__track.bad::-webkit-progress-value {
-  background: var(--dpp-critical);
+  background: var(--dpp-data6);
 }
 .trajectory-horizon__track.bad::-moz-progress-bar {
-  background: var(--dpp-critical);
+  background: var(--dpp-data6);
 }
 .trajectory-horizon__copy {
   margin-top: 6px;
@@ -135,11 +135,15 @@
 .trajectory-help.show {
   display: block;
 }
+
+.trajectory-help[hidden] {
+  display: none;
+}
 .structure-grid {
   display: block;
 }
-.structure-priority,
-.structure-secondary {
+.trajectory-main .structure-priority,
+.trajectory-main .structure-secondary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
@@ -150,7 +154,7 @@
 .structure-reference > summary {
   display: none;
 }
-.structure-card {
+.trajectory-main .structure-card {
   padding: 16px;
   border: var(--border-width) solid var(--line);
   border-radius: var(--panel-radius);
@@ -287,10 +291,10 @@
 }
 .week-partial {
   padding: 8px 10px;
-  border: var(--border-width) solid var(--dpp-warning);
+  border: var(--border-width) dashed var(--dpp-data-incomplete);
   border-radius: 12px;
-  background: var(--dpp-warning-surface);
-  color: var(--dpp-warning-text);
+  background: repeating-linear-gradient(135deg, var(--dpp-surface-subtle) 0 6px, var(--dpp-surface) 6px 12px);
+  color: var(--dpp-text-muted);
   font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
@@ -303,12 +307,9 @@
 }
 @media (max-width: 640px) {
   .story-number {
-    font-size: 39px;
+    font-size: 30px;
   }
 
-  .paid-context--empty {
-    display: none;
-  }
   .paid-context {
     align-items: flex-start;
     flex-direction: column;
@@ -412,9 +413,6 @@
   .structure-label {
     font-size: var(--dpp-metadata-size, 14px);
   }
-  .structure-priority .structure-copy {
-    display: none;
-  }
   .structure-reference {
     overflow: hidden;
     margin-top: 9px;
@@ -461,7 +459,6 @@
     align-items: flex-start;
   }
 }
-
 
 /* Continuous evidence sequence: sections own hierarchy, objects own bounds. */
 .trajectory-main {
@@ -517,11 +514,11 @@
   background: transparent;
 }
 
-.structure-card:first-child {
+.trajectory-main .structure-card:first-child {
   border-left: 0;
 }
 
-.trajectory-why {
+.trajectory-main .trajectory-why {
   border-color: var(--dpp-border);
   background: var(--dpp-surface-subtle);
 }

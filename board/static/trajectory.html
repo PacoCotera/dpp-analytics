@@ -77,11 +77,13 @@
                     first; 7D is acceleration/noise context.
                   </div>
                 </div>
-                <button class="btn" id="helpBtn" type="button">Why these windows?</button>
+                <button class="btn" id="helpBtn" type="button" aria-controls="help" aria-expanded="false">
+                  Why these windows?
+                </button>
               </div>
               <div class="panel__body">
                 <div id="horizons"></div>
-                <div class="notice trajectory-help" id="help">
+                <div class="notice trajectory-help" id="help" hidden>
                   <strong>7D</strong> reacts quickly but is noisy. <strong>28D</strong> preserves weekday mix
                   and is our main operating signal. <strong>56D</strong> tests persistence.
                   <strong>90D</strong> separates a durable step-change from a short burst.
@@ -138,7 +140,12 @@
               </div>
             </div>
             <div class="panel__body">
-              <div class="trajectory-chart-scroll">
+              <div
+                class="trajectory-chart-scroll"
+                role="region"
+                aria-label="Trajectory chart; scroll horizontally on smaller screens"
+                tabindex="0"
+              >
                 <svg
                   id="chart"
                   class="trajectory-chart"

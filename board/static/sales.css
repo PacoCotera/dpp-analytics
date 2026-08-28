@@ -14,7 +14,7 @@
   display: block;
 }
 
-.sales-operating-grid {
+.sales-page .sales-operating-grid {
   grid-template-columns: minmax(0, 1fr) minmax(285px, 330px);
   gap: 18px;
 }
@@ -94,7 +94,7 @@
   outline-offset: 2px;
 }
 
-.sales-state-rail {
+.sales-page .sales-state-rail {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -102,7 +102,8 @@
 }
 
 .sales-reference {
-  display: contents;
+  display: block;
+  order: 3;
 }
 
 .sales-reference > summary {
@@ -177,7 +178,7 @@
 
 .sales-state-rail > .sales-signal.primary .sales-signal-value {
   margin: 7px 0 4px;
-  font-size: 38px;
+  font-size: 30px;
 }
 
 .sales-state-rail > .sales-signal.primary .sales-volume {
@@ -314,6 +315,7 @@
 
 .sales-state-rail > .sales-utility-today {
   display: grid;
+  order: 2;
   grid-template-areas:
     'label sales'
     'meta link'
@@ -472,14 +474,14 @@
   line-height: 1.2;
 }
 
-.product-read {
+#products .product-read {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 20px;
 }
 
-.product-read__card {
+#products .product-read__card {
   min-width: 0;
   padding: 14px 15px;
   border: var(--border-width) solid var(--line);
@@ -797,7 +799,7 @@
   }
 
   .sales-state-rail > .sales-signal.primary .sales-signal-value {
-    font-size: 34px;
+    font-size: 30px;
   }
 
   .sales-chart-kpi {
@@ -821,12 +823,12 @@
   }
 
   .sales-main {
-    order: 2;
+    order: initial;
   }
 
   .sales-state-rail {
-    order: 1;
-    gap: 8px;
+    order: initial;
+    gap: 0;
   }
 
   .sales-state-rail > .sales-signal.primary {
@@ -1307,7 +1309,7 @@
   }
 
   .sales-state-rail > .sales-signal.primary .sales-signal-value {
-    font-size: 34px;
+    font-size: 30px;
   }
 
   .sales-chart-kpi-label {
@@ -1322,7 +1324,6 @@
     font-size: var(--dpp-metadata-size, 14px);
   }
 }
-
 
 /* Connected Sales workspace: one bounded surface with shared separators. */
 .sales-basis-note {
@@ -1377,7 +1378,7 @@
   background: transparent;
 }
 
-.product-read__card:first-child {
+#products .product-read__card:first-child {
   border-left: 0;
 }
 

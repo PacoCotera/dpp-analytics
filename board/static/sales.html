@@ -43,12 +43,38 @@
         </div>
       </header>
 
-      <nav class="subnav tabs" aria-label="Sales views">
-        <button class="subnav__item active" type="button" data-view="overview" aria-selected="true">
+      <nav class="subnav tabs" aria-label="Sales views" role="tablist">
+        <button
+          class="subnav__item active"
+          id="salesOverviewTab"
+          type="button"
+          role="tab"
+          data-view="overview"
+          aria-controls="overview"
+          aria-selected="true"
+        >
           Overview
         </button>
-        <button class="subnav__item" type="button" data-view="products" aria-selected="false">Drivers</button>
-        <button class="subnav__item" type="button" data-view="geography" aria-selected="false">
+        <button
+          class="subnav__item"
+          id="salesProductsTab"
+          type="button"
+          role="tab"
+          data-view="products"
+          aria-controls="products"
+          aria-selected="false"
+        >
+          Drivers
+        </button>
+        <button
+          class="subnav__item"
+          id="salesGeographyTab"
+          type="button"
+          role="tab"
+          data-view="geography"
+          aria-controls="geography"
+          aria-selected="false"
+        >
           Geography
         </button>
       </nav>
@@ -60,7 +86,7 @@
       </div>
       <p class="metric-window-note" id="salesBusinessWindow">Loading seller-performance window</p>
 
-      <main id="overview" class="view active" aria-labelledby="salesTitle">
+      <main id="overview" class="view active" role="tabpanel" tabindex="0" aria-labelledby="salesOverviewTab">
         <section class="dashboard-grid sales-operating-grid">
           <div class="sales-main">
             <div class="panel sales-chart-card">
@@ -164,7 +190,7 @@
         </section>
       </main>
 
-      <main id="products" class="view" aria-label="Sales product evidence">
+      <main id="products" class="view" role="tabpanel" tabindex="0" aria-labelledby="salesProductsTab" hidden>
         <section class="page-section">
           <div class="section-header">
             <div>
@@ -274,7 +300,14 @@
         </details>
       </main>
 
-      <main id="geography" class="view" aria-label="Sales geography evidence">
+      <main
+        id="geography"
+        class="view"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="salesGeographyTab"
+        hidden
+      >
         <section class="page-section geography-workspace">
           <div class="section-header geo-section-header">
             <div>
