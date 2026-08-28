@@ -74,11 +74,7 @@ class Handler(legacy.Handler):
 
     def admin_client_allowed(self) -> bool:
         address = self.client_address[0] if self.client_address else ""
-        return admin_client_allowed(
-            address,
-            allow_remote=ADMIN_ALLOW_REMOTE,
-            secure_cookie=ADMIN_COOKIE_SECURE,
-        )
+        return admin_client_allowed(address, allow_remote=ADMIN_ALLOW_REMOTE)
 
     def require_admin_client(self) -> bool:
         if self.admin_client_allowed():

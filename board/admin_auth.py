@@ -13,14 +13,14 @@ from http.cookies import SimpleCookie
 SESSION_COOKIE = "dpp_admin_session"
 
 
-def admin_client_allowed(address: str, *, allow_remote: bool, secure_cookie: bool) -> bool:
-    """Keep password/cookie traffic local unless HTTPS is explicitly enforced."""
+def admin_client_allowed(address: str, *, allow_remote: bool) -> bool:
+    """Allow loopback clients and explicitly opted-in remote clients."""
     try:
         if ipaddress.ip_address(str(address)).is_loopback:
             return True
     except ValueError:
         return False
-    return bool(allow_remote and secure_cookie)
+    return bool(allow_remote)
 
 
 @dataclass(frozen=True)

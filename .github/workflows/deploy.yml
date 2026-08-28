@@ -110,12 +110,18 @@ jobs:
             fi
           fi
 
-          if ! sudo grep -q '^DPP_ADMIN_COOKIE_SECURE=' /etc/dpp-analytics/env; then
+          # Temporary #204 operating decision: expose password-protected Admin
+          # through the direct-HTTP public board until app-wide auth replaces it.
+          if sudo grep -q '^DPP_ADMIN_COOKIE_SECURE=' /etc/dpp-analytics/env; then
+            sudo sed -i 's/^DPP_ADMIN_COOKIE_SECURE=.*/DPP_ADMIN_COOKIE_SECURE=false/' /etc/dpp-analytics/env
+          else
             echo 'DPP_ADMIN_COOKIE_SECURE=false' | sudo tee -a /etc/dpp-analytics/env >/dev/null
           fi
 
-          if ! sudo grep -q '^DPP_ADMIN_ALLOW_REMOTE=' /etc/dpp-analytics/env; then
-            echo 'DPP_ADMIN_ALLOW_REMOTE=false' | sudo tee -a /etc/dpp-analytics/env >/dev/null
+          if sudo grep -q '^DPP_ADMIN_ALLOW_REMOTE=' /etc/dpp-analytics/env; then
+            sudo sed -i 's/^DPP_ADMIN_ALLOW_REMOTE=.*/DPP_ADMIN_ALLOW_REMOTE=true/' /etc/dpp-analytics/env
+          else
+            echo 'DPP_ADMIN_ALLOW_REMOTE=true' | sudo tee -a /etc/dpp-analytics/env >/dev/null
           fi
 
           hostname
@@ -297,11 +303,11 @@ jobs:
               --name "$qa_container" \
               --label com.dpp-analytics.role=production-browser-qa \
               --label "com.dpp-analytics.run-id=${GITHUB_RUN_ID}" \
-              --network container:dpp-board \
+              --network host \
               --env-file /tmp/dpp-admin-qa.env \
               -v /tmp/dpp-production-visual-qa:/out \
               dpp-production-visual-qa:local \
-              http://127.0.0.1:8080 /out \
+              http://127.0.0.1:8088 /out \
             | tee /tmp/dpp-production-visual-qa-run.txt
           rc=${PIPESTATUS[0]}
           cleanup_qa
