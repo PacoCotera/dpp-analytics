@@ -131,6 +131,131 @@ def _canonical_coverage(coverage: dict, resolution: dict) -> dict:
     return result
 
 
+def _canonical_product_analysis(
+    sku_daily: list[dict],
+    current_products: list[dict],
+    source_products: list[dict],
+) -> tuple[list[dict], list[dict], dict]:
+    """Attach historical order evidence to the current Amazon catalog identity.
+
+    Current offer membership comes from the latest complete merchant-listings
+    snapshot. Historical seller SKUs remain on each fact row as ``source_sku``;
+    when their ASIN has a current canonical offer they roll into that offer's
+    ``analysis_sku`` instead of becoming another product option.
+    """
+    current = []
+    current_by_sku: dict[str, dict] = {}
+    current_by_asin: dict[str, dict] = {}
+    duplicate_current_asins: set[str] = set()
+    for source in current_products:
+        sku = str(source.get("sku") or "").strip()
+        if not sku:
+            continue
+        item = {
+            **source,
+            "sku": sku,
+            "analysis_sku": sku,
+            "catalog_membership": "CURRENT_OFFER",
+            "is_current_offer": True,
+            "is_active_offer": str(source.get("status") or "").strip().lower() == "active",
+        }
+        current.append(item)
+        current_by_sku[sku] = item
+        asin = str(item.get("asin") or "").strip()
+        if asin:
+            if asin in current_by_asin:
+                duplicate_current_asins.add(asin)
+            else:
+                current_by_asin[asin] = item
+    for asin in duplicate_current_asins:
+        current_by_asin.pop(asin, None)
+
+    source_by_sku = {
+        str(item.get("sku") or "").strip(): item
+        for item in source_products
+        if str(item.get("sku") or "").strip()
+    }
+    evidence_skus: dict[str, set[str]] = {item["sku"]: set() for item in current}
+    historical_skus: set[str] = set()
+    alias_skus: set[str] = set()
+    for source_sku, source in source_by_sku.items():
+        asin = str(source.get("asin") or "").strip()
+        target = current_by_sku.get(source_sku) or (current_by_asin.get(asin) if asin else None)
+        if not target:
+            historical_skus.add(source_sku)
+            continue
+        evidence_skus[target["sku"]].add(source_sku)
+        if source_sku != target["sku"]:
+            alias_skus.add(source_sku)
+
+    analyzed_rows = []
+    for source in sku_daily:
+        row = dict(source)
+        source_sku = str(row.get("seller_sku") or "").strip()
+        asin = str(row.get("asin") or "").strip()
+        target = current_by_sku.get(source_sku)
+        if target is None and asin:
+            target = current_by_asin.get(asin)
+        analysis_sku = target["sku"] if target else source_sku
+        is_alias = bool(target and source_sku and source_sku != analysis_sku)
+        row.update(
+            {
+                "source_sku": source_sku,
+                "analysis_sku": analysis_sku,
+                "is_alias": is_alias,
+                "catalog_membership": "CURRENT_OFFER" if target else "HISTORICAL_RECORD",
+                "is_current_offer": bool(target),
+            }
+        )
+        analyzed_rows.append(row)
+        if target:
+            if source_sku:
+                evidence_skus[analysis_sku].add(source_sku)
+            if is_alias:
+                alias_skus.add(source_sku)
+        elif source_sku:
+            historical_skus.add(source_sku)
+
+    products = []
+    for item in current:
+        sources = evidence_skus.get(item["sku"], set())
+        products.append({**item, "source_skus": sorted(sources)})
+
+    for sku in sorted(historical_skus | set(source_by_sku)):
+        source = source_by_sku.get(sku, {"sku": sku, "product": sku})
+        asin = str(source.get("asin") or "").strip()
+        if sku in current_by_sku or (asin and asin in current_by_asin):
+            continue
+        products.append(
+            {
+                **source,
+                "sku": sku,
+                "analysis_sku": sku,
+                "product_role": "HISTORICAL_RECORD",
+                "catalog_membership": "HISTORICAL_RECORD",
+                "is_current_offer": False,
+                "is_active_offer": False,
+                "source_skus": [sku],
+            }
+        )
+
+    contract = {
+        "mode": "CANONICAL_PRODUCT",
+        "current_offers": len(current),
+        "active_current_offers": sum(bool(item["is_active_offer"]) for item in current),
+        "historical_products": sum(not item["is_current_offer"] for item in products),
+        "collapsed_alias_source_skus": len(alias_skus),
+        "ambiguous_current_asins": sorted(duplicate_current_asins),
+        "window_anchor": "geography.coverage.last_date",
+        "definition": (
+            "Current Amazon seller-catalog offers own product identity; historical seller SKUs "
+            "remain transaction evidence and aliases sharing a current offer ASIN roll into that "
+            "offer's analysis_sku."
+        ),
+    }
+    return analyzed_rows, products, contract
+
+
 def sales_geography_payload(connect, decorate_products, marketplace: str) -> dict:
     """Return the Sales geography workspace payload only.
 
@@ -188,7 +313,7 @@ def sales_geography_payload(connect, decorate_products, marketplace: str) -> dic
             """,
             (marketplace,),
         )
-        products = _all(
+        source_products = _all(
             cur,
             """
             SELECT DISTINCT g.seller_sku AS sku,COALESCE(g.asin,s.asin) AS asin,
@@ -205,6 +330,20 @@ def sales_geography_payload(connect, decorate_products, marketplace: str) -> dic
             """,
             (marketplace,),
         )
+        current_products = _all(
+            cur,
+            """
+            SELECT p.seller_sku AS sku,p.asin,p.parent_asin,p.family_asin,p.product_role,
+                   p.title AS product,p.image_url,p.status,p.catalog_membership
+            FROM mart.catalog_portfolio_product p
+            WHERE p.marketplace_id=%s
+              AND p.is_offer_owner
+              AND p.product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE')
+              AND p.catalog_membership='CURRENT_OFFER'
+            ORDER BY p.seller_sku
+            """,
+            (marketplace,),
+        )
 
     codes = {
         str(row.get("postal_code") or "").strip().zfill(5)
@@ -218,13 +357,19 @@ def sales_geography_payload(connect, decorate_products, marketplace: str) -> dic
         references,
         dimensions=("seller_sku", "asin"),
     )
+    sku_daily, products, product_analysis = _canonical_product_analysis(
+        sku_daily,
+        decorate_products(current_products),
+        decorate_products(source_products),
+    )
     coverage = _canonical_coverage(coverage, resolution)
     return {
         "geography": {
             "coverage": coverage,
             "daily": daily,
             "sku_daily": sku_daily,
-            "products": decorate_products(products),
+            "products": products,
+            "product_analysis": product_analysis,
             "postal_reference": references,
             "reference_source": "SEPOMEX textual catalog · open-mexico db_postal v1.2.0",
         }

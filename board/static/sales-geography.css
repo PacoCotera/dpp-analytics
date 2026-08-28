@@ -58,7 +58,8 @@
   gap: 3px;
 }
 
-.geo-control span {
+.geo-control span,
+.geo-control > label {
   color: var(--muted);
   font-size: 8.5px;
   font-weight: 800;
@@ -80,6 +81,29 @@
 
 .geo-product-control select {
   width: 230px;
+}
+
+.geo-product-control small {
+  max-width: 230px;
+  color: var(--muted);
+  font-size: 8.5px;
+  line-height: 1.3;
+}
+
+.geo-secondary-products {
+  width: max-content;
+  max-width: 230px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .geo-kpi-rail {
@@ -483,6 +507,11 @@
   .geo-control select,
   .geo-product-control select {
     width: 100%;
+    max-width: none;
+  }
+
+  .geo-product-control small,
+  .geo-secondary-products {
     max-width: none;
   }
 
