@@ -2,6 +2,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
+import { format } from 'prettier';
+
 import { TOKEN_KEYS, validateRegistry } from './presentation-contract.mjs';
 
 const BOARD_ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -96,8 +98,15 @@ async function checkFile(filePath, expected) {
 
 async function main() {
   const registry = await readRegistry();
+  const formattedCss = await format(renderProfilesCss(registry), {
+    parser: 'css',
+    printWidth: 110,
+    semi: true,
+    singleQuote: true,
+    tabWidth: 2,
+  });
   const outputs = [
-    [CSS_PATH, renderProfilesCss(registry)],
+    [CSS_PATH, formattedCss],
     [REGISTRY_JS_PATH, renderRegistryJs(registry)],
   ];
 

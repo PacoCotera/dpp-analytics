@@ -460,9 +460,7 @@
     const explicit = links.findIndex((link) => link.classList.contains('active'));
     if (explicit >= 0) return explicit;
     const here = normalizedPath();
-    return links.findIndex(
-      (link) => new URL(link.href, location.href).pathname.replace(/\/$/, '') === here,
-    );
+    return links.findIndex((link) => new URL(link.href, location.href).pathname.replace(/\/$/, '') === here);
   }
 
   function movePrimary(delta) {
@@ -512,11 +510,7 @@
     } catch {
       context = null;
     }
-    if (
-      !context ||
-      context.path !== rawPath() ||
-      Date.now() - Number(context.at || 0) > 6 * 60 * 60 * 1000
-    )
+    if (!context || context.path !== rawPath() || Date.now() - Number(context.at || 0) > 6 * 60 * 60 * 1000)
       return;
     const contextUrl = new URL(context.href, location.href);
     if (contextUrl.search !== location.search) return;
@@ -608,8 +602,7 @@
         start = null;
         const distance = Math.abs(dx);
         const viewportShare = distance / Math.max(1, window.innerWidth);
-        const horizontalIntent =
-          distance >= 110 && viewportShare >= 0.28 && distance >= Math.abs(dy) * 2.1;
+        const horizontalIntent = distance >= 110 && viewportShare >= 0.28 && distance >= Math.abs(dy) * 2.1;
         if (elapsed > 700 || !horizontalIntent) return;
 
         const delta = dx < 0 ? 1 : -1;
