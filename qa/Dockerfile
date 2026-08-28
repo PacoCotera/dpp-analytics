@@ -25,6 +25,7 @@ COPY catalog_onboarding_qa.mjs ./
 COPY interpretation_rules_qa.mjs ./
 COPY metric_windows_qa.mjs ./
 COPY inventory_qa.mjs ./
+COPY admin_qa.mjs ./
 COPY entrypoint.sh ./
 RUN chmod +x /qa/entrypoint.sh
 ENTRYPOINT ["/qa/entrypoint.sh"]

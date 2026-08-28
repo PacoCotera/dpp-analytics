@@ -9,6 +9,7 @@ const pages = readdirSync(staticRoot)
   .sort();
 
 const pageStyles = {
+  'admin.html': 'admin.css',
   'ads.html': 'ads.css',
   'catalog.html': 'catalog.css',
   'data_health.html': 'data-health.css',

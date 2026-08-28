@@ -102,6 +102,8 @@ A `STRUCTURAL_PARENT` is a non-sellable variation container. It is excluded from
 
 The browser may group/sort/filter data for presentation, but canonical family/variation membership and role semantics should come from the API/data layer. During catalog onboarding, missing dimensions or seller taxonomy may be provisional; consumers must use the lifecycle/source-readiness fields instead of assuming a newly discovered SKU is fully populated.
 
+The protected `/admin` workspace consumes this same canonical membership. Every `CURRENT_OFFER` appears automatically with Amazon SKU/ASIN/title/image/status, parent/family evidence, variation attributes and stock context. Seller-owned short names, taxonomy and COGS remain blank until explicitly configured; the application does not infer them from titles or sibling products. Records absent from the latest completed Seller Listings snapshot are shown only as read-only deleted history. Their saved configuration remains on disk so a reappearing SKU recovers it.
+
 ### Inventory
 
 FBA inventory snapshots are combined with recent reconciled selling velocity to produce coverage and action states. `STOCKOUT`, `PRODUCE`, `PLAN`, `OK` and `HOLD` are business semantics owned by the data/API layer, not CSS/JavaScript convenience labels.
@@ -138,7 +140,9 @@ Production business configuration is host-owned:
 
 - product costs: `/etc/dpp-analytics/board-config/product_costs.json` → `/config/product_costs.json` in worker/board;
 - product variations: `/etc/dpp-analytics/board-config/product_variations.json` → `/config/product_variations.json` in the board;
-- product labels/display overrides: `/etc/dpp-analytics/product_labels.json` → `/app/product_labels.json` in the board.
+- product labels/display overrides: `/etc/dpp-analytics/board-config/product_labels.json` → `/config/product_labels.json` in the board.
+
+The board mounts this configuration directory read-write only because the authenticated Admin owner performs validated atomic replaces, keeps bounded recoverable backups under `board-config/backups/`, and appends non-secret change metadata to `board-config/admin-audit.jsonl`. The worker continues to mount the same directory read-only. Updating current COGS preserves any effective-dated `history`; closed Finance month snapshots are immutable and are never rewritten by Admin.
 
 Repository JSON files are defaults/seeds unless deployment automation explicitly replaces the host-owned file. Do not move secrets or mutable production business configuration into Git for convenience.
 

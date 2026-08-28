@@ -40,6 +40,8 @@ COPY board/server_canonical.py ./server.py
 COPY board/asset_release.py .
 COPY board/response_cache.py .
 COPY board/response_transport.py .
+COPY board/admin_auth.py .
+COPY board/admin_config.py .
 COPY board/interpretation_rules.py .
 COPY board/metric_windows.py .
 COPY board/home_api.py .

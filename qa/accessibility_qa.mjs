@@ -17,6 +17,7 @@ const routes = [
   { name: "finance", url: "/finance" },
   { name: "trajectory", url: "/trajectory" },
   { name: "data-health", url: "/data-health" },
+  { name: "admin", url: "/admin" },
 ];
 
 function assert(condition, message) {

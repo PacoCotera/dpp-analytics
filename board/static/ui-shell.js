@@ -17,6 +17,7 @@
     { href: '/trajectory', label: 'Trajectory', hint: 'Longer-horizon momentum' },
     { href: '/ads', label: 'Ads', hint: 'Paid demand and Amazon attribution' },
     { href: '/data-health', label: 'Data Health', hint: 'Source freshness and trust' },
+    { href: '/admin', label: 'Admin', hint: 'Product names, taxonomy and COGS' },
   ];
   const CONTEXT_KEY = 'dpp-page-context-v1';
 

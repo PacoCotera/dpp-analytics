@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f0e8" />
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <title>Dirty Pawz Press · Admin</title>
+    <link rel="stylesheet" href="/assets/theme.css" />
+    <link rel="stylesheet" href="/assets/nav-shell.css" />
+    <link rel="stylesheet" href="/assets/layout-system.css" />
+    <link rel="stylesheet" href="/assets/admin.css" />
+    <script src="/assets/ui-shell.js" defer></script>
+  </head>
+  <body class="admin-shell">
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark">DP</div>
+          <div class="brand-copy">
+            <div class="brand-title">DIRTY PAWZ PRESS</div>
+            <div class="brand-sub">Catalog configuration · Amazon Mexico</div>
+          </div>
+        </div>
+        <div class="top-meta"><strong>Admin</strong><span>Seller-owned values</span></div>
+      </header>
+      <nav class="primary-nav"></nav>
+      <header class="page-header">
+        <div>
+          <h1 class="page-header__title">Product configuration</h1>
+          <p class="page-header__description">
+            Short UI names, seller taxonomy, and current unit COGS for canonical catalog offers.
+          </p>
+        </div>
+        <button id="logout" class="admin-secondary is-hidden" type="button">Sign out</button>
+      </header>
+
+      <main>
+        <section id="loginPanel" class="admin-login" aria-labelledby="loginTitle">
+          <div>
+            <p class="admin-eyebrow">Protected workspace</p>
+            <h2 id="loginTitle">Sign in to edit product configuration</h2>
+            <p>
+              Catalog evidence remains read-only. Only seller-owned mappings and current COGS can be changed
+              here.
+            </p>
+          </div>
+          <form id="loginForm" class="admin-login-form">
+            <label for="password">Admin password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+            <button type="submit">Sign in</button>
+            <p id="loginStatus" class="admin-status" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section id="adminPanel" class="is-hidden" aria-labelledby="catalogAdminTitle">
+          <div class="admin-summary-head">
+            <div>
+              <p class="admin-eyebrow">Canonical lifecycle</p>
+              <h2 id="catalogAdminTitle">Current offers</h2>
+              <p id="lifecycleBasis">Loading Seller Listings-backed catalog membership…</p>
+            </div>
+            <label class="admin-search" for="adminSearch">
+              <span>Find a SKU</span>
+              <input id="adminSearch" type="search" placeholder="SKU, ASIN, or source title" />
+            </label>
+          </div>
+          <div class="admin-summary" aria-label="Catalog configuration summary">
+            <div><strong id="currentCount">—</strong><span>current offers</span></div>
+            <div><strong id="needsCount">—</strong><span>need configuration</span></div>
+            <div><strong id="deletedCount">—</strong><span>deleted history</span></div>
+          </div>
+          <div class="admin-notice">
+            Blank fields are never guessed. Saving an empty field clears only that seller-owned value;
+            effective-dated COGS history and closed Finance snapshots are preserved.
+          </div>
+          <div id="productEditors" class="admin-products" aria-live="polite"></div>
+
+          <details class="admin-history">
+            <summary>Deleted SKU history <span id="deletedDisclosure"></span></summary>
+            <p>
+              These SKUs are absent from the latest completed Seller Listings snapshot. Their configuration is
+              retained in case they reappear, but it is read-only and excluded from current rollups.
+            </p>
+            <div id="deletedProducts" class="admin-history-list"></div>
+          </details>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>Seller configuration · atomic host JSON + recoverable backups</span
+        ><span>Current offers = latest complete Amazon Seller Listings snapshot</span>
+        <span class="footer-build">main __DPP_BUILD_SHA__</span>
+      </footer>
+    </div>
+    <script type="module" src="/assets/admin.js"></script>
+  </body>
+</html>

@@ -4,6 +4,7 @@ import unittest
 
 from catalog_api import (
     _apply_canonical_identity,
+    _amazon_variation_evidence,
     _catalog_summary,
     _commercial_state,
     _identity_violations,
@@ -11,6 +12,20 @@ from catalog_api import (
 
 
 class CatalogIdentityTest(unittest.TestCase):
+    def test_admin_source_evidence_preserves_amazon_dimension_names_and_values(self):
+        row = {
+            "amazon_variation_attribute_names": ["color_name", "style_name"],
+            "catalog_attributes": {
+                "color_name": [{"value": "Naturaleza"}],
+                "style_name": [{"value": "Líneas"}],
+            },
+        }
+
+        self.assertEqual(
+            _amazon_variation_evidence(row),
+            {"color_name": "Naturaleza", "style_name": "Líneas"},
+        )
+
     def test_child_variation_identity_agrees_with_parent_and_family(self):
         row = _apply_canonical_identity(
             {

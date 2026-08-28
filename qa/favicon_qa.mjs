@@ -16,6 +16,7 @@ const routes = [
   "/trajectory",
   "/ads",
   "/data-health",
+  "/admin",
   "/product?sku=PNC-001",
 ];
 
