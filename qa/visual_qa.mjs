@@ -181,12 +181,12 @@ async function verifyBusiness(page) {
     const sections = main
       ? [...main.children].filter(element => element.classList.contains('home-section'))
       : [];
-    const overview = document.querySelector('.home-overview');
-    const demand = document.querySelector('.home-demand');
-    const operations = document.querySelector('.home-operations');
+    const overview = document.querySelector('[data-dpp-qa="business-overview"]');
+    const demand = document.querySelector('[data-dpp-qa="business-demand"]');
+    const operations = document.querySelector('[data-dpp-qa="business-operations"]');
     const operationsLayout = operations?.querySelector('.operations-layout');
-    const decisions = document.querySelector('.decisions-module');
-    const health = document.querySelector('.health-module');
+    const decisions = document.querySelector('[data-dpp-qa="business-decisions"]');
+    const health = document.querySelector('[data-dpp-qa="business-health"]');
     const dataHealthCard = document.querySelector('.business-health-card[href="/data-health"]');
     const healthContract = payload.health_contract || {};
     const pipelineScope = healthContract.pipeline_scope || {};
@@ -248,7 +248,7 @@ async function verifyBusiness(page) {
       ).length,
       rhythmWeekendDays: document.querySelectorAll('#spark .home-rhythm__bar--weekend').length,
       signalCopy: document
-        .querySelector('.home-demand .section-header__description')
+        .querySelector('[data-dpp-qa="business-demand"] .section-header__description')
         ?.textContent?.replace(/\s+/g, ' ')
         .toLowerCase()
         .includes('seven-day signal'),
