@@ -331,7 +331,19 @@
             <section class="panel geo-ranked-panel">
               <div class="geo-ranked-header">
                 <strong id="geoRankedTitle">Top states</strong>
-                <small id="geoSortStatus">Sorted by Spend ↓ · click a column to reorder</small>
+                <div class="geo-ranked-actions">
+                  <small id="geoSortStatus" aria-live="polite">Sorted by Spend ↓</small>
+                  <button
+                    class="geo-show-all"
+                    id="geoShowAll"
+                    type="button"
+                    aria-controls="geoRankedRows"
+                    aria-expanded="false"
+                    hidden
+                  >
+                    Show all
+                  </button>
+                </div>
               </div>
               <div class="data-table-scroll">
                 <table class="data-table geo-table">

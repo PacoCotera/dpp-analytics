@@ -47,6 +47,7 @@
     units: 'Units',
     aov: 'AOV',
   };
+  const RANKED_ROW_LIMIT = 20;
   const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   const money = (v) => '$' + nf.format(Math.round(Number(v || 0)));
   const esc = (s) =>
@@ -78,6 +79,7 @@
   let SELECTED_STATE = null;
   let SORT_FIELD = 'sales';
   let SORT_DIRECTION = 'desc';
+  let SHOW_ALL_RANKED = false;
   let STATES_GEO = null;
   const POSTAL_CACHE = new Map();
   let renderToken = 0;
@@ -466,7 +468,7 @@
     });
   }
 
-  function updateSortUi() {
+  function updateSortUi(totalRows, visibleRows) {
     document.querySelectorAll('.geo-table th[data-geo-sort]').forEach((header) => {
       const active = header.dataset.geoSort === SORT_FIELD;
       header.setAttribute(
@@ -475,9 +477,12 @@
       );
     });
     const direction = SORT_DIRECTION === 'desc' ? '↓' : '↑';
+    const noun = SELECTED_STATE ? 'postal codes' : 'states';
+    const countCopy =
+      visibleRows === totalRows ? `Showing all ${totalRows}` : `Showing ${visibleRows} of ${totalRows}`;
     setText(
       'geoSortStatus',
-      `Sorted by ${SORT_LABELS[SORT_FIELD] || SORT_FIELD} ${direction} · click a column to reorder`,
+      `${countCopy} ${noun} · sorted by ${SORT_LABELS[SORT_FIELD] || SORT_FIELD} ${direction}`,
     );
   }
 
@@ -486,12 +491,19 @@
     const title = document.getElementById('geoRankedTitle');
     if (!out || !title) return;
     const rows = sortedRankRows();
+    const visibleRows = SHOW_ALL_RANKED ? rows : rows.slice(0, RANKED_ROW_LIMIT);
     title.textContent = SELECTED_STATE
       ? `Postal codes · ${META_BY_CODE.get(SELECTED_STATE)?.name || ''}`
       : 'States';
-    updateSortUi();
-    out.innerHTML = rows
-      .slice(0, 20)
+    updateSortUi(rows.length, visibleRows.length);
+    const showAll = document.getElementById('geoShowAll');
+    if (showAll) {
+      const limited = rows.length > RANKED_ROW_LIMIT;
+      showAll.hidden = !limited;
+      showAll.setAttribute('aria-expanded', String(limited && SHOW_ALL_RANKED));
+      showAll.textContent = SHOW_ALL_RANKED ? `Show top ${RANKED_ROW_LIMIT}` : `Show all ${rows.length}`;
+    }
+    out.innerHTML = visibleRows
       .map((r) => {
         const click = !SELECTED_STATE && r.code ? ` data-state="${r.code}" tabindex="0" role="button"` : '';
         const area = SELECTED_STATE
@@ -547,6 +559,7 @@
 
   function selectState(code) {
     SELECTED_STATE = code && code !== 'all' ? code : null;
+    SHOW_ALL_RANKED = false;
     renderAll();
   }
 
@@ -571,6 +584,7 @@
       const button = event.target.closest('button[data-geo-range]');
       if (!button) return;
       RANGE = button.dataset.geoRange;
+      SHOW_ALL_RANKED = false;
       document
         .querySelectorAll('[data-geo-range]')
         .forEach((x) => x.classList.toggle('active', x === button));
@@ -582,12 +596,17 @@
     });
     document.getElementById('geoProduct')?.addEventListener('change', (event) => {
       SKU = event.target.value;
+      SHOW_ALL_RANKED = false;
       renderAll();
     });
     document
       .getElementById('geoStateSelect')
       ?.addEventListener('change', (event) => selectState(event.target.value));
     document.getElementById('geoBack')?.addEventListener('click', () => selectState(null));
+    document.getElementById('geoShowAll')?.addEventListener('click', () => {
+      SHOW_ALL_RANKED = !SHOW_ALL_RANKED;
+      renderRanked();
+    });
     document.querySelector('.geo-table thead')?.addEventListener('click', (event) => {
       const header = event.target.closest('th[data-geo-sort]');
       if (!header) return;
