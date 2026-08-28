@@ -107,6 +107,12 @@ Ads reports Amazon-attributed performance plus an independent total-seller-sales
 
 Amazon Ads connection lifecycle is separate from reporting quality. The worker publishes one non-secret state in `ops.integration_state`: `NOT_CONNECTED`, `AUTHORIZATION_PENDING`, `BACKFILL_RUNNING`, `READY`, or `FAILED`. `board/ads_state.py` owns the matching badge, headline and detail contract consumed by both Product and Ads APIs. Page runtimes render that contract and must not infer authorization or backfill state from missing report rows.
 
+The Ads document loads only its shell, page styles and lightweight runtime before the connection payload is
+known. `ads.js` calls `ads-chart-loader.js` only for the API-owned `READY` connection plus `ready` reporting
+status; that loader then requests shared chart CSS, D3 and `chart-system.js` with the current asset revision.
+Disconnected, authorization-pending, backfill and failure states must render without downloading or parsing
+chart dependencies they cannot use.
+
 ### Finance
 
 Finance intentionally separates three concepts:

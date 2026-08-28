@@ -10,8 +10,9 @@
     "lint:css": "stylelint 'static/**/*.css'",
     "format:check": "prettier --check 'static/**/*.{css,html,js}'",
     "format": "prettier --write 'static/**/*.{css,html,js}'",
+    "test:ads-assets": "node scripts/ads-chart-loader-contract.mjs",
     "test:formats": "node scripts/ui-format-contract.mjs",
-    "quality": "npm run lint && npm run test:formats && npm run format:check"
+    "quality": "npm run lint && npm run test:formats && npm run test:ads-assets && npm run format:check"
   },
   "devDependencies": {
     "@eslint/js": "9.9.1",
