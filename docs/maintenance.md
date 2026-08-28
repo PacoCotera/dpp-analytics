@@ -68,6 +68,8 @@ The default `/api/sales` payload deliberately excludes postal geography. `/api/s
 
 Catalog identity is assembled server-side from seller listings, catalog data, configured variation relationships and local display overrides. Use the Reports API merchant-listings path for seller inventory/listing breadth rather than looping Catalog Items to discover the seller's entire catalog.
 
+Treat each completed merchant-listings report as the canonical current snapshot, not as an append-only union. `core.seller_listing.is_current_listing` separates current Amazon records from deleted historical SKUs. Catalog KPIs and families use current records only; Catalog Items owns current parent-child relationships. Deleted SKUs remain available only through explicit historical/deleted views and transaction attribution, labeled `Deleted` rather than `Inactive`.
+
 ### Inventory
 
 Inventory combines FBA inventory state with selling velocity. Action semantics such as `STOCKOUT`, `PRODUCE`, `PLAN`, `OK` and `HOLD` belong in the data/API layer. The browser renders those actions; it should not independently invent replenishment thresholds.

@@ -42,6 +42,60 @@ def connect_with(rows):
 
 
 class CatalogOnboardingTest(unittest.TestCase):
+    def test_deleted_history_is_excluded_from_onboarding(self):
+        rows = [
+            {
+                "sku": "DELETED-001",
+                "asin": "BDELETED",
+                "product_role": "SELLABLE_VARIATION",
+                "catalog_membership": "DELETED",
+                "source_state": "SOURCE_READY",
+                "is_onboarding": False,
+                "source_attention": True,
+            },
+            {
+                "sku": "CURRENT-001",
+                "asin": "BCURRENT",
+                "product_role": "SELLABLE_STANDALONE",
+                "catalog_membership": "CURRENT_OFFER",
+                "source_state": "SOURCE_READY",
+                "is_onboarding": False,
+                "source_attention": False,
+            },
+        ]
+        with patch("catalog_onboarding._taxonomy_skus", return_value={"CURRENT-001"}):
+            payload = catalog_onboarding_snapshot(connect_with(rows), "MX")
+
+        self.assertEqual([row["sku"] for row in payload["items"]], ["CURRENT-001"])
+        self.assertEqual(payload["summary"]["active_listings"], 1)
+        self.assertEqual(payload["summary"]["source_attention"], 0)
+
+    def test_current_closed_and_inactive_statuses_remain_distinct(self):
+        rows = [
+            {
+                "sku": "CLOSED-001",
+                "status": "Closed",
+                "source_state": "CLOSED",
+                "is_onboarding": False,
+                "source_attention": False,
+            },
+            {
+                "sku": "INACTIVE-001",
+                "status": "Inactive",
+                "source_state": "INACTIVE",
+                "is_onboarding": False,
+                "source_attention": False,
+            },
+        ]
+        with patch("catalog_onboarding._taxonomy_skus", return_value=set()):
+            payload = catalog_onboarding_snapshot(connect_with(rows), "MX")
+
+        by_sku = {row["sku"]: row for row in payload["items"]}
+        self.assertEqual(by_sku["CLOSED-001"]["taxonomy_state"], "CLOSED")
+        self.assertEqual(by_sku["INACTIVE-001"]["taxonomy_state"], "INACTIVE")
+        self.assertEqual(payload["summary"]["active_listings"], 0)
+        self.assertEqual(payload["summary"]["inactive_listings"], 2)
+
     def test_structural_parents_are_excluded_from_onboarding_and_counts(self):
         rows = [
             {

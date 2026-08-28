@@ -211,13 +211,14 @@ def health_board_payload(connect, marketplace: str) -> dict:
             SELECT
               (SELECT count(*) FROM core.amazon_order WHERE marketplace_id=%s)::int AS orders,
               (SELECT count(*) FROM core.financial_transaction WHERE marketplace_id=%s)::int AS financial_transactions,
-              (SELECT count(*) FROM core.seller_listing WHERE marketplace_id=%s)::int AS seller_listings,
+              (SELECT count(*) FROM core.seller_listing WHERE marketplace_id=%s AND is_current_listing)::int AS seller_listings,
+              (SELECT count(*) FROM core.seller_listing WHERE marketplace_id=%s AND NOT is_current_listing)::int AS deleted_seller_listing_records,
               (SELECT count(*) FROM core.inventory_snapshot WHERE marketplace_id=%s)::int AS inventory_snapshots,
               (SELECT max(business_date) FROM core.sales_traffic_daily WHERE marketplace_id=%s) AS sales_traffic_last_date,
               (SELECT max(posted_date) FROM core.financial_transaction WHERE marketplace_id=%s) AS finance_last_posted,
-              (SELECT max(fetched_at) FROM core.seller_listing WHERE marketplace_id=%s) AS listings_last_updated
+              (SELECT max(fetched_at) FROM core.seller_listing WHERE marketplace_id=%s AND is_current_listing) AS listings_last_updated
             """,
-            (marketplace, marketplace, marketplace, marketplace, marketplace, marketplace, marketplace),
+            (marketplace, marketplace, marketplace, marketplace, marketplace, marketplace, marketplace, marketplace),
         )
         ads_quality = _all(
             cur,
@@ -278,7 +279,7 @@ def health_board_payload(connect, marketplace: str) -> dict:
         "catalog": {
             **catalog,
             "contract": {
-                "discovery": "Seller Listings is authoritative for seller SKU discovery and may surface a new offer before Catalog Items has propagated complete enrichment.",
+                "discovery": "The latest complete Seller Listings snapshot is authoritative for current seller SKUs; records absent from it are retained only as deleted history. Catalog Items owns enrichment and current parent-child relationships.",
                 "grace": "New/partial offers have a 48-hour onboarding grace. Catalog is retried every 30 minutes while an ASIN is known but source enrichment is unresolved.",
                 "source_attention": "After 48 hours, missing ASIN or unresolved Catalog evidence is a source-completeness exception.",
                 "taxonomy_attention": "Seller taxonomy becomes actionable only after source enrichment is ready and the onboarding grace has elapsed.",

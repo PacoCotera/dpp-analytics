@@ -88,7 +88,10 @@ function renderHealth(payload) {
   const reasons = [];
   let headline = 'Product is stable.';
 
-  if (!sellable) {
+  if (commercial.catalog_membership === 'DELETED') {
+    headline = 'SKU is deleted from the current Amazon catalog.';
+    reasons.push('Historical transactions remain available, but this record is not a current offer.');
+  } else if (!sellable) {
     headline = 'Listing is not currently sellable.';
     reasons.push('Demand interpretation is secondary until listing state is resolved.');
   } else if (profile.inventory_action === 'STOCKOUT') {
@@ -173,7 +176,7 @@ function renderHero(profile, commercial) {
         <p id="healthRead">Connecting demand, traffic, availability, listing state and economics.</p>
       </div>
       <div class="product-health__facts">
-        <div class="product-health__fact"><div class="label">Listing</div><strong>${escapeHtml(profile.listing_status || '—')}</strong><small>${escapeHtml(fulfillment)}</small></div>
+        <div class="product-health__fact"><div class="label">Listing</div><strong>${escapeHtml(profile.listing_status || '—')}</strong><small>${profile.listing_status === 'Deleted' ? `Last Amazon status ${escapeHtml(profile.source_listing_status || 'unknown')}` : escapeHtml(fulfillment)}</small></div>
         <div class="product-health__fact"><div class="label">Family</div><strong>${escapeHtml(identity.family_label || 'Identity unavailable')}</strong><small>${escapeHtml(identity.role || commercial.product_role || 'commercial identity')}</small></div>
         <div class="product-health__fact"><div class="label">Variation</div><strong>${escapeHtml(attributes.slice(0, 2).join(' · ') || '—')}</strong><small>${escapeHtml(attributes.slice(2).join(' · ') || commercial.amazon_variation_theme || 'catalog attributes')}</small></div>
         <div class="product-health__fact"><div class="label">Parent ASIN</div><strong>${escapeHtml(commercial.parent_asin || 'None')}</strong><small>${commercial.parent_asin ? 'Amazon variation family' : 'standalone offer'}</small></div>
@@ -183,9 +186,13 @@ function renderHero(profile, commercial) {
 
 function renderListingAndInventory(profile, commercial, ads) {
   const sellable = commercial.listing_sellable !== false;
-  byId('listingState').textContent = sellable ? 'Sellable' : 'Not sellable';
-  byId('listingState').className = sellable ? 'good' : 'bad';
-  byId('listingNote').textContent = profile.listing_status || 'listing state';
+  const deleted = commercial.catalog_membership === 'DELETED';
+  byId('listingState').textContent = deleted ? 'Deleted' : sellable ? 'Sellable' : 'Not sellable';
+  byId('listingState').className = deleted ? 'warn' : sellable ? 'good' : 'bad';
+  byId('listingNote').textContent =
+    profile.listing_status === 'Deleted'
+      ? `Last Amazon status ${profile.source_listing_status || 'unknown'}`
+      : profile.listing_status || 'listing state';
 
   const attributes = commercial.variation_attributes || {};
   const attributeValues = Object.values(attributes);

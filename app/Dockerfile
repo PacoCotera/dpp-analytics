@@ -24,5 +24,6 @@ import dpp_analytics.amazon_ads
 import dpp_analytics.finance_close
 import dpp_analytics.finance_close_tax_corrected
 PY
+RUN python -m unittest discover -v -s dpp_analytics -t . -p 'test_*.py'
 
 CMD ["python", "-m", "dpp_analytics.scheduler"]

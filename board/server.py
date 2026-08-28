@@ -331,7 +331,7 @@ def health_payload():
         inventory = one(cur, "SELECT count(*)::int AS n FROM mart.inventory_attention WHERE marketplace_id=%s", (MARKETPLACE,))
         finance = one(cur, "SELECT count(*)::int AS n,max(posted_date) AS last_posted FROM core.financial_transaction WHERE marketplace_id=%s", (MARKETPLACE,))
         catalog = one(cur, "SELECT count(*)::int AS n,max(updated_at) AS last_updated FROM core.catalog_item WHERE marketplace_id=%s", (MARKETPLACE,))
-        listings = one(cur, "SELECT count(*)::int AS n,max(fetched_at) AS last_updated FROM core.seller_listing WHERE marketplace_id=%s", (MARKETPLACE,))
+        listings = one(cur, "SELECT count(*) FILTER (WHERE is_current_listing)::int AS n,count(*) FILTER (WHERE NOT is_current_listing)::int AS deleted,max(fetched_at) FILTER (WHERE is_current_listing) AS last_updated FROM core.seller_listing WHERE marketplace_id=%s", (MARKETPLACE,))
         freshness = all_rows(cur, "SELECT job_name,latest_status,extract(epoch from age)::bigint age_seconds FROM ops.data_health WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1')")
     dependency_counts = {
         "today": int(today.get("n") or 0),
@@ -352,6 +352,7 @@ def health_payload():
         "marketplace": MARKETPLACE,
         "dependencies": dependency_counts,
         "seller_listings": int(listings.get("n") or 0),
+        "deleted_seller_listing_records": int(listings.get("deleted") or 0),
         "seller_listings_last_updated": listings.get("last_updated"),
         "catalog_items": int(catalog.get("n") or 0),
         "catalog_last_updated": catalog.get("last_updated"),

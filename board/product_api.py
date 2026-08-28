@@ -28,10 +28,14 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
     with connect() as conn, conn.cursor() as cur:
         profile = _one(cur, """
             SELECT s.sku,COALESCE(sl.asin,s.asin) asin,
+                   NULLIF(s.parent_asin,'') historical_parent_asin,
                    COALESCE(sl.item_name,ci.title,s.title,s.sku) product,
                    COALESCE(sl.image_url,ci.image_url) image_url,
                    COALESCE(sl.price,s.list_price) listing_price,
-                   sl.status listing_status,sl.fulfillment_channel,sl.open_date,
+                   sl.status source_listing_status,
+                   CASE WHEN COALESCE(sl.is_current_listing,false) THEN sl.status ELSE 'Deleted' END listing_status,
+                   COALESCE(sl.is_current_listing,false) is_current_listing,sl.deleted_at,
+                   sl.fulfillment_channel,sl.open_date,
                    a.available,a.inbound,a.days_cover_on_hand,a.days_cover_with_inbound,
                    a.action inventory_action,a.units_per_day,a.sales_t28 inventory_sales_t28,
                    a.units_t28 inventory_units_t28
@@ -54,6 +58,7 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
                    p.conversion_t28_pct,p.sales_delta28_pct,p.sessions_delta28_pct,p.conversion_delta28_pp,
                    p.available,p.inbound,p.days_cover_on_hand,p.days_cover_with_inbound,p.inventory_action,
                    p.status,p.fulfillment_channel,p.open_date,p.traffic_through_date,
+                   p.is_current_listing,p.deleted_at,p.catalog_membership,
                    ci.variation_theme amazon_variation_theme,
                    ci.variation_attributes amazon_variation_attribute_names,
                    ci.attributes catalog_attributes
@@ -65,6 +70,23 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
             (row for row in portfolio_rows if row.get('sku') == sku),
             {},
         )
+        if not commercial and not profile.get('is_current_listing'):
+            historical_parent = profile.get('historical_parent_asin')
+            commercial = {
+                'sku': sku,
+                'asin': asin,
+                'parent_asin': historical_parent,
+                'family_asin': historical_parent or asin,
+                'product_role': 'HISTORICAL_RECORD',
+                'product': profile.get('product'),
+                'image_url': profile.get('image_url'),
+                'status': 'Deleted',
+                'source_listing_status': profile.get('source_listing_status'),
+                'is_current_listing': False,
+                'deleted_at': profile.get('deleted_at'),
+                'catalog_membership': 'DELETED',
+                'is_offer_owner': False,
+            }
 
         performance = _one(cur,"""
             WITH c AS (SELECT %s::date d), x AS (
@@ -175,7 +197,11 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
                'contribution_before_amazon_t28':round(sales_t28-estimated_cogs,2) if estimated_cogs is not None else None,
                'cogs_pct_sales_t28':round(100.0*estimated_cogs/sales_t28,1) if estimated_cogs is not None and sales_t28>0 else None,
                'basis':'Standard COGS estimate only. Amazon selling/FBA fees and advertising are not included in this product contribution read.'}
-    commercial['listing_sellable']=str(profile.get('listing_status') or commercial.get('status') or '').strip().lower()!='inactive'
+    commercial['listing_sellable']=(
+        bool(profile.get('is_current_listing'))
+        and str(profile.get('source_listing_status') or commercial.get('status') or '').strip().lower() == 'active'
+        and bool(commercial.get('is_offer_owner'))
+    )
     commercial['family_asin']=commercial.get('family_asin') or asin
     commercial['parent_asin']=commercial.get('parent_asin') or None
 

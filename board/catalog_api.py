@@ -260,11 +260,16 @@ def _repair_variation_taxonomy(rows: list[dict]) -> list[dict]:
 
 
 def _is_active(row: dict) -> bool:
-    return str(row.get("status") or "").strip().lower() != "inactive"
+    return _is_offer(row) and str(row.get("status") or "").strip().lower() == "active"
 
 
 def _is_offer(row: dict) -> bool:
-    return row.get("product_role") in {"SELLABLE_VARIATION", "SELLABLE_STANDALONE"}
+    role_is_sellable = row.get("product_role") in {
+        "SELLABLE_VARIATION",
+        "SELLABLE_STANDALONE",
+    }
+    membership = row.get("catalog_membership")
+    return role_is_sellable and membership in {None, "CURRENT_OFFER"}
 
 
 def _apply_canonical_identity(row: dict) -> dict:
@@ -303,6 +308,9 @@ def _apply_canonical_identity(row: dict) -> dict:
     elif role == "SELLER_SKU_ALIAS":
         kind = "OFFER_ALIAS"
         family_label = row.get("family_name") or "SKU alias"
+    elif role == "HISTORICAL_RECORD":
+        kind = "HISTORICAL_RECORD"
+        family_label = row.get("family_name") or "Deleted SKU"
     else:
         kind = "UNKNOWN"
         family_label = row.get("family_name") or "Identity unavailable"
@@ -317,7 +325,7 @@ def _apply_canonical_identity(row: dict) -> dict:
         "asin": asin,
         "parent_asin": parent_asin,
         "family_asin": family_asin,
-        "is_sellable": role in {"SELLABLE_VARIATION", "SELLABLE_STANDALONE"},
+        "is_sellable": _is_offer(row),
         "consistent": not conflicts,
         "conflicts": conflicts,
     }
@@ -344,6 +352,8 @@ def _identity_violations(rows: list[dict]) -> list[dict]:
 
 
 def _commercial_state(row: dict, traffic_median: float, conversion_median: float) -> tuple[str, str]:
+    if row.get("catalog_membership") == "DELETED":
+        return "DELETED", "Absent from the latest Amazon seller-catalog snapshot"
     role = row.get("product_role")
     if role == "STRUCTURAL_PARENT":
         return "STRUCTURAL_PARENT", "Variation container · family metrics come from sellable children"
@@ -351,7 +361,13 @@ def _commercial_state(row: dict, traffic_median: float, conversion_median: float
         owner = row.get("offer_owner_sku") or "canonical offer"
         return "SKU_ALIAS", f"Operational SKU alias · demand belongs to {owner}"
     if not _is_active(row):
-        return "INACTIVE", "Listing is inactive"
+        source_status = str(row.get("status") or "").strip()
+        state = {
+            "inactive": "INACTIVE",
+            "closed": "CLOSED",
+            "incomplete": "INCOMPLETE",
+        }.get(source_status.lower(), "NOT_ACTIVE")
+        return state, f"Amazon listing status is {source_status or 'not active'}"
 
     sales = float(row.get("sales_t28") or 0)
     units = float(row.get("units_t28") or 0)
@@ -571,12 +587,11 @@ def _catalog_summary(rows: list[dict]) -> dict:
     mart.catalog_portfolio_product twice during each cold response while keeping
     the public summary contract unchanged.
     """
-    sellable_roles = {"SELLABLE_VARIATION", "SELLABLE_STANDALONE"}
-    sellable = [row for row in rows if row.get("product_role") in sellable_roles]
+    sellable = [row for row in rows if _is_offer(row)]
     active_sellable = [
         row
         for row in sellable
-        if str(row.get("status") or "").lower() != "inactive"
+        if _is_active(row)
     ]
 
     fetched_at = [row.get("fetched_at") for row in rows if row.get("fetched_at")]
@@ -592,7 +607,8 @@ def _catalog_summary(rows: list[dict]) -> dict:
     }
 
     return {
-        "listing_records": len(rows),
+        "listing_records": sum(bool(row.get("is_current_listing", True)) for row in rows),
+        "catalog_entities": len(rows),
         "sellable_offers": len(sellable),
         "structural_parents": sum(
             row.get("product_role") == "STRUCTURAL_PARENT" for row in rows
@@ -617,7 +633,8 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
                    p.available, p.inbound, p.days_cover_on_hand, p.days_cover_with_inbound, p.inventory_action,
                    p.sales_t28, p.units_t28, p.orders_t28, p.sessions_t28, p.page_views_t28,
                    p.conversion_t28_pct, p.sales_delta28_pct, p.sessions_delta28_pct, p.conversion_delta28_pp,
-                   p.traffic_through_date, p.catalog_enriched,
+                   p.traffic_through_date, p.catalog_enriched, p.is_current_listing, p.deleted_at,
+                   p.catalog_membership,
                    ci.attributes AS catalog_attributes, ci.variation_theme AS amazon_variation_theme,
                    ci.variation_attributes AS amazon_variation_attribute_names,
                    a.spend AS ad_spend_t28, a.attributed_sales AS ad_attributed_sales_t28,
@@ -634,10 +651,30 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
             WHERE p.marketplace_id=%s
             ORDER BY p.is_offer_owner DESC, p.sales_t28 DESC, p.seller_sku
         """, (marketplace,))
+        deleted_rows = _all(cur, """
+            SELECT sc.marketplace_id, sc.seller_sku AS sku, sc.asin,
+                   NULLIF(s.parent_asin,'') AS historical_parent_asin,
+                   sc.title AS product, sc.image_url, sc.price AS listing_price,
+                   sc.status AS source_listing_status, 'Deleted'::text AS status,
+                   sc.fulfillment_channel, sc.open_date, sc.fetched_at AS last_seen_at,
+                   sc.deleted_at, false AS is_offer_owner,
+                   'HISTORICAL_RECORD'::text AS product_role,
+                   'DELETED'::text AS catalog_membership
+            FROM mart.seller_catalog sc
+            LEFT JOIN core.sku s
+              ON s.marketplace_id=sc.marketplace_id AND s.sku=sc.seller_sku
+            WHERE sc.marketplace_id=%s AND NOT sc.is_current_listing
+            ORDER BY sc.deleted_at DESC NULLS LAST, sc.fetched_at DESC, sc.seller_sku
+        """, (marketplace,))
         local_clock = _one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
 
     summary = _catalog_summary(rows)
     rows = decorate_products(rows)
+    deleted_rows = decorate_products(deleted_rows)
+    for row in deleted_rows:
+        row["commercial_state"] = "DELETED"
+        row["commercial_explanation"] = "Absent from the latest Amazon seller-catalog snapshot"
+    summary["deleted_records"] = len(deleted_rows)
     costs = _product_costs()
     taxonomy = _product_taxonomy()
     for row in rows:
@@ -700,6 +737,7 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         "summary": summary,
         "families": families,
         "products": rows,
+        "deleted_products": deleted_rows,
         "dimensions": dimensions,
         "dimension_pairs": dimension_pairs,
         "taxonomy_warnings": taxonomy_warnings,

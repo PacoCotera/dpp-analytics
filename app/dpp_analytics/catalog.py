@@ -41,23 +41,84 @@ def _variation_theme(item: dict) -> tuple[str | None, list[str]]:
     return None, []
 
 
-def _parent_asin(item: dict) -> str | None:
+def _parent_asins(item: dict) -> list[str]:
     group = _marketplace_group(item.get("relationships"))
+    parents: list[str] = []
     for relationship in group.get("relationships") or []:
         if str(relationship.get("type") or "").upper() != "VARIATION":
             continue
-        parents = [str(value).strip() for value in (relationship.get("parentAsins") or []) if value]
-        return parents[0] if parents else None
-    return None
+        parents.extend(
+            str(value).strip()
+            for value in (relationship.get("parentAsins") or [])
+            if str(value).strip()
+        )
+    return list(dict.fromkeys(parents))
+
+
+def _parent_asin(item: dict) -> str | None:
+    parents = _parent_asins(item)
+    return parents[0] if parents else None
 
 
 def _child_asins(item: dict) -> list[str]:
     group = _marketplace_group(item.get("relationships"))
+    children: list[str] = []
     for relationship in group.get("relationships") or []:
         if str(relationship.get("type") or "").upper() != "VARIATION":
             continue
-        return [str(value).strip() for value in (relationship.get("childAsins") or []) if value]
-    return []
+        children.extend(
+            str(value).strip()
+            for value in (relationship.get("childAsins") or [])
+            if str(value).strip()
+        )
+    return list(dict.fromkeys(children))
+
+
+def _resolved_parent_relationships(items: list[dict]) -> dict[str, str | None]:
+    """Resolve one Amazon-owned parent value for every returned Catalog item.
+
+    Catalog Items may put variation evidence on the child (``parentAsins``),
+    the parent (``childAsins``), or both. Resolve the complete response before
+    touching ``core.sku`` so API item/batch order cannot decide parentage. A
+    returned ASIN with no relationship resolves to ``None`` and therefore
+    clears stale local evidence.
+    """
+    returned_asins: set[str] = set()
+    evidence: dict[str, set[str]] = {}
+
+    for item in items:
+        asin = str(item.get("asin") or "").strip()
+        if not asin:
+            continue
+        returned_asins.add(asin)
+
+        for parent_asin in _parent_asins(item):
+            if parent_asin == asin:
+                raise RuntimeError(f"Amazon Catalog returned a self-parent relationship for {asin}")
+            evidence.setdefault(asin, set()).add(parent_asin)
+
+        for child_asin in _child_asins(item):
+            if child_asin == asin:
+                raise RuntimeError(f"Amazon Catalog returned a self-parent relationship for {asin}")
+            evidence.setdefault(child_asin, set()).add(asin)
+
+    conflicts = {
+        child_asin: sorted(parent_asins)
+        for child_asin, parent_asins in evidence.items()
+        if len(parent_asins) > 1
+    }
+    if conflicts:
+        detail = ", ".join(
+            f"{child_asin}=>{'/'.join(parent_asins)}"
+            for child_asin, parent_asins in sorted(conflicts.items())
+        )
+        raise RuntimeError(f"Amazon Catalog returned conflicting variation parents: {detail}")
+
+    resolved_asins = returned_asins | set(evidence)
+    return {
+        asin: next(iter(evidence[asin])) if evidence.get(asin) else None
+        for asin in sorted(resolved_asins)
+    }
 
 
 def ingest_catalog() -> dict[str, int]:
@@ -83,6 +144,7 @@ def ingest_catalog() -> dict[str, int]:
         try:
             written = 0
             missing = 0
+            relationship_items: list[dict] = []
             for start in range(0, len(asins), 20):
                 batch = asins[start:start + 20]
                 payload = client.get(
@@ -100,6 +162,7 @@ def ingest_catalog() -> dict[str, int]:
                     },
                 )
                 items = payload.get("items") or []
+                relationship_items.extend(items)
                 returned_asins = {str(item.get("asin")) for item in items if item.get("asin")}
                 missing += len(set(batch) - returned_asins)
                 run["records_read"] += len(items)
@@ -132,8 +195,6 @@ def ingest_catalog() -> dict[str, int]:
                             continue
                         image = _main_image(item)
                         variation_theme, variation_attributes = _variation_theme(item)
-                        parent_asin = _parent_asin(item)
-                        child_asins = _child_asins(item)
                         cur.execute(
                             """
                             INSERT INTO core.catalog_item(
@@ -170,34 +231,29 @@ def ingest_catalog() -> dict[str, int]:
                                 variation_attributes,
                             ),
                         )
-                        if parent_asin:
-                            cur.execute(
-                                """
-                                UPDATE core.sku
-                                SET parent_asin=%s,updated_at=now()
-                                WHERE marketplace_id=%s AND asin=%s
-                                  AND parent_asin IS DISTINCT FROM %s
-                                """,
-                                (parent_asin, settings.marketplace_id, asin, parent_asin),
-                            )
-                        if child_asins:
-                            cur.execute(
-                                """
-                                UPDATE core.sku
-                                SET parent_asin=%s,updated_at=now()
-                                WHERE marketplace_id=%s AND asin=ANY(%s::text[])
-                                  AND parent_asin IS DISTINCT FROM %s
-                                """,
-                                (asin, settings.marketplace_id, child_asins, asin),
-                            )
                         written += 1
                     conn.commit()
+
+            parent_relationships = _resolved_parent_relationships(relationship_items)
+            with db.connect() as conn, conn.cursor() as cur:
+                for asin, parent_asin in parent_relationships.items():
+                    cur.execute(
+                        """
+                        UPDATE core.sku
+                        SET parent_asin=%s,updated_at=now()
+                        WHERE marketplace_id=%s AND asin=%s
+                          AND parent_asin IS DISTINCT FROM %s
+                        """,
+                        (parent_asin, settings.marketplace_id, asin, parent_asin),
+                    )
+                conn.commit()
             run["records_written"] = written
             return {
                 "records_read": run["records_read"],
                 "records_written": written,
                 "requested_asins": len(asins),
                 "missing_asins": missing,
+                "relationships_resolved": len(parent_relationships),
             }
         finally:
             client.close()
