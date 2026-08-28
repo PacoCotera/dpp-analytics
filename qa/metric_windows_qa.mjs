@@ -272,7 +272,7 @@ try {
     waitUntil: "networkidle",
     timeout: 30000,
   });
-  await page.getByRole("button", { name: "Drivers" }).click();
+  await page.locator('.tabs button[data-view="products"]').click();
   const driverWindow = page.locator("#salesProductWindow");
   await driverWindow.waitFor({ state: "visible", timeout: 5000 });
   const driverText = ((await driverWindow.textContent()) || "").trim();
