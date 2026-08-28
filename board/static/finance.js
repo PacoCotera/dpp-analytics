@@ -580,11 +580,11 @@ function renderHistory(current, closed) {
     .map(closedContributionRow);
   const rows = currentRow.month ? [currentRow, ...closedRows] : closedRows;
   const header =
-    '<div class="history-row head"><div>Month</div><div>Sales</div><div>Amazon effect</div><div>Other Amazon postings</div><div>Advertising</div><div>Product cost</div><div>Contribution</div><div>State</div></div>';
+    '<caption class="sr-only">Immutable monthly Finance report</caption><thead><tr class="history-row head"><th scope="col">Month</th><th scope="col">Sales</th><th scope="col">Amazon effect</th><th scope="col">Other Amazon postings</th><th scope="col">Advertising</th><th scope="col">Product cost</th><th scope="col">Contribution</th><th scope="col">State</th></tr></thead>';
 
   byId('history').innerHTML =
     header +
-    rows
+    `<tbody>${rows
       .map((item) => {
         const open = Boolean(item._current);
         const margin =
@@ -600,18 +600,18 @@ function renderHistory(current, closed) {
         const state = open ? 'OPEN' : stateLabel(item.state || 'CLOSED');
         const stateNote = open ? 'provisional' : `v${integer(item.version || 1)}`;
 
-        return `<div class="history-row${open ? ' open-month' : ''}">
-        <div>${monthLabel(item.month)}${open ? '<small>current</small>' : ''}</div>
-        <div data-label="Sales"><strong>${financeMoneyExact(item.net_sales_ex_vat)}</strong><small>ex IVA</small></div>
-        <div data-label="Amazon effect"><strong class="${valueClass(item.amazon_order_effect)}">${financeMoneyExact(item.amazon_order_effect)}</strong></div>
-        <div data-label="Other Amazon postings"><strong class="${valueClass(item.other_amazon_postings)}">${financeMoneyExact(item.other_amazon_postings)}</strong></div>
-        <div data-label="Advertising">${advertising}</div>
-        <div data-label="Product cost"><strong class="neg">${financeMoneyExact(-Math.abs(Number(item.product_cogs || 0)))}</strong></div>
-        <div data-label="Contribution"><strong class="${valueClass(item.contribution_after_product_cogs)}">${financeMoneyExact(item.contribution_after_product_cogs)}</strong><small>${margin}</small></div>
-        <div data-label="State"><span class="history-state">${escapeHtml(state)}</span><small>${escapeHtml(stateNote)}</small></div>
-      </div>`;
+        return `<tr class="history-row${open ? ' open-month' : ''}">
+        <th scope="row">${monthLabel(item.month)}${open ? '<small>current</small>' : ''}</th>
+        <td data-label="Sales"><strong>${financeMoneyExact(item.net_sales_ex_vat)}</strong><small>ex IVA</small></td>
+        <td data-label="Amazon effect"><strong class="${valueClass(item.amazon_order_effect)}">${financeMoneyExact(item.amazon_order_effect)}</strong></td>
+        <td data-label="Other Amazon postings"><strong class="${valueClass(item.other_amazon_postings)}">${financeMoneyExact(item.other_amazon_postings)}</strong></td>
+        <td data-label="Advertising">${advertising}</td>
+        <td data-label="Product cost"><strong class="neg">${financeMoneyExact(-Math.abs(Number(item.product_cogs || 0)))}</strong></td>
+        <td data-label="Contribution"><strong class="${valueClass(item.contribution_after_product_cogs)}">${financeMoneyExact(item.contribution_after_product_cogs)}</strong><small>${margin}</small></td>
+        <td data-label="State"><span class="history-state">${escapeHtml(state)}</span><small>${escapeHtml(stateNote)}</small></td>
+      </tr>`;
       })
-      .join('');
+      .join('')}</tbody>`;
 }
 
 function renderEvents(events) {

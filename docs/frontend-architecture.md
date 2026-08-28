@@ -87,6 +87,21 @@ Python endpoints own business definitions, reconciliation state and reusable ser
 
 Repeated canonical payloads may be reused through the board response cache and browser session cache. Cache lifetime and invalidation policy are transport concerns; PostgreSQL remains authoritative. See [`reporting-cache-architecture.md`](reporting-cache-architecture.md).
 
+## Accessibility contract
+
+Every workspace has exactly one logical, non-empty `h1`. A heading may be visually hidden when the visual
+composition already supplies equivalent orientation, but the semantic outline must remain complete. Visible
+links require descriptive accessible names.
+
+Use native buttons for independent choices. A visually active button in a named group must expose the same state
+with `aria-pressed`; reserve `role="tablist"`, `role="tab"`, and `aria-selected` for controls that actually switch
+tab panels and use the shared tab keyboard behavior. Financial row/column reports use native `table`, `caption`,
+`th`, and `td` elements even when responsive CSS presents each row as a mobile card.
+
+`qa/accessibility_qa.mjs` checks every primary workspace for heading and link-name invariants, a visible named
+keyboard target, the named toggle-button groups, and Finance monthly-report table relationships. New primary
+routes and new persistent interactive view controls must be added to that gate in the same change.
+
 ## Grid system
 
 Use CSS Grid directly rather than a third-party grid framework. The product needs a small number of explicit responsive analytical compositions, not a generic 12-column marketing-site abstraction. Native Grid provides fewer dependencies, predictable min/max behavior and better control over tables, charts and variable-height decision panels.
@@ -187,4 +202,5 @@ A page is accepted only when:
 - no horizontal page overflow occurs at supported widths; intentionally scrollable chart/table regions must contain their own overflow;
 - empty/short/long content states are intentionally handled;
 - technical QA is green;
+- the route-wide accessibility and keyboard smoke is green;
 - visual QA is manually compared against the business question, not merely checked for rendering success.

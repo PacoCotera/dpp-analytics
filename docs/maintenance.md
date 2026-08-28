@@ -215,6 +215,9 @@ When changing `compose.yml` or `.env.example`, validate them together. The templ
 10. updates the deployment heartbeat.
 
 Production browser QA records page/viewport captures plus browser console errors, failed responses and horizontal-overflow checks. Treat it as a deployment requirement, not decorative screenshots.
+The same suite runs `qa/accessibility_qa.mjs` across every primary workspace. It rejects missing/duplicate level-one
+headings, unnamed visible links, missing toggle-button state, broken native keyboard activation, and loss of the
+Finance monthly report's table relationships.
 
 ### Finance validation
 

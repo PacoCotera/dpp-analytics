@@ -29,7 +29,7 @@
   gap: 12px;
 }
 
-.catalog-title h1 {
+.catalog-title h2 {
   margin: 0;
   font-size: 20px;
   letter-spacing: -0.025em;
@@ -638,7 +638,7 @@
     display: none;
   }
 
-  .catalog-title h1 {
+  .catalog-title h2 {
     font-size: 18px;
   }
 

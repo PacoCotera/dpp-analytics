@@ -255,7 +255,7 @@ function renderDayPicker() {
       timeZone: 'UTC',
     }).format(date);
 
-    return `<button class="day-choice ${live ? 'live ' : ''}${dateString === chosen ? 'active' : ''}" type="button" data-date="${dateString}" title="${longLabel}${live ? ' · live' : ''}" aria-label="${longLabel}${live ? ' · live' : ''}">
+    return `<button class="day-choice ${live ? 'live ' : ''}${dateString === chosen ? 'active' : ''}" type="button" data-date="${dateString}" title="${longLabel}${live ? ' · live' : ''}" aria-label="${longLabel}${live ? ' · live' : ''}" aria-pressed="${dateString === chosen}">
       <b>${live ? 'Today' : dayLetter(date)}</b><span>${live ? '' : date.getUTCDate()}</span>
     </button>`;
   }).join('');
@@ -656,8 +656,12 @@ async function load() {
 function bindInteractions() {
   document.querySelectorAll('.period').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('.period').forEach((item) => item.classList.remove('active'));
+      document.querySelectorAll('.period').forEach((item) => {
+        item.classList.remove('active');
+        item.setAttribute('aria-pressed', 'false');
+      });
       button.classList.add('active');
+      button.setAttribute('aria-pressed', 'true');
       period = button.dataset.period;
       drawChart();
     });
