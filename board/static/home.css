@@ -494,6 +494,11 @@
   white-space: nowrap;
 }
 
+.ads-read[hidden],
+.ads-read__metrics[hidden] {
+  display: none;
+}
+
 .ads-read__metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
