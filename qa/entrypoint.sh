@@ -36,6 +36,8 @@ node /qa/interpretation_rules_qa.mjs "$base_url" "$work_dir"
 interpretation_rules_rc=$?
 node /qa/metric_windows_qa.mjs "$base_url" "$work_dir"
 metric_windows_rc=$?
+node /qa/inventory_qa.mjs "$base_url" "$work_dir"
+inventory_rc=$?
 cp -a "$work_dir"/. "$out_root"/ 2>/dev/null || true
 if [ "$visual_rc" -ne 0 ]; then exit "$visual_rc"; fi
 if [ "$nav_rc" -ne 0 ]; then exit "$nav_rc"; fi
@@ -52,4 +54,5 @@ if [ "$load_time_rc" -ne 0 ]; then exit "$load_time_rc"; fi
 if [ "$performance_baseline_rc" -ne 0 ]; then exit "$performance_baseline_rc"; fi
 if [ "$interpretation_rules_rc" -ne 0 ]; then exit "$interpretation_rules_rc"; fi
 if [ "$metric_windows_rc" -ne 0 ]; then exit "$metric_windows_rc"; fi
+if [ "$inventory_rc" -ne 0 ]; then exit "$inventory_rc"; fi
 exit "$catalog_onboarding_rc"

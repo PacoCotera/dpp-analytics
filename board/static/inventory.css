@@ -200,6 +200,7 @@
 
 .filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 7px;
 }
 
@@ -230,22 +231,28 @@
 
 .inventory-table {
   table-layout: fixed;
+  min-width: 1100px;
 }
 
 .inventory-table col.product {
-  width: 36%;
+  width: 25%;
+}
+
+.inventory-table col.lifecyclec,
+.inventory-table col.canonicalc {
+  width: 10%;
 }
 
 .inventory-table col.actionc {
-  width: 9%;
-}
-
-.inventory-table col.numc {
   width: 8%;
 }
 
+.inventory-table col.numc {
+  width: 7%;
+}
+
 .inventory-table col.coverc {
-  width: 11%;
+  width: 9%;
 }
 
 .inventory-table th.num,
@@ -362,7 +369,7 @@
   }
 
   .inventory-table col.product {
-    width: 31%;
+    width: 25%;
   }
 
   .inventory-table th,

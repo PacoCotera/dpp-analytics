@@ -86,7 +86,7 @@ Treat each completed merchant-listings report as the canonical current snapshot,
 
 ### Inventory
 
-Inventory combines FBA inventory state with seller-SKU velocity from Amazon Orders. Action semantics such as `STOCKOUT`, `PRODUCE`, `PLAN`, `OK` and `HOLD` belong in the data/API layer. The browser renders those actions; it should not independently invent replenishment thresholds. This order-based velocity is intentionally distinct from reconciled CHILD-ASIN product demand on Sales, Catalog and Product Workspace.
+Inventory combines FBA inventory state with seller-SKU velocity from Amazon Orders. `inventory_api.py` joins the current Amazon offer contract for portfolio rollups and owns reference-row lifecycle plus canonical-SKU identity. The browser defaults to current stock-bearing offers and only exposes alias, retired, archived or no-velocity rows through explicit filters. Action semantics such as `STOCKOUT`, `PRODUCE`, `PLAN`, `OK` and `HOLD` belong in the data/API layer. The browser renders those actions; it should not independently invent replenishment thresholds. This order-based velocity is intentionally distinct from reconciled CHILD-ASIN product demand on Sales, Catalog and Product Workspace.
 
 ### Ads
 

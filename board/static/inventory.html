@@ -92,20 +92,25 @@
         <section class="page-section" id="all">
           <div class="section-header">
             <div>
-              <h2 class="section-header__title">All inventory</h2>
+              <h2 class="section-header__title">Inventory records</h2>
               <div class="section-header__description">
-                Search or filter; tap a product to connect stock with sales and traffic.
+                Current stock-bearing offers first; historical identifiers remain explicit reference evidence.
               </div>
+              <div class="section-header__description" id="inventoryRecordScope">Loading record scope…</div>
             </div>
           </div>
 
           <div class="inventory-tools">
             <input id="search" class="search" type="search" placeholder="Search product or SKU…" />
             <div class="filters" role="group" aria-label="Inventory status filter">
-              <button class="filter active" type="button" data-filter="all">All</button>
+              <button class="filter active" type="button" data-filter="current">Current stock</button>
               <button class="filter" type="button" data-filter="attention">Needs action</button>
               <button class="filter" type="button" data-filter="ok">Healthy</button>
-              <button class="filter" type="button" data-filter="hold">No velocity</button>
+              <button class="filter" type="button" data-filter="no_velocity">No velocity</button>
+              <button class="filter" type="button" data-filter="alias">Aliases</button>
+              <button class="filter" type="button" data-filter="retired">Retired</button>
+              <button class="filter" type="button" data-filter="archived">Archived</button>
+              <button class="filter" type="button" data-filter="all">All records</button>
             </div>
             <span class="export-link">Reference view</span>
           </div>
@@ -115,6 +120,8 @@
               <table class="data-table inventory-table">
                 <colgroup>
                   <col class="product" />
+                  <col class="lifecyclec" />
+                  <col class="canonicalc" />
                   <col class="actionc" />
                   <col class="numc" />
                   <col class="numc" />
@@ -126,6 +133,8 @@
                 <thead>
                   <tr>
                     <th>Product</th>
+                    <th>Lifecycle</th>
+                    <th>Canonical SKU</th>
                     <th>Action</th>
                     <th class="num">Available</th>
                     <th class="num">Inbound</th>

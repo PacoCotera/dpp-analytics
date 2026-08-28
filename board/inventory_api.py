@@ -13,29 +13,65 @@ def _all(cur, sql: str, params=()):
     return list(cur.fetchall())
 
 
+def _classify_inventory_rows(rows: list[dict], current_offers: list[dict], retired_skus: set[str]):
+    current_by_sku = {str(row.get("sku") or ""): row for row in current_offers if row.get("sku")}
+    current_by_asin = {str(row.get("asin") or ""): row for row in current_offers if row.get("asin")}
+    classified = []
+    for source in rows:
+        row = dict(source)
+        sku = str(row.get("sku") or "")
+        asin = str(row.get("asin") or "")
+        exact = current_by_sku.get(sku)
+        canonical = exact or current_by_asin.get(asin)
+        if exact:
+            lifecycle = "CURRENT_OFFER"
+        elif canonical:
+            lifecycle = "ALIAS"
+        elif sku in retired_skus:
+            lifecycle = "RETIRED"
+        else:
+            lifecycle = "ARCHIVED"
+        stock_units = sum(int(row.get(field) or 0) for field in ("available", "inbound", "reserved", "unfulfillable"))
+        row.update(
+            {
+                "canonical_sku": canonical.get("sku") if canonical else None,
+                "inventory_lifecycle": lifecycle,
+                "is_current_offer": lifecycle == "CURRENT_OFFER",
+                "has_stock": stock_units > 0,
+                "has_velocity": int(row.get("units_t28") or 0) > 0,
+                "is_default_inventory": lifecycle == "CURRENT_OFFER" and stock_units > 0,
+            }
+        )
+        classified.append(row)
+    return classified
+
+
 def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
     with connect() as conn, conn.cursor() as cur:
         summary = _one(
             cur,
             """
             SELECT
-              count(*) FILTER (WHERE COALESCE(s.active,true))::int sku_count,
-              COALESCE(sum(a.available) FILTER (WHERE COALESCE(s.active,true)),0)::bigint available,
-              COALESCE(sum(a.inbound) FILTER (WHERE COALESCE(s.active,true)),0)::bigint inbound,
-              COALESCE(sum(i.reserved_quantity) FILTER (WHERE COALESCE(s.active,true)),0)::bigint reserved,
-              COALESCE(sum(i.unfulfillable_quantity) FILTER (WHERE COALESCE(s.active,true)),0)::bigint unfulfillable,
-              count(*) FILTER (WHERE a.action IN ('STOCKOUT','PRODUCE','PLAN') AND COALESCE(s.active,true))::int needs_action,
-              count(*) FILTER (WHERE a.action='STOCKOUT' AND COALESCE(s.active,true))::int stockouts,
-              count(*) FILTER (WHERE a.action='PRODUCE' AND COALESCE(s.active,true))::int produce,
-              count(*) FILTER (WHERE a.action='PLAN' AND COALESCE(s.active,true))::int plan,
-              CASE WHEN sum(a.units_per_day) FILTER (WHERE COALESCE(s.active,true)) > 0
-                   THEN round(sum(a.available) FILTER (WHERE COALESCE(s.active,true)) /
-                              sum(a.units_per_day) FILTER (WHERE COALESCE(s.active,true)),1) END AS portfolio_days_cover,
+              count(*)::int sku_count,
+              COALESCE(sum(a.available),0)::bigint available,
+              COALESCE(sum(a.inbound),0)::bigint inbound,
+              COALESCE(sum(i.reserved_quantity),0)::bigint reserved,
+              COALESCE(sum(i.unfulfillable_quantity),0)::bigint unfulfillable,
+              count(*) FILTER (WHERE a.action IN ('STOCKOUT','PRODUCE','PLAN'))::int needs_action,
+              count(*) FILTER (WHERE a.action='STOCKOUT')::int stockouts,
+              count(*) FILTER (WHERE a.action='PRODUCE')::int produce,
+              count(*) FILTER (WHERE a.action='PLAN')::int plan,
+              CASE WHEN sum(a.units_per_day) > 0
+                   THEN round(sum(a.available) / sum(a.units_per_day),1) END AS portfolio_days_cover,
               max(a.snapshot_at) latest_snapshot
             FROM mart.inventory_attention a
+            JOIN mart.catalog_portfolio_product p
+              ON p.marketplace_id=a.marketplace_id AND p.seller_sku=a.seller_sku
+             AND p.is_offer_owner
+             AND p.product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE')
+             AND p.catalog_membership='CURRENT_OFFER'
             LEFT JOIN mart.inventory_current i
               ON i.marketplace_id=a.marketplace_id AND i.seller_sku=a.seller_sku
-            LEFT JOIN core.sku s ON s.sku=a.seller_sku
             WHERE a.marketplace_id=%s
             """,
             (marketplace,),
@@ -77,6 +113,29 @@ def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
             (marketplace,),
         )
 
+        current_offers = _all(
+            cur,
+            """
+            SELECT seller_sku sku,asin,status
+            FROM mart.catalog_portfolio_product
+            WHERE marketplace_id=%s AND is_offer_owner
+              AND product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE')
+              AND catalog_membership='CURRENT_OFFER'
+            """,
+            (marketplace,),
+        )
+        retired_skus = {
+            str(row.get("sku") or "")
+            for row in _all(
+                cur,
+                """
+                SELECT seller_sku sku FROM mart.seller_catalog
+                WHERE marketplace_id=%s AND NOT is_current_listing
+                """,
+                (marketplace,),
+            )
+        }
+
         bands = _all(
             cur,
             """
@@ -97,8 +156,12 @@ def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
                 ELSE 4
               END sort_key
               FROM mart.inventory_attention a
-              LEFT JOIN core.sku s ON s.sku=a.seller_sku
-              WHERE a.marketplace_id=%s AND COALESCE(s.active,true)
+              JOIN mart.catalog_portfolio_product p
+                ON p.marketplace_id=a.marketplace_id AND p.seller_sku=a.seller_sku
+               AND p.is_offer_owner
+               AND p.product_role IN ('SELLABLE_VARIATION','SELLABLE_STANDALONE')
+               AND p.catalog_membership='CURRENT_OFFER'
+              WHERE a.marketplace_id=%s
             ) x
             GROUP BY band, sort_key
             ORDER BY sort_key
@@ -117,9 +180,19 @@ def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
             timezone="America/Mexico_City",
         )
 
+    rows = _classify_inventory_rows(rows, current_offers, retired_skus)
     return {
         "summary": summary,
         "rows": decorate_products(rows),
+        "record_scope": {
+            "default": "current stock-bearing offers",
+            "current_offers": len(current_offers),
+            "default_rows": sum(bool(row["is_default_inventory"]) for row in rows),
+            "aliases": sum(row["inventory_lifecycle"] == "ALIAS" for row in rows),
+            "retired": sum(row["inventory_lifecycle"] == "RETIRED" for row in rows),
+            "archived": sum(row["inventory_lifecycle"] == "ARCHIVED" for row in rows),
+            "definition": "Current Amazon catalog offers own inventory decisions; other seller SKUs remain explicit reference records.",
+        },
         "bands": bands,
         "local_time": local_clock.get("local_time"),
         "metric_windows": metric_windows,
