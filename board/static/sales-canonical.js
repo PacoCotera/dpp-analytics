@@ -25,12 +25,12 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
     );
   const parseDate = (s) => (s ? new Date(`${String(s).slice(0, 10)}T12:00:00Z`) : null);
   const sum = (rows, key) => d3.sum(rows || [], (r) => Number(r[key] || 0));
-  const HIST = '#b78b4d',
-    WEEKEND = '#d8c09b',
-    CURRENT = '#e58b1f',
-    MUTED = '#7b7369',
-    RUNBG = '#f3dfc4',
-    WEEKLINE = '#bfb7ac';
+  const HIST = 'var(--dpp-data1)',
+    WEEKEND = 'var(--dpp-data6)',
+    CURRENT = 'var(--dpp-data2)',
+    MUTED = 'var(--dpp-text-muted)',
+    RUNBG = 'var(--dpp-surface-subtle)',
+    WEEKLINE = 'var(--dpp-data-grid)';
   const ORDER_MOBILE_LIMIT = 10;
   const PRODUCT_MOBILE_LIMIT = 6;
   const SALES_VIEWS = new Set(['overview', 'products', 'geography']);
@@ -386,7 +386,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
       .attr('class', 'dpp-axis')
       .attr('transform', `translate(0,${ctx.ih})`)
       .call(d3.axisBottom(x).tickValues(values).tickSize(0).tickPadding(12).tickFormat(fmt))
-      .call((g) => g.select('.domain').attr('stroke', '#cfc5b7'));
+      .call((g) => g.select('.domain').attr('stroke', 'var(--dpp-data-grid)'));
   }
   function copy(title, sub) {
     set('salesChartTitle', title);
@@ -414,7 +414,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
   function runLabel(sel) {
     sel
       .style('fill', MUTED)
-      .style('font-size', '8.5px')
+      .style('font-size', '11px')
       .style('font-weight', '650')
       .style('letter-spacing', '.015em');
   }
@@ -503,7 +503,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
             .attr('x2', divider)
             .attr('y1', 18)
             .attr('y2', c.ih)
-            .attr('stroke', '#aaa197')
+            .attr('stroke', 'var(--dpp-border-strong)')
             .attr('stroke-width', 1)
             .attr('stroke-dasharray', '3 4')
             .attr('opacity', 0.76);
@@ -514,7 +514,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
           .attr('y', 11)
           .attr('text-anchor', 'middle')
           .attr('fill', MUTED)
-          .attr('font-size', 8.7)
+          .attr('font-size', 11)
           .attr('font-weight', 760)
           .attr('letter-spacing', '.06em')
           .text(String(year));
@@ -776,7 +776,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
       .attr('x', divider + 7)
       .attr('y', 11)
       .attr('fill', MUTED)
-      .attr('font-size', 9)
+      .attr('font-size', 11)
       .attr('font-weight', 760)
       .attr('letter-spacing', '.05em')
       .text(d3.utcFormat('%b')(start).toUpperCase());
@@ -790,7 +790,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
         .attr('y', 11)
         .attr('text-anchor', 'end')
         .attr('fill', MUTED)
-        .attr('font-size', 9)
+        .attr('font-size', 11)
         .attr('font-weight', 650)
         .attr('letter-spacing', '.02em')
         .text(`${d3.utcFormat('%b')(prev).toUpperCase()} CLOSED · ${shortMoney(closed.sales)}`);
