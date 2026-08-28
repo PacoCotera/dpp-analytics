@@ -1,25 +1,22 @@
 (() => {
   'use strict';
 
-  const PRIMARY = [
-    { href: '/', label: 'Business' },
-    { href: '/today', label: 'Today', className: 'today-link' },
-    { href: '/sales', label: 'Sales' },
-    { href: '/catalog', label: 'Products' },
-    { href: '/inventory', label: 'Inventory', mobileSecondary: true },
-    { href: '/finance', label: 'Finance', mobileSecondary: true },
-  ];
-  const MOBILE_MORE = [
-    { href: '/inventory', label: 'Inventory', hint: 'Stock, cover and replenishment' },
-    { href: '/finance', label: 'Finance', hint: 'Accounting periods and contribution' },
-  ];
-  const MORE = [
-    { href: '/trajectory', label: 'Trajectory', hint: 'Longer-horizon momentum' },
-    { href: '/ads', label: 'Ads', hint: 'Paid demand and Amazon attribution' },
-    { href: '/data-health', label: 'Data Health', hint: 'Source freshness and trust' },
-    { href: '/admin', label: 'Admin', hint: 'Product names, taxonomy and COGS' },
+  const DOMAINS = [
+    { href: '/', label: 'Business', key: 'business' },
+    { href: '/today', label: 'Today', key: 'today', className: 'today-link' },
+    { href: '/sales', label: 'Sales', key: 'sales' },
+    { href: '/catalog', label: 'Products', key: 'products' },
+    { href: '/inventory', label: 'Inventory', key: 'inventory', className: 'nav-mobile-secondary' },
+    { href: '/finance', label: 'Finance', key: 'finance', className: 'nav-mobile-secondary' },
+    { href: '/ads', label: 'Ads', key: 'ads' },
+    { href: '/trajectory', label: 'Trajectory', key: 'trajectory' },
+    { href: '/data-health', label: 'Data Health', key: 'data-health' },
+    { href: '/admin', label: 'Admin', key: 'admin' },
   ];
   const CONTEXT_KEY = 'dpp-page-context-v1';
+  const MOBILE_QUERY = '(max-width: 900px)';
+  const mobileMedia = window.matchMedia(MOBILE_QUERY);
+  let drawerTrigger = null;
 
   function rawPath() {
     return location.pathname.replace(/\/$/, '') || '/';
@@ -28,89 +25,25 @@
   function normalizedPath() {
     const path = rawPath();
     if (path === '/product') return '/catalog';
+    if (path === '/home' || path === '/index.html') return '/';
     return path;
+  }
+
+  function currentDomain() {
+    return DOMAINS.find((item) => item.href === normalizedPath()) || DOMAINS[0];
   }
 
   function isCurrent(href) {
     return normalizedPath() === href;
   }
 
-  function appendMenuItem(menu, item, extraClass = '') {
-    const anchor = document.createElement('a');
-    anchor.href = item.href;
-    anchor.setAttribute('role', 'menuitem');
-    if (extraClass) anchor.classList.add(extraClass);
-    if (isCurrent(item.href)) {
-      anchor.classList.add('active');
-      anchor.setAttribute('aria-current', 'page');
-    }
-    anchor.innerHTML = `<strong>${item.label}</strong><small>${item.hint}</small>`;
-    menu.appendChild(anchor);
-  }
-
-  function buildNavigation(nav) {
-    const current = normalizedPath();
-    const desktopMoreActive = MORE.some((item) => current === item.href);
-    const mobileMoreActive = [...MOBILE_MORE, ...MORE].some((item) => current === item.href);
-    nav.innerHTML = '';
-    nav.classList.add('app-navigation');
-    nav.setAttribute('aria-label', 'Primary navigation');
-
-    const primary = document.createElement('div');
-    primary.className = 'nav-primary-set';
-    for (const item of PRIMARY) {
-      const anchor = document.createElement('a');
-      anchor.href = item.href;
-      anchor.textContent = item.label;
-      if (item.className) anchor.classList.add(item.className);
-      if (item.mobileSecondary) anchor.classList.add('nav-mobile-secondary');
-      if (isCurrent(item.href)) {
-        anchor.classList.add('active');
-        anchor.setAttribute('aria-current', 'page');
-      }
-      primary.appendChild(anchor);
-    }
-
-    const more = document.createElement('details');
-    more.className = `nav-more${desktopMoreActive ? ' active' : ''}${mobileMoreActive ? ' mobile-active' : ''}`;
-    more.setAttribute('data-no-swipe', '');
-    const summary = document.createElement('summary');
-    summary.innerHTML = '<span>More</span><span class="nav-more-chevron" aria-hidden="true">⌄</span>';
-    summary.setAttribute(
-      'aria-label',
-      mobileMoreActive ? 'More navigation, current section inside' : 'More navigation',
-    );
-    more.appendChild(summary);
-
-    const menu = document.createElement('div');
-    menu.className = 'nav-more-menu';
-    menu.setAttribute('role', 'menu');
-    for (const item of MOBILE_MORE) appendMenuItem(menu, item, 'nav-mobile-only');
-    const divider = document.createElement('div');
-    divider.className = 'nav-more-divider nav-mobile-only';
-    menu.appendChild(divider);
-    for (const item of MORE) appendMenuItem(menu, item);
-    more.appendChild(menu);
-    nav.append(primary, more);
-
-    document.addEventListener('pointerdown', (event) => {
-      if (more.open && !more.contains(event.target)) more.open = false;
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && more.open) {
-        more.open = false;
-        summary.focus();
-      }
-    });
-  }
-
   function initializeBrandLink() {
     const brand = document.querySelector('.topbar .brand');
-    if (!brand) return;
+    if (!brand) return null;
     if (brand.matches('a')) {
       brand.href = '/today';
       brand.setAttribute('aria-label', 'Open Today');
-      return;
+      return brand;
     }
     const link = document.createElement('a');
     link.href = '/today';
@@ -118,6 +51,357 @@
     link.innerHTML = brand.innerHTML;
     link.setAttribute('aria-label', 'Open Today');
     brand.replaceWith(link);
+    return link;
+  }
+
+  function buildNavigation(nav) {
+    nav.innerHTML = '';
+    nav.classList.add('app-navigation');
+    nav.setAttribute('aria-label', 'Business domains');
+
+    const primary = document.createElement('div');
+    primary.className = 'nav-primary-set';
+
+    for (const item of DOMAINS) {
+      const anchor = document.createElement('a');
+      anchor.href = item.href;
+      anchor.className = 'domain-link';
+      anchor.dataset.domain = item.key;
+      if (item.className) anchor.classList.add(item.className);
+      if (isCurrent(item.href)) {
+        anchor.classList.add('active');
+        anchor.setAttribute('aria-current', 'page');
+      }
+
+      const marker = document.createElement('span');
+      marker.className = 'domain-link__marker';
+      marker.setAttribute('aria-hidden', 'true');
+      const label = document.createElement('span');
+      label.className = 'domain-link__label';
+      label.textContent = item.label;
+      anchor.append(marker, label);
+      primary.appendChild(anchor);
+    }
+
+    nav.appendChild(primary);
+  }
+
+  function createSidebar(nav) {
+    const sidebar = document.createElement('aside');
+    sidebar.id = 'app-sidebar';
+    sidebar.className = 'app-sidebar';
+    sidebar.setAttribute('aria-label', 'Application navigation');
+
+    const sidebarHeader = document.createElement('div');
+    sidebarHeader.className = 'app-sidebar__header';
+
+    const brand = document.createElement('a');
+    brand.className = 'brand app-sidebar__brand';
+    brand.href = '/today';
+    brand.setAttribute('aria-label', 'Open Today');
+    brand.innerHTML =
+      '<span class="mark" aria-hidden="true">DP</span>' +
+      '<span class="brand-copy">' +
+      '<span class="brand-title">DPP ANALYTICS</span>' +
+      '<span class="brand-sub">Business workspace</span>' +
+      '</span>';
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.className = 'shell-drawer-close';
+    closeButton.setAttribute('aria-label', 'Close navigation');
+    closeButton.innerHTML = '<span aria-hidden="true">×</span>';
+    closeButton.addEventListener('click', () => closeDrawer(true));
+
+    sidebarHeader.append(brand, closeButton);
+    sidebar.append(sidebarHeader, nav);
+
+    const footer = document.createElement('div');
+    footer.className = 'app-sidebar__footer';
+    footer.innerHTML = '<strong>Amazon Mexico</strong><span>10 business domains</span>';
+    sidebar.appendChild(footer);
+    return sidebar;
+  }
+
+  function createBackdrop() {
+    const backdrop = document.createElement('button');
+    backdrop.type = 'button';
+    backdrop.className = 'shell-backdrop';
+    backdrop.tabIndex = -1;
+    backdrop.setAttribute('aria-label', 'Close navigation');
+    backdrop.setAttribute('aria-hidden', 'true');
+    backdrop.addEventListener('click', () => closeDrawer(true));
+    return backdrop;
+  }
+
+  function openDrawer(trigger) {
+    const sidebar = document.getElementById('app-sidebar');
+    const menuButton = document.querySelector('.shell-menu-button');
+    if (!sidebar || !mobileMedia.matches) return;
+    drawerTrigger = trigger || menuButton;
+    document.body.classList.add('shell-drawer-open');
+    sidebar.removeAttribute('inert');
+    sidebar.setAttribute('aria-hidden', 'false');
+    menuButton?.setAttribute('aria-expanded', 'true');
+    window.requestAnimationFrame(() => sidebar.querySelector('.shell-drawer-close')?.focus());
+  }
+
+  function closeDrawer(returnFocus) {
+    const sidebar = document.getElementById('app-sidebar');
+    const menuButton = document.querySelector('.shell-menu-button');
+    document.body.classList.remove('shell-drawer-open');
+    menuButton?.setAttribute('aria-expanded', 'false');
+    if (mobileMedia.matches && sidebar) {
+      sidebar.setAttribute('inert', '');
+      sidebar.setAttribute('aria-hidden', 'true');
+    }
+    if (returnFocus) (drawerTrigger || menuButton)?.focus();
+    drawerTrigger = null;
+  }
+
+  function syncDrawerMode() {
+    const sidebar = document.getElementById('app-sidebar');
+    if (!sidebar) return;
+    if (mobileMedia.matches) {
+      closeDrawer(false);
+      return;
+    }
+    document.body.classList.remove('shell-drawer-open');
+    sidebar.removeAttribute('inert');
+    sidebar.setAttribute('aria-hidden', 'false');
+    document.querySelector('.shell-menu-button')?.setAttribute('aria-expanded', 'false');
+  }
+
+  function focusableElements(container) {
+    return [
+      ...container.querySelectorAll(
+        'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+      ),
+    ].filter((element) => !element.hidden && element.getClientRects().length > 0);
+  }
+
+  function trapDrawerFocus(event) {
+    if (event.key !== 'Tab' || !mobileMedia.matches) return;
+    if (!document.body.classList.contains('shell-drawer-open')) return;
+    const sidebar = document.getElementById('app-sidebar');
+    if (!sidebar) return;
+    const focusable = focusableElements(sidebar);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    } else if (!sidebar.contains(document.activeElement)) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function presentationRuntime() {
+    return window.dppPresentation || null;
+  }
+
+  function createAppearancePanel(trigger) {
+    const runtime = presentationRuntime();
+    const panel = document.createElement('div');
+    panel.id = 'appearance-panel';
+    panel.className = 'appearance-panel';
+    panel.hidden = true;
+    panel.setAttribute('aria-labelledby', 'appearance-title');
+
+    const panelHeader = document.createElement('div');
+    panelHeader.className = 'appearance-panel__header';
+    const title = document.createElement('h2');
+    title.id = 'appearance-title';
+    title.textContent = 'Appearance';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'appearance-panel__close';
+    close.setAttribute('aria-label', 'Close Appearance');
+    close.innerHTML = '<span aria-hidden="true">×</span>';
+    close.addEventListener('click', () => closeAppearance(true));
+    panelHeader.append(title, close);
+
+    const fieldset = document.createElement('fieldset');
+    const legend = document.createElement('legend');
+    legend.textContent = 'Choose a visual profile';
+    fieldset.appendChild(legend);
+
+    const list = document.createElement('div');
+    list.className = 'appearance-options';
+    const profiles = runtime?.listProfiles() || [];
+    const selectedId = runtime?.getProfileId() || 'warm-studio';
+
+    for (const profile of profiles) {
+      const option = document.createElement('label');
+      option.className = 'appearance-option';
+      option.htmlFor = 'appearance-' + profile.id;
+
+      const radio = document.createElement('input');
+      radio.id = 'appearance-' + profile.id;
+      radio.type = 'radio';
+      radio.name = 'dpp-appearance';
+      radio.value = profile.id;
+      radio.checked = profile.id === selectedId;
+      radio.addEventListener('change', () => {
+        if (radio.checked) runtime?.setProfile(profile.id);
+      });
+
+      const swatch = document.createElement('span');
+      swatch.className = 'appearance-option__swatch';
+      swatch.dataset.profileSwatch = profile.id;
+      swatch.style.setProperty('--appearance-swatch', profile.themeColor);
+      swatch.setAttribute('aria-hidden', 'true');
+
+      const copy = document.createElement('span');
+      copy.className = 'appearance-option__copy';
+      const name = document.createElement('strong');
+      name.textContent = profile.displayName;
+      const description = document.createElement('small');
+      description.textContent = profile.description;
+      copy.append(name, description);
+      option.append(radio, swatch, copy);
+      list.appendChild(option);
+    }
+
+    fieldset.appendChild(list);
+    panel.append(panelHeader, fieldset);
+    document.body.appendChild(panel);
+
+    trigger.addEventListener('click', () => {
+      if (panel.hidden) openAppearance();
+      else closeAppearance(true);
+    });
+
+    window.addEventListener(runtime?.eventName || 'dpp:presentationchange', (event) => {
+      const profileId = event.detail?.profileId || runtime?.getProfileId();
+      syncAppearance(profileId);
+    });
+
+    return panel;
+  }
+
+  function syncAppearance(profileId) {
+    const runtime = presentationRuntime();
+    const activeId = profileId || runtime?.getProfileId() || 'warm-studio';
+    const active = runtime?.getProfile?.();
+    document.querySelectorAll('input[name="dpp-appearance"]').forEach((input) => {
+      input.checked = input.value === activeId;
+    });
+    const trigger = document.querySelector('.appearance-trigger');
+    if (trigger) {
+      const label = active?.displayName || activeId;
+      trigger.setAttribute('aria-label', 'Appearance: ' + label);
+      const current = trigger.querySelector('.appearance-button__current');
+      if (current) current.textContent = label;
+    }
+  }
+
+  function openAppearance() {
+    const panel = document.getElementById('appearance-panel');
+    const trigger = document.querySelector('.appearance-trigger');
+    if (!panel || !trigger) return;
+    panel.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    const checked = panel.querySelector('input:checked');
+    window.requestAnimationFrame(() => (checked || panel.querySelector('input'))?.focus());
+  }
+
+  function closeAppearance(returnFocus) {
+    const panel = document.getElementById('appearance-panel');
+    const trigger = document.querySelector('.appearance-trigger');
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    trigger?.setAttribute('aria-expanded', 'false');
+    if (returnFocus) trigger?.focus();
+  }
+
+  function createGlobalHeader(topbar) {
+    topbar.classList.add('shell-global-header');
+    const brand = initializeBrandLink();
+
+    const menuButton = document.createElement('button');
+    menuButton.type = 'button';
+    menuButton.className = 'shell-menu-button';
+    menuButton.setAttribute('aria-label', 'Open navigation');
+    menuButton.setAttribute('aria-controls', 'app-sidebar');
+    menuButton.setAttribute('aria-expanded', 'false');
+    menuButton.innerHTML =
+      '<span class="shell-menu-button__icon" aria-hidden="true"><span></span><span></span><span></span></span>';
+    menuButton.addEventListener('click', () => openDrawer(menuButton));
+
+    const context = document.createElement('div');
+    context.className = 'shell-header-context';
+    context.innerHTML =
+      '<span class="shell-header-context__eyebrow">DPP Analytics</span>' +
+      '<strong class="shell-header-context__title">' +
+      currentDomain().label +
+      '</strong>';
+
+    const actions = document.createElement('div');
+    actions.className = 'shell-header-actions';
+    const meta = topbar.querySelector('.top-meta');
+    if (meta) actions.appendChild(meta);
+
+    const appearance = document.createElement('button');
+    appearance.type = 'button';
+    appearance.className = 'appearance-trigger';
+    appearance.setAttribute('aria-controls', 'appearance-panel');
+    appearance.setAttribute('aria-expanded', 'false');
+    appearance.innerHTML =
+      '<span class="appearance-button__icon" aria-hidden="true"></span>' +
+      '<span class="appearance-button__label">Appearance</span>' +
+      '<span class="appearance-button__current"></span>';
+    actions.appendChild(appearance);
+
+    topbar.prepend(menuButton);
+    if (brand) brand.classList.add('shell-mobile-brand');
+    topbar.append(context, actions);
+    createAppearancePanel(appearance);
+    syncAppearance();
+  }
+
+  function initializeApplicationShell() {
+    const app = document.querySelector('.app');
+    const topbar = app?.querySelector('.topbar');
+    const nav = app?.querySelector('.primary-nav');
+    if (!app || !topbar || !nav) return;
+
+    buildNavigation(nav);
+    const sidebar = createSidebar(nav);
+    const backdrop = createBackdrop();
+    const skipLink = document.querySelector('.skip-link');
+    if (skipLink) skipLink.after(backdrop, sidebar);
+    else document.body.prepend(backdrop, sidebar);
+    createGlobalHeader(topbar);
+    syncDrawerMode();
+
+    if (typeof mobileMedia.addEventListener === 'function')
+      mobileMedia.addEventListener('change', syncDrawerMode);
+    else mobileMedia.addListener(syncDrawerMode);
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        const panel = document.getElementById('appearance-panel');
+        if (panel && !panel.hidden) {
+          closeAppearance(true);
+          return;
+        }
+        if (document.body.classList.contains('shell-drawer-open')) closeDrawer(true);
+      }
+      trapDrawerFocus(event);
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+      const panel = document.getElementById('appearance-panel');
+      const trigger = document.querySelector('.appearance-trigger');
+      if (panel?.hidden || panel?.contains(event.target) || trigger?.contains(event.target)) return;
+      closeAppearance(false);
+    });
   }
 
   function workspaceGroups() {
@@ -154,7 +438,7 @@
       tab.setAttribute('aria-controls', target);
       const panel = document.getElementById(target);
       if (!panel) return;
-      if (!tab.id) tab.id = `tab-${target}`;
+      if (!tab.id) tab.id = 'tab-' + target;
       panel.setAttribute('role', 'tabpanel');
       panel.setAttribute('aria-labelledby', tab.id);
     });
@@ -175,7 +459,7 @@
   function currentPrimaryIndex(links) {
     const explicit = links.findIndex((link) => link.classList.contains('active'));
     if (explicit >= 0) return explicit;
-    const here = location.pathname.replace(/\/$/, '') || '/';
+    const here = normalizedPath();
     return links.findIndex((link) => new URL(link.href, location.href).pathname.replace(/\/$/, '') === here);
   }
 
@@ -291,14 +575,14 @@
 
     let start = null;
     let suppressClickUntil = 0;
-    const isMobile = () => matchMedia('(max-width: 760px)').matches;
     const explicitNoSwipe =
-      '.primary-nav,.tabs,.subnav,.filters,.periods,.chart-tools,.data-table-scroll,.order-stream,.chart,.rhythm-host,.trajectory-chart,.sales-chart,.chart-wrap,.chart-host,input,textarea,select,button,canvas,svg,[role="slider"],[data-no-swipe],[data-horizontal-scroll]';
+      '.app-sidebar,.shell-global-header,.primary-nav,.appearance-panel,.tabs,.subnav,.filters,.periods,.chart-tools,.data-table-scroll,.order-stream,.chart,.rhythm-host,.trajectory-chart,.sales-chart,.chart-wrap,.chart-host,input,textarea,select,button,canvas,svg,[role="slider"],[data-no-swipe],[data-horizontal-scroll]';
 
     document.addEventListener(
       'pointerdown',
       (event) => {
-        if (!isMobile() || event.pointerType !== 'touch') return;
+        if (!mobileMedia.matches || event.pointerType !== 'touch') return;
+        if (document.body.classList.contains('shell-drawer-open')) return;
         if (event.target.closest(explicitNoSwipe) || hasHorizontalScrollRegion(event.target)) return;
         start = { x: event.clientX, y: event.clientY, t: performance.now() };
       },
@@ -308,7 +592,7 @@
     document.addEventListener(
       'pointerup',
       (event) => {
-        if (!start || !isMobile() || event.pointerType !== 'touch') {
+        if (!start || !mobileMedia.matches || event.pointerType !== 'touch') {
           start = null;
           return;
         }
@@ -342,10 +626,7 @@
   }
 
   function initializeShell() {
-    initializeBrandLink();
-    const nav = document.querySelector('.primary-nav');
-    if (!nav) return;
-    buildNavigation(nav);
+    initializeApplicationShell();
     initializeSwipeNavigation();
     initializeContextPersistence();
   }

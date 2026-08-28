@@ -2,50 +2,158 @@ import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const baseUrl=(process.argv[2]||'http://127.0.0.1:8088').replace(/\/$/,'');
-const outDir=process.argv[3]||'/out';
-await fs.mkdir(outDir,{recursive:true});
-const browser=await chromium.launch({headless:true});
-const cases=[
-  {name:'business-desktop',url:'/',width:1600,height:1000,active:'Business',visiblePrimary:['Business','Today','Sales','Products','Inventory','Finance'],visibleMore:['Trajectory','Ads','Data Health','Admin']},
-  {name:'product-mobile',url:'/product?sku=PNC-001',width:412,height:915,active:'Products',visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health','Admin']},
-  {name:'trajectory-mobile',url:'/trajectory',width:412,height:915,moreActive:true,visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health','Admin']},
-  {name:'inventory-mobile',url:'/inventory',width:412,height:915,moreActive:true,visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health','Admin']},
-  {name:'admin-mobile',url:'/admin',width:412,height:915,moreActive:true,visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health','Admin']},
+const baseUrl = (process.argv[2] || 'http://127.0.0.1:8088').replace(/\/$/, '');
+const outDir = process.argv[3] || '/out';
+await fs.mkdir(outDir, { recursive: true });
+
+const domains = [
+  { label: 'Business', href: '/' },
+  { label: 'Today', href: '/today' },
+  { label: 'Sales', href: '/sales' },
+  { label: 'Products', href: '/catalog' },
+  { label: 'Inventory', href: '/inventory' },
+  { label: 'Finance', href: '/finance' },
+  { label: 'Ads', href: '/ads' },
+  { label: 'Trajectory', href: '/trajectory' },
+  { label: 'Data Health', href: '/data-health' },
+  { label: 'Admin', href: '/admin' },
 ];
-const allPrimary=['Business','Today','Sales','Products','Inventory','Finance'];
-const results=[];
-for(const c of cases){
-  const mobile=c.width<700;
-  const context=await browser.newContext({viewport:{width:c.width,height:c.height},hasTouch:mobile,isMobile:mobile});
-  const page=await context.newPage();
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
-  try{
-    const response=await page.goto(baseUrl+c.url,{waitUntil:'networkidle',timeout:20000});if(!response?.ok())throw new Error(`navigation ${response?.status()}`);
-    await page.locator('.primary-nav.app-navigation').waitFor({timeout:5000});
-    const brandHref=await page.locator('.topbar a.brand').getAttribute('href');if(brandHref!=='/today')throw new Error(`brand link ${brandHref} != /today`);
-    const primary=await page.locator('.nav-primary-set>a').allTextContents();
-    if(JSON.stringify(primary)!==JSON.stringify(allPrimary))throw new Error(`primary DOM ${JSON.stringify(primary)}`);
-    const visiblePrimary=await page.locator('.nav-primary-set>a:visible').allTextContents();
-    if(JSON.stringify(visiblePrimary)!==JSON.stringify(c.visiblePrimary))throw new Error(`visible primary ${JSON.stringify(visiblePrimary)}`);
-    if(c.active){const active=(await page.locator('.nav-primary-set>a.active:visible').textContent())?.trim();if(active!==c.active)throw new Error(`active ${active} != ${c.active}`)}
-    const more=page.locator('.nav-more');
-    if(c.moreActive){
-      const activeClass=mobile?'mobile-active':'active';
-      if(!(await more.evaluate((el,cls)=>el.classList.contains(cls),activeClass)))throw new Error('More not marked active for viewport');
-    }
-    await more.locator('summary').click();
-    const moreLabels=(await more.locator('.nav-more-menu>a:visible strong').allTextContents()).map(x=>x.trim());
-    if(JSON.stringify(moreLabels)!==JSON.stringify(c.visibleMore))throw new Error(`visible more nav ${JSON.stringify(moreLabels)}`);
-    const box=await more.locator('.nav-more-menu').boundingBox();if(!box||box.x<0||box.x+box.width>c.width||box.y<0||box.y+box.height>c.height)throw new Error(`More menu clipped ${JSON.stringify(box)}`);
-    const navBox=await page.locator('.primary-nav.app-navigation').boundingBox();
-    const primaryBox=await page.locator('.nav-primary-set').boundingBox();
-    if(!navBox||!primaryBox||primaryBox.x<navBox.x-1||primaryBox.x+primaryBox.width>navBox.x+navBox.width+1)throw new Error('primary navigation exceeds shell bounds');
-    await page.screenshot({path:path.join(outDir,`nav-${c.name}.png`),fullPage:false});
-  }catch(e){errors.push(e.message)}
-  results.push({...c,errors,ok:errors.length===0});await context.close();
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
 }
+
+async function readDomains(page) {
+  return page.locator('.nav-primary-set > a').evaluateAll((links) =>
+    links.map((link) => ({
+      label: link.textContent.trim(),
+      href: new URL(link.href).pathname,
+      current: link.getAttribute('aria-current'),
+    })),
+  );
+}
+
+async function assertDomainContract(page, activeLabel) {
+  const actual = await readDomains(page);
+  assert(
+    JSON.stringify(actual.map(({ label, href }) => ({ label, href }))) ===
+      JSON.stringify(domains),
+    `domain navigation differs: ${JSON.stringify(actual)}`,
+  );
+  const current = actual.filter(({ current }) => current === 'page');
+  assert(current.length === 1, `expected one aria-current domain: ${JSON.stringify(current)}`);
+  assert(current[0].label === activeLabel, `active domain ${current[0].label} != ${activeLabel}`);
+  assert(
+    actual.find(({ label }) => label === 'Products')?.href === '/catalog',
+    'Products must map to /catalog',
+  );
+  assert((await page.locator('.nav-more').count()) === 0, 'retired More navigation is still present');
+}
+
+const cases = [
+  { name: 'business-desktop', url: '/', width: 1600, height: 1000, active: 'Business' },
+  {
+    name: 'product-mobile',
+    url: '/product?sku=PNC-001',
+    width: 412,
+    height: 915,
+    active: 'Products',
+  },
+];
+
+const browser = await chromium.launch({ headless: true });
+const results = [];
+
+for (const testCase of cases) {
+  const mobile = testCase.width <= 900;
+  const context = await browser.newContext({
+    viewport: { width: testCase.width, height: testCase.height },
+    hasTouch: mobile,
+    isMobile: mobile,
+  });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+
+  try {
+    const response = await page.goto(baseUrl + testCase.url, {
+      waitUntil: 'domcontentloaded',
+      timeout: 20_000,
+    });
+    assert(response?.ok(), `navigation failed with ${response?.status()}`);
+    await page.locator('#app-sidebar .primary-nav.app-navigation').waitFor({ timeout: 5_000 });
+    await assertDomainContract(page, testCase.active);
+
+    const brandHref = await page.locator('#app-sidebar a.brand').getAttribute('href');
+    assert(brandHref === '/today', `brand link ${brandHref} != /today`);
+
+    const sidebar = page.locator('#app-sidebar');
+    const menuButton = page.locator('.shell-menu-button');
+    if (!mobile) {
+      assert(await sidebar.isVisible(), 'desktop sidebar is not visible');
+      assert((await sidebar.getAttribute('aria-hidden')) === 'false', 'desktop sidebar is hidden');
+      assert(!(await sidebar.getAttribute('inert')), 'desktop sidebar is inert');
+      assert(!(await menuButton.isVisible()), 'mobile menu button is visible on desktop');
+
+      const sidebarBox = await sidebar.boundingBox();
+      const headerBox = await page.locator('.shell-global-header').boundingBox();
+      assert(sidebarBox && headerBox, 'desktop shell geometry is unavailable');
+      assert(
+        headerBox.x >= sidebarBox.x + sidebarBox.width - 1,
+        'global header is not anchored to the sidebar edge',
+      );
+    } else {
+      assert(await menuButton.isVisible(), 'mobile navigation trigger is not visible');
+      assert((await menuButton.getAttribute('aria-expanded')) === 'false', 'drawer starts expanded');
+      assert((await sidebar.getAttribute('aria-hidden')) === 'true', 'closed drawer is exposed');
+      assert((await sidebar.getAttribute('inert')) !== null, 'closed drawer is not inert');
+
+      await menuButton.click();
+      await page.locator('body.shell-drawer-open').waitFor({ timeout: 2_000 });
+      assert((await menuButton.getAttribute('aria-expanded')) === 'true', 'drawer state is not exposed');
+      assert((await sidebar.getAttribute('aria-hidden')) === 'false', 'open drawer remains hidden');
+      assert((await sidebar.getAttribute('inert')) === null, 'open drawer remains inert');
+      assert(
+        await page
+          .locator('.shell-drawer-close')
+          .evaluate((element) => element === document.activeElement),
+        'drawer focus did not move inside',
+      );
+
+      await page.keyboard.press('Escape');
+      await page.locator('body:not(.shell-drawer-open)').waitFor({ timeout: 2_000 });
+      assert((await menuButton.getAttribute('aria-expanded')) === 'false', 'Escape did not close drawer');
+      assert(
+        await menuButton.evaluate((element) => element === document.activeElement),
+        'drawer focus did not return to its trigger',
+      );
+    }
+
+    await page.screenshot({
+      path: path.join(outDir, `nav-${testCase.name}.png`),
+      fullPage: false,
+    });
+  } catch (error) {
+    errors.push(error.message);
+  }
+
+  results.push({ ...testCase, errors, ok: errors.length === 0 });
+  await context.close();
+}
+
 await browser.close();
-await fs.writeFile(path.join(outDir,'nav-summary.json'),JSON.stringify({baseUrl,results},null,2));
-console.log(JSON.stringify({navigationQA:results.map(x=>({name:x.name,ok:x.ok,errors:x.errors}))},null,2));
-if(results.some(x=>!x.ok))process.exitCode=3;
+await fs.writeFile(
+  path.join(outDir, 'nav-summary.json'),
+  JSON.stringify({ baseUrl, domains, results }, null, 2),
+);
+console.log(
+  JSON.stringify(
+    { navigationQA: results.map(({ name, ok, errors }) => ({ name, ok, errors })) },
+    null,
+    2,
+  ),
+);
+if (results.some(({ ok }) => !ok)) process.exitCode = 3;
