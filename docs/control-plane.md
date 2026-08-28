@@ -38,7 +38,7 @@ The board image itself does not inject CSS, JavaScript or page behavior. Its HTM
 
 ## Production browser QA
 
-`qa/visual_qa.mjs` is run inside the QA image after deployment while sharing the board container's network namespace, against its loopback-only `http://127.0.0.1:8080` listener. This keeps protected Admin QA on the same operator-only path enforced by the application; it does not weaken public Admin denial.
+`qa/visual_qa.mjs` is run inside the QA image after deployment through the host network against the published `http://127.0.0.1:8088` port. Under the explicit temporary public-Admin decision in [#204](https://github.com/PacoCotera/dpp-analytics/issues/204), this exercises the same non-loopback access policy as the public route.
 
 The QA output includes browser captures and a structured summary covering, among other checks:
 
@@ -51,7 +51,7 @@ Compact successful QA output is retained for 3 days; full failure diagnostics ar
 
 Navigation-specific QA also lives under `qa/nav_qa.mjs`; catalog semantic checks are documented in `qa/README-catalog-semantics.md`.
 
-`qa/admin_qa.mjs` receives only `DPP_ADMIN_PASSWORD` through a temporary root-readable env file. It checks public denial, authenticated catalog loading, a no-op save/reload, downstream Catalog consumption and logout. It never emits the password or seller configuration values. Failure cleanup removes both the QA container and temporary env file.
+`qa/admin_qa.mjs` receives only `DPP_ADMIN_PASSWORD` through a temporary root-readable env file. It checks the published login page, unauthenticated data denial, authenticated catalog loading, a no-op save/reload, downstream Catalog consumption and logout. It never emits the password or seller configuration values. Failure cleanup removes both the QA container and temporary env file.
 
 Browser-QA selectors are part of the application contract. They should target canonical page ownership and stable semantic DOM markers, not deleted enhancement layers or incidental legacy class names. When a frontend refactor intentionally changes the canonical DOM, update the corresponding QA selector in the same PR. When deleting a frontend runtime/style file, remove every source dependency on it before deleting the file; production 404s for removed assets are deployment failures.
 
@@ -112,7 +112,7 @@ The repository deploys code, schema and seed/default configuration, but producti
 - `/etc/dpp-analytics/board-config/` — persistent product labels, taxonomy, costs, bounded Admin backups and non-secret Admin audit metadata;
 - Docker named volumes — PostgreSQL and Grafana state.
 
-The worker's `/config` mount remains read-only. The board's `/config` mount is read-write solely for authenticated Admin updates. `DPP_ADMIN_PASSWORD` remains in `/etc/dpp-analytics/env`; deployment creates it when missing but never publishes it to the heartbeat or artifacts. Direct-HTTP production accepts Admin only from loopback, so operators use an SSH tunnel. Non-loopback access requires both the explicit remote toggle and secure cookies behind HTTPS.
+The worker's `/config` mount remains read-only. The board's `/config` mount is read-write solely for authenticated Admin updates. `DPP_ADMIN_PASSWORD` remains in `/etc/dpp-analytics/env`; deployment creates it when missing but never publishes it to the heartbeat or artifacts. Production temporarily forces remote Admin access on for the public direct-HTTP board under [#204](https://github.com/PacoCotera/dpp-analytics/issues/204). Password authentication, rate limiting, HttpOnly/SameSite cookies, CSRF, session expiry and audit controls remain active, but HTTP provides no transport encryption. Remove this exception when SSH and app-wide authentication are available.
 
 Do not “fix” a production issue by overwriting these from Git unless the deployment design explicitly calls for it.
 

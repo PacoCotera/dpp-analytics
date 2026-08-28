@@ -14,12 +14,12 @@ class MutableClock:
 
 
 class AdminAuthTest(unittest.TestCase):
-    def test_remote_admin_requires_explicit_https_cookie_contract(self):
-        self.assertTrue(admin_client_allowed("127.0.0.1", allow_remote=False, secure_cookie=False))
-        self.assertTrue(admin_client_allowed("::1", allow_remote=False, secure_cookie=False))
-        self.assertFalse(admin_client_allowed("203.0.113.10", allow_remote=False, secure_cookie=False))
-        self.assertFalse(admin_client_allowed("203.0.113.10", allow_remote=True, secure_cookie=False))
-        self.assertTrue(admin_client_allowed("203.0.113.10", allow_remote=True, secure_cookie=True))
+    def test_remote_admin_requires_explicit_opt_in(self):
+        self.assertTrue(admin_client_allowed("127.0.0.1", allow_remote=False))
+        self.assertTrue(admin_client_allowed("::1", allow_remote=False))
+        self.assertFalse(admin_client_allowed("203.0.113.10", allow_remote=False))
+        self.assertTrue(admin_client_allowed("203.0.113.10", allow_remote=True))
+        self.assertFalse(admin_client_allowed("not-an-address", allow_remote=True))
 
     def test_unconfigured_short_or_placeholder_password_is_disabled(self):
         self.assertFalse(AdminAuth("").configured)
@@ -38,6 +38,8 @@ class AdminAuthTest(unittest.TestCase):
         cookie = auth.cookie_header(session)
         self.assertIn("HttpOnly", cookie)
         self.assertIn("SameSite=Strict", cookie)
+        self.assertNotIn("Secure", cookie)
+        self.assertIn("Secure", auth.cookie_header(session, secure=True))
         loaded = auth.session(f"{SESSION_COOKIE}={session.token}")
         self.assertEqual(loaded.csrf_token, session.csrf_token)
         self.assertTrue(auth.verify_csrf(loaded, session.csrf_token))
