@@ -1,4 +1,4 @@
-import { byId, escapeHtml, fetchJson, integer } from './ui-utils.js';
+import { byId, escapeHtml, fetchJson, formatBusinessClock, integer } from './ui-utils.js';
 
 const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const number2 = new Intl.NumberFormat('en-US', {
@@ -622,7 +622,7 @@ function renderEvents(events) {
           (item) => `<div class="event-row">
           <div>
             <strong>${escapeHtml(item.transaction_type || 'Accounting event')}</strong>
-            <small>${escapeHtml(item.local_time || '')} · ${escapeHtml(item.transaction_status || '—')} · ${escapeHtml(item.description || 'No description from Amazon')}</small>
+            <small>${escapeHtml(item.local_time ? formatBusinessClock(item.local_time) : '')} · ${escapeHtml(item.transaction_status || '—')} · ${escapeHtml(item.description || 'No description from Amazon')}</small>
           </div>
           <div class="amount ${valueClass(item.amount)}">${financeMoney(item.amount)}</div>
         </div>`,
@@ -783,7 +783,7 @@ function render(payload) {
     .slice()
     .sort((a, b) => String(a.month).localeCompare(String(b.month)));
 
-  byId('clock').textContent = payload.local_time || '--:--';
+  byId('clock').textContent = formatBusinessClock(payload.local_time);
   byId('asof').textContent = `Finance through ${String(payload.finance_cutoff || '').slice(0, 10)}`;
   byId('throughLabel').textContent =
     `Sales through ${String(payload.sales_through || current.through_date || '').slice(0, 10)} · finance through ${String(payload.finance_cutoff || '').slice(0, 10)}`;

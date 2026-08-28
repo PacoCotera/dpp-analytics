@@ -1,4 +1,11 @@
-import { byId, escapeHtml, fetchJson, integer } from './ui-utils.js';
+import {
+  byId,
+  escapeHtml,
+  fetchJson,
+  formatBusinessClock,
+  formatBusinessTimestamp,
+  integer,
+} from './ui-utils.js';
 
 let jobs = [];
 let expanded = false;
@@ -31,17 +38,7 @@ function duration(seconds, compact = false) {
   return compact || !hours ? `${days}d` : `${days}d ${hours}h`;
 }
 
-function timestamp(value) {
-  if (!value) return 'Not recorded';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat('en-MX', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date);
-}
+const timestamp = formatBusinessTimestamp;
 
 function normalizedJobText(item) {
   return `${item.source || ''} ${item.job_name || ''}`.toLowerCase().replaceAll('-', '_');
@@ -307,7 +304,7 @@ function render(payload) {
     Number(catalogSummary.source_attention || 0) + Number(catalogSummary.taxonomy_attention || 0);
   const totalAttention = problems.length + catalogAttention;
 
-  byId('clock').textContent = payload.local_time || '--:--';
+  byId('clock').textContent = formatBusinessClock(payload.local_time);
   byId('healthUpdated').textContent = `Health checked ${timestamp(payload.checked_at)} · refreshes every 60s`;
   byId('summaryCount').textContent = String(totalAttention);
   byId('summaryCount').dataset.state =

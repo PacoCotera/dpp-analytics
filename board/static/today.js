@@ -1,4 +1,4 @@
-import { byId, escapeHtml, fetchJson, integer, money } from './ui-utils.js';
+import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, money } from './ui-utils.js';
 
 const d3 = window.d3;
 let data = null;
@@ -121,7 +121,7 @@ function renderOrderCard(order) {
   const fulfillment = fulfillmentLabel(order);
   const total = order.sales === null || order.sales === undefined ? '—' : money(order.sales);
   const timing = [
-    order.local_time || '',
+    order.local_time ? formatBusinessClock(order.local_time) : '',
     order.age_seconds !== null && order.age_seconds !== undefined ? age(order.age_seconds) : '',
   ]
     .filter(Boolean)
@@ -547,7 +547,7 @@ function renderLatestOrder(latest, live) {
     <div>
       <div class="sku">${escapeHtml(latest.sku || '')}</div>
       <div class="name">${escapeHtml(latest.product || latest.sku || 'Order')}</div>
-      <div class="latest-age">${escapeHtml(latest.local_time || '')}${live ? ` · ${age(latest.age_seconds)}` : ''}</div>
+      <div class="latest-age">${escapeHtml(latest.local_time ? formatBusinessClock(latest.local_time) : '')}${live ? ` · ${age(latest.age_seconds)}` : ''}</div>
     </div>
     <div class="amount">${money(latest.sales)}</div>
   </div>`;
@@ -628,7 +628,7 @@ function render(payload) {
   byId('sales').textContent = integer(today.sales_today);
   byId('orders').textContent = integer(today.orders_today);
   byId('units').textContent = integer(today.units_today);
-  byId('clock').textContent = live ? context.local_time || '--:--' : 'Closed';
+  byId('clock').textContent = live ? formatBusinessClock(context.local_time) : 'Closed';
   byId('modeStatus').textContent = live ? 'Live Orders · shopper spend' : 'Closed day · shopper spend';
 
   renderDayRead();

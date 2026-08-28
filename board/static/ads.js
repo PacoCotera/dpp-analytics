@@ -1,4 +1,4 @@
-import { byId, escapeHtml, fetchJson, integer, money } from './ui-utils.js';
+import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, money } from './ui-utils.js';
 let operatingTrusted = false;
 const ratioPercent = (v) => (v == null ? '—' : `${(Number(v) * 100).toFixed(1)}%`);
 const deltaPercent = (v) => (v == null ? '—' : `${Number(v) > 0 ? '+' : ''}${Number(v).toFixed(1)}%`);
@@ -262,14 +262,10 @@ function bindInteractions() {
 }
 async function start() {
   bindInteractions();
-  byId('clock').textContent = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date());
+  byId('clock').textContent = formatBusinessClock();
   try {
     const p = await fetchJson('/api/ads');
-    if (p.local_time) byId('clock').textContent = p.local_time;
+    byId('clock').textContent = formatBusinessClock(p.local_time);
     if (p.status === 'ready') renderReady(p);
     else renderUnavailable(p);
   } catch (e) {

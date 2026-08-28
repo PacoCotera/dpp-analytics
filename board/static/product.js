@@ -1,4 +1,4 @@
-import { byId, escapeHtml, fetchJson, integer, money, percent } from './ui-utils.js';
+import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, money, percent } from './ui-utils.js';
 
 const sku = new URLSearchParams(window.location.search).get('sku') || '';
 let data = null;
@@ -367,7 +367,7 @@ function renderOrders(orders = [], profile = {}) {
           </div>
           <div class="product-order__meta">
             <code>${escapeHtml(order.order_id || order.order_short || 'Order ID unavailable')}</code>
-            <span>${escapeHtml(order.local_time || '')} · ${age(order.age_seconds)} ago</span>
+            <span>${escapeHtml(order.local_time ? formatBusinessClock(order.local_time) : '')} · ${age(order.age_seconds)} ago</span>
           </div>
           <div class="product-order__item">
             ${image}
@@ -404,7 +404,7 @@ function render(payload) {
   const ads = payload.ads || {};
 
   document.title = `${profile.product || profile.sku || 'Product'} · DPP`;
-  byId('clock').textContent = payload.local_time || '--:--';
+  byId('clock').textContent = formatBusinessClock(payload.local_time);
   byId('asof').textContent = `Historical through ${String(payload.business_date || '').slice(5)}`;
 
   renderHero(profile, commercial);

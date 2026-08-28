@@ -1,4 +1,4 @@
-import { byId, escapeHtml, fetchJson, integer, money } from './ui-utils.js';
+import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, money } from './ui-utils.js';
 
 const $ = byId;
 const esc = escapeHtml;
@@ -462,7 +462,7 @@ function render(data) {
   const summary = data.summary || {};
   const familyAttention = (data.families || []).filter((family) => family.needs_attention).length;
 
-  $('clock').textContent = data.local_time || '--:--';
+  $('clock').textContent = formatBusinessClock(data.local_time);
   $('familyCount').textContent = num(summary.families);
   $('activeCount').textContent = num(summary.active_sellable);
   $('sellingCount').textContent = num(summary.selling_now);

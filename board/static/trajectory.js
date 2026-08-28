@@ -1,4 +1,4 @@
-import { byId, escapeHtml, fetchJson, integer, money, percent } from './ui-utils.js';
+import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, money, percent } from './ui-utils.js';
 
 const mobile = window.matchMedia('(max-width: 640px)');
 
@@ -154,7 +154,7 @@ function render(payload) {
   const headline = payload.headline || {},
     horizons = payload.horizons || [],
     ads = payload.ads || {};
-  byId('clock').textContent = payload.local_time || '--:--';
+  byId('clock').textContent = formatBusinessClock(payload.local_time);
   byId('asof').textContent = `Reconciled through ${String(headline.business_date || '').slice(5)}`;
   const h = byId('headline');
   h.textContent = percent(headline.delta28_pct);

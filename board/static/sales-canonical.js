@@ -1,3 +1,5 @@
+import { formatBusinessClock } from './ui-utils.js';
+
 /* Sales canonical renderer v2: one fetch, one DOM owner, one chart owner. */
 (() => {
   'use strict';
@@ -105,7 +107,7 @@
     set('ytdLabel', `${String(h.business_date || '').slice(0, 4)} YTD`);
     set('ytdSales', money(h.sales_ytd));
     set('ytdVolume', `${nf.format(h.orders_ytd || 0)} orders · ${nf.format(h.units_ytd || 0)} units`);
-    set('clock', DATA.local_time || '--:--');
+    set('clock', formatBusinessClock(DATA.local_time));
     set('asof', 'Historical through ' + String(h.business_date || '').slice(5));
   }
 
@@ -212,7 +214,7 @@
           <td class="order-moment">
             <span class="order-moment__label">Order</span>
             <strong>${age(r.age_seconds)}</strong>
-            <span>${esc(r.local_time || '')}</span>
+            <span>${esc(r.local_time ? formatBusinessClock(r.local_time) : '')}</span>
             <code>${esc(r.order_short || '')}</code>
           </td>
           <td><div class="sales-order-items">${items}</div></td>

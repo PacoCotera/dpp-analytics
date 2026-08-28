@@ -1,4 +1,4 @@
-import { escapeHtml, fetchJson, integer, money, percent, tone } from './ui-utils.js';
+import { escapeHtml, fetchJson, formatBusinessClock, integer, money, percent, tone } from './ui-utils.js';
 
 function stateRead(delta, actions) {
   const momentum = Number(delta || 0),
@@ -156,7 +156,7 @@ function render(data) {
     inventory = data.inventory_summary || {},
     decisionCount = Number(inventory.needs_action || 0),
     read = stateRead(rolling.delta28_pct, decisionCount);
-  document.getElementById('clock').textContent = data.local_time || '--:--';
+  document.getElementById('clock').textContent = formatBusinessClock(data.local_time);
   document.getElementById('fresh').textContent = 'Live operating data';
   document.getElementById('stateHeadline').textContent = read.headline;
   document.getElementById('stateCopy').textContent = read.copy;

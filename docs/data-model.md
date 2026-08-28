@@ -47,6 +47,8 @@ Seller taxonomy is a separate responsibility layered on top of Amazon source rea
 
 ## Decision-surface truth policy
 
+Operating timestamps are rendered in the marketplace business timezone, `America/Mexico_City`, through the shared UI time formatter. Header clocks and absolute freshness/sync timestamps carry the visible `Mexico City` label; browser or host timezone is never used as an implicit fallback. Relative ages remain elapsed-time values.
+
 ### Today
 
 Today is operational and provisional. It is driven by near-real-time Orders API data and may change as the day progresses. A partial current day must not be treated as a reconciled historical day.
