@@ -7,6 +7,7 @@ COPY nav_qa.mjs ./
 COPY accessibility_qa.mjs ./
 COPY analysis_state_qa.mjs ./
 COPY numeric_ui_qa.mjs ./
+COPY ui_format_qa.mjs ./
 COPY geography_qa.mjs ./
 COPY geography_zoom_qa.mjs ./
 COPY order_operations_qa.mjs ./

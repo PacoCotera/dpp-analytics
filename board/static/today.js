@@ -3,6 +3,7 @@ import {
   escapeHtml,
   fetchJson,
   formatBusinessClock,
+  formatCount,
   integer,
   money,
   mountRuleTrigger,
@@ -139,7 +140,7 @@ function renderOrderCard(order) {
   const units = Number(
     order.units || items.reduce((sum, item) => sum + Number(item.quantity_ordered || 0), 0),
   );
-  const unitLabel = `${integer(units)} unit${units === 1 ? '' : 's'}`;
+  const unitLabel = formatCount(units, 'unit');
   const fulfillmentState = AMAZON_PROCESSING.has(rawStatus)
     ? `${unitLabel} · fulfillment not started`
     : `${unitLabel} · ${fulfilled} fulfilled · ${unfulfilled} unfulfilled`;
@@ -291,8 +292,8 @@ function renderDayRead() {
     const expected = Number.isFinite(pace) && pace > -99 && sales > 0 ? sales / (1 + pace / 100) : null;
     explanation =
       expected && expected > 0
-        ? `${orders} order${orders === 1 ? '' : 's'} so far. A typical ${day.toLowerCase()} would be around ${money(expected)} in shopper spend by this point, so wait for more volume before judging pace.`
-        : `${orders} order${orders === 1 ? '' : 's'} so far. Wait for more volume before judging today against a typical ${day.toLowerCase()}.`;
+        ? `${formatCount(orders, 'order')} so far. A typical ${day.toLowerCase()} would be around ${money(expected)} in shopper spend by this point, so wait for more volume before judging pace.`
+        : `${formatCount(orders, 'order')} so far. Wait for more volume before judging today against a typical ${day.toLowerCase()}.`;
   } else {
     explanation = Number.isFinite(pace)
       ? `Shopper spend is ${signedPercent0(pace)} versus comparable ${day.toLowerCase()} performance${live ? ' at this point in the day' : ''}.`
@@ -511,7 +512,7 @@ function drawChart() {
       if (width < 640) return;
       const hostRect = host.getBoundingClientRect();
       const barRect = this.getBoundingClientRect();
-      tooltip.innerHTML = `<strong>${d3.utcFormat('%a, %b %-d')(row.date)}</strong><span>Shopper spend ${money(row.sales)}</span><span>${integer(row.orders)} orders · ${integer(row.units)} units</span><span>Includes IVA · Amazon Orders</span>`;
+      tooltip.innerHTML = `<strong>${d3.utcFormat('%a, %b %-d')(row.date)}</strong><span>Shopper spend ${money(row.sales)}</span><span>${formatCount(row.orders, 'order')} · ${formatCount(row.units, 'unit')}</span><span>Includes IVA · Amazon Orders</span>`;
       tooltip.style.left = `${Math.min(hostRect.width - 90, Math.max(90, barRect.left - hostRect.left + barRect.width / 2))}px`;
       tooltip.style.top = `${Math.max(54, barRect.top - hostRect.top + 8)}px`;
       tooltip.classList.add('show');
@@ -569,7 +570,7 @@ function renderProducts(payload) {
             <div>
               <div class="name">${escapeHtml(item.product || item.sku || item.asin || 'Product')}</div>
               <div class="product-identity">${escapeHtml(identity)}</div>
-              <div class="meta">${integer(item.units || 0)} units · ${integer(item.orders || 0)} orders</div>
+              <div class="meta">${formatCount(item.units, 'unit')} · ${formatCount(item.orders, 'order')}</div>
               <div class="share-track"><i style="width:${Math.max(2, Math.min(100, contribution))}%"></i></div>
             </div>
             <div class="value">${money(item.sales || 0)}<span class="share">${contribution.toFixed(0)}% of shopper spend</span></div>
@@ -581,7 +582,7 @@ function renderProducts(payload) {
       ${
         secondary.length
           ? `<details class="today-products-reference ops-owned" id="todayProductsReference" open>
-        <summary><span><strong>${secondary.length} more product${secondary.length === 1 ? '' : 's'}</strong><small>Secondary contribution</small></span><b>View ↓</b></summary>
+        <summary><span><strong>${formatCount(secondary.length, 'more product')}</strong><small>Secondary contribution</small></span><b>View ↓</b></summary>
         <div class="today-products-secondary">${secondary.join('')}</div>
       </details>`
           : ''
@@ -606,7 +607,7 @@ function renderSelectedOrders(payload) {
   const orders = payload.recent_orders || [];
   const today = payload.today || {};
   byId('orderSummary').textContent =
-    `${integer(today.orders_today || 0)} orders · ${integer(today.units_today || 0)} units · ${money(today.sales_today || 0)} shopper spend incl. IVA`;
+    `${formatCount(today.orders_today, 'order')} · ${formatCount(today.units_today, 'unit')} · ${money(today.sales_today || 0)} shopper spend incl. IVA`;
   byId('orderGrid').innerHTML = orders.length
     ? orders.map(renderOrderCard).join('')
     : '<div class="empty ops-owned">No orders recorded for this day.</div>';

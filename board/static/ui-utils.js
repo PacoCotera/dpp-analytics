@@ -1,7 +1,7 @@
 import './data-cache.js';
+import { formatCount, formatMonthYear, integer, money, number0, number1 } from './format-core.js';
 
-export const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-export const number1 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+export { formatCount, formatMonthYear, integer, money, number0, number1 };
 export const BUSINESS_TIME_ZONE = 'America/Mexico_City';
 export const BUSINESS_TIME_ZONE_LABEL = 'Mexico City';
 
@@ -50,27 +50,11 @@ export function formatMetricWindow(window) {
   return `${window.label} · ${window.source} · ${start} to ${through} · ${includedDays} included days · source updated ${sourceUpdate}`;
 }
 
-export function money(value, { compact = false } = {}) {
-  const numeric = Number(value || 0);
-  if (!compact || Math.abs(numeric) < 1000) return `$${number0.format(Math.round(numeric))}`;
-  if (Math.abs(numeric) < 1_000_000) {
-    const scaled = numeric / 1000;
-    const digits = Math.abs(scaled) >= 10 ? 0 : 1;
-    return `$${scaled.toFixed(digits).replace(/\.0$/, '')}k`;
-  }
-  const scaled = numeric / 1_000_000;
-  return `$${scaled.toFixed(1).replace(/\.0$/, '')}m`;
-}
-
 export function percent(value, { digits = 1, sign = true } = {}) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
   const numeric = Number(value);
   const prefix = sign && numeric > 0 ? '+' : '';
   return `${prefix}${numeric.toFixed(digits)}%`;
-}
-
-export function integer(value) {
-  return number0.format(Math.round(Number(value || 0)));
 }
 
 export function escapeHtml(value) {

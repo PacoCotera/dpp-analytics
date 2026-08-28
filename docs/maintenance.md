@@ -176,6 +176,11 @@ Start in `board/static/ui-shell.js` and `nav-shell.css`. Do not patch individual
 
 Start in `chart-system.js`/`chart-system.css`. Page runtimes should provide data and choose the chart, not fork a generic chart implementation unless the analytical form is truly page-specific.
 
+### Change shared number or date copy
+
+Start in `static/format-core.js`; `ui-utils.js` re-exports its browser-safe helpers. Run `npm run test:formats` for
+the zero/singular/plural, currency-sign, precision, and month-year contract before changing page copy.
+
 ## Quality gates
 
 ### Application PR gate
@@ -217,6 +222,8 @@ When changing `compose.yml` or `.env.example`, validate them together. The templ
 Production browser QA records page/viewport captures plus browser console errors, failed responses and horizontal-overflow checks. Treat it as a deployment requirement, not decorative screenshots.
 Its Product scenarios cover both a populated demand chart and the all-zero PNC-001L sales/units states. An
 all-zero selected metric must render the explicit range-empty message with no bars or numeric axis ticks.
+`qa/ui_format_qa.mjs` verifies the deployed shared count/currency/month-year helpers plus the Business, Finance,
+and Data Health labels that depend on them.
 The same suite runs `qa/accessibility_qa.mjs` across every primary workspace. It rejects missing/duplicate level-one
 headings, unnamed visible links, missing toggle-button state, broken native keyboard activation, and loss of the
 Finance monthly report's table relationships.

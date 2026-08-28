@@ -1,13 +1,10 @@
-import { byId, fetchJson } from './ui-utils.js';
+import { byId, fetchJson, money } from './ui-utils.js';
 
-const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const CASH_BASIS_LABEL = 'Cash settlement evidence, not sales-period P&L';
 
 function cashMoney(value) {
   if (value === null || value === undefined) return '—';
-  const numeric = Number(value || 0);
-  const prefix = numeric < 0 ? '−$' : '$';
-  return `${prefix}${number0.format(Math.abs(Math.round(numeric)))}`;
+  return money(value);
 }
 
 function step(label, value, kind = '') {

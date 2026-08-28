@@ -1,3 +1,5 @@
+import { formatCount, money } from './format-core.js';
+
 /* Sales geography v2: local SEPOMEX labels + same-origin filtered postal polygons. */
 (() => {
   'use strict';
@@ -51,7 +53,6 @@
   const GEO_METRICS = new Set(['sales', 'orders', 'units', 'aov']);
   const RANKED_ROW_LIMIT = 20;
   const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-  const money = (v) => '$' + nf.format(Math.round(Number(v || 0)));
   const esc = (s) =>
     String(s ?? '').replace(
       /[&<>"']/g,
@@ -276,7 +277,7 @@
     const resolution = c.alias_resolution_pct == null ? '—' : `${Number(c.alias_resolution_pct).toFixed(1)}%`;
     if (!Number(c.orders_with_postal || 0))
       return 'Postal geography authorized · historical backfill is populating.';
-    return `${nf.format(c.canonical_states || 0)} canonical states · ${nf.format(c.unmapped_orders || 0)} unmapped orders · ${resolution} alias resolution across ${nf.format(c.orders_with_postal || 0)} postal orders · ${nf.format(c.alias_resolved_orders || 0)} alias-labelled orders resolved · ${nf.format(c.postal_codes || 0)} postal codes · ${pct} postal coverage`;
+    return `${formatCount(c.canonical_states, 'canonical state')} · ${formatCount(c.unmapped_orders, 'unmapped order')} · ${resolution} alias resolution across ${formatCount(c.orders_with_postal, 'postal order')} · ${formatCount(c.alias_resolved_orders, 'alias-labelled order')} resolved · ${formatCount(c.postal_codes, 'postal code')} · ${pct} postal coverage`;
   }
 
   function selectedWindowLabel() {
@@ -333,7 +334,7 @@
     const tip = tooltip();
     const host = document.querySelector('.geo-map-panel');
     if (!tip || !host) return;
-    tip.innerHTML = `<strong>${esc(title)}</strong>${detail ? `<span class="geo-tooltip__place">${esc(detail)}</span>` : ''}<span>${metricLabel()} · ${esc(formatMetric(metricValue(row)))}</span><span>${money(row?.sales || 0)} · ${nf.format(row?.orders || 0)} orders · ${nf.format(row?.units || 0)} units</span>`;
+    tip.innerHTML = `<strong>${esc(title)}</strong>${detail ? `<span class="geo-tooltip__place">${esc(detail)}</span>` : ''}<span>${metricLabel()} · ${esc(formatMetric(metricValue(row)))}</span><span>${money(row?.sales || 0)} · ${formatCount(row?.orders, 'order')} · ${formatCount(row?.units, 'unit')}</span>`;
     const rect = host.getBoundingClientRect();
     const x = event.clientX ? event.clientX - rect.left + 12 : 18;
     const y = event.clientY ? event.clientY - rect.top + 12 : 60;

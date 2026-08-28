@@ -483,6 +483,11 @@ Observed:
 - Finance month labels such as `Aug 26` can be read as August 26 rather than August 2026.
 - Data Health labels a column `LAST FETCH`, but its cells contain read/stored row counts such as `14 read · 14 stored`.
 
+Continuity note, 2026-08-28: deployed main `2f212c43` still shows `$-884` on Business, abbreviated
+`Aug 26`/`Jul 26` month-year labels in Finance, and `LAST FETCH` above read/stored counts in Data Health.
+No currently visible metric happens to equal one, but the deployed render paths still append plural `orders` and
+`units` unconditionally. The singular defect is data-dependent; scope is unchanged.
+
 Impact: Small inconsistencies reduce trust in a precision-oriented tool.
 
 Acceptance criteria:

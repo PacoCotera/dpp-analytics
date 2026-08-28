@@ -70,6 +70,9 @@ Pages choose the correct analytical chart but should not independently recreate 
 demand pages pass canonical series to the shared owner; `chart-system.js` renders an explicit range-empty state
 when the selected metric is all zero.
 
+Shared mechanical formatting lives in `static/format-core.js` and is re-exported by `ui-utils.js`. Page modules use
+its count, currency, and month-year formatters instead of assembling plurals, currency signs, or abbreviated years.
+
 Dense multi-period charts may opt into `.dpp-chart-scroll` on the containing chart region and `.dpp-chart--wide` on the chart itself. At phone widths the shared chart system preserves a readable minimum chart width and contains horizontal scrolling inside that chart region. Do not shrink a dense analytical chart into an unreadable thumbnail merely to avoid scrolling, and do not allow the chart to create horizontal overflow on the page itself.
 
 ### 5. Page composition

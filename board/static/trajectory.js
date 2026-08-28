@@ -3,6 +3,7 @@ import {
   escapeHtml,
   fetchJson,
   formatBusinessClock,
+  formatCount,
   formatMetricWindow,
   integer,
   money,
@@ -59,7 +60,7 @@ function renderHorizons(rows) {
       const delta = Number(item.delta_pct || 0),
         width = Math.max(4, Math.min(100, (Math.abs(delta) / maxDelta) * 100)),
         tone = toneClass(delta);
-      return `<div class="trajectory-horizon"><div class="trajectory-horizon__label">${escapeHtml(item.label)}</div><div><progress class="trajectory-horizon__track ${tone}" max="100" value="${width}" aria-label="${escapeHtml(item.label)} relative change magnitude"></progress><div class="trajectory-horizon__copy">${money(item.sales)} · ${money(item.daily_avg)}/day · ${integer(item.orders)} orders</div></div><div class="trajectory-horizon__delta ${tone}">${percent(item.delta_pct)}</div></div>`;
+      return `<div class="trajectory-horizon"><div class="trajectory-horizon__label">${escapeHtml(item.label)}</div><div><progress class="trajectory-horizon__track ${tone}" max="100" value="${width}" aria-label="${escapeHtml(item.label)} relative change magnitude"></progress><div class="trajectory-horizon__copy">${money(item.sales)} · ${money(item.daily_avg)}/day · ${formatCount(item.orders, 'order')}</div></div><div class="trajectory-horizon__delta ${tone}">${percent(item.delta_pct)}</div></div>`;
     })
     .join('');
 }
@@ -118,9 +119,9 @@ function renderWeeks(rows = []) {
           const current = Boolean(item.current_week),
             delta = item.delta_vs_prior_week_pct,
             comparison = current
-              ? `<div class="week-partial">Partial week · ${integer(item.days_loaded)} reconciled day${Number(item.days_loaded || 0) === 1 ? '' : 's'} so far. We do not compare this partial total with a full previous week.</div>`
+              ? `<div class="week-partial">Partial week · ${formatCount(item.days_loaded, 'reconciled day')} so far. We do not compare this partial total with a full previous week.</div>`
               : `<div class="week-delta"><strong class="${toneClass(delta)}">${percent(delta)}</strong><span>vs previous week</span></div>`;
-          return `<div class="week-row"><div class="week-when"><div class="week-kicker ${current ? 'current' : ''}">${weekLabel(item, index)} · Week ${escapeHtml(item.iso_week || '—')}</div><strong>${escapeHtml(item.date_range || '')}</strong><span>${current ? 'Latest reconciled data' : 'Monday through Sunday'}</span></div><div class="week-value"><strong>${money(item.sales)}</strong><span>${money(item.daily_avg)}/day · ${integer(item.days_loaded)} days</span></div>${current ? '<div></div>' : comparison}${current ? comparison : ''}</div>`;
+          return `<div class="week-row"><div class="week-when"><div class="week-kicker ${current ? 'current' : ''}">${weekLabel(item, index)} · Week ${escapeHtml(item.iso_week || '—')}</div><strong>${escapeHtml(item.date_range || '')}</strong><span>${current ? 'Latest reconciled data' : 'Monday through Sunday'}</span></div><div class="week-value"><strong>${money(item.sales)}</strong><span>${money(item.daily_avg)}/day · ${formatCount(item.days_loaded, 'day')}</span></div>${current ? '<div></div>' : comparison}${current ? comparison : ''}</div>`;
         })
         .join('')
     : '<div class="empty"><strong>No weekly history yet.</strong></div>';

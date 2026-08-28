@@ -2,6 +2,8 @@ import {
   escapeHtml,
   fetchJson,
   formatBusinessClock,
+  formatCount,
+  formatMonthYear,
   formatMetricWindow,
   integer,
   money,
@@ -77,11 +79,7 @@ function renderAttention(data, decisionCount) {
 }
 
 function monthLabel(value) {
-  if (!value) return 'Latest month';
-  const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
-  return Number.isNaN(date.getTime())
-    ? String(value).slice(0, 7)
-    : date.toLocaleDateString('en', { month: 'short', year: 'numeric' });
+  return formatMonthYear(value, { fallback: 'Latest month' });
 }
 
 function renderBusinessHealth(data) {
@@ -141,7 +139,7 @@ function render(data) {
   document.getElementById('momentumNote').textContent = 'vs prior 28 · same gross basis';
   document.getElementById('todaySales').textContent = money(today.sales_today);
   document.getElementById('todayNote').textContent =
-    `incl. IVA · ${integer(today.orders_today)} orders · ${integer(today.units_today)} units`;
+    `incl. IVA · ${formatCount(today.orders_today, 'order')} · ${formatCount(today.units_today, 'unit')}`;
   document.getElementById('decisionCount').textContent = integer(decisionCount);
   document.getElementById('decisionNote').textContent =
     decisionCount === 1 ? 'current operating flag' : 'current operating flags';

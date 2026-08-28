@@ -129,7 +129,7 @@ function renderAttention() {
           <div><dt>Data age</dt><dd>${duration(item.age_seconds)} old</dd><small>Last success ${timestamp(item.last_success_at)}</small></div>
           <div><dt>Expected cadence</dt><dd>Every ${duration(item.expected_interval_seconds)}</dd><small>Stale after ${duration(item.stale_after_seconds)}</small></div>
           <div><dt>Current wait</dt><dd>${scheduleCopy(item)}</dd><small>Waiting for ${escapeHtml(item.waiting_for || 'the next collection')}</small></div>
-          <div><dt>Last fetch</dt><dd>${rowsRead} read · ${rowsWritten} stored</dd><small>Attempt ${timestamp(item.last_started_at)}</small></div>
+          <div><dt>Rows read / stored</dt><dd>${rowsRead} read · ${rowsWritten} stored</dd><small>Attempt ${timestamp(item.last_started_at)}</small></div>
         </dl>
         <div class="incident__diagnostic ${item.error_message ? 'incident__diagnostic--error' : ''}">
           <span>${item.error_message ? 'Latest API / ingestion error' : 'Diagnostic'}</span>
@@ -241,7 +241,7 @@ function renderJobs() {
         <strong>Every ${duration(item.expected_interval_seconds)}</strong><small>${scheduleCopy(item)}</small>
       </div>
       <div class="health-job__rows health-job__metric">
-        <span class="health-job__metric-label">Last API fetch</span>
+        <span class="health-job__metric-label">Rows read / stored</span>
         <strong>${item.records_read == null ? '—' : integer(item.records_read)} read · ${item.records_written == null ? '—' : integer(item.records_written)} stored</strong>
         <small>Attempt ${timestamp(item.last_started_at)}</small>
       </div>
