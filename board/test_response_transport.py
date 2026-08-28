@@ -25,6 +25,7 @@ class ResponseTransportTest(unittest.TestCase):
 
     def test_compressible_content_types(self):
         self.assertTrue(compressible_content_type("application/json"))
+        self.assertTrue(compressible_content_type("application/geo+json"))
         self.assertTrue(compressible_content_type("text/css; charset=utf-8"))
         self.assertTrue(compressible_content_type("image/svg+xml"))
         self.assertFalse(compressible_content_type("image/png"))

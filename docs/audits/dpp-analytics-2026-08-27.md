@@ -332,6 +332,8 @@ Observed:
 - Opening Geography fetches Mexico state geometry from `raw.githubusercontent.com/strotgen/mexico-leaflet/master/states.geojson`.
 - The request succeeded during the audit, but the core map depends on a third-party repository and its current content at view time.
 
+Continuity note, 2026-08-28: production at `f3d5a1d4` still makes the same unpinned browser request. Remediation tracing also found that postal drill-down geometry is fetched by the board API from `open-mexico/mexico-geojson` at view time, so DPP-014 covers both national and postal runtime geometry dependencies.
+
 Impact: A third-party outage, rate limit, repository change, or network policy can break a core analytics view independently of DPP.
 
 Acceptance criteria:

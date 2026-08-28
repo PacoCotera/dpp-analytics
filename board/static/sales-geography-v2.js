@@ -4,7 +4,7 @@
   const d3 = window.d3;
   if (!d3) return;
 
-  const STATES_URL = 'https://raw.githubusercontent.com/strotgen/mexico-leaflet/master/states.geojson';
+  const STATES_URL = '/assets/mexico-states-90a1d52.geojson';
   const STATE_META = [
     ['01', 'Aguascalientes'],
     ['02', 'Baja California'],

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import math
 import os
@@ -7,10 +8,13 @@ import re
 import sqlite3
 from functools import lru_cache
 from pathlib import Path
-from urllib.request import Request, urlopen
 
 POSTAL_DB = Path(os.getenv("POSTAL_REFERENCE_DB", "/app/reference/db_postal.sqlite"))
-POSTAL_BASE = "https://raw.githubusercontent.com/open-mexico/mexico-geojson/main/"
+POSTAL_GEOMETRY_ROOT = Path(
+    os.getenv("POSTAL_GEOMETRY_ROOT", "/app/reference/mexico-geojson")
+)
+POSTAL_GEOMETRY_SOURCE_REPOSITORY = "open-mexico/mexico-geojson"
+POSTAL_GEOMETRY_SOURCE_COMMIT = "ff9a744df9e9c1db66d5de40ae14a71920cb72e7"
 STATE_FILES = {
     "01": "01-Ags.geojson",
     "02": "02-Bc.geojson",
@@ -142,13 +146,14 @@ def _state_geojson(state_code: str) -> dict:
     filename = STATE_FILES.get(state_code)
     if not filename:
         raise ValueError("Unknown Mexican state code")
-    request = Request(
-        POSTAL_BASE + filename,
-        headers={"User-Agent": "Dirty-Pawz-Press-Analytics/1.0"},
-    )
-    with urlopen(request, timeout=45) as response:
-        payload = response.read()
-    return json.loads(payload)
+    path = POSTAL_GEOMETRY_ROOT / f"{filename}.gz"
+    if not path.is_file():
+        raise RuntimeError(f"Bundled postal geometry unavailable for state {state_code}")
+    with gzip.open(path, "rt", encoding="utf-8") as source:
+        payload = json.load(source)
+    if payload.get("type") != "FeatureCollection" or not isinstance(payload.get("features"), list):
+        raise RuntimeError(f"Bundled postal geometry is invalid for state {state_code}")
+    return payload
 
 
 def _position(value: object) -> list[float] | None:
@@ -277,7 +282,7 @@ def postal_geometry(state_code: str, codes: list[str] | set[str] | tuple[str, ..
             "invalid_codes": [],
             "invalid_feature_count": 0,
             "rewound_ring_count": 0,
-            "source": "open-mexico/mexico-geojson",
+            "source": f"{POSTAL_GEOMETRY_SOURCE_REPOSITORY} @ {POSTAL_GEOMETRY_SOURCE_COMMIT[:8]}",
             "geometry_contract": "WGS84 lon/lat · D3 clockwise exterior rings",
         }
 
@@ -316,6 +321,6 @@ def postal_geometry(state_code: str, codes: list[str] | set[str] | tuple[str, ..
         "invalid_codes": sorted(invalid_codes - matched),
         "invalid_feature_count": invalid_feature_count,
         "rewound_ring_count": rewound_ring_count,
-        "source": "open-mexico/mexico-geojson · SEPOMEX",
+        "source": f"{POSTAL_GEOMETRY_SOURCE_REPOSITORY} @ {POSTAL_GEOMETRY_SOURCE_COMMIT[:8]} · SEPOMEX",
         "geometry_contract": "WGS84 lon/lat · D3 clockwise exterior rings",
     }
