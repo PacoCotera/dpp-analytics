@@ -13,13 +13,25 @@ function cssTokenName(token) {
   return `--dpp-${token.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()}`;
 }
 
+function formatCssColorLiterals(value) {
+  return value.replace(/#([0-9a-f]{8}|[0-9a-f]{6})(?![0-9a-f])/gi, (_match, hex) => {
+    const normalized = hex.toUpperCase();
+    const pairs = normalized.match(/.{2}/g);
+    const canShorten = pairs.every((pair) => pair[0] === pair[1]);
+    return canShorten ? `#${pairs.map((pair) => pair[0]).join('')}` : `#${normalized}`;
+  });
+}
+
 function renderProfileBlock(profile, isDefault) {
   const selector = isDefault
     ? `:root,\n:root[data-dpp-theme='${profile.id}']`
     : `:root[data-dpp-theme='${profile.id}']`;
   const declarations = [
     `  color-scheme: ${profile.colorScheme};`,
-    ...TOKEN_KEYS.map((token) => `  ${cssTokenName(token)}: ${profile.tokens[token]};`),
+    '',
+    ...TOKEN_KEYS.map(
+      (token) => `  ${cssTokenName(token)}: ${formatCssColorLiterals(profile.tokens[token])};`,
+    ),
   ];
   return `${selector} {\n${declarations.join('\n')}\n}`;
 }
