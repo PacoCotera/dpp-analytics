@@ -19,6 +19,10 @@ const labels = {
   WATCH: 'Watch',
   DORMANT: 'Dormant',
   INACTIVE: 'Inactive',
+  CLOSED: 'Closed',
+  INCOMPLETE: 'Incomplete',
+  NOT_ACTIVE: 'Not active',
+  DELETED: 'Deleted',
   STRUCTURAL_PARENT: 'Parent container',
   SKU_ALIAS: 'SKU alias',
 };
@@ -26,6 +30,7 @@ const labels = {
 let DATA = {
   families: [],
   products: [],
+  deleted_products: [],
   attention: [],
   summary: {},
   dimensions: {},
@@ -182,14 +187,15 @@ function childRow(product) {
   const attributes = Object.entries(product.variation_attributes || {})
     .map(([key, value]) => `${title(key)}: ${value}`)
     .join(' · ');
-  const inactive = String(product.status || '').toLowerCase() === 'inactive';
+  const sourceStatus = String(product.status || '').trim();
+  const listingLabel = sourceStatus.toLowerCase() === 'active' ? 'sellable' : sourceStatus.toLowerCase();
 
   return `<a class="child" href="/product?sku=${encodeURIComponent(product.sku || '')}">
     <div class="child-identity">
       ${image(product.image_url, 'child-img')}
       <div>
         <div class="child-name">${esc(product.product || product.sku || product.asin)}</div>
-        <div class="child-meta">${esc(product.sku || '')} · ${esc(product.asin || '')}${attributes ? ` · ${esc(attributes)}` : ''} · ${inactive ? 'inactive' : 'sellable'}</div>
+        <div class="child-meta">${esc(product.sku || '')} · ${esc(product.asin || '')}${attributes ? ` · ${esc(attributes)}` : ''} · ${esc(listingLabel || 'status unavailable')}</div>
       </div>
     </div>
     <div class="signal ${stateClass(product.commercial_state)}">
@@ -315,6 +321,22 @@ function skuAnalysisRow(product) {
   </a>`;
 }
 
+function deletedAnalysisRow(product) {
+  const parent = product.historical_parent_asin ? ` · former parent ${product.historical_parent_asin}` : '';
+  const lastSeen = String(product.last_seen_at || '').slice(0, 10) || 'date unavailable';
+  const sourceStatus = product.source_listing_status || 'unknown';
+
+  return `<a class="analysis-row analysis-link" href="/product?sku=${encodeURIComponent(product.sku || '')}">
+    <div class="analysis-identity"><strong>${esc(product.product || product.sku || product.asin)}</strong><span>${esc(product.sku || '')} · ${esc(product.asin || '')}${esc(parent)}</span></div>
+    <div class="signal state-DELETED"><strong>Deleted</strong><span>Absent from the latest Amazon seller-catalog snapshot</span></div>
+    <div class="cell metric-sales" data-mobile-title="Catalog state"><strong>Historical</strong><span data-mobile-label="Scope">not a current offer</span></div>
+    <div class="cell metric-funnel" data-mobile-title="Last Amazon state"><strong>${esc(sourceStatus)}</strong><span data-mobile-label="Last state">last reported status</span></div>
+    <div class="cell metric-stock" data-mobile-title="Last seen"><strong>${esc(lastSeen)}</strong><span data-mobile-label="Last seen">seller snapshot</span></div>
+    <div class="cell economics"><strong>Preserved</strong><span data-mobile-label="History">transaction history</span></div>
+    <span class="analysis-open">›</span>
+  </a>`;
+}
+
 function renderModes() {
   const dimensions = Object.keys(DATA.dimensions || {});
   const buttons = [
@@ -330,6 +352,7 @@ function renderModes() {
     ]);
   }
   buttons.push(['sku', 'SKU']);
+  if ((DATA.deleted_products || []).length) buttons.push(['deleted', 'Deleted']);
 
   $('analysisModes').innerHTML = buttons
     .map(
@@ -412,6 +435,19 @@ function renderPortfolio() {
     return;
   }
 
+  if (mode === 'deleted') {
+    setHead('Deleted SKU');
+    $('modeSource').textContent = 'Deleted = absent from latest Amazon snapshot';
+    $('portfolioFootMain').innerHTML =
+      '<b>Deleted SKUs</b> are preserved only for historical transaction attribution. They are excluded from current offers, families, KPIs, filters and decisions.';
+    let rows = DATA.deleted_products || [];
+    if (query) rows = rows.filter((row) => JSON.stringify(row).toLowerCase().includes(query));
+    $('portfolio').innerHTML = rows.length
+      ? analysisRows(rows, deletedAnalysisRow, 'deleted SKU')
+      : '<div class="empty">No deleted SKU records match this view.</div>';
+    return;
+  }
+
   let rows = [];
   let label = 'Variation';
 
@@ -470,7 +506,7 @@ function render(data) {
   $('portfolioRead').textContent =
     `${money(summary.sales_t28)} from ${num(summary.units_t28)} units on ${num(summary.sessions_t28)} sessions · ${pct(summary.conversion_t28_pct)} conversion`;
   $('portfolioBasis').textContent =
-    `28D through ${summary.traffic_through_date || 'latest completed day'} · ${summary.sellable_offers || 0} sellable offers across ${summary.families || 0} families · ${summary.amazon_dimension_coverage || 0} offers with Amazon variation metadata`;
+    `28D through ${summary.traffic_through_date || 'latest completed day'} · ${summary.sellable_offers || 0} current Amazon offers across ${summary.families || 0} families · ${summary.amazon_dimension_coverage || 0} offers with Amazon variation metadata`;
   $('asof').textContent = `Demand through ${summary.traffic_through_date || '—'}`;
   $('freshness').textContent =
     `Data Kiosk through ${summary.traffic_through_date || '—'} · listings ${String(summary.listings_fetched_at || '').slice(0, 10) || '—'} · FBA current`;

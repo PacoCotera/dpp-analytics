@@ -380,6 +380,10 @@
 }
 
 .state-INACTIVE,
+.state-CLOSED,
+.state-INCOMPLETE,
+.state-NOT_ACTIVE,
+.state-DELETED,
 .state-STRUCTURAL_PARENT,
 .state-SKU_ALIAS {
   color: var(--quiet);

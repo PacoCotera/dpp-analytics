@@ -161,8 +161,9 @@ def ingest_listings_report() -> dict[str, int | str]:
                         INSERT INTO core.seller_listing(
                             marketplace_id,seller_sku,asin,listing_id,item_name,item_description,
                             price,quantity,pending_quantity,image_url,open_date,item_condition,
-                            fulfillment_channel,merchant_shipping_group,status,source_payload_id,fetched_at,first_seen_at
-                        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),now())
+                            fulfillment_channel,merchant_shipping_group,status,source_payload_id,fetched_at,first_seen_at,
+                            is_current_listing,deleted_at
+                        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),now(),true,NULL)
                         ON CONFLICT (marketplace_id,seller_sku) DO UPDATE SET
                             asin=EXCLUDED.asin,
                             listing_id=EXCLUDED.listing_id,
@@ -178,7 +179,9 @@ def ingest_listings_report() -> dict[str, int | str]:
                             merchant_shipping_group=EXCLUDED.merchant_shipping_group,
                             status=EXCLUDED.status,
                             source_payload_id=EXCLUDED.source_payload_id,
-                            fetched_at=now()
+                            fetched_at=now(),
+                            is_current_listing=true,
+                            deleted_at=NULL
                         """,
                         (
                             settings.marketplace_id,
@@ -211,7 +214,14 @@ def ingest_listings_report() -> dict[str, int | str]:
                             active=EXCLUDED.active,
                             updated_at=now()
                         """,
-                        (sku, asin, title, settings.marketplace_id, _money(_first(row, "price")), status != "Inactive"),
+                        (
+                            sku,
+                            asin,
+                            title,
+                            settings.marketplace_id,
+                            _money(_first(row, "price")),
+                            str(status or "").strip().lower() == "active",
+                        ),
                     )
                     if asin and (title or image_url):
                         cur.execute(
@@ -227,19 +237,31 @@ def ingest_listings_report() -> dict[str, int | str]:
                         )
                     written += 1
 
-                # The report is authoritative for seller listings. Do not delete local SKU metadata;
-                # only mark previously known seller listings not present in this snapshot inactive.
-                if seen:
-                    cur.execute(
-                        """
-                        UPDATE core.sku
-                        SET active=false, updated_at=now()
-                        WHERE marketplace_id=%s
-                          AND sku IN (SELECT seller_sku FROM core.seller_listing WHERE marketplace_id=%s)
-                          AND NOT (sku = ANY(%s))
-                        """,
-                        (settings.marketplace_id, settings.marketplace_id, list(seen)),
-                    )
+                # The report is a complete, authoritative seller-catalog snapshot.
+                # Preserve absent SKU records for historical attribution, but mark
+                # them deleted rather than conflating snapshot absence with
+                # Amazon's current Active/Inactive/Closed listing status.
+                cur.execute(
+                    """
+                    UPDATE core.seller_listing
+                    SET is_current_listing=false,
+                        deleted_at=COALESCE(deleted_at,now())
+                    WHERE marketplace_id=%s
+                      AND is_current_listing
+                      AND NOT (seller_sku = ANY(%s::text[]))
+                    """,
+                    (settings.marketplace_id, sorted(seen)),
+                )
+                cur.execute(
+                    """
+                    UPDATE core.sku
+                    SET active=false, updated_at=now()
+                    WHERE marketplace_id=%s
+                      AND sku IN (SELECT seller_sku FROM core.seller_listing WHERE marketplace_id=%s)
+                      AND NOT (sku = ANY(%s::text[]))
+                    """,
+                    (settings.marketplace_id, settings.marketplace_id, sorted(seen)),
+                )
                 conn.commit()
 
             discovered = sorted(seen - known_skus)

@@ -33,6 +33,8 @@ Do not loop Catalog Items to discover the seller's complete active inventory. Th
 
 Discovery and enrichment are intentionally separate because Amazon may expose a new offer incompletely while it is propagating. `core.seller_listing.first_seen_at` records when a seller SKU first entered our warehouse. Catalog request attempts are tracked in `ops.catalog_item_attempt`; `core.catalog_item` is created only when Amazon actually returns a Catalog entity. Returned entities also retain their latest attempt/enrichment timestamps for audit compatibility.
 
+Each merchant-listings report is a complete Amazon seller-catalog snapshot. `core.seller_listing.is_current_listing` records whether the SKU is present in the latest completed snapshot. A previously known SKU that disappears is retained with `is_current_listing=false` and `deleted_at`, so historical orders and accounting remain attributable without treating the old SKU as a current offer. This `DELETED` membership is independent from Amazon's current listing status: a SKU present in the snapshot may still be `Active`, `Inactive`, `Closed`, or another exact Amazon-reported status.
+
 `mart.catalog_onboarding_state` is the canonical lifecycle read:
 
 - `AWAITING_ASIN` — Seller Listings has exposed the SKU, but no ASIN is available yet. Catalog Items cannot help; wait for the next authoritative Listings snapshot.
@@ -40,6 +42,9 @@ Discovery and enrichment are intentionally separate because Amazon may expose a 
 - `CATALOG_PROPAGATING` — Catalog Items was queried, but Amazon did not return the item yet.
 - `SOURCE_READY` — Catalog Items returned the known ASIN and source enrichment is available.
 - `INACTIVE` — the seller listing is inactive.
+- `CLOSED`, `INCOMPLETE`, or `NOT_ACTIVE` — the current snapshot retains the SKU but Amazon reports that exact non-active listing condition; these states remain distinct from `DELETED` snapshot absence.
+
+Deleted historical SKUs do not enter onboarding, taxonomy-action, or Data Health listing counts.
 
 A newly discovered active SKU has a 48-hour onboarding grace. When an ASIN is known but Catalog remains unresolved, the scheduler pulls Catalog forward immediately after Listings discovery and retries every 30 minutes until source enrichment converges. After 48 hours, unresolved ASIN/Catalog evidence becomes a Data Health source-completeness exception.
 
@@ -70,6 +75,8 @@ Trajectory is a view over reconciled historical sales plus portfolio breadth/con
 ### Catalog / Product Workspace
 
 Commercial product identity is assembled server-side from normalized SKU/ASIN records, seller listings, catalog enrichment, configured variation relationships and local label/image overrides.
+
+The current Catalog is bounded by the latest complete Seller Listings snapshot. Amazon Catalog Items parent-child relationships determine which structural parent ASIN containers remain current hierarchy context; those containers do not reuse an old seller SKU record. Historical traffic cannot revive a deleted offer or family. Deleted SKU records are exposed separately for explicit historical lookup and are excluded from current offer/family KPIs, dimensional rollups, filters and decisions.
 
 Every sellable product exposes one canonical identity object from the Catalog API owner. A `SELLABLE_VARIATION` must have a distinct parent ASIN and use that same parent as its family ASIN. A `SELLABLE_STANDALONE` has no canonical parent and uses its own ASIN as its family ASIN; a source self-parent is retained only as audit evidence. Seller-owned family names may replace generic display labels, but their absence must not turn a child variation into “Standalone.”
 

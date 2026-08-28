@@ -30,6 +30,31 @@ try {
   const sellable = (catalog.body.products || []).filter(item =>
     ['SELLABLE_VARIATION', 'SELLABLE_STANDALONE'].includes(String(item.product_role || '')),
   );
+  const currentListingRecords = (catalog.body.products || []).filter(
+    item => item.is_current_listing === true,
+  );
+  const deletedProducts = catalog.body.deleted_products || [];
+  if (
+    Number(catalog.body.summary?.listing_records || 0) !== currentListingRecords.length ||
+    Number(catalog.body.summary?.sellable_offers || 0) !== sellable.length ||
+    Number(catalog.body.summary?.catalog_entities || 0) !== (catalog.body.products || []).length
+  ) {
+    throw new Error('Catalog summary does not reconcile to the current Amazon snapshot');
+  }
+  if (Number(catalog.body.summary?.deleted_records || 0) !== deletedProducts.length) {
+    throw new Error('Deleted history count does not reconcile to deleted_products');
+  }
+  if (
+    (catalog.body.products || []).some(item => item.catalog_membership === 'DELETED') ||
+    deletedProducts.some(item => item.catalog_membership !== 'DELETED')
+  ) {
+    throw new Error('Current Catalog and deleted history membership are mixed');
+  }
+  const currentSkus = new Set((catalog.body.products || []).map(item => String(item.sku || '')));
+  const deletedSkus = new Set(deletedProducts.map(item => String(item.sku || '')));
+  if ([...currentSkus].some(sku => deletedSkus.has(sku))) {
+    throw new Error('A seller SKU appears in both current Catalog and deleted history');
+  }
   if (Number(catalog.body.summary?.identity_invariant_checked_skus || 0) !== sellable.length) {
     throw new Error('Catalog identity invariant did not check every sellable SKU');
   }
@@ -58,16 +83,26 @@ try {
   const structuralParents = (catalog.body.products || []).filter(
     item => item.product_role === 'STRUCTURAL_PARENT',
   );
+  if (
+    structuralParents.some(
+      item => item.is_current_listing !== true && String(item.sku || '').trim(),
+    )
+  ) {
+    throw new Error('A deleted seller SKU was reused as current structural-parent context');
+  }
   const structuralParentSkus = new Set(structuralParents.map(item => String(item.sku || '')));
-  const auditedParent = structuralParents.find(item => item.sku === 'PNC-CURRENT');
+  const auditedParent = structuralParents.find(item => item.asin === 'B0GGQHV45F');
   if (
     !auditedParent ||
-    auditedParent.asin !== 'B0HGNS3FHB' ||
+    auditedParent.catalog_membership !== 'CURRENT_PARENT' ||
     auditedParent.identity?.kind !== 'VARIATION_CONTAINER' ||
     auditedParent.identity?.is_sellable !== false ||
     auditedParent.is_offer_owner !== false
   ) {
-    throw new Error(`PNC-CURRENT is not a canonical structural parent: ${JSON.stringify(auditedParent)}`);
+    throw new Error(`Current Pocket relationship has no canonical structural parent: ${JSON.stringify(auditedParent)}`);
+  }
+  if (currentSkus.has('PNC-CURRENT') || !deletedSkus.has('PNC-CURRENT')) {
+    throw new Error('PNC-CURRENT was not separated from the current Amazon Catalog as deleted history');
   }
   const lifecycleParentSkus = (lifecycle.items || [])
     .filter(item => structuralParentSkus.has(String(item.sku || '')))
@@ -152,7 +187,10 @@ try {
   for (const sku of inactiveTaxonomy) {
     const item = bySku.get(String(sku));
     if (!item) throw new Error(`Inactive taxonomy SKU ${sku} is missing lifecycle evidence`);
-    if (item.taxonomy_state !== 'INACTIVE' || item.requires_seller_action) {
+    if (
+      !['INACTIVE', 'CLOSED', 'INCOMPLETE', 'NOT_ACTIVE'].includes(item.taxonomy_state) ||
+      item.requires_seller_action
+    ) {
       throw new Error(`Inactive SKU ${sku} was incorrectly turned into seller action`);
     }
   }
@@ -202,6 +240,9 @@ try {
     inactiveTaxonomy,
     sourceAttentionSkus: sourceAttention,
     identityInvariantCheckedSkus: sellable.length,
+    currentListingRecords: currentListingRecords.length,
+    deletedRecords: deletedProducts.length,
+    deletedSkus: [...deletedSkus].sort(),
     structuralParentSkus: [...structuralParentSkus].sort(),
     auditedStructuralParent: {
       sku: auditedParent.sku,

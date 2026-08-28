@@ -5,6 +5,16 @@ import os
 from pathlib import Path
 
 
+_NON_ACTIVE_SOURCE_STATES = {"INACTIVE", "CLOSED", "INCOMPLETE", "NOT_ACTIVE"}
+
+
+def _listing_is_active(row: dict) -> bool:
+    status = str(row.get("status") or "").strip().lower()
+    if status:
+        return status == "active"
+    return str(row.get("source_state") or "") not in _NON_ACTIVE_SOURCE_STATES
+
+
 def _taxonomy_skus() -> set[str]:
     default_path = (
         Path("/config/product_variations.json")
@@ -31,7 +41,8 @@ def catalog_onboarding_snapshot(connect, marketplace: str) -> dict:
             """
             SELECT o.seller_sku AS sku, o.asin, o.status, o.source_state, o.first_seen_at,
                    o.listing_fetched_at, o.catalog_last_attempt_at, o.catalog_enriched_at,
-                   o.age_seconds, o.is_onboarding, o.source_attention, p.product_role
+                   o.age_seconds, o.is_onboarding, o.source_attention, p.product_role,
+                   p.catalog_membership
             FROM mart.catalog_onboarding_state o
             LEFT JOIN mart.catalog_portfolio_product p
               ON p.marketplace_id=o.marketplace_id AND p.seller_sku=o.seller_sku
@@ -44,6 +55,7 @@ def catalog_onboarding_snapshot(connect, marketplace: str) -> dict:
             dict(row)
             for row in cur.fetchall()
             if row.get("product_role") != "STRUCTURAL_PARENT"
+            and row.get("catalog_membership") != "DELETED"
         ]
 
     for row in rows:
@@ -51,18 +63,19 @@ def catalog_onboarding_snapshot(connect, marketplace: str) -> dict:
         mapped = sku in mapped_skus
         source_state = str(row.get("source_state") or "")
         source_ready = source_state == "SOURCE_READY"
-        inactive = source_state == "INACTIVE"
+        listing_not_active = not _listing_is_active(row)
         recent = bool(row.get("is_onboarding"))
-        source_onboarding = recent or (not source_ready and not inactive)
+        source_onboarding = recent or (not source_ready and not listing_not_active)
 
         row["seller_taxonomy_mapped"] = mapped
         if mapped:
             taxonomy_state = "MAPPED"
-        elif inactive:
+        elif listing_not_active:
             # A listing may be reported inactive while Amazon is still bringing a
             # newly created offer online. Keep that young listing informational.
-            # Established inactive listings never become taxonomy work items.
-            taxonomy_state = "ONBOARDING" if recent else "INACTIVE"
+            # Established non-active listings retain Amazon's exact source state
+            # and never become taxonomy work items.
+            taxonomy_state = "ONBOARDING" if recent else source_state
         elif source_onboarding:
             taxonomy_state = "ONBOARDING"
         else:
@@ -72,8 +85,8 @@ def catalog_onboarding_snapshot(connect, marketplace: str) -> dict:
             source_ready and not recent and not mapped
         )
 
-    active_rows = [row for row in rows if row.get("source_state") != "INACTIVE"]
-    inactive_rows = [row for row in rows if row.get("source_state") == "INACTIVE"]
+    active_rows = [row for row in rows if _listing_is_active(row)]
+    inactive_rows = [row for row in rows if not _listing_is_active(row)]
     source_attention = [row for row in rows if row.get("source_attention")]
     taxonomy_attention = [row for row in rows if row.get("taxonomy_state") == "MAPPING_REQUIRED"]
     onboarding = [row for row in rows if row.get("taxonomy_state") == "ONBOARDING"]
@@ -130,7 +143,7 @@ def apply_catalog_onboarding(payload: dict, connect, marketplace: str) -> dict:
             actionable.append(sku)
         elif taxonomy_state == "ONBOARDING":
             onboarding_skus.append(sku)
-        elif taxonomy_state == "INACTIVE":
+        elif taxonomy_state in _NON_ACTIVE_SOURCE_STATES:
             inactive_skus.append(sku)
 
     # Mutable catalog completeness is an operational trust signal, not a code

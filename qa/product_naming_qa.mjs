@@ -71,6 +71,7 @@ try {
 
   const catalog = payloads['/api/catalog'].body;
   validateRows('catalog.products', catalog.products, summary);
+  validateRows('catalog.deleted_products', catalog.deleted_products, summary);
 
   const inventory = payloads['/api/inventory'].body;
   validateRows('inventory.rows', inventory.rows, summary);
@@ -145,6 +146,71 @@ try {
   if (JSON.stringify(renderedFamilyNames) !== JSON.stringify(expectedFamilyNames)) {
     throw new Error('Catalog altered one or more family names after the API resolved them');
   }
+
+  const deletedPnc = (catalog.deleted_products || []).find(row => row.sku === 'PNC-CURRENT');
+  if (!deletedPnc || deletedPnc.status !== 'Deleted' || deletedPnc.catalog_membership !== 'DELETED') {
+    throw new Error(`PNC-CURRENT is not retained as explicit deleted history: ${JSON.stringify(deletedPnc)}`);
+  }
+  if ((catalog.products || []).some(row => row.sku === 'PNC-CURRENT')) {
+    throw new Error('PNC-CURRENT leaked into the current Catalog product collection');
+  }
+
+  await page.getByRole('button', { name: 'Deleted', exact: true }).click();
+  await page.getByText('PNC-CURRENT', { exact: false }).first().waitFor({ state: 'visible', timeout: 10000 });
+  const deletedMode = await page.evaluate(() => ({
+    source: document.querySelector('#modeSource')?.textContent?.trim() || '',
+    currentPncLinks: [...document.querySelectorAll('#portfolio a')].filter(link =>
+      (link.textContent || '').includes('PNC-CURRENT'),
+    ).length,
+    deletedLabels: [...document.querySelectorAll('#portfolio .state-DELETED strong')].map(node =>
+      node.textContent?.trim(),
+    ),
+  }));
+  if (
+    !deletedMode.source.startsWith('Deleted =') ||
+    deletedMode.currentPncLinks !== 1 ||
+    !deletedMode.deletedLabels.every(label => label === 'Deleted')
+  ) {
+    throw new Error(`Deleted Catalog mode is not explicit: ${JSON.stringify(deletedMode)}`);
+  }
+
+  const deletedProductResponse = await page.evaluate(async () => {
+    const response = await fetch('/api/product?sku=PNC-CURRENT', { cache: 'no-store' });
+    return { status: response.status, body: await response.json() };
+  });
+  if (
+    deletedProductResponse.status !== 200 ||
+    deletedProductResponse.body.profile?.listing_status !== 'Deleted' ||
+    deletedProductResponse.body.commercial?.catalog_membership !== 'DELETED' ||
+    deletedProductResponse.body.commercial?.listing_sellable !== false
+  ) {
+    throw new Error(`Deleted Product contract failed: ${JSON.stringify(deletedProductResponse)}`);
+  }
+  await page.goto(`${baseUrl}/product?sku=PNC-CURRENT`, {
+    waitUntil: 'networkidle',
+    timeout: 20000,
+  });
+  await page.getByText('SKU is deleted from the current Amazon catalog.', { exact: true }).waitFor({
+    state: 'visible',
+    timeout: 10000,
+  });
+  const listingFact = await page.evaluate(() => {
+    const fact = [...document.querySelectorAll('.product-health__fact')].find(
+      item => item.querySelector('.label')?.textContent?.trim() === 'Listing',
+    );
+    return {
+      value: fact?.querySelector('strong')?.textContent?.trim() || '',
+      note: fact?.querySelector('small')?.textContent?.trim() || '',
+    };
+  });
+  if (listingFact.value !== 'Deleted' || !listingFact.note.startsWith('Last Amazon status ')) {
+    throw new Error(`Deleted Product UI is ambiguous: ${JSON.stringify(listingFact)}`);
+  }
+  summary.deletedCatalog = {
+    sku: deletedPnc.sku,
+    sourceStatus: deletedPnc.source_listing_status,
+    listingFact,
+  };
 
   summary.ok = true;
   summary.skus = [...summary.skus].filter(Boolean).sort();
