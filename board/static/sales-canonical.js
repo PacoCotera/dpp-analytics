@@ -1,4 +1,4 @@
-import { formatBusinessClock } from './ui-utils.js';
+import { formatBusinessClock, mountRuleTrigger } from './ui-utils.js';
 
 /* Sales canonical renderer v2: one fetch, one DOM owner, one chart owner. */
 (() => {
@@ -97,13 +97,14 @@ import { formatBusinessClock } from './ui-utils.js';
     set('t28Note', `${pct(h.delta28_pct)} vs prior 28`, cls(h.delta28_pct));
     set('todaySales', money(t.sales_today));
     set('todayMeta', `${t.orders_today || 0} orders · ${t.units_today || 0} units`);
-    const ord = Number(t.orders_today || 0),
-      pv = t.pace_vs_same_weekday_pct;
+    const pv = t.pace_vs_same_weekday_pct,
+      todayRead = DATA?.today_read || {};
     set(
       'todayPace',
-      ord < 3 ? 'Pace is still low-signal' : `${pct(pv)} vs same weekday / same time`,
-      ord < 3 ? '' : cls(pv),
+      todayRead.eligible ? `${pct(pv)} vs same weekday / same time` : todayRead.label || 'Pace unavailable',
+      todayRead.eligible ? cls(pv) : '',
     );
+    mountRuleTrigger(document.getElementById('todayPace'), todayRead, DATA.interpretation_rules);
     set('ytdLabel', `${String(h.business_date || '').slice(0, 4)} YTD`);
     set('ytdSales', money(h.sales_ytd));
     set('ytdVolume', `${nf.format(h.orders_ytd || 0)} orders · ${nf.format(h.units_ytd || 0)} units`);
@@ -122,7 +123,12 @@ import { formatBusinessClock } from './ui-utils.js';
       declining = Number(read.declining || 0),
       stable = Number(read.stable || 0);
     set('productNetChange', shortMoney(change), cls(change));
-    set('productChangeState', change > 0 ? 'Improving' : change < 0 ? 'Weakening' : 'Flat');
+    set('productChangeState', read.change_evaluation?.label || 'Unavailable');
+    mountRuleTrigger(
+      document.getElementById('productChangeState'),
+      read.change_evaluation,
+      DATA.interpretation_rules,
+    );
     set(
       'productChangeDriver',
       mover.product
@@ -131,6 +137,11 @@ import { formatBusinessClock } from './ui-utils.js';
     );
     set('productConcentration', concentration == null ? '—' : `${Number(concentration).toFixed(1)}%`);
     set('productConcentrationState', read.concentration_state || 'Unavailable');
+    mountRuleTrigger(
+      document.getElementById('productConcentrationState'),
+      read.concentration_evaluation,
+      DATA.interpretation_rules,
+    );
     set(
       'productConcentrationCopy',
       concentration == null
@@ -143,6 +154,11 @@ import { formatBusinessClock } from './ui-utils.js';
     );
     set('productBreadth', `${nf.format(growing)} ↑ / ${nf.format(declining)} ↓`);
     set('productBreadthState', read.breadth_state || 'Mixed movement');
+    mountRuleTrigger(
+      document.getElementById('productBreadthState'),
+      read.breadth_evaluation,
+      DATA.interpretation_rules,
+    );
     set(
       'productBreadthCopy',
       `${nf.format(stable)} stable · ${nf.format(growing + declining + stable)} selling products assessed.`,

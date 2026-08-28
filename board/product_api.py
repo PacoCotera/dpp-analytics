@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from statistics import median
+
 from ads_context import product_t28
 from catalog_api import (
     _apply_canonical_identity,
@@ -8,6 +10,7 @@ from catalog_api import (
     _repair_variation_taxonomy,
     _variation_taxonomy_for_row,
 )
+from interpretation_rules import catalog_offer_state, rule_catalog
 
 
 def _one(cur, sql: str, params=()):
@@ -204,8 +207,27 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
     )
     commercial['family_asin']=commercial.get('family_asin') or asin
     commercial['parent_asin']=commercial.get('parent_asin') or None
+    active_offers = [
+        row
+        for row in portfolio_rows
+        if row.get('product_role') in ('SELLABLE_VARIATION', 'SELLABLE_STANDALONE')
+        and row.get('catalog_membership') in (None, 'CURRENT_OFFER')
+        and str(row.get('status') or '').strip().lower() == 'active'
+    ]
+    traffic_values = [float(row.get('sessions_t28') or 0) for row in active_offers if float(row.get('sessions_t28') or 0) > 0]
+    conversion_values = [float(row['conversion_t28_pct']) for row in active_offers if row.get('conversion_t28_pct') is not None]
+    traffic_median = median(traffic_values) if traffic_values else 0.0
+    conversion_median = median(conversion_values) if conversion_values else 0.0
+    traffic_cutoff = max((row.get('traffic_through_date') for row in portfolio_rows if row.get('traffic_through_date')), default=None)
+    commercial_state, commercial_explanation, commercial_evaluation = catalog_offer_state(
+        commercial, traffic_median, conversion_median, traffic_cutoff
+    )
+    commercial['commercial_state'] = commercial_state
+    commercial['commercial_explanation'] = commercial_explanation
+    commercial['commercial_evaluation'] = commercial_evaluation
 
     decorated_commercial = decorate_products([commercial])[0] if commercial else commercial
     return {'profile':decorate_products([profile])[0],'commercial':decorated_commercial,'performance':performance,'traffic':traffic,
             'economics':economics,'ads':ads,'family_variations':decorate_products(siblings),'taxonomy_warnings':taxonomy_warnings,
-            'series':series,'recent_orders':recent_orders,'inventory_history':inventory_history,'business_date':cutoff,'local_time':local_clock.get('local_time')}
+            'series':series,'recent_orders':recent_orders,'inventory_history':inventory_history,'business_date':cutoff,'local_time':local_clock.get('local_time'),
+            'interpretation_rules':rule_catalog('CATALOG_COMMERCIAL_STATE_V1')}

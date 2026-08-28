@@ -1,4 +1,13 @@
-import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, money, percent } from './ui-utils.js';
+import {
+  byId,
+  escapeHtml,
+  fetchJson,
+  formatBusinessClock,
+  integer,
+  money,
+  mountRuleTrigger,
+  percent,
+} from './ui-utils.js';
 
 const mobile = window.matchMedia('(max-width: 640px)');
 
@@ -11,51 +20,16 @@ function toneClass(value) {
 function share(value) {
   return value === null || value === undefined ? '—' : `${Number(value).toFixed(1)}%`;
 }
-function renderStory(horizons, ads = {}) {
-  const values = Object.fromEntries(horizons.map((i) => [i.label, Number(i.delta_pct || 0)]));
-  const short = values['7D'],
-    main = values['28D'],
-    persistent = values['56D'],
-    long = values['90D'];
-  let title, copy;
-  if (main > 5 && persistent > 2 && long > 2) {
-    title = 'Momentum is structurally stronger.';
-    copy =
-      short < 0
-        ? 'The latest week softened, but 28D, 56D and 90D remain positive. Treat the dip as noise unless it persists.'
-        : 'The main and longer horizons are positive, with the latest week reinforcing the trend.';
-  } else if (main < -5 && persistent < -2 && long < -2) {
-    title = 'The slowdown looks structural.';
-    copy =
-      short > 0
-        ? 'The latest week improved, but the 28D, 56D and 90D base remains weaker. The bounce is early, not yet a reversal.'
-        : 'Main and longer horizons are weaker, and the latest week is not contradicting that signal.';
-  } else if (short > 5 && main < 2) {
-    title = 'Short-term acceleration, not yet structural.';
-    copy =
-      'The latest week improved before the 28D and longer windows clearly turned. Watch for persistence.';
-  } else if (short < -5 && main > 2) {
-    title = 'Recent softness inside a stronger base.';
-    copy =
-      'The latest week is down while the four-week business remains ahead. Watch whether softness reaches the longer horizons.';
-  } else if (Math.abs(main) < 2) {
-    title = 'The structural signal is flat.';
-    copy =
-      'The 28-day business has not made a meaningful step up or down. Weekly movement is mostly context until the longer windows move.';
-  } else if (main > 0) {
-    title = 'The business is strengthening, but not uniformly.';
-    copy = 'The 28-day horizon is ahead; 56D and 90D determine whether that improvement has become durable.';
-  } else {
-    title = 'The business has softened, but the signal is mixed.';
-    copy =
-      'The 28-day horizon is behind; longer windows determine whether this is structural or still ordinary volatility.';
-  }
+function renderStory(read = {}, rules = {}, ads = {}) {
+  const title = read.label || 'Trajectory unavailable';
+  let copy = read.explanation || 'Not enough reconciled history is available to interpret trajectory.';
   if (ads.status === 'ready' && Number(ads.spend || 0) > 0) {
     const efficiency = ads.tacos == null ? '' : ` TACOS is ${Number(ads.tacos).toFixed(1)}%.`;
     copy += ` Paid media supported the latest 28-day period with ${money(ads.spend)} of spend.${efficiency} Read this as context, not proof that advertising caused the sales movement.`;
   }
   byId('storyTitle').textContent = title;
   byId('storyCopy').textContent = copy;
+  mountRuleTrigger(byId('storyTitle'), read, rules);
 }
 function renderAds(ads = {}) {
   const ready = ads.status === 'ready' && Number(ads.spend || 0) > 0;
@@ -159,7 +133,7 @@ function render(payload) {
   const h = byId('headline');
   h.textContent = percent(headline.delta28_pct);
   h.className = `story-number ${toneClass(headline.delta28_pct)}`;
-  renderStory(horizons, ads);
+  renderStory(payload.trajectory_read, payload.interpretation_rules, ads);
   renderAds(ads);
   renderHorizons(horizons);
   if (window.DPPCharts) window.DPPCharts.trajectory('#chart', payload.series || []);

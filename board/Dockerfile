@@ -34,6 +34,7 @@ COPY board/server_canonical.py ./server.py
 COPY board/response_cache.py .
 COPY board/response_transport.py .
 COPY board/geo_reference.py .
+COPY board/interpretation_rules.py .
 COPY board/home_api.py .
 # Keep the mature API implementations as legacy readers and make the canonical
 # monetary-basis adapters the production module names imported by server_legacy.py.

@@ -1,46 +1,13 @@
-import { escapeHtml, fetchJson, formatBusinessClock, integer, money, percent, tone } from './ui-utils.js';
-
-function stateRead(delta, actions) {
-  const momentum = Number(delta || 0),
-    decisionCount = Number(actions || 0);
-  const decisionCopy = decisionCount
-    ? `${decisionCount} operating decision${decisionCount === 1 ? ' needs' : 's need'} attention.`
-    : '';
-  if (momentum >= 8)
-    return {
-      headline: 'Momentum is strong.',
-      copy: decisionCount
-        ? `The last four weeks of shopper spend are clearly ahead of the prior four. ${decisionCopy}`
-        : 'The last four weeks of shopper spend are clearly ahead of the prior four, with nothing requiring immediate attention.',
-    };
-  if (momentum >= 2)
-    return {
-      headline: 'The business is growing.',
-      copy: decisionCount
-        ? `Recent shopper spend is modestly ahead. ${decisionCopy}`
-        : 'Recent shopper spend is modestly ahead and there are no immediate operating exceptions.',
-    };
-  if (momentum > -2)
-    return {
-      headline: 'The business is steady.',
-      copy: decisionCount
-        ? `Recent shopper spend is essentially flat. ${decisionCopy}`
-        : 'Recent shopper spend is essentially flat and operations are currently clear.',
-    };
-  if (momentum > -8)
-    return {
-      headline: 'Momentum has softened.',
-      copy: decisionCount
-        ? `The last four weeks of shopper spend are below the prior four. ${decisionCount} operating decision${decisionCount === 1 ? ' also needs' : 's also need'} attention.`
-        : 'The last four weeks of shopper spend are below the prior four, but no immediate operating exception is flagged.',
-    };
-  return {
-    headline: 'The business is cooling.',
-    copy: decisionCount
-      ? `Recent shopper spend is meaningfully below the prior four weeks and ${decisionCopy}`
-      : 'Recent shopper spend is meaningfully below the prior four weeks. Operations themselves are currently clear.',
-  };
-}
+import {
+  escapeHtml,
+  fetchJson,
+  formatBusinessClock,
+  integer,
+  money,
+  mountRuleTrigger,
+  percent,
+  tone,
+} from './ui-utils.js';
 
 function renderAds(ads) {
   const a = ads || {},
@@ -156,11 +123,12 @@ function render(data) {
     rolling = data.rolling || {},
     inventory = data.inventory_summary || {},
     decisionCount = Number(inventory.needs_action || 0),
-    read = stateRead(rolling.delta28_pct, decisionCount);
+    read = data.business_momentum || {};
   document.getElementById('clock').textContent = formatBusinessClock(data.local_time);
   document.getElementById('fresh').textContent = 'Live operating data';
-  document.getElementById('stateHeadline').textContent = read.headline;
-  document.getElementById('stateCopy').textContent = read.copy;
+  document.getElementById('stateHeadline').textContent = read.label;
+  document.getElementById('stateCopy').textContent = read.explanation;
+  mountRuleTrigger(document.getElementById('stateHeadline'), read, data.interpretation_rules);
   document.getElementById('sales28').textContent = money(rolling.sales_t28);
   document.getElementById('sales28Note').textContent = 'incl. IVA · Sales & Traffic';
   const momentum = document.getElementById('momentum');

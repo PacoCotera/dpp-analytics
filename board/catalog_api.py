@@ -6,6 +6,13 @@ from itertools import combinations
 from pathlib import Path
 from statistics import median
 
+from interpretation_rules import (
+    catalog_dimension_conversion,
+    catalog_family_evaluation,
+    catalog_offer_state,
+    rule_catalog,
+)
+
 
 def _one(cur, sql: str, params=()):
     cur.execute(sql, params)
@@ -351,52 +358,9 @@ def _identity_violations(rows: list[dict]) -> list[dict]:
     return violations
 
 
-def _commercial_state(row: dict, traffic_median: float, conversion_median: float) -> tuple[str, str]:
-    if row.get("catalog_membership") == "DELETED":
-        return "DELETED", "Absent from the latest Amazon seller-catalog snapshot"
-    role = row.get("product_role")
-    if role == "STRUCTURAL_PARENT":
-        return "STRUCTURAL_PARENT", "Variation container · family metrics come from sellable children"
-    if role == "SELLER_SKU_ALIAS":
-        owner = row.get("offer_owner_sku") or "canonical offer"
-        return "SKU_ALIAS", f"Operational SKU alias · demand belongs to {owner}"
-    if not _is_active(row):
-        source_status = str(row.get("status") or "").strip()
-        state = {
-            "inactive": "INACTIVE",
-            "closed": "CLOSED",
-            "incomplete": "INCOMPLETE",
-        }.get(source_status.lower(), "NOT_ACTIVE")
-        return state, f"Amazon listing status is {source_status or 'not active'}"
-
-    sales = float(row.get("sales_t28") or 0)
-    units = float(row.get("units_t28") or 0)
-    sessions = float(row.get("sessions_t28") or 0)
-    cvr = row.get("conversion_t28_pct")
-    cvr = float(cvr) if cvr is not None else None
-    delta = row.get("sales_delta28_pct")
-    delta = float(delta) if delta is not None else None
-    action = str(row.get("inventory_action") or "")
-    cover = row.get("days_cover_with_inbound")
-    cover = float(cover) if cover is not None else None
-
-    if action == "STOCKOUT" or (action == "PRODUCE" and units > 0):
-        return "INVENTORY_RISK", f"Demand is active · {cover:.0f} days cover" if cover is not None else "Demand is active · stock is constrained"
-    if sessions >= max(20.0, traffic_median * 1.15) and cvr is not None and conversion_median > 0 and cvr < conversion_median * 0.72:
-        return "TRAFFIC_NOT_CONVERTING", "Traffic is healthy relative to the portfolio, conversion is weak"
-    if sessions > 0 and sessions <= max(12.0, traffic_median * 0.65) and cvr is not None and conversion_median > 0 and cvr > conversion_median * 1.25 and units > 0:
-        return "CONVERTS_NEEDS_TRAFFIC", "Conversion is strong; traffic is light relative to the portfolio"
-    if sessions <= max(5.0, traffic_median * 0.25) and sales <= 0:
-        return "DORMANT", "Active offer with little recent traffic or demand"
-    if delta is not None and delta >= 20:
-        return "ACCELERATING", "28-day sales are materially above the prior 28 days"
-    if delta is not None and delta <= -20:
-        return "DECLINING", "28-day sales are materially below the prior 28 days"
-    if units > 0:
-        return "HEALTHY", "Selling with no major funnel or availability exception"
-    if sessions > 0:
-        return "WATCH", "Receiving traffic but no recent units"
-    return "DORMANT", "No meaningful recent demand signal"
+def _commercial_state(row: dict, traffic_median: float, conversion_median: float, cutoff=None) -> tuple[str, str]:
+    state, explanation, _ = catalog_offer_state(row, traffic_median, conversion_median, cutoff)
+    return state, explanation
 
 
 def _family_state(family: dict, traffic_median: float, conversion_median: float) -> tuple[str, str]:
@@ -411,6 +375,8 @@ def _family_state(family: dict, traffic_median: float, conversion_median: float)
     cvr = float(cvr) if cvr is not None else None
     stock = int(family.get("available") or 0) + int(family.get("inbound") or 0)
     active = [m for m in members if _is_active(m)]
+    if active and all(m.get("commercial_state") == "LEARNING" for m in active):
+        return "LEARNING", "New family · active variations are still completing their first 28 demand days"
     constrained = [m for m in active if m.get("commercial_state") == "INVENTORY_RISK"]
     if constrained:
         return "INVENTORY_RISK", f"{len(constrained)} sellable variation{'s' if len(constrained) != 1 else ''} at inventory risk"
@@ -540,7 +506,7 @@ def _family_rollup(rows: list[dict], traffic_median: float, conversion_median: f
             family["variation_dimensions"].setdefault(str(dimension), set()).add(str(value))
 
     out = []
-    priority = {"INVENTORY_RISK": 0, "TRAFFIC_NOT_CONVERTING": 1, "CONVERTS_NEEDS_TRAFFIC": 2, "WATCH": 3, "DORMANT": 4, "INACTIVE": 5, "HEALTHY": 6, "STRUCTURAL_PARENT": 7}
+    priority = {"INVENTORY_RISK": 0, "TRAFFIC_NOT_CONVERTING": 1, "CONVERTS_NEEDS_TRAFFIC": 2, "WATCH": 3, "DORMANT": 4, "LEARNING": 5, "INACTIVE": 6, "HEALTHY": 7, "STRUCTURAL_PARENT": 8}
     for family in families.values():
         sellable = family["members"]
         # A parent is hierarchy evidence, never a commercial family on its own.
@@ -571,6 +537,7 @@ def _family_rollup(rows: list[dict], traffic_median: float, conversion_median: f
         family["child_states"] = sorted({m.get("commercial_state") for m in sellable if m.get("commercial_state")}, key=lambda x: priority.get(x, 99))
         family["child_exception_count"] = sum(1 for m in sellable if m.get("commercial_state") in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "DECLINING"})
         family["primary_state"], family["commercial_explanation"] = _family_state(family, traffic_median, conversion_median)
+        family["commercial_evaluation"] = catalog_family_evaluation(family)
         family["needs_attention"] = family["primary_state"] in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "WATCH"} or family["child_exception_count"] > 0
         family["variation_dimensions"] = {k: sorted(v) for k, v in family["variation_dimensions"].items()}
         family["members"] = sorted(family["members"], key=lambda r: (-float(r.get("sales_t28") or 0), str(r.get("sku") or "")))
@@ -697,9 +664,13 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
     conversion_values = [float(r["conversion_t28_pct"]) for r in active_offers if r.get("conversion_t28_pct") is not None]
     traffic_median = median(traffic_values) if traffic_values else 0.0
     conversion_median = median(conversion_values) if conversion_values else 0.0
+    traffic_cutoff = summary.get("traffic_through_date")
     for row in rows:
-        state, explanation = _commercial_state(row, traffic_median, conversion_median)
+        state, explanation, evaluation = catalog_offer_state(
+            row, traffic_median, conversion_median, traffic_cutoff
+        )
         row["commercial_state"], row["commercial_explanation"] = state, explanation
+        row["commercial_evaluation"] = evaluation
 
     families = _family_rollup(rows, traffic_median, conversion_median)
     dimensions = _dimension_rollups(rows)
@@ -733,6 +704,16 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
     summary["ad_tacos_t28"] = summary["ad_spend_t28"] / summary["sales_t28"] if summary["sales_t28"] > 0 and summary["ad_spend_t28"] > 0 else None
     summary["ad_roas_t28"] = summary["ad_attributed_sales_t28"] / summary["ad_spend_t28"] if summary["ad_spend_t28"] > 0 else None
 
+    for dimension_rows in dimensions.values():
+        for row in dimension_rows:
+            row["conversion_evaluation"] = catalog_dimension_conversion(
+                row.get("conversion_t28_pct"), summary.get("conversion_t28_pct")
+            )
+    for row in dimension_pairs:
+        row["conversion_evaluation"] = catalog_dimension_conversion(
+            row.get("conversion_t28_pct"), summary.get("conversion_t28_pct")
+        )
+
     return {
         "summary": summary,
         "families": families,
@@ -742,6 +723,11 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         "dimension_pairs": dimension_pairs,
         "taxonomy_warnings": taxonomy_warnings,
         "identity_violations": identity_violations,
+        "interpretation_rules": rule_catalog(
+            "CATALOG_COMMERCIAL_STATE_V1",
+            "CATALOG_FAMILY_STATE_V1",
+            "CATALOG_DIMENSION_CONVERSION_V1",
+        ),
         "attention": sorted(attention, key=lambda r: (-float(r.get("sales_t28") or 0), r.get("sku") or "")),
         "drivers": drivers[:5],
         "diagnostic_basis": {

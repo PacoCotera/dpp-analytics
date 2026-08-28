@@ -32,6 +32,8 @@ node /qa/performance_baseline_qa.mjs "$work_dir" /qa/performance-baseline.json
 performance_baseline_rc=$?
 node /qa/catalog_onboarding_qa.mjs "$base_url" "$work_dir"
 catalog_onboarding_rc=$?
+node /qa/interpretation_rules_qa.mjs "$base_url" "$work_dir"
+interpretation_rules_rc=$?
 cp -a "$work_dir"/. "$out_root"/ 2>/dev/null || true
 if [ "$visual_rc" -ne 0 ]; then exit "$visual_rc"; fi
 if [ "$nav_rc" -ne 0 ]; then exit "$nav_rc"; fi
@@ -46,4 +48,5 @@ if [ "$timezone_rc" -ne 0 ]; then exit "$timezone_rc"; fi
 if [ "$cache_performance_rc" -ne 0 ]; then exit "$cache_performance_rc"; fi
 if [ "$load_time_rc" -ne 0 ]; then exit "$load_time_rc"; fi
 if [ "$performance_baseline_rc" -ne 0 ]; then exit "$performance_baseline_rc"; fi
+if [ "$interpretation_rules_rc" -ne 0 ]; then exit "$interpretation_rules_rc"; fi
 exit "$catalog_onboarding_rc"

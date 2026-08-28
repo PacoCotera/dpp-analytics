@@ -5,6 +5,7 @@ from datetime import datetime
 from catalog_onboarding import catalog_onboarding_snapshot
 from health_api import ads_health_summary, load_ads_quality, load_health_jobs
 from health_contract import CORE_STREAMS, build_health_contract
+from interpretation_rules import business_momentum, rule_catalog
 
 
 def _one(cur, sql, params=()):
@@ -56,4 +57,5 @@ def home_payload(connect, decorate_products, marketplace: str) -> dict:
     freshness = [
         job for job in health_jobs if (job.get("source"), job.get("job_name")) in core_keys
     ]
-    return {"generated_at":datetime.utcnow().isoformat(timespec="seconds")+"Z","local_time":local_clock.get("local_time"),"today":today,"rolling":rolling,"inventory_summary":inventory_summary,"inventory":decorate_products(inventory),"series":series,"weekly_products":decorate_products(weekly_products),"freshness":freshness,"health_contract":health_contract,"finance":finance,"ads":ads,"metric_basis":{"currency":market.get("currency") or "MXN","timezone":timezone,"historical_sales":{"id":"AMAZON_ORDERED_PRODUCT_SALES","source":"Sales & Traffic / Data Kiosk","reconciled_only":True},"today":{"id":"GROSS_CUSTOMER_SPEND","source":"Amazon Orders","label":"Shopper spend incl. IVA"},"advertising":{"source":"Amazon Ads","attribution":"Amazon attributed conversions; recent days provisional","organic_warning":"Residual sales are not exact organic sales"}}}
+    momentum_read = business_momentum(rolling.get("delta28_pct"), inventory_summary.get("needs_action"))
+    return {"generated_at":datetime.utcnow().isoformat(timespec="seconds")+"Z","local_time":local_clock.get("local_time"),"today":today,"rolling":rolling,"inventory_summary":inventory_summary,"inventory":decorate_products(inventory),"series":series,"weekly_products":decorate_products(weekly_products),"freshness":freshness,"health_contract":health_contract,"finance":finance,"ads":ads,"business_momentum":momentum_read,"interpretation_rules":rule_catalog("BUSINESS_MOMENTUM_V1"),"metric_basis":{"currency":market.get("currency") or "MXN","timezone":timezone,"historical_sales":{"id":"AMAZON_ORDERED_PRODUCT_SALES","source":"Sales & Traffic / Data Kiosk","reconciled_only":True},"today":{"id":"GROSS_CUSTOMER_SPEND","source":"Amazon Orders","label":"Shopper spend incl. IVA"},"advertising":{"source":"Amazon Ads","attribution":"Amazon attributed conversions; recent days provisional","organic_warning":"Residual sales are not exact organic sales"}}}
