@@ -123,6 +123,16 @@ try {
     if ((family.members || []).some(item => structuralParentSkus.has(String(item.sku || '')))) {
       throw new Error(`Structural parent leaked into sellable family members: ${family.family_asin}`);
     }
+    if (
+      family.catalog_lifecycle !== 'CURRENT_FAMILY' ||
+      JSON.stringify(family.catalog_memberships || []) !== JSON.stringify(['CURRENT_OFFER']) ||
+      (family.members || []).some(item => item.catalog_membership !== 'CURRENT_OFFER')
+    ) {
+      throw new Error(`Current family has non-current lifecycle evidence: ${JSON.stringify(family)}`);
+    }
+    if (family.needs_attention && family.catalog_lifecycle !== 'CURRENT_FAMILY') {
+      throw new Error(`Non-current family entered current attention: ${family.family_asin}`);
+    }
   }
 
   const auditedProduct = await getJson('/api/product?sku=PNC-001L&refresh=1');
@@ -258,6 +268,12 @@ try {
       daysCover: auditedFamily.days_cover_with_inbound,
       basis: auditedFamily.cover_basis,
     },
+    familyLifecycles: (catalog.body.families || []).map(family => ({
+      familyAsin: family.family_asin,
+      lifecycle: family.catalog_lifecycle,
+      memberships: family.catalog_memberships,
+      needsAttention: family.needs_attention,
+    })),
     lifecycle: lifecycle.items.map((item) => ({
       sku: item.sku,
       asin: item.asin,

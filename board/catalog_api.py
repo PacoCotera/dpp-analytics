@@ -516,6 +516,16 @@ def _family_rollup(rows: list[dict], traffic_median: float, conversion_median: f
         if not sellable:
             continue
         candidates = sellable
+        memberships = {str(member.get("catalog_membership") or "") for member in sellable}
+        family["catalog_lifecycle"] = (
+            "CURRENT_FAMILY" if memberships == {"CURRENT_OFFER"} else "MIXED_MEMBERSHIP_REVIEW"
+        )
+        family["catalog_memberships"] = sorted(memberships)
+        family["lifecycle_explanation"] = (
+            "All sellable members are present in the latest Amazon seller-catalog snapshot"
+            if family["catalog_lifecycle"] == "CURRENT_FAMILY"
+            else "Family membership requires cleanup before it can enter current attention counts"
+        )
         lead = max(candidates, key=lambda r: float(r.get("sales_t28") or 0))
         parent = family.get("parent")
         configured_family_names = [m.get("family_name") for m in sellable if m.get("family_name")]
@@ -539,7 +549,10 @@ def _family_rollup(rows: list[dict], traffic_median: float, conversion_median: f
         family["child_exception_count"] = sum(1 for m in sellable if m.get("commercial_state") in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "DECLINING"})
         family["primary_state"], family["commercial_explanation"] = _family_state(family, traffic_median, conversion_median)
         family["commercial_evaluation"] = catalog_family_evaluation(family)
-        family["needs_attention"] = family["primary_state"] in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "WATCH"} or family["child_exception_count"] > 0
+        family["needs_attention"] = family["catalog_lifecycle"] == "CURRENT_FAMILY" and (
+            family["primary_state"] in {"INVENTORY_RISK", "TRAFFIC_NOT_CONVERTING", "CONVERTS_NEEDS_TRAFFIC", "WATCH"}
+            or family["child_exception_count"] > 0
+        )
         family["variation_dimensions"] = {k: sorted(v) for k, v in family["variation_dimensions"].items()}
         family["members"] = sorted(family["members"], key=lambda r: (-float(r.get("sales_t28") or 0), str(r.get("sku") or "")))
         family["aliases"] = sorted(family["aliases"], key=lambda r: str(r.get("sku") or ""))

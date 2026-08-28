@@ -13,6 +13,7 @@ class CatalogFamilyCoverTest(unittest.TestCase):
             "asin": f"ASIN-{sku}",
             "family_asin": "FAMILY",
             "product_role": "SELLABLE_VARIATION",
+            "catalog_membership": "CURRENT_OFFER",
             "status": "Active",
             "product": sku,
             "available": available,
@@ -65,6 +66,31 @@ class CatalogFamilyCoverTest(unittest.TestCase):
         self.assertIsNone(family["days_cover_with_inbound"])
         self.assertEqual(family["cover_basis"]["stock_units"], 15)
         self.assertEqual(family["cover_basis"]["velocity_units_t28"], 0)
+
+    def test_current_family_lifecycle_comes_from_catalog_membership(self):
+        family = _family_rollup([self._member("CURRENT", 5, 0, 1)], 0, 0)[0]
+
+        self.assertEqual(family["catalog_lifecycle"], "CURRENT_FAMILY")
+        self.assertEqual(family["catalog_memberships"], ["CURRENT_OFFER"])
+        self.assertIn("latest Amazon seller-catalog snapshot", family["lifecycle_explanation"])
+
+    def test_deleted_member_cannot_form_a_current_family(self):
+        deleted = self._member("DELETED", 5, 0, 1)
+        deleted["catalog_membership"] = "DELETED"
+
+        self.assertEqual(_family_rollup([deleted], 0, 0), [])
+
+    def test_unknown_membership_cannot_enter_current_attention(self):
+        current = self._member("CURRENT", 5, 0, 1)
+        unknown = self._member("UNKNOWN", 0, 0, 0)
+        unknown["catalog_membership"] = None
+        unknown["commercial_state"] = "INVENTORY_RISK"
+
+        family = _family_rollup([current, unknown], 0, 0)[0]
+
+        self.assertEqual(family["catalog_lifecycle"], "MIXED_MEMBERSHIP_REVIEW")
+        self.assertEqual(family["catalog_memberships"], ["", "CURRENT_OFFER"])
+        self.assertFalse(family["needs_attention"])
 
     def test_parent_only_container_is_not_a_commercial_family(self):
         rows = [
