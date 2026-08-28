@@ -28,6 +28,35 @@ const zoomState = () => page.evaluate(() => {
   };
 });
 
+const waitForFittedOrigin = async label => {
+  await page.waitForFunction(() => {
+    const svg = document.getElementById('geoMap');
+    const transform = svg?.__zoom;
+    const layer = svg?.querySelector(':scope > g.geo-map-zoom-layer');
+    if (!transform || !layer) return false;
+    return Math.abs(Number(transform.k) - 1) < 0.0001
+      && Math.abs(Number(transform.x)) < 0.05
+      && Math.abs(Number(transform.y)) < 0.05;
+  }, null, { timeout: 3000 });
+
+  const state = await zoomState();
+  if (Math.abs(state.k - 1) > 0.01 || Math.abs(state.x) > 1 || Math.abs(state.y) > 1) {
+    throw new Error(`${label} did not return map to fitted origin: ${JSON.stringify(state)}`);
+  }
+  return state;
+};
+
+const exerciseRepeatedResets = async (label, cycles = 3) => {
+  const results = [];
+  for (let cycle = 1; cycle <= cycles; cycle += 1) {
+    await page.locator('#geoZoomIn').click();
+    await page.waitForFunction(() => Number(document.getElementById('geoMap')?.__zoom?.k || 1) > 1.2, null, { timeout: 3000 });
+    await page.locator('#geoZoomReset').click();
+    results.push(await waitForFittedOrigin(`${label} reset cycle ${cycle}`));
+  }
+  return results;
+};
+
 try {
   const response = await page.goto(`${baseUrl}/sales`, { waitUntil: 'domcontentloaded', timeout: 20000 });
   if (!response?.ok()) throw new Error(`Sales navigation returned ${response?.status() || 'no response'}`);
@@ -65,9 +94,7 @@ try {
   if (!(await page.locator('#geoBack').isHidden())) throw new Error('Dragging the national map accidentally triggered state drill-down');
 
   await page.locator('#geoZoomReset').click();
-  await page.waitForFunction(() => Math.abs(Number(document.getElementById('geoMap')?.__zoom?.k || 1) - 1) < 0.01, null, { timeout: 3000 });
-  const reset = await zoomState();
-  if (Math.abs(reset.x) > 1 || Math.abs(reset.y) > 1) throw new Error(`Reset did not return map to fitted origin: ${JSON.stringify(reset)}`);
+  const reset = await waitForFittedOrigin('National pan reset');
 
   await page.locator('#geoMap').hover();
   await page.mouse.wheel(0, -420);
@@ -75,7 +102,8 @@ try {
   const wheelZoom = await zoomState();
   if (wheelZoom.k <= 1.05) throw new Error(`Wheel/trackpad zoom did not change scale: ${JSON.stringify(wheelZoom)}`);
   await page.locator('#geoZoomReset').click();
-  await page.waitForFunction(() => Math.abs(Number(document.getElementById('geoMap')?.__zoom?.k || 1) - 1) < 0.01, null, { timeout: 3000 });
+  await waitForFittedOrigin('National wheel reset');
+  const nationalRepeatedResets = await exerciseRepeatedResets('National');
 
   await page.locator('#geoStateSelect').selectOption('15');
   await page.locator('#geoMap path.postal-shape').first().waitFor({ state: 'visible', timeout: 60000 });
@@ -91,10 +119,22 @@ try {
   if (postalZoom.pageOverflow > 1) throw new Error(`Postal zoom caused page overflow by ${postalZoom.pageOverflow}px`);
 
   await page.locator('#geoZoomReset').click();
-  await page.waitForFunction(() => Math.abs(Number(document.getElementById('geoMap')?.__zoom?.k || 1) - 1) < 0.01, null, { timeout: 3000 });
+  await waitForFittedOrigin('Postal reset');
+  const postalRepeatedResets = await exerciseRepeatedResets('Postal');
   if (errors.length) throw new Error(errors.join('; '));
 
-  const summary = { ok: true, initial, buttonZoom, panned, reset, wheelZoom, postalInitial, postalZoom };
+  const summary = {
+    ok: true,
+    initial,
+    buttonZoom,
+    panned,
+    reset,
+    wheelZoom,
+    nationalRepeatedResets,
+    postalInitial,
+    postalZoom,
+    postalRepeatedResets,
+  };
   await page.screenshot({ path: path.join(outDir, 'sales-geography-zoom.png'), fullPage: true });
   await fs.writeFile(path.join(outDir, 'geography-zoom-summary.json'), JSON.stringify(summary, null, 2));
   console.log(JSON.stringify(summary));
