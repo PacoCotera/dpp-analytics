@@ -14,7 +14,14 @@ const KNOWN_ACTIONS = new Set(['STOCKOUT', 'PRODUCE', 'PLAN', 'OK', 'HOLD']);
 
 const state = {
   rows: [],
-  filter: 'all',
+  filter: 'current',
+};
+
+const LIFECYCLE_LABELS = {
+  CURRENT_OFFER: 'Current offer',
+  ALIAS: 'Alias',
+  RETIRED: 'Retired',
+  ARCHIVED: 'Archived',
 };
 
 function normalizeAction(action) {
@@ -47,10 +54,19 @@ function filteredRows() {
   const query = byId('search').value.trim().toLowerCase();
 
   return state.rows.filter((row) => {
-    if (query && !`${row.product || ''} ${row.sku || ''}`.toLowerCase().includes(query)) return false;
-    if (state.filter === 'attention' && !ATTENTION_ACTIONS.has(row.action)) return false;
-    if (state.filter === 'ok' && row.action !== 'OK') return false;
-    if (state.filter === 'hold' && row.action !== 'HOLD') return false;
+    if (
+      query &&
+      !`${row.product || ''} ${row.sku || ''} ${row.canonical_sku || ''}`.toLowerCase().includes(query)
+    )
+      return false;
+    if (state.filter === 'current' && !row.is_default_inventory) return false;
+    if (state.filter === 'attention' && (!row.is_default_inventory || !ATTENTION_ACTIONS.has(row.action)))
+      return false;
+    if (state.filter === 'ok' && (!row.is_default_inventory || row.action !== 'OK')) return false;
+    if (state.filter === 'no_velocity' && row.has_velocity) return false;
+    if (state.filter === 'alias' && row.inventory_lifecycle !== 'ALIAS') return false;
+    if (state.filter === 'retired' && row.inventory_lifecycle !== 'RETIRED') return false;
+    if (state.filter === 'archived' && row.inventory_lifecycle !== 'ARCHIVED') return false;
     return true;
   });
 }
@@ -66,7 +82,7 @@ function inventoryCardMarkup(row) {
     </div>
     ${
       reference
-        ? `<div class="inv-reference-note"><strong>${integer(row.available)}</strong> available · no recent 28D velocity</div>`
+        ? `<div class="inv-reference-note"><strong>${integer(row.available)}</strong> available · ${escapeHtml(LIFECYCLE_LABELS[row.inventory_lifecycle] || row.inventory_lifecycle)}${row.canonical_sku && row.canonical_sku !== row.sku ? ` · canonical ${escapeHtml(row.canonical_sku)}` : ''}</div>`
         : `<div class="inv-card-metrics">
             <div class="inv-card-metric"><strong>${integer(row.available)}</strong><span>Available</span></div>
             <div class="inv-card-metric"><strong>${integer(row.units_t28)}</strong><span>28D order units</span></div>
@@ -80,7 +96,7 @@ function mobileInventoryMarkup(rows) {
   if (!rows.length) return '<div class="empty"><strong>No matching SKUs.</strong></div>';
 
   const query = byId('search').value.trim();
-  if (state.filter !== 'all' || query) return rows.map(inventoryCardMarkup).join('');
+  if (state.filter !== 'current' || query) return rows.map(inventoryCardMarkup).join('');
 
   const operatingRows = rows.filter((row) => normalizeAction(row.action) !== 'HOLD');
   const referenceRows = rows.filter((row) => normalizeAction(row.action) === 'HOLD');
@@ -108,6 +124,8 @@ function renderRows() {
           const [status, kind] = statusInfo(row.action);
           return `<tr>
             <td><a class="stock-product" href="/product?sku=${encodeURIComponent(row.sku)}">${productMarkup(row)}</a></td>
+            <td>${escapeHtml(LIFECYCLE_LABELS[row.inventory_lifecycle] || row.inventory_lifecycle)}</td>
+            <td><span class="product-sku">${escapeHtml(row.canonical_sku || '—')}</span></td>
             <td><span class="${actionClass(row.action)}">${normalizeAction(row.action)}</span></td>
             <td class="num">${integer(row.available)}</td>
             <td class="num">${integer(row.inbound)}</td>
@@ -118,13 +136,13 @@ function renderRows() {
           </tr>`;
         })
         .join('')
-    : '<tr><td colspan="8"><div class="empty"><strong>No matching SKUs.</strong> Try another filter.</div></td></tr>';
+    : '<tr><td colspan="10"><div class="empty"><strong>No matching SKUs.</strong> Try another filter.</div></td></tr>';
 
   cards.innerHTML = mobileInventoryMarkup(rows);
 }
 
 function renderQueue() {
-  const queue = state.rows.filter((row) => ATTENTION_ACTIONS.has(row.action));
+  const queue = state.rows.filter((row) => row.is_default_inventory && ATTENTION_ACTIONS.has(row.action));
   const queueElement = byId('queue');
 
   queueElement.innerHTML = queue.length
@@ -166,6 +184,10 @@ function render(data) {
     .replace('T', ' ');
 
   state.rows = data.rows || [];
+  setText(
+    'inventoryRecordScope',
+    `${data.record_scope?.default_rows || 0} current stock-bearing offers shown by default · ${state.rows.length - Number(data.record_scope?.default_rows || 0)} reference records available by explicit filter`,
+  );
   setText('clock', formatBusinessClock(data.local_time));
   setText('asof', `Snapshot ${snapshot}`);
   setText('snapshotFoot', `Snapshot ${snapshot}`);
