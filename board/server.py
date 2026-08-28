@@ -60,6 +60,7 @@ BUILD_SHA = deployment_sha()
 ASSET_MANIFEST = build_asset_manifest(STATIC)
 ASSET_VERSION = release_revision(ASSET_MANIFEST)
 ASSET_MANIFEST_BODY = manifest_bytes(ASSET_MANIFEST, ASSET_VERSION)
+FAVICON_BODY = (STATIC / "favicon.svg").read_bytes()
 
 
 def versioned_page(name: str) -> bytes:
@@ -416,6 +417,21 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlsplit(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
+
+        if path == "/favicon.ico":
+            etag = asset_etag(FAVICON_BODY)
+            headers = {"ETag": etag, "X-DPP-Asset-Revision": ASSET_VERSION}
+            if etag_matches(self.headers.get("If-None-Match", ""), etag):
+                self.send_bytes(304, "image/svg+xml", b"", cache="public, max-age=300", headers=headers)
+            else:
+                self.send_bytes(
+                    200,
+                    "image/svg+xml",
+                    FAVICON_BODY,
+                    cache="public, max-age=300",
+                    headers=headers,
+                )
+            return
 
         if path.startswith("/assets/"):
             requested_revision = (query.get("v") or [None])[0]

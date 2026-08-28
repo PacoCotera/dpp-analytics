@@ -60,6 +60,7 @@ A page should not add a second nav, duplicate generic panel geometry, inject CSS
 - Stable asset URLs remain available for diagnostics and compatibility, but require revalidation and bind any transitive import to the current revision.
 - Stable HTML routes use `no-cache` plus ETag validation and expose the same release header and `<meta name="dpp-asset-revision">` value.
 - `/assets/manifest.json?v=<revision>` lists every source asset and its exact release URL. A request for a revision other than the active manifest fails with `409` and `no-store` so a mixed release cannot be mistaken for a valid asset response.
+- Every HTML workspace declares the shared `/assets/favicon.svg` icon, which receives the same release revision as other page dependencies. `/favicon.ico` remains a valid SVG compatibility route for user agents that request the implicit path.
 - `qa/asset_revision_qa.mjs` is the production gate for one revision across all workspaces, complete manifest membership, immutable caching, stable validators, and revision-mismatch rejection.
 
 When adding a local asset type or constructing a URL dynamically, extend `board/asset_release.py` and the production QA in the same change. Do not restore short-TTL caching on fingerprinted URLs.
