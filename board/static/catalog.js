@@ -232,6 +232,12 @@ function familyRow(family) {
   const children = familyMembers.map(childRow).join('');
   const aliases = (family.aliases || []).length;
   const exceptions = Number(family.child_exception_count || 0);
+  const lifecycle =
+    family.catalog_lifecycle === 'CURRENT_FAMILY'
+      ? ' · current catalog'
+      : family.catalog_lifecycle
+        ? ' · catalog cleanup required'
+        : '';
 
   return `<details class="family" data-family="${esc(family.family_asin || '')}">
     <summary>
@@ -239,7 +245,7 @@ function familyRow(family) {
         ${image(family.image_url, 'family-img')}
         <div>
           <div class="family-name">${esc(name)}</div>
-          <div class="family-meta">${familyMembers.length} sellable ${familyMembers.length === 1 ? 'offer' : 'variations'} · ${family.active_sellable_count || 0} active${family.parent ? ' · variation family' : ''}${exceptions ? ` · ${exceptions} child exception${exceptions === 1 ? '' : 's'}` : ''}${esc(dimensionSummary(family))}</div>
+          <div class="family-meta">${familyMembers.length} sellable ${familyMembers.length === 1 ? 'offer' : 'variations'} · ${family.active_sellable_count || 0} active${lifecycle}${family.parent ? ' · variation family' : ''}${exceptions ? ` · ${exceptions} child exception${exceptions === 1 ? '' : 's'}` : ''}${esc(dimensionSummary(family))}</div>
         </div>
       </div>
       <div class="signal ${stateClass(state)}"><strong>${esc(labels[state] || state)}</strong>${ruleTrigger(family.commercial_evaluation, DATA.interpretation_rules)}<span>${esc(explanation(family))}</span></div>

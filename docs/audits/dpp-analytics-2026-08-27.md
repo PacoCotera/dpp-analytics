@@ -312,6 +312,8 @@ Observed:
 - A family named `Diseños retirados` is displayed as `4 sellable variations · 4 active`.
 - It receives traffic but has zero units, zero revenue, and zero stock.
 
+Continuity note, 2026-08-28: after DPP-006 separated deleted seller records from the current Amazon catalog, production no longer contains the `Diseños retirados` family. It exposes two current families built from eight current offers, while 14 deleted records remain in the separate historical surface. The remaining DPP-013 gap is an explicit server-owned family lifecycle contract and an attention guard for unresolved membership.
+
 Impact: The name and operational status communicate opposite lifecycle states, weakening filters and attention counts.
 
 Acceptance criteria:
