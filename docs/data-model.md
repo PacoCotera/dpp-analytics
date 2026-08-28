@@ -54,6 +54,14 @@ Seller taxonomy is a separate responsibility layered on top of Amazon source rea
 
 Operating timestamps are rendered in the marketplace business timezone, `America/Mexico_City`, through the shared UI time formatter. Header clocks and absolute freshness/sync timestamps carry the visible `Mexico City` label; browser or host timezone is never used as an implicit fallback. Relative ages remain elapsed-time values.
 
+### Shared decision-health contract
+
+Business and Data Health use the same server-owned `BUSINESS_DECISION_HEALTH_V1` contract from `board/health_contract.py`. The browser does not infer domain health from job names or independently combine pipeline and catalog conditions.
+
+The Business `6/6` denominator is exactly these primary decision-input pipelines: Orders, Sales & Traffic, Seller Listings, Catalog Items enrichment, FBA Inventory, and Finance transactions. Settlement reports, Orders geography enrichment, and Finance month-close evaluation are supporting jobs. They remain visible in Data Health and can degrade their affected decision domain, but they do not change the six-stream denominator. Ads is optional while access/data is unavailable and is reported separately.
+
+Pipeline freshness is only one part of decision health. Overdue Catalog source evidence and established seller-taxonomy gaps are active Product conditions and must appear beside the pipeline count. Normal Catalog onboarding inside its documented 48-hour propagation grace is informational, not degradation. Both `/api/home` and `/api/data-health` expose the identical contract structure, including the six-stream scope, exclusions, active conditions, affected domains, and overall state.
+
 ### Today
 
 Today is operational and provisional. It is driven by near-real-time Orders API data and may change as the day progresses. A partial current day must not be treated as a reconciled historical day.

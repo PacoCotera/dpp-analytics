@@ -119,11 +119,12 @@ function monthLabel(value) {
 function renderBusinessHealth(data) {
   const finance = data.finance || {},
     inventory = data.inventory_summary || {},
-    feeds = data.freshness || [],
-    feedIssues = feeds.filter(
-      (feed) =>
-        feed.is_stale || !['success', 'running'].includes(String(feed.latest_status || '').toLowerCase()),
-    ),
+    health = data.health_contract || {},
+    pipeline = health.pipeline_scope || {},
+    overall = health.overall || {},
+    conditionCount = Number(overall.active_condition_count || 0),
+    affectedDomains = Array.isArray(overall.affected_domains) ? overall.affected_domains : [],
+    healthNeedsAttention = overall.state !== 'healthy',
     contribution = finance.contribution_after_product_cogs,
     margin = finance.contribution_margin_pct,
     needsAction = Number(inventory.needs_action || 0),
@@ -143,10 +144,10 @@ function renderBusinessHealth(data) {
       <p>${integer(inventory.stockouts)} stockouts · ${integer(inventory.produce)} produce · ${integer(inventory.plan)} plan</p>
     </a>
     <a class="business-health-card" href="/data-health">
-      <div class="business-health-card__head"><span>Data confidence</span><span>${feedIssues.length ? 'Inspect' : 'Healthy'}</span></div>
-      <strong class="business-health-card__value ${feedIssues.length ? 'warning' : 'positive'}">${feeds.length ? `${integer(feeds.length - feedIssues.length)}/${integer(feeds.length)}` : '—'}</strong>
-      <div class="business-health-card__title">Core streams healthy</div>
-      <p>${!feeds.length ? 'No pipeline status is available.' : feedIssues.length ? `${integer(feedIssues.length)} stream${feedIssues.length === 1 ? '' : 's'} need attention.` : 'Operating evidence is current and decision-ready.'}</p>
+      <div class="business-health-card__head"><span>Data confidence</span><span>${healthNeedsAttention ? 'Inspect' : 'Healthy'}</span></div>
+      <strong class="business-health-card__value ${healthNeedsAttention ? 'warning' : 'positive'}">${pipeline.total ? `${integer(pipeline.healthy)}/${integer(pipeline.total)}` : '—'}</strong>
+      <div class="business-health-card__title">Core input pipelines healthy</div>
+      <p>${!pipeline.total ? 'No shared data-health contract is available.' : conditionCount ? `${integer(conditionCount)} active data condition${conditionCount === 1 ? '' : 's'} affect${conditionCount === 1 ? 's' : ''} ${escapeHtml(affectedDomains.join(', ') || 'a decision domain')}. Supporting jobs and optional Ads sit outside this six-stream count.` : 'Core pipelines and decision domains are inside contract. Supporting jobs and optional Ads sit outside this six-stream count.'}</p>
     </a>`;
 }
 

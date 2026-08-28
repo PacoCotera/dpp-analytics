@@ -18,7 +18,7 @@ The board is server-rendered only in the sense that Python serves static HTML an
 | Route | API / business owner | HTML | CSS | Browser runtime |
 | --- | --- | --- | --- | --- |
 | `/today` | `board/today_api.py` | `board/static/today.html` | `today.css` | `today.js` + tiny synchronous `today-bootstrap.js` for wall mode |
-| `/`, `/home`, `/index.html` | `board/server.py` → `home_payload()` | `home.html` | `home.css` | `home.js` |
+| `/`, `/home`, `/index.html` | `board/home_api.py`; shared decision health: `board/health_contract.py` | `home.html` | `home.css` | `home.js` |
 | `/sales` | canonical Sales adapter over `board/sales_api.py`; lazy Geography: `board/sales_geography_api.py` | `sales.html` | `sales.css` + `sales-geography.css` | `sales-canonical.js` + lazy `sales-geography.js` / `sales-geography-v2.js` |
 | `/catalog` | `board/catalog_api.py` | `catalog.html` | `catalog.css` | `catalog.js` |
 | `/product?sku=...` | `board/product_api.py` | `product.html` | `product.css` | `product.js` |
@@ -26,7 +26,7 @@ The board is server-rendered only in the sense that Python serves static HTML an
 | `/ads` | `board/ads_api.py` | `ads.html` | `ads.css` | `ads.js` |
 | `/finance` | runtime module imported as `finance_api` by `board/server.py` | `finance.html` | `finance.css` | `finance.js` |
 | `/trajectory` | `board/trajectory_api.py` | `trajectory.html` | `trajectory.css` | `trajectory.js` |
-| `/data-health` | `board/health_api.py` | `data_health.html` | `data-health.css` | `data-health.js` |
+| `/data-health` | `board/health_api.py`; shared decision health: `board/health_contract.py` | `data_health.html` | `data-health.css` | `data-health.js` |
 
 ### Two filename traps
 
