@@ -10,7 +10,7 @@
   const source = document.querySelector('.geo-map-source');
   if (source) {
     source.textContent =
-      'Postal labels: SEPOMEX · polygon source: open-mexico / SEPOMEX · geometry is filtered server-side to postal codes present in the selected demand slice.';
+      'State boundaries: geoBoundaries / INEGI (CC BY 3.0 IGO) · postal polygons: open-mexico / SEPOMEX (MIT) · pinned and bundled with this DPP release; postal geometry is filtered server-side to the selected demand slice.';
   }
 
   // The zoom hardening layer owns map gestures, so it also needs a stable way

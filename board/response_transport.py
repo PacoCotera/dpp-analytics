@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 COMPRESSIBLE_CONTENT_TYPES = (
+    "application/geo+json",
     "application/json",
     "application/javascript",
     "image/svg+xml",

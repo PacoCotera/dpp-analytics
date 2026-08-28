@@ -4,6 +4,7 @@ ARG DEPLOY_SHA=dev
 ENV DPP_BUILD_SHA=${DEPLOY_SHA}
 COPY board/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+COPY board/geo_reference.py board/bundle_geography_reference.py ./
 
 # Pin the lightweight textual SEPOMEX catalog inside the board image. This gives
 # geography stable municipality/city/settlement labels without making the UI or
@@ -27,13 +28,17 @@ with ZipFile(BytesIO(archive)) as zf:
     target.write_bytes(zf.read(sqlite_members[0]))
 PY
 
+# Postal drill-down geometry is fetched only while building the immutable image,
+# from an exact MIT-licensed source commit. Runtime map requests read the
+# validated compressed copies under /app/reference and never contact GitHub.
+RUN python bundle_geography_reference.py
+
 # Keep the mature HTTP router as a stable legacy module. server_canonical.py
 # replaces only payload owners that need stronger canonical contracts.
 COPY board/server.py ./server_legacy.py
 COPY board/server_canonical.py ./server.py
 COPY board/response_cache.py .
 COPY board/response_transport.py .
-COPY board/geo_reference.py .
 COPY board/interpretation_rules.py .
 COPY board/metric_windows.py .
 COPY board/home_api.py .

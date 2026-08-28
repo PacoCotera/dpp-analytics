@@ -10,10 +10,17 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
 const errors = [];
 let geographyRequests = 0;
+let stateGeometryRequests = 0;
+const externalGeometryRequests = [];
 page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
 page.on('console', msg => { if (msg.type() === 'error') errors.push(`console: ${msg.text()}`); });
 page.on('request', request => {
-  if (new URL(request.url()).pathname === '/api/sales/geography') geographyRequests += 1;
+  const url = new URL(request.url());
+  if (url.pathname === '/api/sales/geography') geographyRequests += 1;
+  if (url.pathname === '/assets/mexico-states-90a1d52.geojson') stateGeometryRequests += 1;
+  if (['raw.githubusercontent.com', 'github.com'].includes(url.hostname) && /geojson|geograph|states/i.test(url.pathname)) {
+    externalGeometryRequests.push(request.url());
+  }
 });
 
 const isOrdered = (values, direction) => values.every((value, index) => {
@@ -139,6 +146,10 @@ try {
   await page.locator('#geoRankedRows tr').first().waitFor({ state: 'visible', timeout: 8000 });
   await page.locator('#geoMap path.state-shape').first().waitFor({ state: 'visible', timeout: 15000 });
   if (geographyRequests <= requestsBeforeOpen) throw new Error('Opening Geography did not request its lazy payload');
+  if (stateGeometryRequests !== 1) throw new Error(`Expected one bundled state geometry request, got ${stateGeometryRequests}`);
+  if (externalGeometryRequests.length) {
+    throw new Error(`Geography requested third-party geometry at runtime: ${externalGeometryRequests.join(', ')}`);
+  }
 
   const maxProductDate = new Date(`${String(coverage.geography_last_date || '').slice(0, 10)}T12:00:00Z`);
   const productStart90 = new Date(maxProductDate);
@@ -313,6 +324,9 @@ try {
   if (!String(postalPayload.geometry_contract || '').includes('D3 clockwise exterior rings')) {
     throw new Error(`Postal geometry contract is missing D3 winding normalization: ${JSON.stringify(postalPayload.geometry_contract)}`);
   }
+  if (!String(postalPayload.source || '').includes('ff9a744d')) {
+    throw new Error(`Postal geometry does not disclose the pinned image source: ${JSON.stringify(postalPayload.source)}`);
+  }
   if (!Array.isArray(postalPayload.features) || !postalPayload.features.length) throw new Error('Estado de México postal geometry is empty');
 
   const windingAudit = await page.evaluate(payload => {
@@ -431,6 +445,27 @@ try {
   if (!postal.placeLabel || /^CP\s*\d+$/i.test(postal.placeLabel)) throw new Error(`Postal place dictionary did not render a useful label: ${JSON.stringify(postal.placeLabel)}`);
   if (postal.tableOverflow > 1) throw new Error(`Postal ranked table horizontally overflows by ${postal.tableOverflow}px`);
   if (postal.pageOverflow > 1) throw new Error(`Postal drill-down page horizontally overflows by ${postal.pageOverflow}px`);
+
+  const fallbackPage = await browser.newPage({ viewport: { width: 1200, height: 800 } });
+  await fallbackPage.route('**/assets/mexico-states-90a1d52.geojson', route =>
+    route.fulfill({ status: 503, contentType: 'application/geo+json', body: '{"error":"test"}' }),
+  );
+  await fallbackPage.goto(`${baseUrl}/sales?geometry-fallback=1`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await fallbackPage.locator('button[data-view="geography"]').click();
+  await fallbackPage.waitForFunction(
+    () => document.getElementById('geoMapStatus')?.textContent?.includes('Map geometry unavailable'),
+    null,
+    { timeout: 15000 },
+  );
+  const fallback = await fallbackPage.evaluate(() => ({
+    status: document.getElementById('geoMapStatus')?.textContent?.trim() || '',
+    mapText: document.querySelector('#geoMap .geo-map-fallback')?.textContent?.trim() || '',
+    rankedRows: document.querySelectorAll('#geoRankedRows tr').length,
+  }));
+  await fallbackPage.close();
+  if (fallback.mapText !== 'Map geometry unavailable' || fallback.rankedRows <= 0) {
+    throw new Error(`Geometry failure did not retain the ranked table fallback: ${JSON.stringify(fallback)}`);
+  }
   if (errors.length) throw new Error(errors.join('; '));
 
   await page.screenshot({ path: path.join(outDir, 'sales-geography-postal-desktop.png'), fullPage: true });
@@ -446,6 +481,11 @@ try {
     },
     coverage,
     referenceCount: references.length,
+    geometryRuntime: {
+      stateAssetRequests: stateGeometryRequests,
+      externalRequests: externalGeometryRequests,
+      fallback,
+    },
     national,
     orderSort,
     orderSortAsc,
@@ -471,6 +511,11 @@ try {
     },
     coverage,
     referenceCount: references.length,
+    geometryRuntime: {
+      stateAssetRequests: stateGeometryRequests,
+      externalRequests: externalGeometryRequests,
+      fallback,
+    },
     national,
     windingAudit,
     postal,
