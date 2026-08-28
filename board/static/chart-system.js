@@ -325,7 +325,12 @@
       .attr('height', 7)
       .attr('patternUnits', 'userSpaceOnUse')
       .attr('patternTransform', 'rotate(45)');
-    pattern.append('rect').attr('width', 7).attr('height', 7).attr('fill', COLORS.incomplete).attr('opacity', 0.34);
+    pattern
+      .append('rect')
+      .attr('width', 7)
+      .attr('height', 7)
+      .attr('fill', COLORS.incomplete)
+      .attr('opacity', 0.34);
     pattern
       .append('line')
       .attr('x1', 0)

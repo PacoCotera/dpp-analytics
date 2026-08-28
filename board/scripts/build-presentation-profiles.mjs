@@ -15,7 +15,7 @@ function cssTokenName(token) {
 
 function formatCssColorLiterals(value) {
   return value.replace(/#([0-9a-f]{8}|[0-9a-f]{6})(?![0-9a-f])/gi, (_match, hex) => {
-    const normalized = hex.toUpperCase();
+    const normalized = hex.toLowerCase();
     const pairs = normalized.match(/.{2}/g);
     const canShorten = pairs.every((pair) => pair[0] === pair[1]);
     return canShorten ? `#${pairs.map((pair) => pair[0]).join('')}` : `#${normalized}`;

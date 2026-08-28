@@ -118,8 +118,7 @@
 
     const footer = document.createElement('div');
     footer.className = 'app-sidebar__footer';
-    footer.innerHTML =
-      '<strong>Amazon Mexico</strong><span>10 business domains</span>';
+    footer.innerHTML = '<strong>Amazon Mexico</strong><span>10 business domains</span>';
     sidebar.appendChild(footer);
     return sidebar;
   }
@@ -174,9 +173,11 @@
   }
 
   function focusableElements(container) {
-    return [...container.querySelectorAll(
-      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
-    )].filter((element) => !element.hidden && element.getClientRects().length > 0);
+    return [
+      ...container.querySelectorAll(
+        'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+      ),
+    ].filter((element) => !element.hidden && element.getClientRects().length > 0);
   }
 
   function trapDrawerFocus(event) {
