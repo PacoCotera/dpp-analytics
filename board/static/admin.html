@@ -3,16 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <meta name="theme-color" content="#f4f0e8" />
     <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
     <title>Dirty Pawz Press · Admin</title>
+    <script src="/assets/presentation-registry.js"></script>
+    <script src="/assets/presentation.js"></script>
     <link rel="stylesheet" href="/assets/theme.css" />
     <link rel="stylesheet" href="/assets/nav-shell.css" />
     <link rel="stylesheet" href="/assets/layout-system.css" />
-    <link rel="stylesheet" href="/assets/admin.css" />
+    <link rel="stylesheet" href="/assets/admin.css" />    <link rel="stylesheet" href="/assets/presentation-profiles.css" />
+
     <script src="/assets/ui-shell.js" defer></script>
   </head>
   <body class="admin-shell">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="app">
       <header class="topbar">
         <div class="brand">
@@ -25,6 +28,7 @@
         <div class="top-meta"><strong>Admin</strong><span>Seller-owned values</span></div>
       </header>
       <nav class="primary-nav"></nav>
+      <span id="main-content" class="skip-target" tabindex="-1"></span>
       <header class="page-header">
         <div>
           <h1 class="page-header__title">Product configuration</h1>
