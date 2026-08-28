@@ -222,6 +222,10 @@ def main() -> None:
     except Exception:
         log.exception("failed to close interrupted ingestion runs")
 
+    # Amazon Ads is an independent authorization surface. Always publish its
+    # current connection state, even when SP-API ingestion itself is disabled.
+    _run("amazon_ads_probe", probe_ads)
+
     if not settings.spapi_enabled:
         log.info("SP-API ingestion is disabled")
         while not STOP:
@@ -248,12 +252,9 @@ def main() -> None:
 
     log.info("SP-API production ingestion ENABLED")
 
-    if settings.ads_enabled:
-        if settings.ads_credentials_present:
-            _run("amazon_ads_probe", probe_ads)
-        else:
-            log.warning("Amazon Ads enabled but credentials are incomplete; Ads ingestion will remain idle")
-    else:
+    if settings.ads_enabled and not settings.ads_credentials_present:
+        log.warning("Amazon Ads enabled but credentials are incomplete; Ads ingestion will remain idle")
+    elif not settings.ads_enabled:
         log.info("Amazon Ads ingestion disabled")
 
     next_listings_report = _next_due(

@@ -114,6 +114,8 @@ Catalog family cover uses the same pooled rule as portfolio inventory cover: `(s
 
 Amazon Ads metrics are attribution data. ACOS and ROAS use Amazon-attributed sales; TACOS uses an independent total-seller-sales denominator.
 
+The Amazon Ads worker publishes its current non-secret integration lifecycle in `ops.integration_state`. The only valid states are `NOT_CONNECTED`, `AUTHORIZATION_PENDING`, `BACKFILL_RUNNING`, `READY`, and `FAILED`. Authorization/configuration evidence and initial-history progress determine this lifecycle; Ads report coverage and reconciliation quality remain separate contracts. Product and Ads APIs obtain their state presentation from the same server owner instead of treating missing report rows as connection evidence.
+
 **Never define “organic sales” as total seller sales minus attributed ad sales.** Attribution windows can overlap, lag and restate after the underlying seller sale.
 
 ### Finance

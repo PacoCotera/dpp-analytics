@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ads_state import ads_connection_state
+
 
 def _one(cur, sql: str, params=()):
     cur.execute(sql, params)
@@ -11,17 +13,18 @@ def _all(cur, sql: str, params=()):
     return list(cur.fetchall())
 
 
-def _empty(status: str, freshness=None) -> dict:
-    return {"status":status,"freshness":freshness,"quality":{"state":"NO_DATA","trusted_for_operating_decisions":False,"issue_days":0,"issues":[],"accounts":[]},"summary":{},"daily":[],"campaigns":[],"products":[],"targets":[],"search_terms":[],"actions":[]}
+def _empty(status: str, connection: dict, freshness=None) -> dict:
+    return {"status":status,"connection":connection,"freshness":freshness,"quality":{"state":"NO_DATA","trusted_for_operating_decisions":False,"issue_days":0,"issues":[],"accounts":[]},"summary":{},"daily":[],"campaigns":[],"products":[],"targets":[],"search_terms":[],"actions":[]}
 
 
 def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
     with connect() as conn, conn.cursor() as cur:
+        connection=ads_connection_state(cur)
         ready=_one(cur,"SELECT to_regclass('mart.ads_business_t28') business_rel,to_regclass('mart.ads_product_business_t28') product_rel,to_regclass('mart.ads_ingestion_quality') quality_rel,to_regclass('mart.ads_ingestion_quality_summary') quality_summary_rel")
-        if not ready.get('business_rel'): return _empty('not_initialized')
+        if not ready.get('business_rel'): return _empty('not_initialized',connection)
         summary=_one(cur,"""SELECT marketplace_id,through_date,period_start,spend,attributed_sales,impressions,clicks,attributed_purchases AS purchases,attributed_units AS units,total_business_sales,ctr,cpc,roas,acos,tacos,attributed_sales_share,observed_ads_days,expected_ads_days,missing_ads_days,mature_ads_days,ads_source_generated_at AS source_generated_at,ads_ingested_at AS ingested_at,prior_spend,prior_attributed_sales,prior_total_business_sales,spend_delta_pct,attributed_sales_delta_pct,tacos_delta_points FROM mart.ads_business_t28 WHERE marketplace_id=%s""",(marketplace,))
         through=summary.get('through_date')
-        if not through:return _empty('awaiting_ads_data')
+        if not through:return _empty('awaiting_ads_data',connection)
         attribution=_one(cur,"""SELECT max(business_date) FILTER(WHERE attribution_mature) mature_through_date,max(attribution_window) FILTER(WHERE business_date=%s::date) attribution_window,max(attribution_method) FILTER(WHERE business_date=%s::date) attribution_method,max(attribution_state) FILTER(WHERE business_date=%s::date) latest_attribution_state FROM mart.ads_business_daily WHERE marketplace_id=%s AND business_date BETWEEN %s::date-89 AND %s::date""",(through,through,through,marketplace,through,through))
         summary.update({'period_end':through.isoformat(),'period_start':summary.get('period_start').isoformat() if summary.get('period_start') else None,'basis':'Latest 28 Ads dates aligned to independently reconciled seller sales. Ads-attributed conversions can revise; attributed sales are not exact incremental sales and the residual is not exact organic sales.','attribution_window':attribution.get('attribution_window'),'attribution_method':attribution.get('attribution_method'),'prior':{'spend':summary.get('prior_spend') or 0,'attributed_sales':summary.get('prior_attributed_sales') or 0,'total_business_sales':summary.get('prior_total_business_sales') or 0}})
         mature=attribution.get('mature_through_date');latest=attribution.get('latest_attribution_state') or 'provisional_attribution'
@@ -51,4 +54,4 @@ def ads_payload(connect, marketplace: str, decorate_products=None) -> dict:
         for r in products:
             if float(r.get('spend') or 0)>0 and float(r.get('tacos') or 0)>=0.20 and float(r.get('roas') or 0)<2:actions.append({'kind':'REVIEW_PRODUCT_SUPPORT','priority':3,'label':'Review product support','title':r.get('product') or r.get('sku') or r.get('asin'),'context':r.get('sku') or r.get('asin'),'spend':r.get('spend'),'attributed_sales':r.get('attributed_sales'),'purchases':r.get('purchases'),'roas':r.get('roas'),'tacos':r.get('tacos'),'sku':r.get('sku'),'reason':'Paid support is consuming at least 20% of total product sales while attributed ROAS is below 2×. Review economics and campaign intent.'})
     actions=sorted(actions,key=lambda x:(x['priority'],-float(x.get('spend') or 0)))[:8]
-    return {'status':'ready','freshness':freshness,'quality':quality,'summary':summary,'daily':daily,'campaigns':campaigns,'products':products,'targets':targets,'search_terms':search_terms,'actions':actions}
+    return {'status':'ready','connection':connection,'freshness':freshness,'quality':quality,'summary':summary,'daily':daily,'campaigns':campaigns,'products':products,'targets':targets,'search_terms':search_terms,'actions':actions}

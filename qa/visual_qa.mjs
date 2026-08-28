@@ -12,8 +12,8 @@ const viewports = {
 const wait = (page, selector) => page.locator(selector).first().waitFor({ state: 'visible', timeout: 5000 });
 
 async function verifyAds(page, view = 'overview') {
-  const status = await page.evaluate(async () => (await (await fetch('/api/ads', { cache: 'no-store' })).json()).status);
-  if (status !== 'ready') return wait(page, '#emptyState');
+  const payload = await page.evaluate(async () => (await (await fetch('/api/ads', { cache: 'no-store' })).json()));
+  if (payload.connection?.state !== 'READY' || payload.status !== 'ready') return wait(page, '#emptyState');
   if (view === 'campaigns') {
     await page.locator('button[data-view="campaigns"]').click();
     return wait(page, '#campaignQuadrant .dpp-bubble');
@@ -475,11 +475,12 @@ async function verifyProductWorkspace(page) {
     throw new Error('Product loaded the superseded Ads post-render module');
   if (await page.locator('#ordersPanel[open]').count())
     throw new Error('Product order evidence is open by default');
-  if (!payload.ads?.through_date || !Number(payload.ads?.observed_ads_days || 0)) {
+  if (payload.commercial?.catalog_membership !== 'DELETED') {
     const adsState = (await page.locator('#adsState').textContent() || '').trim();
     const adsDecision = (await page.locator('#adsDecision').textContent() || '').trim();
-    if (adsState !== 'Ads access pending' || adsDecision !== 'Ads integration ready')
-      throw new Error(`Product Ads pending language mismatch: ${adsState} / ${adsDecision}`);
+    const connection = payload.ads?.connection || {};
+    if (adsState !== connection.badge || adsDecision !== connection.headline)
+      throw new Error(`Product Ads state-machine mismatch: ${adsState} / ${adsDecision}`);
   }
 
   const mobileHierarchy = await page.evaluate(() => {

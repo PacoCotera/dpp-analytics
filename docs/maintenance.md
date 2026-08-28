@@ -104,6 +104,8 @@ Inventory combines FBA inventory state with seller-SKU velocity from Amazon Orde
 
 Ads reports Amazon-attributed performance plus an independent total-seller-sales denominator for TACOS. Never compute “organic sales” as total seller sales minus Amazon-attributed ad sales; attribution windows overlap and can restate.
 
+Amazon Ads connection lifecycle is separate from reporting quality. The worker publishes one non-secret state in `ops.integration_state`: `NOT_CONNECTED`, `AUTHORIZATION_PENDING`, `BACKFILL_RUNNING`, `READY`, or `FAILED`. `board/ads_state.py` owns the matching badge, headline and detail contract consumed by both Product and Ads APIs. Page runtimes render that contract and must not infer authorization or backfill state from missing report rows.
+
 ### Finance
 
 Finance intentionally separates three concepts:

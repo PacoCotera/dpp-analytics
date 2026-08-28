@@ -5,7 +5,9 @@ import path from 'node:path';
 const baseUrl=(process.argv[2]||'http://127.0.0.1:8088').replace(/\/$/,'');
 const outDir=process.argv[3]||'/out';
 const failures=[];const checks=[];
+const connectionStates=['NOT_CONNECTED','AUTHORIZATION_PENDING','BACKFILL_RUNNING','READY','FAILED'];
 function numberFromText(value){const n=Number(String(value||'').replace(/−/g,'-').replace(/[^0-9.\-]/g,''));return Number.isFinite(n)?n:null;}
+function moneyForQa(value){return `$${Math.round(Number(value||0)).toLocaleString('en-US')}`;}
 function check(name,ok,detail=''){checks.push({name,ok,detail});if(!ok)failures.push(`${name}${detail?`: ${detail}`:''}`);}
 async function api(page,url){return page.evaluate(async endpoint=>{const r=await fetch(endpoint,{cache:'no-store'});const b=await r.json();if(!r.ok)throw new Error(`${endpoint} HTTP ${r.status}: ${b.error||'error'}`);return b;},url);}
 
@@ -34,20 +36,36 @@ try{
     const payload=await api(page,`/api/product?sku=${encodeURIComponent(product.sku)}`);
     await page.waitForTimeout(1200);
     const ads=payload.ads||{};
+    const connection=ads.connection||{};
     const state=(await page.locator('#adsState').textContent())||'';
     const decision=(await page.locator('#adsDecision').textContent())||'';
     const read=(await page.locator('#adsRead').textContent())||'';
-    if(ads.through_date&&Number(ads.observed_ads_days||0)>0){
-      check('Product Ads state reflects trust contract',state.includes(ads.trusted_for_operating_decisions?'Decision-grade':'Review'),state);
-      check('Product Ads decision uses canonical spend',Math.abs((numberFromText(decision)||0)-Math.round(Number(ads.spend||0)))<=1,decision);
-      check('Product Ads decision exposes TACOS',decision.includes('TACOS'),decision);
-      check('Product Ads decision exposes ROAS',decision.includes('ROAS'),decision);
+    check('Product API exposes an explicit Ads connection state',connectionStates.includes(connection.state),connection.state||'missing');
+    check('Product Ads badge derives from connection state',state.trim()===connection.badge,state);
+    check('Product Ads headline derives from connection state',decision.trim()===connection.headline,decision);
+    check('Product Ads detail derives from connection state',read.trim().startsWith(connection.detail||'missing connection detail'),read);
+    if(connection.state==='READY'&&ads.through_date&&Number(ads.observed_ads_days||0)>0){
+      check('Product Ads read uses canonical spend',read.includes(moneyForQa(ads.spend)),read);
+      check('Product Ads read exposes TACOS',read.includes('TACOS'),read);
+      check('Product Ads read exposes ROAS',read.includes('ROAS'),read);
       check('Product Ads interpretation rejects residual-organic claim',read.includes('not exact organic sales'),read);
       check('Product Ads interpretation names attribution',read.includes('Amazon-attributed sales'),read);
     }else{
-      check('Product empty Ads state is explicit',state.includes('Ads access pending'),state);
-      check('Product empty Ads state avoids fake zero efficiency',decision.includes('Ads integration ready'),decision);
-      check('Product empty Ads state explains authorization wait',read.includes('after Amazon Ads authorizes access'),read);
+      check('Product unavailable Ads state avoids fake zero efficiency',!read.includes('0.00× ROAS')&&!read.includes('$0.00 spend'),read);
+    }
+
+    await page.goto(`${baseUrl}/ads`,{waitUntil:'domcontentloaded',timeout:20000});
+    const adsPayload=await api(page,'/api/ads');
+    await page.waitForTimeout(700);
+    const adsConnection=adsPayload.connection||{};
+    check('Ads and Product APIs use the same connection state',adsConnection.state===connection.state,`${adsConnection.state} / ${connection.state}`);
+    check('Ads and Product APIs use the same headline',adsConnection.headline===connection.headline,`${adsConnection.headline} / ${connection.headline}`);
+    check('Ads and Product APIs use the same detail',adsConnection.detail===connection.detail,`${adsConnection.detail} / ${connection.detail}`);
+    if(adsConnection.state!=='READY'||adsPayload.status!=='ready'){
+      const adsHeadline=((await page.locator('#emptyState h2').textContent())||'').trim();
+      const adsDetail=((await page.locator('#emptyState p').textContent())||'').trim();
+      check('Ads empty headline derives from connection state',adsHeadline===adsConnection.headline,adsHeadline);
+      check('Ads empty detail derives from connection state',adsDetail===adsConnection.detail,adsDetail);
     }
   }else{
     check('Catalog supplies a sellable SKU for Product Ads QA',false,'no sellable SKU');

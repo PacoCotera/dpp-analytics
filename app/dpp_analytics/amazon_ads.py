@@ -220,22 +220,57 @@ def _next_window():
     return start,min(yesterday,start+timedelta(days=30))
 
 
+def _publish_state(state, detail_code, **metadata):
+    db.set_integration_state("amazon_ads", state, detail_code, metadata)
+
+
+def _backfill_complete():
+    cursor = db.get_cursor(SOURCE, JOB, "through_date")
+    if not cursor:
+        return False
+    try:
+        return date.fromisoformat(cursor) >= date.today() - timedelta(days=1)
+    except ValueError:
+        return False
+
+
 def probe_ads():
-    if not settings.ads_enabled:return {"status":"disabled","credentials_present":settings.ads_credentials_present}
-    if not settings.ads_credentials_present:return {"status":"missing_credentials","credentials_present":False}
+    if not settings.ads_enabled:
+        _publish_state("NOT_CONNECTED", "ADS_DISABLED")
+        return {"status":"disabled","credentials_present":settings.ads_credentials_present}
+    if not settings.ads_credentials_present:
+        _publish_state("AUTHORIZATION_PENDING", "CREDENTIALS_INCOMPLETE")
+        return {"status":"missing_credentials","credentials_present":False}
     client=AmazonAdsClient()
     try:
-        scopes,meta=discover_scopes(client);return {"status":"ok" if scopes else "no_mx_profiles","credentials_present":True,"scopes":scopes,**meta}
+        scopes,meta=discover_scopes(client)
+        if not scopes:
+            _publish_state("AUTHORIZATION_PENDING", "NO_MX_ADVERTISER_PROFILE")
+        elif _backfill_complete():
+            _publish_state("READY", "REPORTING_CURRENT", accounts=len(scopes))
+        else:
+            _publish_state("BACKFILL_RUNNING", "INITIAL_HISTORY_PENDING", accounts=len(scopes))
+        return {"status":"ok" if scopes else "no_mx_profiles","credentials_present":True,"scopes":scopes,**meta}
+    except Exception:
+        _publish_state("FAILED", "AUTHORIZATION_PROBE_FAILED")
+        raise
     finally:client.close()
 
 
 def ingest_ads():
-    if not settings.ads_enabled:return {"status":"disabled"}
-    if not settings.ads_credentials_present:return {"status":"missing_credentials"}
+    if not settings.ads_enabled:
+        _publish_state("NOT_CONNECTED", "ADS_DISABLED")
+        return {"status":"disabled"}
+    if not settings.ads_credentials_present:
+        _publish_state("AUTHORIZATION_PENDING", "CREDENTIALS_INCOMPLETE")
+        return {"status":"missing_credentials"}
     start,end=_next_window();client=AmazonAdsClient()
     try:
+        _publish_state("BACKFILL_RUNNING", "REPORT_WINDOW_RUNNING", start=start.isoformat(), end=end.isoformat())
         scopes,discovery=discover_scopes(client)
-        if not scopes:return {"status":"no_mx_profiles","window":[start.isoformat(),end.isoformat()],**discovery}
+        if not scopes:
+            _publish_state("AUTHORIZATION_PENDING", "NO_MX_ADVERTISER_PROFILE")
+            return {"status":"no_mx_profiles","window":[start.isoformat(),end.isoformat()],**discovery}
         with db.ingestion_run(SOURCE,JOB,{"start":start.isoformat(),"end":end.isoformat(),**discovery}) as run:
             total_read=total_written=0;report_ids=[];grains={"campaign":_write_campaign_rows,"product":_write_product_rows,"target":_write_target_rows,"search_term":_write_search_term_rows}
             for scope in scopes:
@@ -248,5 +283,12 @@ def ingest_ads():
                 _refresh_daily_account(scope,start,end)
             run["records_read"]=total_read;run["records_written"]=total_written
         db.set_cursor(SOURCE,JOB,end.isoformat(),"through_date")
+        if end >= date.today()-timedelta(days=1):
+            _publish_state("READY", "REPORTING_CURRENT", accounts=len(scopes), through_date=end.isoformat())
+        else:
+            _publish_state("BACKFILL_RUNNING", "INITIAL_HISTORY_PENDING", accounts=len(scopes), through_date=end.isoformat())
         return {"status":"success","start":start.isoformat(),"end":end.isoformat(),"accounts":len(scopes),"records_read":total_read,"records_written":total_written,"report_ids":report_ids,"grains":list(grains),"transport":REPORT_TRANSPORT,"attribution_window":ATTRIBUTION_WINDOW}
+    except Exception:
+        _publish_state("FAILED", "REPORT_INGESTION_FAILED")
+        raise
     finally:client.close()

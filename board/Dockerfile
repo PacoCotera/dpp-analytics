@@ -53,6 +53,7 @@ COPY board/today_api_canonical.py ./today_api.py
 COPY board/product_api.py ./product_api_legacy.py
 COPY board/product_api_canonical.py ./product_api.py
 COPY board/ads_context.py .
+COPY board/ads_state.py .
 # Finance legacy reader owns period-state/immutable-close behavior. The adapter
 # corrects OPEN/finalizing Sales & Traffic from gross shopper spend to net revenue;
 # closed history is already corrected by explicit RESTATED versions in migration 037.
