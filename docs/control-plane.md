@@ -38,7 +38,7 @@ The board image itself does not inject CSS, JavaScript or page behavior. Its HTM
 
 ## Production browser QA
 
-`qa/visual_qa.mjs` is run inside the QA image after deployment against `http://127.0.0.1:8088`.
+`qa/visual_qa.mjs` is run inside the QA image after deployment while sharing the board container's network namespace, against its loopback-only `http://127.0.0.1:8080` listener. This keeps protected Admin QA on the same operator-only path enforced by the application; it does not weaken public Admin denial.
 
 The QA output includes browser captures and a structured summary covering, among other checks:
 

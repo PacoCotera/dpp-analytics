@@ -240,7 +240,7 @@ When changing `compose.yml` or `.env.example`, validate them together. The templ
 10. updates the deployment heartbeat.
 
 Production browser QA records page/viewport captures plus browser console errors, failed responses and horizontal-overflow checks. Treat it as a deployment requirement, not decorative screenshots.
-`qa/admin_qa.mjs` proves unauthenticated API denial, authenticated current/deleted pre-population, a non-mutating save/reload, ordinary Catalog consumption of the persisted values, and logout denial. The deploy workflow passes only the Admin password to that QA container through a temporary mode-0600 env file and deletes it during cleanup; the password is never written to QA output.
+`qa/admin_qa.mjs` proves unauthenticated API denial, authenticated current/deleted pre-population, a non-mutating save/reload, ordinary Catalog consumption of the persisted values, and logout denial. The QA container shares the board container's network namespace so its loopback request uses the same protected path as an SSH-tunneled operator. Deployment passes only the Admin password through a temporary mode-0600 env file and deletes it during cleanup; the password is never written to QA output.
 Its Product scenarios cover both a populated demand chart and the all-zero PNC-001L sales/units states. An
 all-zero selected metric must render the explicit range-empty message with no bars or numeric axis ticks.
 `qa/ui_format_qa.mjs` verifies the deployed shared count/currency/month-year helpers plus the Business, Finance,
