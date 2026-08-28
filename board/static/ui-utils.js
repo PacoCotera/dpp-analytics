@@ -2,6 +2,40 @@ import './data-cache.js';
 
 export const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 export const number1 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+export const BUSINESS_TIME_ZONE = 'America/Mexico_City';
+export const BUSINESS_TIME_ZONE_LABEL = 'Mexico City';
+
+const businessClockFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: BUSINESS_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+const businessTimestampFormatter = new Intl.DateTimeFormat('en-MX', {
+  timeZone: BUSINESS_TIME_ZONE,
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+export function formatBusinessClock(value) {
+  const localTime =
+    typeof value === 'string' &&
+    (/^([01]\d|2[0-3]):[0-5]\d$/.test(value) || /^\d{2}-\d{2} ([01]\d|2[0-3]):[0-5]\d$/.test(value));
+  if (localTime) return `${value} ${BUSINESS_TIME_ZONE_LABEL}`;
+  const date = value === null || value === undefined || value === '' ? new Date() : new Date(value);
+  if (Number.isNaN(date.getTime())) return `--:-- ${BUSINESS_TIME_ZONE_LABEL}`;
+  return `${businessClockFormatter.format(date)} ${BUSINESS_TIME_ZONE_LABEL}`;
+}
+
+export function formatBusinessTimestamp(value) {
+  if (!value) return 'Not recorded';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${businessTimestampFormatter.format(date)} ${BUSINESS_TIME_ZONE_LABEL}`;
+}
 
 export function money(value, { compact = false } = {}) {
   const numeric = Number(value || 0);

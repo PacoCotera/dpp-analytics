@@ -1,4 +1,4 @@
-import { byId, escapeHtml, fetchJson, integer, setText } from './ui-utils.js';
+import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, setText } from './ui-utils.js';
 
 const ATTENTION_ACTIONS = new Set(['STOCKOUT', 'PRODUCE', 'PLAN']);
 const URGENT_ACTIONS = new Set(['STOCKOUT', 'PRODUCE']);
@@ -158,7 +158,7 @@ function render(data) {
     .replace('T', ' ');
 
   state.rows = data.rows || [];
-  setText('clock', data.local_time || '--:--');
+  setText('clock', formatBusinessClock(data.local_time));
   setText('asof', `Snapshot ${snapshot}`);
   setText('snapshotFoot', `Snapshot ${snapshot}`);
   setText(
