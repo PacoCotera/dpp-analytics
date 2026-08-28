@@ -6,20 +6,26 @@
     return;
   }
 
-  const COLORS = {
-    ink: '#26231f',
-    muted: '#746c62',
-    line: '#ddd5c9',
-    paper: '#f4f0e8',
-    sales: '#b78b4d',
-    salesLight: '#d8bd95',
-    accent: '#e58b1f',
-    good: '#2f7d4f',
-    bad: '#c94b43',
-    cash: '#575047',
-    spend: '#6f6252',
-    attributed: '#d99a38',
-  };
+  // SVG presentation attributes retain CSS variable references, so a profile
+  // change repaints existing charts without changing data or chart behavior.
+  const COLORS = Object.freeze({
+    ink: 'var(--dpp-text)',
+    muted: 'var(--dpp-text-muted)',
+    line: 'var(--dpp-data-grid)',
+    paper: 'var(--dpp-page)',
+    surface: 'var(--dpp-surface)',
+    sales: 'var(--dpp-data1)',
+    salesLight: 'var(--dpp-data1)',
+    accent: 'var(--dpp-data2)',
+    cash: 'var(--dpp-data3)',
+    spend: 'var(--dpp-data4)',
+    attributed: 'var(--dpp-data5)',
+    selected: 'var(--dpp-data6)',
+    incomplete: 'var(--dpp-data-incomplete)',
+    good: 'var(--dpp-healthy)',
+    warning: 'var(--dpp-warning)',
+    bad: 'var(--dpp-critical)',
+  });
 
   const money = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -129,7 +135,7 @@
       .attr('class', 'dpp-axis')
       .attr('transform', `translate(0,${ctx.innerH})`)
       .call(axis)
-      .call((g) => g.select('.domain').attr('stroke', '#cfc5b7'));
+      .call((g) => g.select('.domain').attr('stroke', COLORS.line));
   }
   function empty(selector, message) {
     const ctx = shell(selector, 220, message, { left: 20, right: 20, bottom: 20 });
@@ -319,7 +325,7 @@
       .attr('height', 7)
       .attr('patternUnits', 'userSpaceOnUse')
       .attr('patternTransform', 'rotate(45)');
-    pattern.append('rect').attr('width', 7).attr('height', 7).attr('fill', '#f3dfc4').attr('opacity', 0.62);
+    pattern.append('rect').attr('width', 7).attr('height', 7).attr('fill', COLORS.incomplete).attr('opacity', 0.34);
     pattern
       .append('line')
       .attr('x1', 0)
@@ -339,7 +345,8 @@
       .attr('y', (d) => y(d.value))
       .attr('height', (d) => Math.max(1, ctx.innerH - y(d.value)))
       .attr('rx', 4)
-      .attr('fill', (d) => (d.partial ? COLORS.accent : COLORS.sales));
+      .style('--dpp-mark-color', (d) => (d.partial ? COLORS.accent : COLORS.sales))
+      .attr('fill', 'var(--dpp-mark-color)');
     const projected = data.filter((d) => d.partial && d.projected > d.value);
     const ghosts = ctx.plot
       .selectAll('.dpp-ghost-bar')
@@ -460,7 +467,8 @@
       .attr('y', (d) => y(d.value))
       .attr('height', (d) => Math.max(1, ctx.innerH - y(d.value)))
       .attr('rx', 2)
-      .attr('fill', (d) => d.color);
+      .style('--dpp-mark-color', (d) => d.color)
+      .attr('fill', 'var(--dpp-mark-color)');
     bottomAxis(ctx, x, (d, i) => {
       const step = Math.max(1, Math.floor(data.length / 4));
       return i % step === 0 || i === data.length - 1 ? d.slice(5) : '';
@@ -551,9 +559,10 @@
       .attr('cx', (d) => x(d.spend))
       .attr('cy', (d) => y(d.roas))
       .attr('r', (d) => r(d.clicks))
-      .attr('fill', (d) => (d.roas >= medianRoas ? COLORS.good : COLORS.accent))
+      .style('--dpp-mark-color', (d) => (d.roas >= medianRoas ? COLORS.good : COLORS.accent))
+      .attr('fill', 'var(--dpp-mark-color)')
       .attr('fill-opacity', 0.78)
-      .attr('stroke', '#fffdf9')
+      .attr('stroke', COLORS.surface)
       .attr('stroke-width', 2);
     ctx.plot
       .append('text')
@@ -620,7 +629,8 @@
       .attr('width', barW)
       .attr('y', (d) => y(d.value))
       .attr('height', (d) => Math.max(1, ctx.innerH - y(d.value)))
-      .attr('fill', COLORS.salesLight)
+      .style('--dpp-mark-color', COLORS.salesLight)
+      .attr('fill', 'var(--dpp-mark-color)')
       .attr('opacity', 0.64);
     const line = d3
       .line()
@@ -740,7 +750,7 @@
       .attr('y', (d) => y(Math.max(d.start, d.end)))
       .attr('height', (d) => Math.max(2, Math.abs(y(d.start) - y(d.end))))
       .attr('rx', 4)
-      .attr('fill', (d) =>
+      .style('--dpp-mark-color', (d) =>
         d.kind === 'sales'
           ? COLORS.sales
           : d.kind === 'total'
@@ -750,7 +760,8 @@
             : d.value >= 0
               ? COLORS.good
               : COLORS.bad,
-      );
+      )
+      .attr('fill', 'var(--dpp-mark-color)');
     ctx.plot
       .selectAll('.dpp-value')
       .data(data)
@@ -811,17 +822,18 @@
       .attr('y', (d) => y(d.value))
       .attr('height', (d) => Math.max(2, ctx.innerH - y(d.value)))
       .attr('rx', 3)
-      .attr('fill', (d) =>
+      .style('--dpp-mark-color', (d) =>
         d.live
           ? wall
-            ? '#ffb342'
+            ? COLORS.warning
             : COLORS.accent
           : d.selected
-            ? '#b2762f'
+            ? COLORS.selected
             : wall
-              ? '#7d5730'
+              ? COLORS.incomplete
               : COLORS.salesLight,
-      );
+      )
+      .attr('fill', 'var(--dpp-mark-color)');
     bottomAxis(ctx, x, (d, i) => {
       if (i === 0 || i === data.length - 1 || i === Math.floor((data.length - 1) / 2)) {
         const row = data[i];
@@ -885,7 +897,8 @@
       .attr('y', (d) => y(d.value))
       .attr('height', (d) => Math.max(1, ctx.innerH - y(d.value)))
       .attr('rx', 3)
-      .attr('fill', (d, i) => (i === data.length - 1 ? COLORS.accent : COLORS.salesLight))
+      .style('--dpp-mark-color', (d, i) => (i === data.length - 1 ? COLORS.accent : COLORS.salesLight))
+      .attr('fill', 'var(--dpp-mark-color)')
       .attr('opacity', (d, i) => (i === data.length - 1 ? 1 : 0.78));
     const line = d3
       .line()
