@@ -7,10 +7,11 @@ const outDir=process.argv[3]||'/out';
 await fs.mkdir(outDir,{recursive:true});
 const browser=await chromium.launch({headless:true});
 const cases=[
-  {name:'business-desktop',url:'/',width:1600,height:1000,active:'Business',visiblePrimary:['Business','Today','Sales','Products','Inventory','Finance'],visibleMore:['Trajectory','Ads','Data Health']},
-  {name:'product-mobile',url:'/product?sku=PNC-001',width:412,height:915,active:'Products',visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health']},
-  {name:'trajectory-mobile',url:'/trajectory',width:412,height:915,moreActive:true,visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health']},
-  {name:'inventory-mobile',url:'/inventory',width:412,height:915,moreActive:true,visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health']},
+  {name:'business-desktop',url:'/',width:1600,height:1000,active:'Business',visiblePrimary:['Business','Today','Sales','Products','Inventory','Finance'],visibleMore:['Trajectory','Ads','Data Health','Admin']},
+  {name:'product-mobile',url:'/product?sku=PNC-001',width:412,height:915,active:'Products',visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health','Admin']},
+  {name:'trajectory-mobile',url:'/trajectory',width:412,height:915,moreActive:true,visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health','Admin']},
+  {name:'inventory-mobile',url:'/inventory',width:412,height:915,moreActive:true,visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health','Admin']},
+  {name:'admin-mobile',url:'/admin',width:412,height:915,moreActive:true,visiblePrimary:['Business','Today','Sales','Products'],visibleMore:['Inventory','Finance','Trajectory','Ads','Data Health','Admin']},
 ];
 const allPrimary=['Business','Today','Sales','Products','Inventory','Finance'];
 const results=[];

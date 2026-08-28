@@ -97,6 +97,10 @@ Catalog identity is assembled server-side from seller listings, catalog data, co
 
 Treat each completed merchant-listings report as the canonical current snapshot, not as an append-only union. `core.seller_listing.is_current_listing` separates current Amazon records from deleted historical SKUs. Catalog KPIs and families use current records only; Catalog Items owns current parent-child relationships. Deleted SKUs remain available only through explicit historical/deleted views and transaction attribution, labeled `Deleted` rather than `Inactive`.
 
+Use `/admin` for seller-owned short names, taxonomy and current unit COGS. `board/admin_config.py` owns validation, optimistic revisions, unknown-field preservation, atomic replacement, backups and audit metadata; `board/admin_auth.py` owns the host-password session and CSRF contract. `board/server_canonical.py` is the only HTTP route owner. Do not add a second browser-only write path or edit the host JSON as the normal operating workflow.
+
+New SKUs and deletions require no code list. The latest completed Seller Listings snapshot adds every current sellable offer to Admin and moves absent records to read-only deleted history. Catalog Items supplies identity/parent-child evidence after Amazon propagation. A new SKU with blank COGS is expected seller configuration, not an ingestion/software defect. Blank seller taxonomy is likewise a mapping task when source evidence is ready; unresolved Amazon source evidence beyond the documented grace is the separate source-completeness incident.
+
 ### Inventory
 
 Inventory combines FBA inventory state with seller-SKU velocity from Amazon Orders. `inventory_api.py` joins the current Amazon offer contract for portfolio rollups and owns reference-row lifecycle plus canonical-SKU identity. The browser defaults to current stock-bearing offers and only exposes alias, retired, archived or no-velocity rows through explicit filters. Action semantics such as `STOCKOUT`, `PRODUCE`, `PLAN`, `OK` and `HOLD` belong in the data/API layer. The browser renders those actions; it should not independently invent replenishment thresholds. This order-based velocity is intentionally distinct from reconciled CHILD-ASIN product demand on Sales, Catalog and Product Workspace.
@@ -132,9 +136,18 @@ Cash transferred by Amazon is not the same as economic contribution. Keep cash t
 Production secrets and mutable business configuration live on the host, not in Git.
 
 - `/etc/dpp-analytics/env` — database credentials, Amazon credentials/toggles, schedules and other environment settings. Never commit it.
-- `/etc/dpp-analytics/product_labels.json` — local product display-name/image overrides. The deploy workflow seeds this from `board/product_labels.json` only when the host file does not already exist, so normal Git pulls do not overwrite local mappings.
-- `/etc/dpp-analytics/board-config/product_costs.json` — production product COGS configuration, mounted read-only into worker/board as `/config/product_costs.json`.
+- `/etc/dpp-analytics/board-config/product_labels.json` — local product display-name/image overrides. The deploy workflow seeds this from `board/product_labels.json` only when the host file does not already exist, so normal Git pulls do not overwrite local mappings.
+- `/etc/dpp-analytics/board-config/product_costs.json` — production product COGS configuration, mounted read-only into the worker and read-write into the board as `/config/product_costs.json`.
 - `/etc/dpp-analytics/board-config/product_variations.json` — production variation configuration, mounted into the board through `/config`.
+- `/etc/dpp-analytics/board-config/backups/` and `admin-audit.jsonl` — recoverable pre-save JSON versions and non-secret Admin change metadata.
+
+`DPP_ADMIN_PASSWORD` is generated into `/etc/dpp-analytics/env` when absent and is never printed by deployment, returned by an API or embedded in an asset. Retrieve or rotate it only on the host. Because the current public board is direct HTTP, Admin requests are accepted only from loopback; use an SSH tunnel (`ssh -L 8088:127.0.0.1:8088 <host>`) and open `http://127.0.0.1:8088/admin`. Remote Admin can be enabled only when both `DPP_ADMIN_ALLOW_REMOTE=true` and `DPP_ADMIN_COOKIE_SECURE=true`, after an HTTPS operator path exists. A password shorter than 16 characters or the committed placeholder disables Admin.
+
+To retrieve the generated password as an authorized host operator:
+
+```bash
+sudo sed -n 's/^DPP_ADMIN_PASSWORD=//p' /etc/dpp-analytics/env
+```
 
 Repository JSON files are defaults/seeds unless the deployment workflow explicitly says otherwise. When changing host-owned config behavior, update this section and `compose.yml`/deployment automation together.
 
@@ -227,6 +240,7 @@ When changing `compose.yml` or `.env.example`, validate them together. The templ
 10. updates the deployment heartbeat.
 
 Production browser QA records page/viewport captures plus browser console errors, failed responses and horizontal-overflow checks. Treat it as a deployment requirement, not decorative screenshots.
+`qa/admin_qa.mjs` proves unauthenticated API denial, authenticated current/deleted pre-population, a non-mutating save/reload, ordinary Catalog consumption of the persisted values, and logout denial. The deploy workflow passes only the Admin password to that QA container through a temporary mode-0600 env file and deletes it during cleanup; the password is never written to QA output.
 Its Product scenarios cover both a populated demand chart and the all-zero PNC-001L sales/units states. An
 all-zero selected metric must render the explicit range-empty message with no bars or numeric axis ticks.
 `qa/ui_format_qa.mjs` verifies the deployed shared count/currency/month-year helpers plus the Business, Finance,

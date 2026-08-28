@@ -97,6 +97,8 @@ npm run format:check   # audit; not yet the blocking gate
 
 Production deployment is controlled by `.github/workflows/deploy.yml` and runs on the repository-scoped self-hosted runner. A push to `main` deploys automatically; `workflow_dispatch` is also supported. The deployment applies migrations, refreshes Finance close state, deploys the stack, probes core APIs/services, runs production browser QA and publishes a deployment heartbeat.
 
+Seller-owned product short names, taxonomy and current COGS are managed through the protected `/admin` workspace. The latest complete Seller Listings snapshot supplies current/deleted SKU membership automatically; Amazon Catalog Items supplies identity evidence; the user supplies only the mapped values the application must not guess.
+
 **Data-trust acceptance is executable.** Production browser QA verifies rendered monetary values and visible basis labels, including the Finance settlement payout arithmetic. After a successful deployment, `.github/workflows/production-number-audit.yml` independently reconciles production APIs against warehouse/raw evidence, re-proves the Sales & Traffic tax basis, audits immutable Finance closes, and recalculates the latest settlement payout bridge directly from `core.settlement_line`. A monetary-basis or payout-reconciliation failure is a production failure, not a documentation warning.
 
 **Do not call a change production-ready merely because lint passes.** Production browser QA, numeric reconciliation and a visual sanity check of the affected decision surfaces are part of acceptance.

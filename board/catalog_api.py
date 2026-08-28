@@ -179,6 +179,25 @@ def _amazon_variation_attributes(row: dict, taxonomy: dict) -> dict[str, str]:
     return out
 
 
+def _amazon_variation_evidence(row: dict) -> dict[str, str]:
+    """Expose Amazon's source dimension/value evidence without seller remapping."""
+    names = row.get("amazon_variation_attribute_names") or []
+    if isinstance(names, str):
+        names = [names]
+    attributes = row.get("catalog_attributes") or {}
+    if isinstance(attributes, str):
+        try:
+            attributes = json.loads(attributes)
+        except json.JSONDecodeError:
+            attributes = {}
+    out = {}
+    for source_name in names if isinstance(names, (list, tuple)) else []:
+        value = _attribute_value(attributes, str(source_name))
+        if value:
+            out[str(source_name)] = value
+    return out
+
+
 def _variation_taxonomy_for_row(row: dict, taxonomy: dict) -> tuple[dict[str, str], str]:
     amazon = _amazon_variation_attributes(row, taxonomy)
     local = taxonomy["products"].get(str(row.get("sku") or ""), {}).get("attributes") or {}
@@ -669,6 +688,7 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
         unit_cogs = costs.get(sku)
         local_taxonomy = taxonomy["products"].get(sku, {})
         row["family_name"] = local_taxonomy.get("family_name")
+        row["amazon_variation_attributes"] = _amazon_variation_evidence(row)
         row["variation_attributes"], row["variation_attribute_source"] = _variation_taxonomy_for_row(row, taxonomy)
         _apply_canonical_identity(row)
         row["unit_cogs"] = unit_cogs

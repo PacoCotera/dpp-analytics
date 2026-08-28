@@ -8,7 +8,7 @@ The repository is both the source of truth for application code/schema and the d
 - `.github/workflows/deploy.yml` runs automatically on pushes to `main`.
 - The same workflow supports `workflow_dispatch` for an explicit manual run.
 - Deployment runs on the repository-scoped self-hosted Linux/x64 runner labeled `dpp-analytics`.
-- Deployments use concurrency group `dpp-analytics-production`; a newer run cancels an in-progress older run.
+- Deployments use concurrency group `dpp-analytics-production`; releases queue so an in-progress run can complete cleanup and heartbeat publication.
 
 Prefer the GitHub workflow over manual changes to running containers. The workflow result plus production browser QA is the authoritative deployment outcome.
 
@@ -19,7 +19,7 @@ The deploy workflow performs these stages in order:
 1. initialize run-local deployment diagnostic scratch state;
 2. bootstrap/validate the host and Docker tooling;
 3. ensure `/etc/dpp-analytics/env` exists and retain production secrets on-host;
-4. initialize persistent local product-label configuration if it does not already exist;
+4. initialize persistent local product configuration and a host-owned Admin password if they do not already exist;
 5. validate `compose.yml`;
 6. pull PostgreSQL/Grafana base images and build worker/board images;
 7. start/health-check PostgreSQL;
@@ -47,9 +47,11 @@ The QA output includes browser captures and a structured summary covering, among
 - failed HTTP responses;
 - horizontal overflow at tested viewports.
 
-The full QA output is uploaded as a workflow artifact with 30-day retention. A technically green API health check is not enough if browser QA fails.
+Compact successful QA output is retained for 3 days; full failure diagnostics are retained for 14 days. A technically green API health check is not enough if browser QA fails.
 
 Navigation-specific QA also lives under `qa/nav_qa.mjs`; catalog semantic checks are documented in `qa/README-catalog-semantics.md`.
+
+`qa/admin_qa.mjs` receives only `DPP_ADMIN_PASSWORD` through a temporary root-readable env file. It checks public denial, authenticated catalog loading, a no-op save/reload, downstream Catalog consumption and logout. It never emits the password or seller configuration values. Failure cleanup removes both the QA container and temporary env file.
 
 Browser-QA selectors are part of the application contract. They should target canonical page ownership and stable semantic DOM markers, not deleted enhancement layers or incidental legacy class names. When a frontend refactor intentionally changes the canonical DOM, update the corresponding QA selector in the same PR. When deleting a frontend runtime/style file, remove every source dependency on it before deleting the file; production 404s for removed assets are deployment failures.
 
@@ -107,9 +109,10 @@ Formatting is part of `npm run quality`; it remains a mechanical source gate and
 The repository deploys code, schema and seed/default configuration, but production also has persistent host-owned state:
 
 - `/etc/dpp-analytics/env` — secrets, credentials, feature toggles, cadences;
-- `/etc/dpp-analytics/product_labels.json` — persistent local product display overrides;
-- `/etc/dpp-analytics/board-config/` — persistent board/worker business configuration such as product costs and variations;
+- `/etc/dpp-analytics/board-config/` — persistent product labels, taxonomy, costs, bounded Admin backups and non-secret Admin audit metadata;
 - Docker named volumes — PostgreSQL and Grafana state.
+
+The worker's `/config` mount remains read-only. The board's `/config` mount is read-write solely for authenticated Admin updates. `DPP_ADMIN_PASSWORD` remains in `/etc/dpp-analytics/env`; deployment creates it when missing but never publishes it to the heartbeat or artifacts. Direct-HTTP production accepts Admin only from loopback, so operators use an SSH tunnel. Non-loopback access requires both the explicit remote toggle and secure cookies behind HTTPS.
 
 Do not “fix” a production issue by overwriting these from Git unless the deployment design explicitly calls for it.
 

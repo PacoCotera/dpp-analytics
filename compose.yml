@@ -106,6 +106,9 @@ services:
       PRODUCT_COSTS_PATH: /config/product_costs.json
       PRODUCT_VARIATIONS_PATH: /config/product_variations.json
       PRODUCT_LABELS_PATH: /config/product_labels.json
+      DPP_ADMIN_PASSWORD: ${DPP_ADMIN_PASSWORD:-}
+      DPP_ADMIN_COOKIE_SECURE: ${DPP_ADMIN_COOKIE_SECURE:-false}
+      DPP_ADMIN_ALLOW_REMOTE: ${DPP_ADMIN_ALLOW_REMOTE:-false}
       FINANCE_ADS_CLOSE_GRACE_DAYS: ${FINANCE_ADS_CLOSE_GRACE_DAYS:-10}
       MX_VAT_RATE: ${MX_VAT_RATE:-0.16}
       ORDERS_INTERVAL_SECONDS: ${ORDERS_INTERVAL_SECONDS:-180}
@@ -120,7 +123,7 @@ services:
     ports:
       - "8088:8080"
     volumes:
-      - /etc/dpp-analytics/board-config:/config:ro
+      - /etc/dpp-analytics/board-config:/config:rw
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()"]
       interval: 20s

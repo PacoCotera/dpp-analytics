@@ -152,7 +152,7 @@ A workspace should be boring to inspect:
 - Docker does not inject CSS, JavaScript or page behavior;
 - a second override stylesheet or post-render enhancer is a code smell, not an extension point.
 
-The served workspaces now follow this model: Home, Today, Sales, Catalog, Product Workspace, Inventory, Finance, Trajectory, Ads and Data Health.
+The served workspaces now follow this model: Home, Today, Sales, Catalog, Product Workspace, Inventory, Finance, Trajectory, Ads, Data Health and Admin. Admin has one composition (`admin.html`), one page stylesheet (`admin.css`) and one runtime (`admin.js`); authentication, lifecycle membership, validation and persistence remain server-owned.
 
 ## Build boundary
 
