@@ -181,6 +181,10 @@ async function verifyBusiness(page) {
     const attention = document.querySelector('.attention-panel');
     const rhythm = document.querySelector('.rhythm-panel');
     const health = document.querySelector('.business-health');
+    const dataHealthCard = document.querySelector('.business-health-card[href="/data-health"]');
+    const healthContract = payload.health_contract || {};
+    const pipelineScope = healthContract.pipeline_scope || {};
+    const healthOverall = healthContract.overall || {};
     const ads = document.getElementById('adsRead');
     const brand = document.querySelector('.topbar a.brand');
     const top = (element) => element?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
@@ -200,6 +204,14 @@ async function verifyBusiness(page) {
       expectedItems: Math.min(4, exceptions.length),
       expectedMore: exceptions.length > 0 && total > Math.min(4, exceptions.length),
       healthDomains: document.querySelectorAll('.business-health-card').length,
+      healthContractId: healthContract.contract_id,
+      healthValue: dataHealthCard?.querySelector('.business-health-card__value')?.textContent?.trim(),
+      expectedHealthValue: pipelineScope.total
+        ? `${pipelineScope.healthy}/${pipelineScope.total}`
+        : '—',
+      healthCopy: dataHealthCard?.querySelector('p')?.textContent || '',
+      healthConditionCount: Number(healthOverall.active_condition_count || 0),
+      healthAffectedDomains: healthOverall.affected_domains || [],
       rhythmCurrentBand: document.querySelectorAll('#spark .home-rhythm__current-week').length,
       rhythmLatestRead: Boolean(
         document.querySelector('#spark .home-rhythm__latest-dot') &&
@@ -230,6 +242,11 @@ async function verifyBusiness(page) {
     state.clearState !== (state.expectedItems === 0) ||
     state.moreVisible !== state.expectedMore ||
     state.healthDomains !== 3 ||
+    state.healthContractId !== 'BUSINESS_DECISION_HEALTH_V1' ||
+    state.healthValue !== state.expectedHealthValue ||
+    !state.healthCopy.includes('outside this six-stream count') ||
+    (state.healthConditionCount > 0 &&
+      !state.healthAffectedDomains.every(domain => state.healthCopy.includes(domain))) ||
     state.rhythmCurrentBand !== 1 ||
     !state.rhythmLatestRead ||
     state.rhythmExceptionalDays < 1 ||
@@ -250,9 +267,13 @@ async function verifyDataHealth(page) {
     await wait(page, '#jobs .health-job');
   }
   const state = await page.evaluate(async () => {
-    const response = await fetch('/api/data-health', { cache: 'no-store' });
-    const payload = await response.json();
+    const [response, homeResponse] = await Promise.all([
+      fetch('/api/data-health', { cache: 'no-store' }),
+      fetch('/api/home', { cache: 'no-store' }),
+    ]);
+    const [payload, home] = await Promise.all([response.json(), homeResponse.json()]);
     const jobs = Array.isArray(payload.jobs) ? payload.jobs : [];
+    const healthContract = payload.health_contract || {};
     const problem = job =>
       job.latest_status === 'error' ||
       job.latest_status === 'interrupted' ||
@@ -263,6 +284,7 @@ async function verifyDataHealth(page) {
     const incidents = [...document.querySelectorAll('.incident')];
     return {
       apiOk: response.ok,
+      homeApiOk: homeResponse.ok,
       checkedAt: payload.checked_at,
       jobs: jobs.length,
       contractComplete: jobs.every(job =>
@@ -287,6 +309,19 @@ async function verifyDataHealth(page) {
         incident.querySelector('.incident__diagnostic')
       ),
       compactCoverage: Boolean(document.querySelector('.domain-summary .domain-chip')),
+      healthContractId: healthContract.contract_id,
+      sharedContract: JSON.stringify(healthContract) === JSON.stringify(home.health_contract || {}),
+      scopeDefined:
+        healthContract.pipeline_scope?.total === 6 &&
+        healthContract.pipeline_scope?.included?.length === 6 &&
+        Array.isArray(healthContract.pipeline_scope?.excluded) &&
+        Boolean(healthContract.pipeline_scope?.exclusion_rule),
+      stateMappingDefined:
+        healthContract.domains?.filter(domain => domain.critical).length === 5 &&
+        Number.isInteger(healthContract.overall?.active_condition_count) &&
+        Array.isArray(healthContract.overall?.affected_domains),
+      renderedConditionCount: Number(document.getElementById('summaryCount')?.textContent),
+      expectedConditionCount: Number(healthContract.overall?.active_condition_count || 0),
       warehouseClosed: !document.querySelector('.warehouse-reference')?.hasAttribute('open'),
       genericRingRemoved: !document.getElementById('ring'),
       refreshCopy: document.getElementById('healthUpdated')?.textContent || '',
@@ -305,10 +340,16 @@ async function verifyDataHealth(page) {
   });
   if (
     !state.apiOk ||
+    !state.homeApiOk ||
     !state.checkedAt ||
     !state.jobs ||
     !state.contractComplete ||
     !state.compactCoverage ||
+    state.healthContractId !== 'BUSINESS_DECISION_HEALTH_V1' ||
+    !state.sharedContract ||
+    !state.scopeDefined ||
+    !state.stateMappingDefined ||
+    state.renderedConditionCount !== state.expectedConditionCount ||
     !state.warehouseClosed ||
     !state.genericRingRemoved ||
     !state.mobilePipelineMetrics ||

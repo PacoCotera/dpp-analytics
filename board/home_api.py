@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from health_api import _decorate_job
+from catalog_onboarding import catalog_onboarding_snapshot
+from health_api import ads_health_summary, load_ads_quality, load_health_jobs
+from health_contract import CORE_STREAMS, build_health_contract
 
 
 def _one(cur, sql, params=()):
@@ -28,13 +30,8 @@ def home_payload(connect, decorate_products, marketplace: str) -> dict:
         inventory_summary = _one(cur, """SELECT count(*) FILTER (WHERE a.action IN ('STOCKOUT','PRODUCE','PLAN'))::int needs_action,count(*) FILTER (WHERE a.action='STOCKOUT')::int stockouts,count(*) FILTER (WHERE a.action='PRODUCE')::int produce,count(*) FILTER (WHERE a.action='PLAN')::int plan FROM mart.inventory_attention a LEFT JOIN core.sku s ON s.sku=a.seller_sku WHERE a.marketplace_id=%s AND COALESCE(s.active,true)""", (marketplace,))
         inventory = _all(cur, """SELECT a.seller_sku sku,COALESCE(a.asin,s.asin) asin,COALESCE(sl.item_name,ci.title,s.title,'') product,COALESCE(sl.image_url,ci.image_url) image_url,a.available,a.inbound,a.units_t28,a.days_cover_with_inbound days_cover,a.action FROM mart.inventory_attention a LEFT JOIN core.sku s ON s.sku=a.seller_sku LEFT JOIN core.seller_listing sl ON sl.marketplace_id=a.marketplace_id AND sl.seller_sku=a.seller_sku LEFT JOIN core.catalog_item ci ON ci.marketplace_id=a.marketplace_id AND ci.asin=COALESCE(a.asin,s.asin) WHERE a.marketplace_id=%s AND COALESCE(s.active,true) AND a.action IN ('STOCKOUT','PRODUCE','PLAN') ORDER BY CASE a.action WHEN 'STOCKOUT' THEN 0 WHEN 'PRODUCE' THEN 1 ELSE 2 END,a.days_cover_with_inbound NULLS FIRST LIMIT 8""", (marketplace,))
         weekly_products = _all(cur, """WITH product_week AS (SELECT date_trunc('week',a.business_date)::date week_start,a.asin,COALESCE(sum(a.ordered_product_sales),0)::numeric(14,2) sales,max(a.business_date) through_date FROM core.asin_sales_traffic_daily a WHERE a.marketplace_id=%s AND a.business_date>=%s::date-89 GROUP BY 1,2),ranked AS (SELECT p.*,row_number() OVER (PARTITION BY p.week_start ORDER BY p.sales DESC,p.asin) rank FROM product_week p WHERE p.sales>0) SELECT r.week_start,r.asin,r.sales,r.through_date,COALESCE(po.seller_sku,'') sku,COALESCE(po.title,ci.title,r.asin) product,COALESCE(po.image_url,ci.image_url) image_url FROM ranked r LEFT JOIN core.catalog_item ci ON ci.marketplace_id=%s AND ci.asin=r.asin LEFT JOIN LATERAL (SELECT p.seller_sku,p.title,p.image_url FROM mart.catalog_portfolio_product p WHERE p.marketplace_id=%s AND p.asin=r.asin AND p.is_offer_owner ORDER BY p.seller_sku LIMIT 1) po ON true WHERE r.rank<=3 ORDER BY r.week_start,r.rank""", (marketplace, cutoff or datetime.utcnow().date(), marketplace, marketplace))
-        freshness = [
-            _decorate_job(row)
-            for row in _all(
-                cur,
-                "SELECT source,job_name,latest_status,extract(epoch from age)::bigint age_seconds FROM ops.data_health WHERE job_name IN ('orders_v2026','sales_traffic_2024_04_24','finances_v2024','fba_inventory_v1','merchant_listings_all_data','catalog_items_2022_04_01','amazon_ads_reporting')",
-            )
-        ]
+        health_jobs = load_health_jobs(cur)
+        ads_health = ads_health_summary(load_ads_quality(cur, marketplace))
         finance = _one(
             cur,
             """SELECT month,state,net_sales_ex_vat,contribution_after_product_cogs,contribution_margin_pct,closed_at
@@ -53,4 +50,10 @@ def home_payload(connect, decorate_products, marketplace: str) -> dict:
                 complete = int(a.get('missing_ads_days') or 0)==0 and int(a.get('observed_ads_days') or 0)>=int(a.get('expected_ads_days') or 28)
                 trusted = complete and int(q.get('issues') or 0)==0 and int(q.get('account_days') or 0)>0
                 ads={"status":"ready","trusted":trusted,"through_date":a['through_date'],"spend":a.get('spend'),"attributed_sales":a.get('attributed_sales'),"total_business_sales":a.get('total_business_sales'),"roas":a.get('roas'),"acos":a.get('acos'),"tacos":a.get('tacos'),"mature_days":a.get('mature_ads_days'),"observed_days":a.get('observed_ads_days'),"expected_days":a.get('expected_ads_days'),"note":"Attributed sales can revise and are not exact incremental sales. Total sales minus attributed sales is not exact organic sales."}
-    return {"generated_at":datetime.utcnow().isoformat(timespec="seconds")+"Z","local_time":local_clock.get("local_time"),"today":today,"rolling":rolling,"inventory_summary":inventory_summary,"inventory":decorate_products(inventory),"series":series,"weekly_products":decorate_products(weekly_products),"freshness":freshness,"finance":finance,"ads":ads,"metric_basis":{"currency":market.get("currency") or "MXN","timezone":timezone,"historical_sales":{"id":"AMAZON_ORDERED_PRODUCT_SALES","source":"Sales & Traffic / Data Kiosk","reconciled_only":True},"today":{"id":"GROSS_CUSTOMER_SPEND","source":"Amazon Orders","label":"Shopper spend incl. IVA"},"advertising":{"source":"Amazon Ads","attribution":"Amazon attributed conversions; recent days provisional","organic_warning":"Residual sales are not exact organic sales"}}}
+    catalog = catalog_onboarding_snapshot(connect, marketplace)
+    health_contract = build_health_contract(health_jobs, catalog["summary"], ads_health)
+    core_keys = {(item["source"], item["job_name"]) for item in CORE_STREAMS}
+    freshness = [
+        job for job in health_jobs if (job.get("source"), job.get("job_name")) in core_keys
+    ]
+    return {"generated_at":datetime.utcnow().isoformat(timespec="seconds")+"Z","local_time":local_clock.get("local_time"),"today":today,"rolling":rolling,"inventory_summary":inventory_summary,"inventory":decorate_products(inventory),"series":series,"weekly_products":decorate_products(weekly_products),"freshness":freshness,"health_contract":health_contract,"finance":finance,"ads":ads,"metric_basis":{"currency":market.get("currency") or "MXN","timezone":timezone,"historical_sales":{"id":"AMAZON_ORDERED_PRODUCT_SALES","source":"Sales & Traffic / Data Kiosk","reconciled_only":True},"today":{"id":"GROSS_CUSTOMER_SPEND","source":"Amazon Orders","label":"Shopper spend incl. IVA"},"advertising":{"source":"Amazon Ads","attribution":"Amazon attributed conversions; recent days provisional","organic_warning":"Residual sales are not exact organic sales"}}}

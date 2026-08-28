@@ -11,19 +11,6 @@ let jobs = [];
 let expanded = false;
 let catalogHealth = {};
 
-const DOMAIN_DEFINITIONS = [
-  { key: 'today', label: 'Today', terms: ['orders'], critical: true },
-  { key: 'sales', label: 'Sales', terms: ['data_kiosk', 'data kiosk'], critical: true },
-  {
-    key: 'products',
-    label: 'Products',
-    terms: ['catalog', 'seller_listings', 'seller listings'],
-    critical: true,
-  },
-  { key: 'inventory', label: 'Inventory', terms: ['inventory'], critical: true },
-  { key: 'finance', label: 'Finance', terms: ['finance', 'settlement'], critical: true },
-];
-
 function duration(seconds, compact = false) {
   const value = Math.max(0, Number(seconds || 0));
   if (value < 60) return `${Math.round(value)}s`;
@@ -40,10 +27,6 @@ function duration(seconds, compact = false) {
 
 const timestamp = formatBusinessTimestamp;
 
-function normalizedJobText(item) {
-  return `${item.source || ''} ${item.job_name || ''}`.toLowerCase().replaceAll('-', '_');
-}
-
 function jobState(item) {
   const status = item.latest_status || 'unknown';
   if (status === 'error') return 'failed';
@@ -53,33 +36,8 @@ function jobState(item) {
   return 'degraded';
 }
 
-function worstState(states) {
-  const rank = { failed: 4, stale: 3, degraded: 2, healthy: 1, disconnected: 0 };
-  return states.reduce((worst, state) => (rank[state] > rank[worst] ? state : worst), 'disconnected');
-}
-
-function domainState(definition) {
-  const matched = jobs.filter((item) => {
-    const text = normalizedJobText(item);
-    return definition.terms.some((term) => text.includes(term.replaceAll('-', '_')));
-  });
-  if (!matched.length) return { ...definition, state: 'disconnected', jobs: [] };
-  return { ...definition, state: worstState(matched.map(jobState)), jobs: matched };
-}
-
 function buildDomains(payload) {
-  const core = DOMAIN_DEFINITIONS.map(domainState);
-  const catalogSummary = payload.catalog?.summary || {};
-  const catalogAttention =
-    Number(catalogSummary.source_attention || 0) + Number(catalogSummary.taxonomy_attention || 0);
-  const products = core.find((domain) => domain.key === 'products');
-  if (products && catalogAttention > 0 && products.state === 'healthy') products.state = 'degraded';
-
-  const ads = payload.ads?.summary || {};
-  const adsState =
-    ads.state === 'HEALTHY' ? 'healthy' : ads.state === 'ATTENTION' ? 'degraded' : 'disconnected';
-  core.push({ key: 'ads', label: 'Ads', state: adsState, jobs: [], critical: false });
-  return core;
+  return Array.isArray(payload.health_contract?.domains) ? payload.health_contract.domains : [];
 }
 
 function stateLabel(state) {
@@ -296,23 +254,17 @@ function render(payload) {
   jobs = payload.jobs || [];
   const warehouse = payload.warehouse || {};
   const domains = buildDomains(payload);
+  const contract = payload.health_contract || {};
+  const overall = contract.overall || {};
   const critical = domains.filter((domain) => domain.critical);
   const caution = critical.filter((domain) => domain.state !== 'healthy');
-  const problems = problemJobs();
   const catalogSummary = payload.catalog?.summary || {};
-  const catalogAttention =
-    Number(catalogSummary.source_attention || 0) + Number(catalogSummary.taxonomy_attention || 0);
-  const totalAttention = problems.length + catalogAttention;
+  const totalAttention = Number(overall.active_condition_count || 0);
 
   byId('clock').textContent = formatBusinessClock(payload.local_time);
   byId('healthUpdated').textContent = `Health checked ${timestamp(payload.checked_at)} · refreshes every 60s`;
   byId('summaryCount').textContent = String(totalAttention);
-  byId('summaryCount').dataset.state =
-    problems.some((item) => jobState(item) === 'failed') || Number(catalogSummary.source_attention || 0) > 0
-      ? 'failed'
-      : totalAttention
-        ? 'degraded'
-        : 'healthy';
+  byId('summaryCount').dataset.state = overall.state || 'degraded';
 
   if (totalAttention) {
     byId('summaryEyebrow').textContent =
@@ -323,7 +275,7 @@ function render(payload) {
       ? `${caution.map((domain) => domain.label).join(', ')} ${caution.length === 1 ? 'is' : 'are'} affected. Pipeline and catalog lifecycle detail are below.`
       : 'The affected condition is not currently blocking a decision-critical business surface.';
   } else {
-    byId('summaryEyebrow').textContent = 'All streams inside contract';
+    byId('summaryEyebrow').textContent = 'All decision health inside contract';
     byId('healthTitle').textContent = 'Decision-critical data is current.';
     byId('healthCopy').textContent = Number(catalogSummary.onboarding || 0)
       ? `All ${critical.length} decision surfaces are supported. ${catalogSummary.onboarding} new catalog item${Number(catalogSummary.onboarding) === 1 ? ' is' : 's are'} still inside normal Amazon propagation.`

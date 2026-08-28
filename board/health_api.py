@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 
 from catalog_onboarding import catalog_onboarding_snapshot
+from health_contract import build_health_contract
 
 
 def _one(cur, sql: str, params=()):
@@ -134,66 +135,104 @@ def _decorate_job(row: dict) -> dict:
     }
 
 
+def load_health_jobs(cur) -> list[dict]:
+    return [
+        _decorate_job(row)
+        for row in _all(
+            cur,
+            """
+            WITH latest AS (
+                SELECT DISTINCT ON (source, job_name)
+                    source, job_name, started_at, finished_at, status,
+                    records_read, records_written, error_message
+                FROM ops.ingestion_runs
+                ORDER BY source, job_name, started_at DESC
+            ), last_success AS (
+                SELECT DISTINCT ON (source, job_name)
+                    source, job_name, finished_at AS last_success_at,
+                    records_read AS success_records_read,
+                    records_written AS success_records_written
+                FROM ops.ingestion_runs
+                WHERE status='success' AND finished_at IS NOT NULL
+                ORDER BY source, job_name, finished_at DESC
+            ), last_error AS (
+                SELECT DISTINCT ON (source, job_name)
+                    source, job_name, started_at AS last_error_at,
+                    error_message AS last_error_message
+                FROM ops.ingestion_runs
+                WHERE status='error'
+                ORDER BY source, job_name, started_at DESC
+            )
+            SELECT
+                l.source,
+                l.job_name,
+                CASE
+                    WHEN l.status='interrupted' AND s.last_success_at IS NOT NULL THEN 'success'
+                    ELSE l.status
+                END AS latest_status,
+                l.status AS latest_attempt_status,
+                l.started_at AS last_started_at,
+                l.finished_at AS last_finished_at,
+                s.last_success_at,
+                extract(epoch from (CURRENT_TIMESTAMP - COALESCE(s.last_success_at, l.finished_at, l.started_at)))::bigint AS age_seconds,
+                extract(epoch from (CURRENT_TIMESTAMP - l.started_at))::bigint AS attempt_age_seconds,
+                l.records_read,
+                l.records_written,
+                s.success_records_read,
+                s.success_records_written,
+                l.error_message,
+                e.last_error_at,
+                e.last_error_message
+            FROM latest l
+            LEFT JOIN last_success s USING (source, job_name)
+            LEFT JOIN last_error e USING (source, job_name)
+            ORDER BY
+                CASE l.status WHEN 'error' THEN 0 WHEN 'running' THEN 1 ELSE 2 END,
+                age_seconds DESC,
+                l.source,
+                l.job_name
+            """,
+        )
+    ]
+
+
+def load_ads_quality(cur, marketplace: str) -> list[dict]:
+    return _all(
+        cur,
+        """
+        SELECT account_id, first_date, latest_date, days_seen, healthy_days,
+               issue_days, latest_ingested_at, quality_state
+        FROM mart.ads_ingestion_quality_summary
+        WHERE marketplace_id=%s
+        ORDER BY account_id
+        """,
+        (marketplace,),
+    )
+
+
+def ads_health_summary(ads_quality: list[dict]) -> dict:
+    return {
+        "accounts": len(ads_quality),
+        "healthy_accounts": sum(
+            1 for row in ads_quality if row.get("quality_state") == "HEALTHY"
+        ),
+        "attention_accounts": sum(
+            1 for row in ads_quality if row.get("quality_state") == "ATTENTION"
+        ),
+        "issue_days": sum(int(row.get("issue_days") or 0) for row in ads_quality),
+        "state": (
+            "AWAITING_DATA"
+            if not ads_quality
+            else "ATTENTION"
+            if any(row.get("quality_state") == "ATTENTION" for row in ads_quality)
+            else "HEALTHY"
+        ),
+    }
+
+
 def health_board_payload(connect, marketplace: str) -> dict:
     with connect() as conn, conn.cursor() as cur:
-        jobs = [
-            _decorate_job(row)
-            for row in _all(
-                cur,
-                """
-                WITH latest AS (
-                    SELECT DISTINCT ON (source, job_name)
-                        source, job_name, started_at, finished_at, status,
-                        records_read, records_written, error_message
-                    FROM ops.ingestion_runs
-                    ORDER BY source, job_name, started_at DESC
-                ), last_success AS (
-                    SELECT DISTINCT ON (source, job_name)
-                        source, job_name, finished_at AS last_success_at,
-                        records_read AS success_records_read,
-                        records_written AS success_records_written
-                    FROM ops.ingestion_runs
-                    WHERE status='success' AND finished_at IS NOT NULL
-                    ORDER BY source, job_name, finished_at DESC
-                ), last_error AS (
-                    SELECT DISTINCT ON (source, job_name)
-                        source, job_name, started_at AS last_error_at,
-                        error_message AS last_error_message
-                    FROM ops.ingestion_runs
-                    WHERE status='error'
-                    ORDER BY source, job_name, started_at DESC
-                )
-                SELECT
-                    l.source,
-                    l.job_name,
-                    CASE
-                        WHEN l.status='interrupted' AND s.last_success_at IS NOT NULL THEN 'success'
-                        ELSE l.status
-                    END AS latest_status,
-                    l.status AS latest_attempt_status,
-                    l.started_at AS last_started_at,
-                    l.finished_at AS last_finished_at,
-                    s.last_success_at,
-                    extract(epoch from (CURRENT_TIMESTAMP - COALESCE(s.last_success_at, l.finished_at, l.started_at)))::bigint AS age_seconds,
-                    extract(epoch from (CURRENT_TIMESTAMP - l.started_at))::bigint AS attempt_age_seconds,
-                    l.records_read,
-                    l.records_written,
-                    s.success_records_read,
-                    s.success_records_written,
-                    l.error_message,
-                    e.last_error_at,
-                    e.last_error_message
-                FROM latest l
-                LEFT JOIN last_success s USING (source, job_name)
-                LEFT JOIN last_error e USING (source, job_name)
-                ORDER BY
-                    CASE l.status WHEN 'error' THEN 0 WHEN 'running' THEN 1 ELSE 2 END,
-                    age_seconds DESC,
-                    l.source,
-                    l.job_name
-                """,
-            )
-        ]
+        jobs = load_health_jobs(cur)
         summary = {
             "jobs": len(jobs),
             "healthy": sum(
@@ -220,17 +259,7 @@ def health_board_payload(connect, marketplace: str) -> dict:
             """,
             (marketplace, marketplace, marketplace, marketplace, marketplace, marketplace, marketplace, marketplace),
         )
-        ads_quality = _all(
-            cur,
-            """
-            SELECT account_id, first_date, latest_date, days_seen, healthy_days,
-                   issue_days, latest_ingested_at, quality_state
-            FROM mart.ads_ingestion_quality_summary
-            WHERE marketplace_id=%s
-            ORDER BY account_id
-            """,
-            (marketplace,),
-        )
+        ads_quality = load_ads_quality(cur, marketplace)
         ads_issue_breakdown = _all(
             cur,
             """
@@ -242,23 +271,7 @@ def health_board_payload(connect, marketplace: str) -> dict:
             """,
             (marketplace,),
         )
-        ads_summary = {
-            "accounts": len(ads_quality),
-            "healthy_accounts": sum(
-                1 for row in ads_quality if row.get("quality_state") == "HEALTHY"
-            ),
-            "attention_accounts": sum(
-                1 for row in ads_quality if row.get("quality_state") == "ATTENTION"
-            ),
-            "issue_days": sum(int(row.get("issue_days") or 0) for row in ads_quality),
-            "state": (
-                "AWAITING_DATA"
-                if not ads_quality
-                else "ATTENTION"
-                if any(row.get("quality_state") == "ATTENTION" for row in ads_quality)
-                else "HEALTHY"
-            ),
-        }
+        ads_summary = ads_health_summary(ads_quality)
         local_clock = _one(
             cur,
             """
@@ -272,9 +285,11 @@ def health_board_payload(connect, marketplace: str) -> dict:
     summary["catalog_attention"] = (
         catalog["summary"]["source_attention"] + catalog["summary"]["taxonomy_attention"]
     )
+    health_contract = build_health_contract(jobs, catalog["summary"], ads_summary)
 
     return {
         "summary": summary,
+        "health_contract": health_contract,
         "warehouse": warehouse,
         "catalog": {
             **catalog,
