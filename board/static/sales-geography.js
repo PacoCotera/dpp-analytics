@@ -38,6 +38,7 @@
   };
 
   const script = document.createElement('script');
+  script.type = 'module';
   script.src = `/assets/sales-geography-v2.js${version}`;
   script.async = false;
   script.addEventListener('load', loadFixes, { once: true });

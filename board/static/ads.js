@@ -1,4 +1,4 @@
-import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, money } from './ui-utils.js';
+import { byId, escapeHtml, fetchJson, formatBusinessClock, formatCount, integer, money } from './ui-utils.js';
 let operatingTrusted = false;
 const ratioPercent = (v) => (v == null ? '—' : `${(Number(v) * 100).toFixed(1)}%`);
 const deltaPercent = (v) => (v == null ? '—' : `${Number(v) > 0 ? '+' : ''}${Number(v).toFixed(1)}%`);
@@ -100,10 +100,10 @@ function renderQuality(p) {
   const observed = Number(f.period_observed_days || 0),
     expected = Number(f.period_expected_days || 28),
     mature = Number(f.mature_days || 0);
-  byId('coverageRead').textContent = `${observed}/${expected} days`;
-  byId('maturityRead').textContent = `${mature}/${observed || expected} days`;
+  byId('coverageRead').textContent = `${observed}/${formatCount(expected, 'day')}`;
+  byId('maturityRead').textContent = `${mature}/${formatCount(observed || expected, 'day')}`;
   byId('qualityIssueRead').textContent = q.issue_days
-    ? `${integer(q.issue_days)} days`
+    ? formatCount(q.issue_days, 'day')
     : q.state === 'HEALTHY'
       ? 'none'
       : '—';

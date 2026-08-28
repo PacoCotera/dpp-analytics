@@ -1,10 +1,15 @@
-import { byId, escapeHtml, fetchJson, formatBusinessClock, integer } from './ui-utils.js';
+import {
+  byId,
+  escapeHtml,
+  fetchJson,
+  formatBusinessClock,
+  formatCount,
+  formatMonthYear,
+  integer,
+  money,
+} from './ui-utils.js';
 
 const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-const number2 = new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 const viewState = {
   payload: null,
   window: 'ytd',
@@ -14,16 +19,12 @@ const viewState = {
 
 function financeMoney(value) {
   if (value === null || value === undefined) return '—';
-  const numeric = Number(value);
-  const prefix = numeric < 0 ? '−$' : '$';
-  return `${prefix}${number0.format(Math.abs(Math.round(numeric)))}`;
+  return money(value);
 }
 
 function financeMoneyExact(value) {
   if (value === null || value === undefined) return '—';
-  const numeric = Number(value);
-  const prefix = numeric < 0 ? '−$' : '$';
-  return `${prefix}${number2.format(Math.abs(numeric))}`;
+  return money(value, { digits: 2 });
 }
 
 function valueClass(value) {
@@ -46,13 +47,11 @@ function monthKey(value) {
 }
 
 function monthLabel(value) {
-  if (!value) return '—';
-  return monthDate(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  return formatMonthYear(value);
 }
 
 function monthLongLabel(value) {
-  if (!value) return '—';
-  return monthDate(value).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return formatMonthYear(value, { long: true });
 }
 
 function normalizeState(value) {
@@ -548,7 +547,7 @@ function renderPendingMonths(payload) {
   }
 
   section.hidden = false;
-  byId('pendingCount').textContent = `${pending.length} month${pending.length === 1 ? '' : 's'}`;
+  byId('pendingCount').textContent = formatCount(pending.length, 'month');
   byId('pendingMonths').innerHTML = pending
     .map((item) => {
       const normalizedState = normalizeState(item.accounting_state || item.state);

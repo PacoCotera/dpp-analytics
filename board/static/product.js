@@ -3,6 +3,7 @@ import {
   escapeHtml,
   fetchJson,
   formatBusinessClock,
+  formatCount,
   formatMetricWindow,
   integer,
   money,
@@ -309,7 +310,7 @@ function renderVariationContext(profile, commercial, familyVariations) {
           ${item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="">` : '<span class="sibling-image-placeholder"></span>'}
           <div>
             <strong>${escapeHtml(item.product || item.sku)}</strong>
-            <span>${integer(item.units_t28)} units · ${integer(item.sessions_t28)} sessions · ${item.conversion_t28_pct == null ? '—' : percent(item.conversion_t28_pct, { sign: false })} CVR</span>
+            <span>${formatCount(item.units_t28, 'unit')} · ${formatCount(item.sessions_t28, 'session')} · ${item.conversion_t28_pct == null ? '—' : percent(item.conversion_t28_pct, { sign: false })} CVR</span>
             <b>${money(item.sales_t28)}</b>
           </div>
         </a>`,
@@ -341,7 +342,7 @@ function renderAds(ads, commercial) {
   const trust = trusted ? 'Decision-grade' : 'Review';
   const attribution = ads.attribution_state || (mature >= observed ? 'MATURE' : 'PROVISIONAL');
   byId('adsRead').textContent =
-    `${connection.detail} Current product read: ${money(spend)} spend · ${money(ads.attributed_sales || 0)} Amazon-attributed sales · ${integer(ads.clicks || 0)} clicks · ${ratioPercent(ads.ctr)} CTR · ${ads.cpc == null ? '—' : money(ads.cpc)} CPC · ${ratioPercent(ads.acos)} ACOS · ${decimal(ads.roas)}× ROAS · ${ratioPercent(ads.tacos)} TACOS · ${observed} observed Ads day${observed === 1 ? '' : 's'}${mature < observed ? ` · ${mature} mature` : ''}. ${trust} ${String(attribution).toLowerCase()} attribution through ${ads.through_date}. Attributed sales are not exact incremental sales, and total seller sales minus attributed sales is not exact organic sales.`;
+    `${connection.detail} Current product read: ${money(spend)} spend · ${money(ads.attributed_sales || 0)} Amazon-attributed sales · ${formatCount(ads.clicks, 'click')} · ${ratioPercent(ads.ctr)} CTR · ${ads.cpc == null ? '—' : money(ads.cpc)} CPC · ${ratioPercent(ads.acos)} ACOS · ${decimal(ads.roas)}× ROAS · ${ratioPercent(ads.tacos)} TACOS · ${formatCount(observed, 'observed Ads day')}${mature < observed ? ` · ${mature} mature` : ''}. ${trust} ${String(attribution).toLowerCase()} attribution through ${ads.through_date}. Attributed sales are not exact incremental sales, and total seller sales minus attributed sales is not exact organic sales.`;
 
   const healthRead = byId('healthRead');
   if (healthRead && spend > 0 && !healthRead.textContent.includes('Paid support is active')) {
@@ -351,7 +352,7 @@ function renderAds(ads, commercial) {
 
 function renderOrders(orders = [], profile = {}) {
   byId('orderSummary').textContent =
-    `${orders.length} recent order${orders.length === 1 ? '' : 's'} · shopper spend incl. IVA · evidence only`;
+    `${formatCount(orders.length, 'recent order')} · shopper spend incl. IVA · evidence only`;
   byId('orders').innerHTML = orders.length
     ? orders
         .map((order, index) => {
@@ -379,7 +380,7 @@ function renderOrders(orders = [], profile = {}) {
             <div class="product-order__qty">×${integer(order.units)}</div>
           </div>
           <div class="product-order__foot">
-            <span>${integer(order.units)} unit${Number(order.units) === 1 ? '' : 's'} · ${escapeHtml(orderStatus(order.status))}</span>
+            <span>${formatCount(order.units, 'unit')} · ${escapeHtml(orderStatus(order.status))}</span>
             <span>${escapeHtml(order.channel_name || 'Amazon')} · shopper spend incl. IVA</span>
           </div>
         </article>`;

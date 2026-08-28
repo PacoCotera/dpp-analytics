@@ -14,6 +14,8 @@ node /qa/analysis_state_qa.mjs "$base_url" "$work_dir"
 analysis_state_rc=$?
 node /qa/numeric_ui_qa.mjs "$base_url" "$work_dir"
 numeric_rc=$?
+node /qa/ui_format_qa.mjs "$base_url" "$work_dir"
+ui_format_rc=$?
 node /qa/geography_qa.mjs "$base_url" "$work_dir"
 geography_rc=$?
 node /qa/geography_zoom_qa.mjs "$base_url" "$work_dir"
@@ -50,6 +52,7 @@ if [ "$nav_rc" -ne 0 ]; then exit "$nav_rc"; fi
 if [ "$accessibility_rc" -ne 0 ]; then exit "$accessibility_rc"; fi
 if [ "$analysis_state_rc" -ne 0 ]; then exit "$analysis_state_rc"; fi
 if [ "$numeric_rc" -ne 0 ]; then exit "$numeric_rc"; fi
+if [ "$ui_format_rc" -ne 0 ]; then exit "$ui_format_rc"; fi
 if [ "$geography_rc" -ne 0 ]; then exit "$geography_rc"; fi
 if [ "$geography_zoom_rc" -ne 0 ]; then exit "$geography_zoom_rc"; fi
 if [ "$order_operations_rc" -ne 0 ]; then exit "$order_operations_rc"; fi

@@ -1,4 +1,4 @@
-import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-utils.js';
+import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleTrigger } from './ui-utils.js';
 
 /* Sales canonical renderer v2: one fetch, one DOM owner, one chart owner. */
 (() => {
@@ -6,7 +6,6 @@ import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-
   const d3 = window.d3;
   if (!d3) return;
   const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-  const money = (v) => '$' + nf.format(Math.round(Number(v || 0)));
   const shortMoney = (v) => {
     const n = Number(v || 0),
       a = Math.abs(n);
@@ -133,20 +132,20 @@ import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-
       series = DATA?.series || [];
     set('mtdLabel', `${monthName(h.business_date)} MTD`);
     set('mtdSales', money(h.sales_mtd));
-    set('mtdVolume', `${nf.format(h.orders_mtd || 0)} orders · ${nf.format(h.units_mtd || 0)} units`);
+    set('mtdVolume', `${formatCount(h.orders_mtd, 'order')} · ${formatCount(h.units_mtd, 'unit')}`);
     set('mtdNote', `${pct(h.delta_mtd_pct)} vs same days last month`, cls(h.delta_mtd_pct));
     set('salesRunRate', money(h.projected_month_sales));
     set('t7Sales', money(h.sales_t7));
     set(
       't7Volume',
-      `${nf.format(h.orders_t7 || 0)} orders · ${nf.format(sum(series.slice(-7), 'units'))} units`,
+      `${formatCount(h.orders_t7, 'order')} · ${formatCount(sum(series.slice(-7), 'units'), 'unit')}`,
     );
     set('t7Note', `${pct(h.delta7_pct)} vs prior 7`, cls(h.delta7_pct));
     set('t28Sales', money(h.sales_t28));
-    set('t28Volume', `${nf.format(h.orders_t28 || 0)} orders · ${nf.format(h.units_t28 || 0)} units`);
+    set('t28Volume', `${formatCount(h.orders_t28, 'order')} · ${formatCount(h.units_t28, 'unit')}`);
     set('t28Note', `${pct(h.delta28_pct)} vs prior 28`, cls(h.delta28_pct));
     set('todaySales', money(t.sales_today));
-    set('todayMeta', `${t.orders_today || 0} orders · ${t.units_today || 0} units`);
+    set('todayMeta', `${formatCount(t.orders_today, 'order')} · ${formatCount(t.units_today, 'unit')}`);
     const pv = t.pace_vs_same_weekday_pct,
       todayRead = DATA?.today_read || {};
     set(
@@ -157,7 +156,7 @@ import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-
     mountRuleTrigger(document.getElementById('todayPace'), todayRead, DATA.interpretation_rules);
     set('ytdLabel', `${String(h.business_date || '').slice(0, 4)} YTD`);
     set('ytdSales', money(h.sales_ytd));
-    set('ytdVolume', `${nf.format(h.orders_ytd || 0)} orders · ${nf.format(h.units_ytd || 0)} units`);
+    set('ytdVolume', `${formatCount(h.orders_ytd, 'order')} · ${formatCount(h.units_ytd, 'unit')}`);
     set('clock', formatBusinessClock(DATA.local_time));
     set('asof', 'Historical through ' + String(h.business_date || '').slice(5));
   }
@@ -257,7 +256,7 @@ import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-
           0,
         );
         const items = details.length
-          ? `<div class="sales-order-items__summary">${nf.format(details.length)} line item${details.length === 1 ? '' : 's'} · ${nf.format(unitCount)} unit${unitCount === 1 ? '' : 's'}</div>${details
+          ? `<div class="sales-order-items__summary">${formatCount(details.length, 'line item')} · ${formatCount(unitCount, 'unit')}</div>${details
               .map((item) => {
                 const name = item.product || item.sku || item.asin || 'Item';
                 const image = item.image_url
@@ -560,7 +559,7 @@ import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-
           this,
           d3.utcFormat('%B %Y')(r.date),
           rows,
-          `${nf.format(r.orders)} orders · ${nf.format(r.units)} units`,
+          `${formatCount(r.orders, 'order')} · ${formatCount(r.units, 'unit')}`,
         );
       })
       .on('pointerleave blur', () => hideTip(c));
@@ -729,7 +728,7 @@ import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-
           this,
           `Week of ${d3.utcFormat('%b %-d')(w.week)}`,
           tr,
-          `${nf.format(w.orders)} orders · ${nf.format(w.units)} units`,
+          `${formatCount(w.orders, 'order')} · ${formatCount(w.units, 'unit')}`,
         );
       })
       .on('pointerleave blur', () => hideTip(c));
@@ -872,7 +871,7 @@ import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-
           this,
           d3.utcFormat('%a, %b %-d')(r.date),
           tr,
-          `${nf.format(r.orders)} orders · ${nf.format(r.units)} units`,
+          `${formatCount(r.orders, 'order')} · ${formatCount(r.units, 'unit')}`,
         );
       })
       .on('pointerleave blur', () => hideTip(c));
