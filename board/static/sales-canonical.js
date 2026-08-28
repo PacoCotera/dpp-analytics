@@ -1,4 +1,4 @@
-import { formatBusinessClock, mountRuleTrigger } from './ui-utils.js';
+import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-utils.js';
 
 /* Sales canonical renderer v2: one fetch, one DOM owner, one chart owner. */
 (() => {
@@ -865,6 +865,8 @@ import { formatBusinessClock, mountRuleTrigger } from './ui-utils.js';
     drawMonthly(DATA.months || [], false);
   }
   function render() {
+    set('salesBusinessWindow', formatMetricWindow(DATA.metric_windows?.RECONCILED_BUSINESS_T28));
+    set('salesProductWindow', formatMetricWindow(DATA.metric_windows?.RECONCILED_PRODUCT_T28));
     renderSignals();
     renderProductRead();
     renderProducts();

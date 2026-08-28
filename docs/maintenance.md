@@ -52,6 +52,8 @@ Before adding page-specific code, check whether the behavior belongs in one of t
 
 A page should not add a second nav, duplicate generic panel geometry, inject CSS from JavaScript, or create a post-render “enhancer” layer.
 
+`board/metric_windows.py` is the shared server owner for rolling 28-day source and cutoff contracts. Home, Sales and Trajectory reuse `RECONCILED_BUSINESS_T28`; Sales Drivers, Catalog and Product Workspace reuse `RECONCILED_PRODUCT_T28`; Inventory and Product Workspace reuse `INVENTORY_ORDER_VELOCITY_T28`. `ui-utils.js` formats those API contracts for display. Page runtimes must not reconstruct a cutoff or relabel order-based inventory velocity as reconciled product demand.
+
 ## Where business truth lives
 
 ### Shared interpretation rules
@@ -84,7 +86,7 @@ Treat each completed merchant-listings report as the canonical current snapshot,
 
 ### Inventory
 
-Inventory combines FBA inventory state with selling velocity. Action semantics such as `STOCKOUT`, `PRODUCE`, `PLAN`, `OK` and `HOLD` belong in the data/API layer. The browser renders those actions; it should not independently invent replenishment thresholds.
+Inventory combines FBA inventory state with seller-SKU velocity from Amazon Orders. Action semantics such as `STOCKOUT`, `PRODUCE`, `PLAN`, `OK` and `HOLD` belong in the data/API layer. The browser renders those actions; it should not independently invent replenishment thresholds. This order-based velocity is intentionally distinct from reconciled CHILD-ASIN product demand on Sales, Catalog and Product Workspace.
 
 ### Ads
 
@@ -130,6 +132,7 @@ Repository JSON files are defaults/seeds unless the deployment workflow explicit
 3. Keep the browser as a renderer of that definition.
 4. Add or adjust migration/QA coverage when the stored model changes.
 5. Update `docs/data-model.md` if the source of truth or reconciliation rule changes.
+6. For a rolling metric, update or reuse the named `board/metric_windows.py` contract and cross-page QA; do not duplicate its source/cutoff metadata in a page API.
 
 ### Add a new board workspace
 

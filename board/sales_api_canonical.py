@@ -7,6 +7,11 @@ from interpretation_rules import (
     sales_product_change,
     today_pace,
 )
+from metric_windows import (
+    RECONCILED_BUSINESS_T28,
+    RECONCILED_PRODUCT_T28,
+    load_metric_windows,
+)
 from sales_api_legacy import sales_payload as _legacy_sales_payload
 
 
@@ -217,6 +222,12 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
         )
         recent_orders = [dict(row) for row in cur.fetchall()]
         payload["orders"] = _decorate_recent_order_items(cur, decorate_products, recent_orders)
+        payload["metric_windows"] = load_metric_windows(
+            cur,
+            marketplace,
+            (RECONCILED_BUSINESS_T28, RECONCILED_PRODUCT_T28),
+            timezone=market.get("timezone"),
+        )
 
     payload["metric_basis"] = {
         "currency": market.get("currency") or "MXN",

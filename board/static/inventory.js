@@ -1,4 +1,12 @@
-import { byId, escapeHtml, fetchJson, formatBusinessClock, integer, setText } from './ui-utils.js';
+import {
+  byId,
+  escapeHtml,
+  fetchJson,
+  formatBusinessClock,
+  formatMetricWindow,
+  integer,
+  setText,
+} from './ui-utils.js';
 
 const ATTENTION_ACTIONS = new Set(['STOCKOUT', 'PRODUCE', 'PLAN']);
 const URGENT_ACTIONS = new Set(['STOCKOUT', 'PRODUCE']);
@@ -61,7 +69,7 @@ function inventoryCardMarkup(row) {
         ? `<div class="inv-reference-note"><strong>${integer(row.available)}</strong> available · no recent 28D velocity</div>`
         : `<div class="inv-card-metrics">
             <div class="inv-card-metric"><strong>${integer(row.available)}</strong><span>Available</span></div>
-            <div class="inv-card-metric"><strong>${integer(row.units_t28)}</strong><span>28D units</span></div>
+            <div class="inv-card-metric"><strong>${integer(row.units_t28)}</strong><span>28D order units</span></div>
             <div class="inv-card-metric"><strong>${daysCover(row)}</strong><span>Days cover</span></div>
           </div>`
     }
@@ -134,7 +142,7 @@ function renderQueue() {
             </div>
             <div class="action-bottom">
               <div class="cover-big">${daysCover(row)} <span>days cover</span></div>
-              <div class="stock-line">${integer(row.available)} available<br>${integer(row.inbound)} inbound · ${integer(row.units_t28)} sold / 28D</div>
+              <div class="stock-line">${integer(row.available)} available<br>${integer(row.inbound)} inbound · ${integer(row.units_t28)} order units / 28D</div>
             </div>
           </a>`,
         )
@@ -161,6 +169,7 @@ function render(data) {
   setText('clock', formatBusinessClock(data.local_time));
   setText('asof', `Snapshot ${snapshot}`);
   setText('snapshotFoot', `Snapshot ${snapshot}`);
+  setText('inventoryVelocityWindow', formatMetricWindow(data.metric_windows?.INVENTORY_ORDER_VELOCITY_T28));
   setText(
     'coverPortfolio',
     summary.portfolio_days_cover === null || summary.portfolio_days_cover === undefined

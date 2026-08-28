@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from metric_windows import INVENTORY_ORDER_VELOCITY_T28, load_metric_windows
+
 
 def _one(cur, sql: str, params=()):
     cur.execute(sql, params)
@@ -108,10 +110,17 @@ def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
             cur,
             "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time",
         )
+        metric_windows = load_metric_windows(
+            cur,
+            marketplace,
+            (INVENTORY_ORDER_VELOCITY_T28,),
+            timezone="America/Mexico_City",
+        )
 
     return {
         "summary": summary,
         "rows": decorate_products(rows),
         "bands": bands,
         "local_time": local_clock.get("local_time"),
+        "metric_windows": metric_windows,
     }

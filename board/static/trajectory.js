@@ -3,6 +3,7 @@ import {
   escapeHtml,
   fetchJson,
   formatBusinessClock,
+  formatMetricWindow,
   integer,
   money,
   mountRuleTrigger,
@@ -130,6 +131,9 @@ function render(payload) {
     ads = payload.ads || {};
   byId('clock').textContent = formatBusinessClock(payload.local_time);
   byId('asof').textContent = `Reconciled through ${String(headline.business_date || '').slice(5)}`;
+  byId('trajectoryBusinessWindow').textContent = formatMetricWindow(
+    payload.metric_windows?.RECONCILED_BUSINESS_T28,
+  );
   const h = byId('headline');
   h.textContent = percent(headline.delta28_pct);
   h.className = `story-number ${toneClass(headline.delta28_pct)}`;

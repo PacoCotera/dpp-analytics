@@ -38,7 +38,7 @@
             class="kpi product-kpi"
             title="Reconciled Amazon Sales &amp; Traffic shopper spend including IVA. Finance derives net revenue ex IVA separately."
           >
-            <div class="kpi__label">28D shopper spend incl. IVA</div>
+            <div class="kpi__label">Reconciled product demand · 28D</div>
             <strong class="kpi__value" id="sales28">—</strong>
             <span class="kpi__note"><b id="units28">—</b> units · <span id="delta28">—</span></span>
           </div>
@@ -58,6 +58,10 @@
             <span class="kpi__note" id="economicsNote">standard COGS</span>
           </div>
         </section>
+        <div class="metric-window-stack" aria-label="Product metric windows">
+          <p class="metric-window-note" id="productDemandWindow">Loading product-demand window</p>
+          <p class="metric-window-note" id="productVelocityWindow">Loading inventory-velocity window</p>
+        </div>
         <section class="dashboard-grid product-workspace">
           <div class="panel product-chart-panel">
             <div class="panel__header">
@@ -109,7 +113,7 @@
               <div class="inventory-line">
                 <div><b id="available">—</b><span>available</span></div>
                 <div><b id="inbound">—</b><span>inbound</span></div>
-                <div><b id="velocity">—</b><span>units/day</span></div>
+                <div><b id="velocity">—</b><span>order units/day</span></div>
               </div>
             </div>
             <div class="panel decision-block decision-block--economics">

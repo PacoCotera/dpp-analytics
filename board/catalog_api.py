@@ -12,6 +12,7 @@ from interpretation_rules import (
     catalog_offer_state,
     rule_catalog,
 )
+from metric_windows import RECONCILED_PRODUCT_T28, load_metric_windows
 
 
 def _one(cur, sql: str, params=()):
@@ -634,6 +635,12 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
             ORDER BY sc.deleted_at DESC NULLS LAST, sc.fetched_at DESC, sc.seller_sku
         """, (marketplace,))
         local_clock = _one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City','HH24:MI') local_time")
+        metric_windows = load_metric_windows(
+            cur,
+            marketplace,
+            (RECONCILED_PRODUCT_T28,),
+            timezone="America/Mexico_City",
+        )
 
     summary = _catalog_summary(rows)
     rows = decorate_products(rows)
@@ -743,5 +750,6 @@ def catalog_payload(connect, decorate_products, marketplace: str) -> dict:
             "ads_basis": "Amazon-attributed Ads performance; TACOS uses independent total seller sales. Attributed sales are not incremental sales and the residual is not exact organic sales.",
             "notes": "Commercial states and dimensional comparisons are diagnostic signals, not causal claims. Structural parents and seller-SKU aliases are excluded from sellable demand metrics.",
         },
+        "metric_windows": metric_windows,
         "local_time": local_clock.get("local_time"),
     }

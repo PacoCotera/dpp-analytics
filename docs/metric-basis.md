@@ -120,6 +120,20 @@ The settlement's customer-activity starting point is not interchangeable with Sa
 14. **Currency, timezone, VAT rate and Sales & Traffic tax basis are marketplace data.** DPP Mexico is MXN / `America/Mexico_City` / 16% IVA / `SHOPPER_SPEND_INCL_TAX`.
 15. **Applied SQL migrations are immutable.** Corrections use new migrations, not edits to applied history.
 
+## Canonical rolling-window contracts
+
+The phrase `28D` is not a complete metric definition. Every cross-page operating 28-day measure governed here exposes a server-owned contract under `metric_windows` with its source, grain, inclusive start and through dates, included-day count, source update timestamp and marketplace timezone. `board/metric_windows.py` owns these contracts. Browsers format and display them but do not infer the cutoff.
+
+| Contract | Source and grain | Used by |
+| --- | --- | --- |
+| `RECONCILED_BUSINESS_T28` | Sales & Traffic / Data Kiosk at marketplace business-day grain | Home, Sales Overview and Trajectory |
+| `RECONCILED_PRODUCT_T28` | CHILD-ASIN Sales & Traffic / Data Kiosk, mapped once to the canonical current offer owner | Sales Drivers, Catalog and Product Workspace demand |
+| `INVENTORY_ORDER_VELOCITY_T28` | Amazon Orders at seller-SKU and local order-date grain | Inventory velocity/cover and Product Workspace inventory decisions |
+
+Intentionally shared metrics reuse the same contract ID and must have identical contract fingerprints across pages. Product demand and inventory velocity intentionally do not match: they use different authoritative sources and grains, so their UI names remain distinct. For example, a Product Workspace can legitimately show 25 reconciled product units and 24 order-based inventory-velocity units when source completeness or cutoff differs. Both numbers must disclose enough evidence to explain that difference.
+
+All 28-day ranges are inclusive. If the through date is `2026-08-26`, the included range is `2026-07-30` through `2026-08-26`. `source_as_of` is the most recent source-row update participating in that window, not the page-render time or browser clock.
+
 ## Source ownership by surface
 
 | Surface | Primary sales basis | Notes |
@@ -144,6 +158,7 @@ The settlement's customer-activity starting point is not interchangeable with Sa
 - `mart.business_daily` — historical business series. `reconciled_daily_report` rows use Sales & Traffic; for DPP MX the monetary basis is shopper spend incl. IVA.
 - `mart.catalog_portfolio_product` — canonical commercial offer identity; CHILD-ASIN Sales & Traffic is attached once to one offer owner.
 - `mart.catalog_movers_t28` — reconciled CHILD-ASIN product movers mapped to canonical offer owners.
+- Board API `metric_windows` — named 28-day source/cutoff contracts from `board/metric_windows.py`; shared contract fingerprints must match across consuming pages.
 - `mart.today_operating` — live Today gross shopper spend and same-time benchmark.
 - `core.settlement_line` — immutable raw Amazon settlement report evidence, including duplicate/revised report copies when Amazon exposes them.
 - `mart.settlement_report_candidate` — report-copy reconciliation evidence and canonical rank for each marketplace + settlement + report ID.

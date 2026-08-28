@@ -2,6 +2,7 @@ import {
   escapeHtml,
   fetchJson,
   formatBusinessClock,
+  formatMetricWindow,
   integer,
   money,
   mountRuleTrigger,
@@ -128,6 +129,9 @@ function render(data) {
   document.getElementById('fresh').textContent = 'Live operating data';
   document.getElementById('stateHeadline').textContent = read.label;
   document.getElementById('stateCopy').textContent = read.explanation;
+  document.getElementById('homeBusinessWindow').textContent = formatMetricWindow(
+    data.metric_windows?.RECONCILED_BUSINESS_T28,
+  );
   mountRuleTrigger(document.getElementById('stateHeadline'), read, data.interpretation_rules);
   document.getElementById('sales28').textContent = money(rolling.sales_t28);
   document.getElementById('sales28Note').textContent = 'incl. IVA · Sales & Traffic';

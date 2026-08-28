@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from interpretation_rules import rule_catalog, trajectory_structure
+from metric_windows import RECONCILED_BUSINESS_T28, load_metric_windows
 
 
 def _one(cur, sql: str, params=()):
@@ -109,12 +110,19 @@ def trajectory_payload(connect, marketplace: str) -> dict:
             ORDER BY business_date
         """,(marketplace,cutoff,cutoff))
         local_clock=_one(cur,"SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE %s,'HH24:MI') local_time",(timezone,))
+        metric_windows = load_metric_windows(
+            cur,
+            marketplace,
+            (RECONCILED_BUSINESS_T28,),
+            timezone=timezone,
+        )
 
     trajectory_read = trajectory_structure(horizons)
     return {
         "headline":headline,"horizons":horizons,"series":series,"weekly":weekly,
         "portfolio":portfolio,"ads":ads,"ads_daily":ads_daily,"local_time":local_clock.get("local_time"),
         "trajectory_read":trajectory_read,"interpretation_rules":rule_catalog("TRAJECTORY_STRUCTURE_V1"),
+        "metric_windows":metric_windows,
         "metric_basis":{
             "currency":market.get("currency") or "MXN",
             "historical_sales":{"id":"AMAZON_ORDERED_PRODUCT_SALES","source":"Sales & Traffic / Data Kiosk","reconciled_only":True},

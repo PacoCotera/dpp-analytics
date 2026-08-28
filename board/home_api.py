@@ -6,6 +6,7 @@ from catalog_onboarding import catalog_onboarding_snapshot
 from health_api import ads_health_summary, load_ads_quality, load_health_jobs
 from health_contract import CORE_STREAMS, build_health_contract
 from interpretation_rules import business_momentum, rule_catalog
+from metric_windows import RECONCILED_BUSINESS_T28, load_metric_windows
 
 
 def _one(cur, sql, params=()):
@@ -43,6 +44,12 @@ def home_payload(connect, decorate_products, marketplace: str) -> dict:
             (marketplace,),
         )
         local_clock = _one(cur, "SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE %s,'HH24:MI') local_time", (timezone,))
+        metric_windows = load_metric_windows(
+            cur,
+            marketplace,
+            (RECONCILED_BUSINESS_T28,),
+            timezone=timezone,
+        )
         ads = {"status":"pending_access","trusted":False,"note":"Amazon Ads access pending. Business performance is shown without paid-media interpretation."}
         if _one(cur,"SELECT to_regclass('mart.ads_business_t28') rel").get('rel'):
             a = _one(cur,"SELECT through_date,spend,attributed_sales,total_business_sales,roas,acos,tacos,observed_ads_days,expected_ads_days,missing_ads_days,mature_ads_days FROM mart.ads_business_t28 WHERE marketplace_id=%s",(marketplace,))
@@ -58,4 +65,4 @@ def home_payload(connect, decorate_products, marketplace: str) -> dict:
         job for job in health_jobs if (job.get("source"), job.get("job_name")) in core_keys
     ]
     momentum_read = business_momentum(rolling.get("delta28_pct"), inventory_summary.get("needs_action"))
-    return {"generated_at":datetime.utcnow().isoformat(timespec="seconds")+"Z","local_time":local_clock.get("local_time"),"today":today,"rolling":rolling,"inventory_summary":inventory_summary,"inventory":decorate_products(inventory),"series":series,"weekly_products":decorate_products(weekly_products),"freshness":freshness,"health_contract":health_contract,"finance":finance,"ads":ads,"business_momentum":momentum_read,"interpretation_rules":rule_catalog("BUSINESS_MOMENTUM_V1"),"metric_basis":{"currency":market.get("currency") or "MXN","timezone":timezone,"historical_sales":{"id":"AMAZON_ORDERED_PRODUCT_SALES","source":"Sales & Traffic / Data Kiosk","reconciled_only":True},"today":{"id":"GROSS_CUSTOMER_SPEND","source":"Amazon Orders","label":"Shopper spend incl. IVA"},"advertising":{"source":"Amazon Ads","attribution":"Amazon attributed conversions; recent days provisional","organic_warning":"Residual sales are not exact organic sales"}}}
+    return {"generated_at":datetime.utcnow().isoformat(timespec="seconds")+"Z","local_time":local_clock.get("local_time"),"today":today,"rolling":rolling,"inventory_summary":inventory_summary,"inventory":decorate_products(inventory),"series":series,"weekly_products":decorate_products(weekly_products),"freshness":freshness,"health_contract":health_contract,"finance":finance,"ads":ads,"business_momentum":momentum_read,"interpretation_rules":rule_catalog("BUSINESS_MOMENTUM_V1"),"metric_windows":metric_windows,"metric_basis":{"currency":market.get("currency") or "MXN","timezone":timezone,"historical_sales":{"id":"AMAZON_ORDERED_PRODUCT_SALES","source":"Sales & Traffic / Data Kiosk","reconciled_only":True},"today":{"id":"GROSS_CUSTOMER_SPEND","source":"Amazon Orders","label":"Shopper spend incl. IVA"},"advertising":{"source":"Amazon Ads","attribution":"Amazon attributed conversions; recent days provisional","organic_warning":"Residual sales are not exact organic sales"}}}

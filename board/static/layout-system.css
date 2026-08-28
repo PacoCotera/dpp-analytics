@@ -27,6 +27,24 @@
   line-height: 1.4;
 }
 
+.metric-window-note {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-window-stack {
+  display: grid;
+  gap: 3px;
+  margin: 8px 0 12px;
+}
+
+.metric-window-stack .metric-window-note {
+  margin: 0;
+}
+
 .page-header__aside {
   min-width: 0;
 }

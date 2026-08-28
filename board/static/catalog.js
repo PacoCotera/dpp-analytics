@@ -4,6 +4,7 @@ import {
   escapeHtml,
   fetchJson,
   formatBusinessClock,
+  formatMetricWindow,
   integer,
   money,
   ruleTrigger,
@@ -507,6 +508,7 @@ function render(data) {
     `${money(summary.sales_t28)} from ${num(summary.units_t28)} units on ${num(summary.sessions_t28)} sessions · ${pct(summary.conversion_t28_pct)} conversion`;
   $('portfolioBasis').textContent =
     `28D through ${summary.traffic_through_date || 'latest completed day'} · ${summary.sellable_offers || 0} current Amazon offers across ${summary.families || 0} families · ${summary.amazon_dimension_coverage || 0} offers with Amazon variation metadata`;
+  $('catalogDemandWindow').textContent = formatMetricWindow(data.metric_windows?.RECONCILED_PRODUCT_T28);
   $('asof').textContent = `Demand through ${summary.traffic_through_date || '—'}`;
   $('freshness').textContent =
     `Data Kiosk through ${summary.traffic_through_date || '—'} · listings ${String(summary.listings_fetched_at || '').slice(0, 10) || '—'} · FBA current`;
