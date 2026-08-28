@@ -447,7 +447,7 @@ try {
   if (postal.pageOverflow > 1) throw new Error(`Postal drill-down page horizontally overflows by ${postal.pageOverflow}px`);
 
   const fallbackPage = await browser.newPage({ viewport: { width: 1200, height: 800 } });
-  await fallbackPage.route('**/assets/mexico-states-90a1d52.geojson', route =>
+  await fallbackPage.route(url => url.pathname === '/assets/mexico-states-90a1d52.geojson', route =>
     route.fulfill({ status: 503, contentType: 'application/geo+json', body: '{"error":"test"}' }),
   );
   await fallbackPage.goto(`${baseUrl}/sales?geometry-fallback=1`, { waitUntil: 'domcontentloaded', timeout: 20000 });
