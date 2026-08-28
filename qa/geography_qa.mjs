@@ -52,6 +52,11 @@ try {
   });
   if (geoApi.status !== 200) throw new Error(`Sales geography API ${geoApi.status}`);
   if (!geoApi.cacheStatus) throw new Error('Sales geography payload did not expose cache status');
+  const catalogApi = await page.evaluate(async () => {
+    const r = await fetch('/api/catalog', { cache: 'no-store' });
+    return { status: r.status, body: await r.json() };
+  });
+  if (catalogApi.status !== 200) throw new Error(`Catalog API ${catalogApi.status}`);
   const geo = geoApi.body?.geography || {};
   const coverage = geo.coverage || {};
   if (!Array.isArray(geo.daily) || !geo.daily.length) throw new Error('Postal geography daily fact is empty');
@@ -70,6 +75,37 @@ try {
     !/^\d{2}$/.test(String(row.state_code || '')) || !String(row.state_name || '').trim()
   );
   if (nonCanonicalRows.length) throw new Error(`Geography payload contains noncanonical state rows: ${nonCanonicalRows.length}`);
+
+  const sellableRoles = new Set(['SELLABLE_VARIATION', 'SELLABLE_STANDALONE']);
+  const catalogCurrentOffers = (catalogApi.body?.products || []).filter(row =>
+    row.is_offer_owner && sellableRoles.has(row.product_role) && row.catalog_membership === 'CURRENT_OFFER'
+  );
+  const geographyCurrentOffers = (geo.products || []).filter(row => row.is_current_offer);
+  const catalogCurrentSkus = catalogCurrentOffers.map(row => String(row.sku || '')).filter(Boolean).sort();
+  const geographyCurrentSkus = geographyCurrentOffers.map(row => String(row.analysis_sku || row.sku || '')).filter(Boolean).sort();
+  if (JSON.stringify(catalogCurrentSkus) !== JSON.stringify(geographyCurrentSkus)) {
+    throw new Error(`Geography current products differ from canonical Catalog offers: ${JSON.stringify({ catalogCurrentSkus, geographyCurrentSkus })}`);
+  }
+  if (new Set(geographyCurrentSkus).size !== geographyCurrentSkus.length) {
+    throw new Error(`Geography current product identities are duplicated: ${geographyCurrentSkus.join(', ')}`);
+  }
+  if (Number(geo.product_analysis?.current_offers || 0) !== catalogCurrentOffers.length) {
+    throw new Error(`Geography product contract count differs from Catalog: ${JSON.stringify(geo.product_analysis)}`);
+  }
+  if ((geo.product_analysis?.ambiguous_current_asins || []).length) {
+    throw new Error(`Geography cannot safely collapse aliases for ambiguous current ASINs: ${JSON.stringify(geo.product_analysis.ambiguous_current_asins)}`);
+  }
+  const pncAliasRows = (geo.sku_daily || []).filter(row => String(row.source_sku || '') === 'PNC-001-FBM');
+  if (pncAliasRows.some(row => row.analysis_sku !== 'PNC-001' || !row.is_alias)) {
+    throw new Error(`Historical PNC-001-FBM evidence did not collapse into PNC-001: ${JSON.stringify(pncAliasRows.slice(0, 3))}`);
+  }
+  const canonicalPnc = (geo.products || []).find(row => String(row.sku || '') === 'PNC-001');
+  if (!canonicalPnc?.source_skus?.includes('PNC-001-FBM') || Number(geo.product_analysis?.collapsed_alias_source_skus || 0) < 1) {
+    throw new Error(`Geography product contract did not preserve PNC-001-FBM as canonical PNC-001 source evidence: ${JSON.stringify({ canonicalPnc, productAnalysis: geo.product_analysis })}`);
+  }
+  if ((geo.products || []).some(row => String(row.sku || '') === 'PNC-001-FBM')) {
+    throw new Error('Historical PNC-001-FBM alias remains a Geography product option');
+  }
 
   const references = Array.isArray(geo.postal_reference) ? geo.postal_reference : [];
   if (!references.length) throw new Error('SEPOMEX postal reference dictionary is empty');
@@ -99,6 +135,75 @@ try {
   await page.locator('#geoRankedRows tr').first().waitFor({ state: 'visible', timeout: 8000 });
   await page.locator('#geoMap path.state-shape').first().waitFor({ state: 'visible', timeout: 15000 });
   if (geographyRequests <= requestsBeforeOpen) throw new Error('Opening Geography did not request its lazy payload');
+
+  const maxProductDate = new Date(`${String(coverage.last_date || '').slice(0, 10)}T12:00:00Z`);
+  const productStart90 = new Date(maxProductDate);
+  productStart90.setUTCDate(productStart90.getUTCDate() - 89);
+  const productEvidence90 = new Set((geo.sku_daily || []).filter(row => {
+    const date = new Date(`${String(row.business_date || '').slice(0, 10)}T12:00:00Z`);
+    return date >= productStart90 && date <= maxProductDate;
+  }).map(row => String(row.analysis_sku || '')).filter(Boolean));
+  const expectedPrimary90 = geographyCurrentOffers
+    .filter(row => row.is_active_offer && productEvidence90.has(String(row.analysis_sku || row.sku || '')))
+    .map(row => String(row.analysis_sku || row.sku || ''))
+    .sort();
+  const defaultProductControl = await page.evaluate(() => ({
+    values: [...document.querySelectorAll('#geoProduct option')].map(option => option.value),
+    groups: [...document.querySelectorAll('#geoProduct optgroup')].map(group => group.label),
+    scope: document.getElementById('geoProductScope')?.textContent?.trim() || '',
+    secondaryLabel: document.getElementById('geoSecondaryProducts')?.textContent?.trim() || '',
+    secondaryExpanded: document.getElementById('geoSecondaryProducts')?.getAttribute('aria-expanded'),
+  }));
+  const defaultProductValues = defaultProductControl.values.filter(value => value !== 'all').sort();
+  if (JSON.stringify(defaultProductValues) !== JSON.stringify(expectedPrimary90)) {
+    throw new Error(`Default 90D products do not equal current offers with evidence: ${JSON.stringify({ expectedPrimary90, defaultProductControl })}`);
+  }
+  if (defaultProductControl.groups.length !== 1 || !defaultProductControl.groups[0].includes('Current offers with Last 90 days evidence')) {
+    throw new Error(`Default product grouping is not explicit: ${JSON.stringify(defaultProductControl)}`);
+  }
+  if (!defaultProductControl.scope.includes(`${expectedPrimary90.length} current products with Last 90 days evidence`) || defaultProductControl.secondaryExpanded !== 'false') {
+    throw new Error(`Default product scope disclosure is incomplete: ${JSON.stringify(defaultProductControl)}`);
+  }
+
+  await page.locator('#geoSecondaryProducts').click();
+  const expandedProductControl = await page.evaluate(() => ({
+    values: [...document.querySelectorAll('#geoProduct option')].map(option => option.value),
+    groups: [...document.querySelectorAll('#geoProduct optgroup')].map(group => group.label),
+    labels: [...document.querySelectorAll('#geoProduct option')].map(option => option.textContent?.trim() || ''),
+    scope: document.getElementById('geoProductScope')?.textContent?.trim() || '',
+    expanded: document.getElementById('geoSecondaryProducts')?.getAttribute('aria-expanded'),
+  }));
+  const expectedAllAnalysisSkus = (geo.products || []).map(row => String(row.analysis_sku || row.sku || '')).filter(Boolean).sort();
+  const expandedAnalysisSkus = expandedProductControl.values.filter(value => value !== 'all').sort();
+  if (JSON.stringify(expandedAnalysisSkus) !== JSON.stringify(expectedAllAnalysisSkus)) {
+    throw new Error(`Secondary product choice is incomplete: ${JSON.stringify({ expectedAllAnalysisSkus, expandedProductControl })}`);
+  }
+  if (expandedProductControl.groups.length !== 2 || expandedProductControl.expanded !== 'true' || !expandedProductControl.scope.endsWith('shown')) {
+    throw new Error(`Secondary product disclosure is incomplete: ${JSON.stringify(expandedProductControl)}`);
+  }
+  if (expandedProductControl.values.includes('PNC-001-FBM') || !expandedProductControl.labels.some(label => label.includes('Historical transactions'))) {
+    throw new Error(`Secondary products revive an alias or omit historical labels: ${JSON.stringify(expandedProductControl)}`);
+  }
+  await page.locator('#geoSecondaryProducts').click();
+
+  await page.locator('[data-geo-range="30d"]').click();
+  const productStart30 = new Date(maxProductDate);
+  productStart30.setUTCDate(productStart30.getUTCDate() - 29);
+  const productEvidence30 = new Set((geo.sku_daily || []).filter(row => {
+    const date = new Date(`${String(row.business_date || '').slice(0, 10)}T12:00:00Z`);
+    return date >= productStart30 && date <= maxProductDate;
+  }).map(row => String(row.analysis_sku || '')).filter(Boolean));
+  const expectedPrimary30 = geographyCurrentOffers
+    .filter(row => row.is_active_offer && productEvidence30.has(String(row.analysis_sku || row.sku || '')))
+    .map(row => String(row.analysis_sku || row.sku || ''))
+    .sort();
+  const productValues30 = (await page.locator('#geoProduct option').evaluateAll(options => options.map(option => option.value)))
+    .filter(value => value !== 'all')
+    .sort();
+  if (JSON.stringify(productValues30) !== JSON.stringify(expectedPrimary30)) {
+    throw new Error(`30D product scope did not rebuild from the global Geography cutoff: ${JSON.stringify({ expectedPrimary30, productValues30 })}`);
+  }
+  await page.locator('[data-geo-range="90d"]').click();
 
   const national = await page.evaluate(() => {
     const scroll = document.querySelector('.geo-ranked-panel .data-table-scroll');

@@ -292,12 +292,21 @@
                   <option value="aov">AOV</option>
                 </select>
               </label>
-              <label class="geo-control geo-product-control">
-                <span>Product</span>
+              <div class="geo-control geo-product-control">
+                <label for="geoProduct">Product</label>
                 <select id="geoProduct">
-                  <option value="all">All products</option>
+                  <option value="all">All order evidence</option>
                 </select>
-              </label>
+                <button
+                  class="geo-secondary-products"
+                  id="geoSecondaryProducts"
+                  type="button"
+                  aria-expanded="false"
+                >
+                  Show secondary products
+                </button>
+                <small id="geoProductScope">Current catalog evidence is loading…</small>
+              </div>
               <label class="geo-control">
                 <span>Area</span>
                 <select id="geoStateSelect">

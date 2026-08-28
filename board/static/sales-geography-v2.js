@@ -76,6 +76,7 @@
   let RANGE = '90d';
   let METRIC = 'sales';
   let SKU = 'all';
+  let SHOW_SECONDARY_PRODUCTS = false;
   let SELECTED_STATE = null;
   let SORT_FIELD = 'sales';
   let SORT_DIRECTION = 'desc';
@@ -111,24 +112,40 @@
     return s ? new Date(`${s}T12:00:00Z`) : null;
   }
 
+  function geographyMaxDate() {
+    const coverageDate = rowDate({ business_date: DATA?.geography?.coverage?.last_date });
+    if (coverageDate) return coverageDate;
+    const dates = (DATA?.geography?.daily || []).map(rowDate).filter(Boolean);
+    return dates.length ? d3.max(dates) : null;
+  }
+
+  function rangeBounds() {
+    const maxDate = geographyMaxDate();
+    if (!maxDate) return { start: null, end: null };
+    if (RANGE === 'all') return { start: null, end: maxDate };
+    const start =
+      RANGE === 'ytd'
+        ? new Date(Date.UTC(maxDate.getUTCFullYear(), 0, 1, 12))
+        : d3.utcDay.offset(maxDate, -((RANGE === '30d' ? 30 : 90) - 1));
+    return { start, end: maxDate };
+  }
+
+  function rowsInSelectedWindow(rows) {
+    const { start, end } = rangeBounds();
+    return (rows || [])
+      .map((r) => ({ ...r, _date: rowDate(r) }))
+      .filter((r) => r._date && (!start || r._date >= start) && (!end || r._date <= end));
+  }
+
   function sourceRows() {
     const g = DATA?.geography || {};
     return SKU === 'all'
       ? g.daily || []
-      : (g.sku_daily || []).filter((r) => String(r.seller_sku || '') === SKU);
+      : (g.sku_daily || []).filter((r) => String(r.analysis_sku || '') === SKU);
   }
 
   function rangedRows() {
-    const rows = sourceRows()
-      .map((r) => ({ ...r, _date: rowDate(r) }))
-      .filter((r) => r._date);
-    if (!rows.length || RANGE === 'all') return rows;
-    const maxDate = d3.max(rows, (r) => r._date);
-    if (!maxDate) return rows;
-    let start;
-    if (RANGE === 'ytd') start = new Date(Date.UTC(maxDate.getUTCFullYear(), 0, 1, 12));
-    else start = d3.utcDay.offset(maxDate, -((RANGE === '30d' ? 30 : 90) - 1));
-    return rows.filter((r) => r._date >= start && r._date <= maxDate);
+    return rowsInSelectedWindow(sourceRows());
   }
 
   function aggregate(keyFn) {
@@ -214,8 +231,8 @@
   }
 
   function selectedProductLabel() {
-    if (SKU === 'all') return 'All products';
-    const product = (DATA?.geography?.products || []).find((x) => String(x.sku) === SKU);
+    if (SKU === 'all') return 'All order evidence';
+    const product = (DATA?.geography?.products || []).find((x) => String(x.analysis_sku || x.sku) === SKU);
     return product?.product || SKU;
   }
 
@@ -563,15 +580,70 @@
     renderAll();
   }
 
-  function initControls() {
+  function productGroups() {
+    const evidence = new Set(
+      rowsInSelectedWindow(DATA?.geography?.sku_daily || [])
+        .map((row) => String(row.analysis_sku || ''))
+        .filter(Boolean),
+    );
+    const products = (DATA?.geography?.products || [])
+      .slice()
+      .sort((a, b) => String(a.product || a.sku).localeCompare(String(b.product || b.sku), 'es-MX'));
+    const primary = products.filter(
+      (product) =>
+        product.is_current_offer &&
+        product.is_active_offer &&
+        evidence.has(String(product.analysis_sku || product.sku || '')),
+    );
+    const primaryKeys = new Set(primary.map((product) => String(product.analysis_sku || product.sku)));
+    const secondary = products.filter(
+      (product) => !primaryKeys.has(String(product.analysis_sku || product.sku)),
+    );
+    return { primary, secondary, evidence };
+  }
+
+  function productOption(product, secondary = false) {
+    const sku = String(product.analysis_sku || product.sku || '');
+    let suffix = '';
+    if (secondary) {
+      if (!product.is_current_offer) suffix = ' · Historical transactions';
+      else if (!product.is_active_offer) suffix = ` · ${product.status || 'Inactive offer'}`;
+      else suffix = ` · No ${selectedWindowLabel()} evidence`;
+    }
+    return `<option value="${esc(sku)}">${esc(product.product || sku)} · ${esc(sku)}${esc(suffix)}</option>`;
+  }
+
+  function renderProductControl() {
     const product = document.getElementById('geoProduct');
+    const secondaryButton = document.getElementById('geoSecondaryProducts');
+    const { primary, secondary } = productGroups();
+    const visible = SHOW_SECONDARY_PRODUCTS ? [...primary, ...secondary] : primary;
+    const visibleKeys = new Set(visible.map((item) => String(item.analysis_sku || item.sku)));
+    if (SKU !== 'all' && !visibleKeys.has(SKU)) SKU = 'all';
+
     if (product) {
-      const products = (DATA?.geography?.products || [])
-        .slice()
-        .sort((a, b) => String(a.product || a.sku).localeCompare(String(b.product || b.sku)));
-      product.innerHTML = `<option value="all">All products</option>${products.map((p) => `<option value="${esc(p.sku)}">${esc(p.product || p.sku)} · ${esc(p.sku)}</option>`).join('')}`;
+      const primaryOptions = primary.map((item) => productOption(item)).join('');
+      const secondaryOptions = SHOW_SECONDARY_PRODUCTS
+        ? `<optgroup label="Historical, inactive, or no evidence">${secondary.map((item) => productOption(item, true)).join('')}</optgroup>`
+        : '';
+      product.innerHTML = `<option value="all">All order evidence</option><optgroup label="Current offers with ${esc(selectedWindowLabel())} evidence">${primaryOptions}</optgroup>${secondaryOptions}`;
       product.value = SKU;
     }
+    if (secondaryButton) {
+      secondaryButton.hidden = secondary.length === 0;
+      secondaryButton.setAttribute('aria-expanded', String(SHOW_SECONDARY_PRODUCTS));
+      secondaryButton.textContent = SHOW_SECONDARY_PRODUCTS
+        ? 'Hide secondary products'
+        : `Show secondary products (${secondary.length})`;
+    }
+    setText(
+      'geoProductScope',
+      `${primary.length} current products with ${selectedWindowLabel()} evidence · ${secondary.length} historical, inactive, or no-evidence products ${SHOW_SECONDARY_PRODUCTS ? 'shown' : 'hidden'}`,
+    );
+  }
+
+  function initControls() {
+    renderProductControl();
     const state = document.getElementById('geoStateSelect');
     if (state) {
       state.innerHTML = `<option value="all">Mexico</option>${STATE_META.map((m) => `<option value="${m.code}">${esc(m.name)}</option>`).join('')}`;
@@ -588,6 +660,7 @@
       document
         .querySelectorAll('[data-geo-range]')
         .forEach((x) => x.classList.toggle('active', x === button));
+      renderProductControl();
       renderAll();
     });
     document.getElementById('geoMetric')?.addEventListener('change', (event) => {
@@ -597,6 +670,12 @@
     document.getElementById('geoProduct')?.addEventListener('change', (event) => {
       SKU = event.target.value;
       SHOW_ALL_RANKED = false;
+      renderAll();
+    });
+    document.getElementById('geoSecondaryProducts')?.addEventListener('click', () => {
+      SHOW_SECONDARY_PRODUCTS = !SHOW_SECONDARY_PRODUCTS;
+      SHOW_ALL_RANKED = false;
+      renderProductControl();
       renderAll();
     });
     document

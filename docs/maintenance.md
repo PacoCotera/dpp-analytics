@@ -76,7 +76,7 @@ Today is deliberately provisional and near-real-time. Its operating pulse is dri
 
 Reconciled historical daily sales use Data Kiosk-backed `mart.business_daily` data. This is the basis for rolling windows and structural trajectory. Browser code may choose a display window but must not redefine the reconciled sales fact.
 
-The default `/api/sales` payload deliberately excludes postal geography. `/api/sales/geography` reads the existing reduced Orders geography marts only when the user opens Geography, then `sales_geography_api.py` resolves every postal row to its canonical SEPOMEX federal-entity key before aggregation. Raw destination-state labels must not be aggregated or normalized in browser JavaScript. The split is a transport/performance boundary, not a new sales fact or privacy policy.
+The default `/api/sales` payload deliberately excludes postal geography. `/api/sales/geography` reads the existing reduced Orders geography marts only when the user opens Geography, then `sales_geography_api.py` resolves every postal row to its canonical SEPOMEX federal-entity key before aggregation. It also owns Geography product identity: current offers come from the latest Amazon seller-catalog snapshot, while raw historical seller SKUs remain `source_sku` transaction evidence and same-ASIN aliases roll into the current offer's `analysis_sku`. The browser may scope canonical product choices to the selected globally anchored period, but must not rebuild catalog membership or alias mappings. Raw destination-state labels must not be aggregated or normalized in browser JavaScript. The split is a transport/performance boundary, not a new sales fact or privacy policy.
 
 ### Catalog and Product Workspace
 
