@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "npm run lint:contract && npm run lint:catalog-cache && npm run lint:js && npm run lint:css",
+    "build:presentation": "node scripts/build-presentation-profiles.mjs",
+    "lint": "npm run lint:presentation && npm run lint:contract && npm run lint:catalog-cache && npm run lint:js && npm run lint:css",
+    "lint:presentation": "node scripts/presentation-contract.mjs",
     "lint:contract": "node scripts/frontend-contract.mjs",
     "lint:catalog-cache": "node scripts/catalog-cache-contract.mjs",
     "lint:js": "eslint static/**/*.js --no-warn-ignored",

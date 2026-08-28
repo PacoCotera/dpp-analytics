@@ -1,0 +1,471 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DPP Analytics presentation profile registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "defaultProfileId",
+    "storageKey",
+    "paletteRevision",
+    "paletteNote",
+    "profiles"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "defaultProfileId": {
+      "const": "warm-studio"
+    },
+    "storageKey": {
+      "const": "dpp.presentation.v1"
+    },
+    "paletteRevision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "paletteNote": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "displayName",
+          "description",
+          "paletteProvenance",
+          "colorScheme",
+          "themeColor",
+          "shell",
+          "profile",
+          "density",
+          "surfaceEmphasis",
+          "typography",
+          "geometry",
+          "chartStyle",
+          "effects",
+          "tokens"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "warm-studio",
+              "midnight-saffron",
+              "aubergine-aqua",
+              "midnight-dark",
+              "aubergine-dark",
+              "weyland"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "paletteProvenance": {
+            "const": "implementation-defined"
+          },
+          "colorScheme": {
+            "enum": [
+              "light",
+              "dark"
+            ]
+          },
+          "themeColor": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "shell": {
+            "const": "persistent-domain-sidebar"
+          },
+          "profile": {
+            "enum": [
+              "standard",
+              "weyland"
+            ]
+          },
+          "density": {
+            "enum": [
+              "comfortable",
+              "compact"
+            ]
+          },
+          "surfaceEmphasis": {
+            "enum": [
+              "quiet",
+              "tinted",
+              "expressive"
+            ]
+          },
+          "typography": {
+            "enum": [
+              "humanist",
+              "terminal"
+            ]
+          },
+          "geometry": {
+            "enum": [
+              "soft",
+              "precision"
+            ]
+          },
+          "chartStyle": {
+            "enum": [
+              "solid",
+              "outlined-vector"
+            ]
+          },
+          "effects": {
+            "enum": [
+              "quiet",
+              "instrument"
+            ]
+          },
+          "tokens": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "canvas",
+              "chrome",
+              "header",
+              "page",
+              "surface",
+              "surfaceSubtle",
+              "surfaceRaised",
+              "text",
+              "textMuted",
+              "textSubtle",
+              "border",
+              "borderStrong",
+              "chromeText",
+              "chromeMuted",
+              "chromeBorder",
+              "chromeActive",
+              "chromeActiveText",
+              "headerText",
+              "headerMuted",
+              "headerBorder",
+              "interaction",
+              "interactionHover",
+              "interactionActive",
+              "interactionText",
+              "focusRing",
+              "brand",
+              "brandSoft",
+              "brandText",
+              "data1",
+              "data2",
+              "data3",
+              "data4",
+              "data5",
+              "data6",
+              "dataIncomplete",
+              "dataGrid",
+              "healthy",
+              "healthySurface",
+              "healthyText",
+              "warning",
+              "warningSurface",
+              "warningText",
+              "critical",
+              "criticalSurface",
+              "criticalText",
+              "info",
+              "infoSurface",
+              "infoText",
+              "fontBody",
+              "fontDisplay",
+              "fontDetail",
+              "headingWeight",
+              "kpiWeight",
+              "bodySize",
+              "metadataSize",
+              "radiusSmall",
+              "radiusMedium",
+              "radiusLarge",
+              "radiusPill",
+              "borderWidth",
+              "controlHeight",
+              "shadowLow",
+              "shadowHigh",
+              "panelTexture",
+              "motionDuration"
+            ],
+            "properties": {
+              "canvas": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "chrome": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "header": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "page": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "surface": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "surfaceSubtle": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "surfaceRaised": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "text": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "textMuted": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "textSubtle": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "border": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "borderStrong": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "chromeText": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "chromeMuted": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "chromeBorder": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "chromeActive": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "chromeActiveText": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "headerText": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "headerMuted": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "headerBorder": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "interaction": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "interactionHover": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "interactionActive": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "interactionText": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "focusRing": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "brand": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "brandSoft": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "brandText": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "data1": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "data2": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "data3": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "data4": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "data5": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "data6": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "dataIncomplete": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "dataGrid": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "healthy": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "healthySurface": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "healthyText": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "warning": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "warningSurface": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "warningText": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "critical": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "criticalSurface": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "criticalText": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "info": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "infoSurface": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "infoText": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "fontBody": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fontDisplay": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fontDetail": {
+                "type": "string",
+                "minLength": 1
+              },
+              "headingWeight": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kpiWeight": {
+                "type": "string",
+                "minLength": 1
+              },
+              "bodySize": {
+                "type": "string",
+                "minLength": 1
+              },
+              "metadataSize": {
+                "type": "string",
+                "minLength": 1
+              },
+              "radiusSmall": {
+                "type": "string",
+                "minLength": 1
+              },
+              "radiusMedium": {
+                "type": "string",
+                "minLength": 1
+              },
+              "radiusLarge": {
+                "type": "string",
+                "minLength": 1
+              },
+              "radiusPill": {
+                "type": "string",
+                "minLength": 1
+              },
+              "borderWidth": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controlHeight": {
+                "type": "string",
+                "minLength": 1
+              },
+              "shadowLow": {
+                "type": "string",
+                "minLength": 1
+              },
+              "shadowHigh": {
+                "type": "string",
+                "minLength": 1
+              },
+              "panelTexture": {
+                "type": "string",
+                "minLength": 1
+              },
+              "motionDuration": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
