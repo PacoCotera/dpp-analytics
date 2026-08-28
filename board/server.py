@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import mimetypes
 import os
 import re
 from hashlib import sha256
@@ -21,7 +20,7 @@ from health_api import health_board_payload as build_health_board_payload
 from inventory_api import inventory_payload as build_inventory_payload
 from product_api import product_payload as build_product_payload
 from response_cache import TTLResponseCache
-from response_transport import compress_response, read_asset
+from response_transport import asset_content_type, compress_response, read_asset
 from sales_api import sales_payload as build_sales_payload
 from today_api import today_payload as build_today_payload
 from trajectory_api import trajectory_payload as build_trajectory_payload
@@ -85,17 +84,6 @@ def asset_path(request_path: str) -> Path | None:
     except ValueError:
         return None
     return candidate if candidate.is_file() else None
-
-
-def asset_content_type(path: Path) -> str:
-    content_type, _ = mimetypes.guess_type(path.name)
-    if path.suffix == ".js":
-        return "text/javascript; charset=utf-8"
-    if path.suffix == ".css":
-        return "text/css; charset=utf-8"
-    if content_type and content_type.startswith("text/"):
-        return f"{content_type}; charset=utf-8"
-    return content_type or "application/octet-stream"
 
 
 HOME_INDEX = versioned_page("home.html")
