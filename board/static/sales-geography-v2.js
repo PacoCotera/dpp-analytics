@@ -47,6 +47,8 @@
     units: 'Units',
     aov: 'AOV',
   };
+  const GEO_RANGES = new Set(['30d', '90d', 'ytd', 'all']);
+  const GEO_METRICS = new Set(['sales', 'orders', 'units', 'aov']);
   const RANKED_ROW_LIMIT = 20;
   const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   const money = (v) => '$' + nf.format(Math.round(Number(v || 0)));
@@ -84,6 +86,61 @@
   let STATES_GEO = null;
   const POSTAL_CACHE = new Map();
   let renderToken = 0;
+
+  function readGeographyUrlState() {
+    const params = new URLSearchParams(window.location.search);
+    const requestedRange = params.get('geo_range') || '90d';
+    const requestedMetric = params.get('metric') || 'sales';
+    const requestedState = params.get('state');
+    const requestedSku = params.get('sku') || 'all';
+    RANGE = GEO_RANGES.has(requestedRange) ? requestedRange : '90d';
+    METRIC = GEO_METRICS.has(requestedMetric) ? requestedMetric : 'sales';
+    SELECTED_STATE = META_BY_CODE.has(requestedState) ? requestedState : null;
+    if (!DATA) {
+      SKU = requestedSku;
+      return;
+    }
+    const validProducts = new Set(
+      (DATA.geography?.products || []).map((product) => String(product.analysis_sku || product.sku || '')),
+    );
+    SKU = requestedSku === 'all' || validProducts.has(requestedSku) ? requestedSku : 'all';
+    const secondaryKeys = new Set(
+      productGroups().secondary.map((product) => String(product.analysis_sku || product.sku || '')),
+    );
+    SHOW_SECONDARY_PRODUCTS = SKU !== 'all' && secondaryKeys.has(SKU);
+  }
+
+  function writeGeographyUrlState({ replace = false } = {}) {
+    const url = new URL(window.location.href);
+    if (RANGE === '90d') url.searchParams.delete('geo_range');
+    else url.searchParams.set('geo_range', RANGE);
+    if (METRIC === 'sales') url.searchParams.delete('metric');
+    else url.searchParams.set('metric', METRIC);
+    if (SKU === 'all') url.searchParams.delete('sku');
+    else url.searchParams.set('sku', SKU);
+    if (SELECTED_STATE) url.searchParams.set('state', SELECTED_STATE);
+    else url.searchParams.delete('state');
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', url);
+  }
+
+  function syncGeographyControls() {
+    document.querySelectorAll('[data-geo-range]').forEach((button) => {
+      const active = button.dataset.geoRange === RANGE;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    const metric = document.getElementById('geoMetric');
+    if (metric) metric.value = METRIC;
+    const state = document.getElementById('geoStateSelect');
+    if (state) state.value = SELECTED_STATE || 'all';
+  }
+
+  function restoreGeographyUrlState() {
+    if (!DATA) return;
+    readGeographyUrlState();
+    initControls();
+    renderAll();
+  }
 
   function postalReferences() {
     return new Map((DATA?.geography?.postal_reference || []).map((r) => [postal(r.postal_code), r]));
@@ -576,9 +633,10 @@
     renderMap();
   }
 
-  function selectState(code) {
+  function selectState(code, { updateUrl = true } = {}) {
     SELECTED_STATE = code && code !== 'all' ? code : null;
     SHOW_ALL_RANKED = false;
+    if (updateUrl) writeGeographyUrlState();
     renderAll();
   }
 
@@ -645,39 +703,42 @@
   }
 
   function initControls() {
-    renderProductControl();
     const state = document.getElementById('geoStateSelect');
     if (state) {
       state.innerHTML = `<option value="all">Mexico</option>${STATE_META.map((m) => `<option value="${m.code}">${esc(m.name)}</option>`).join('')}`;
-      state.value = SELECTED_STATE || 'all';
     }
+    renderProductControl();
+    syncGeographyControls();
   }
 
   function bind() {
     document.getElementById('geoRange')?.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-geo-range]');
-      if (!button) return;
+      if (!button || button.dataset.geoRange === RANGE) return;
       RANGE = button.dataset.geoRange;
       SHOW_ALL_RANKED = false;
-      document
-        .querySelectorAll('[data-geo-range]')
-        .forEach((x) => x.classList.toggle('active', x === button));
       renderProductControl();
+      syncGeographyControls();
+      writeGeographyUrlState();
       renderAll();
     });
     document.getElementById('geoMetric')?.addEventListener('change', (event) => {
       METRIC = event.target.value;
+      writeGeographyUrlState();
       renderAll();
     });
     document.getElementById('geoProduct')?.addEventListener('change', (event) => {
       SKU = event.target.value;
       SHOW_ALL_RANKED = false;
+      writeGeographyUrlState();
       renderAll();
     });
     document.getElementById('geoSecondaryProducts')?.addEventListener('click', () => {
+      const previousSku = SKU;
       SHOW_SECONDARY_PRODUCTS = !SHOW_SECONDARY_PRODUCTS;
       SHOW_ALL_RANKED = false;
       renderProductControl();
+      if (SKU !== previousSku) writeGeographyUrlState();
       renderAll();
     });
     document
@@ -704,6 +765,12 @@
       if (DATA) renderAll();
       else load();
     });
+    window.addEventListener('dpp:sales-view', (event) => {
+      if (event.detail?.view !== 'geography') return;
+      if (DATA) renderAll();
+      else load();
+    });
+    window.addEventListener('popstate', restoreGeographyUrlState);
     let timer;
     window.addEventListener(
       'resize',
@@ -720,8 +787,10 @@
     try {
       if (!window.DPPDataCache?.fetchJson) throw new Error('DPP data cache unavailable');
       DATA = await window.DPPDataCache.fetchJson('/api/sales/geography');
+      readGeographyUrlState();
       initControls();
       renderAll();
+      writeGeographyUrlState({ replace: true });
     } catch (error) {
       console.error(error);
       setText('geoCoverage', 'Geography data unavailable');
@@ -730,4 +799,5 @@
   }
 
   bind();
+  if (new URLSearchParams(window.location.search).get('view') === 'geography') load();
 })();

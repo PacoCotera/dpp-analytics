@@ -218,6 +218,8 @@ Production browser QA records page/viewport captures plus browser console errors
 The same suite runs `qa/accessibility_qa.mjs` across every primary workspace. It rejects missing/duplicate level-one
 headings, unnamed visible links, missing toggle-button state, broken native keyboard activation, and loss of the
 Finance monthly report's table relationships.
+`qa/analysis_state_qa.mjs` exercises Sales and Catalog direct links, refresh, Back, and Forward. When adding a
+persistent view choice, document its URL key in `frontend-architecture.md` and extend this browser gate.
 
 ### Finance validation
 

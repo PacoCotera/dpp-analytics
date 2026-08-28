@@ -5,6 +5,7 @@ RUN npm install --omit=dev --no-audit --no-fund
 COPY visual_qa.mjs ./
 COPY nav_qa.mjs ./
 COPY accessibility_qa.mjs ./
+COPY analysis_state_qa.mjs ./
 COPY numeric_ui_qa.mjs ./
 COPY geography_qa.mjs ./
 COPY geography_zoom_qa.mjs ./

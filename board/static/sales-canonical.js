@@ -34,12 +34,62 @@ import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-
     WEEKLINE = '#bfb7ac';
   const ORDER_MOBILE_LIMIT = 10;
   const PRODUCT_MOBILE_LIMIT = 6;
+  const SALES_VIEWS = new Set(['overview', 'products', 'geography']);
+  const SALES_RANGES = new Set(['full', '12m', '90d', '28d']);
+  const GEOGRAPHY_PARAMS = ['geo_range', 'metric', 'sku', 'state'];
   const mobileHierarchy = window.matchMedia('(max-width: 720px)');
   let DATA = null,
+    VIEW = 'overview',
     RANGE = '12m',
     ORDERS_EXPANDED = false,
     PRODUCTS_EXPANDED = false,
     resizeTimer = null;
+
+  function readSalesUrlState() {
+    const params = new URLSearchParams(window.location.search);
+    const requestedView = params.get('view') || 'overview';
+    const requestedRange = params.get('range') || '12m';
+    VIEW = SALES_VIEWS.has(requestedView) ? requestedView : 'overview';
+    RANGE = SALES_RANGES.has(requestedRange) ? requestedRange : '12m';
+  }
+
+  function writeSalesUrlState({ replace = false, clearGeography = false } = {}) {
+    const url = new URL(window.location.href);
+    if (VIEW === 'overview') url.searchParams.delete('view');
+    else url.searchParams.set('view', VIEW);
+    if (RANGE === '12m') url.searchParams.delete('range');
+    else url.searchParams.set('range', RANGE);
+    if (clearGeography) GEOGRAPHY_PARAMS.forEach((key) => url.searchParams.delete(key));
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', url);
+  }
+
+  function activateView() {
+    document.querySelectorAll('.tabs button[data-view]').forEach((button) => {
+      const active = button.dataset.view === VIEW;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', String(active));
+      button.setAttribute('tabindex', active ? '0' : '-1');
+    });
+    document
+      .querySelectorAll('.view')
+      .forEach((panel) => panel.classList.toggle('active', panel.id === VIEW));
+    window.dispatchEvent(new CustomEvent('dpp:sales-view', { detail: { view: VIEW } }));
+  }
+
+  function activateRange() {
+    document.querySelectorAll('.sales-range button[data-range]').forEach((button) => {
+      const active = button.dataset.range === RANGE;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    renderChart();
+  }
+
+  function restoreSalesUrlState() {
+    readSalesUrlState();
+    activateView();
+    activateRange();
+  }
 
   function set(id, text, tone = '') {
     const e = document.getElementById(id);
@@ -877,22 +927,19 @@ import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-
   function bind() {
     document.querySelectorAll('.tabs button').forEach((b) =>
       b.addEventListener('click', () => {
-        document.querySelectorAll('.tabs button').forEach((x) => x.classList.remove('active'));
-        document.querySelectorAll('.view').forEach((x) => x.classList.remove('active'));
-        b.classList.add('active');
-        document.getElementById(b.dataset.view)?.classList.add('active');
+        const nextView = SALES_VIEWS.has(b.dataset.view) ? b.dataset.view : 'overview';
+        if (nextView === VIEW) return;
+        VIEW = nextView;
+        writeSalesUrlState({ clearGeography: VIEW !== 'geography' });
+        activateView();
       }),
     );
     document.querySelector('.sales-range')?.addEventListener('click', (e) => {
       const b = e.target.closest('button[data-range]');
       if (!b || b.dataset.range === RANGE) return;
       RANGE = b.dataset.range;
-      document.querySelectorAll('.sales-range button').forEach((x) => {
-        const on = x === b;
-        x.classList.toggle('active', on);
-        x.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
-      renderChart();
+      writeSalesUrlState();
+      activateRange();
     });
     document.getElementById('ordersMore')?.addEventListener('click', () => {
       ORDERS_EXPANDED = !ORDERS_EXPANDED;
@@ -940,7 +987,12 @@ import { formatBusinessClock, formatMetricWindow, mountRuleTrigger } from './ui-
       console.error(e);
     }
   }
+  readSalesUrlState();
   bind();
+  activateView();
+  activateRange();
+  writeSalesUrlState({ replace: true, clearGeography: VIEW !== 'geography' });
+  window.addEventListener('popstate', restoreSalesUrlState);
   load();
   setInterval(load, 60000);
 })();
