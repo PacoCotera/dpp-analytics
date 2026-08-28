@@ -177,10 +177,15 @@ async function verifyBusiness(page) {
       ['STOCKOUT', 'PRODUCE', 'PLAN'].includes(String(item.action || '').toUpperCase()),
     );
     const total = Math.max(exceptions.length, Number(payload.inventory_summary?.needs_action || 0));
-    const brief = document.querySelector('.business-brief');
-    const attention = document.querySelector('.attention-panel');
-    const rhythm = document.querySelector('.rhythm-panel');
-    const health = document.querySelector('.business-health');
+    const main = document.querySelector('main.home-main');
+    const sections = main
+      ? [...main.children].filter(element => element.classList.contains('home-section'))
+      : [];
+    const overview = document.querySelector('[data-dpp-qa="business-overview"]');
+    const demand = document.querySelector('[data-dpp-qa="business-demand"]');
+    const operations = document.querySelector('[data-dpp-qa="business-operations"]');
+    const decisions = document.querySelector('[data-dpp-qa="business-decisions"]');
+    const health = document.querySelector('[data-dpp-qa="business-health"]');
     const dataHealthCard = document.querySelector('.business-health-card[href="/data-health"]');
     const healthContract = payload.health_contract || {};
     const pipelineScope = healthContract.pipeline_scope || {};
@@ -192,10 +197,21 @@ async function verifyBusiness(page) {
       activeNav: document.querySelector('.nav-primary-set > a.active')?.textContent?.trim(),
       brandPath: brand ? new URL(brand.href).pathname : '',
       singleRead: Boolean(
-        brief && !document.querySelector('.page-header') && !document.querySelector('.state-read'),
+        main &&
+          document.querySelectorAll('main').length === 1 &&
+          main.querySelectorAll('h1').length === 1 &&
+          main.querySelector('h1')?.textContent?.trim() === 'Business' &&
+          sections.length === 3,
       ),
       hierarchy: Boolean(
-        top(brief) < top(rhythm) && top(rhythm) < top(attention) && top(attention) < top(health),
+        sections[0] === overview &&
+          sections[1] === demand &&
+          sections[2] === operations &&
+          top(overview) < top(demand) &&
+          top(demand) < top(operations) &&
+          operations?.contains(decisions) &&
+          operations?.contains(health) &&
+          top(decisions) <= top(health),
       ),
       exceptionItems: document.querySelectorAll('.attention-item').length,
       severityBadges: document.querySelectorAll('.attention-item .severity-badge').length,
@@ -222,7 +238,7 @@ async function verifyBusiness(page) {
       ).length,
       rhythmWeekendDays: document.querySelectorAll('#spark .home-rhythm__bar--weekend').length,
       signalCopy: document
-        .querySelector('.rhythm-panel .panel__description')
+        .querySelector('[data-dpp-qa="business-demand"] .section-header__description')
         ?.textContent?.replace(/\s+/g, ' ')
         .toLowerCase()
         .includes('seven-day signal'),

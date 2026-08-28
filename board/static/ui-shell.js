@@ -143,7 +143,12 @@
     sidebar.removeAttribute('inert');
     sidebar.setAttribute('aria-hidden', 'false');
     menuButton?.setAttribute('aria-expanded', 'true');
-    window.requestAnimationFrame(() => sidebar.querySelector('.shell-drawer-close')?.focus());
+    const closeButton = sidebar.querySelector('.shell-drawer-close');
+    closeButton?.focus({ preventScroll: true });
+    window.requestAnimationFrame(() => {
+      if (closeButton && document.activeElement !== closeButton)
+        closeButton.focus({ preventScroll: true });
+    });
   }
 
   function closeDrawer(returnFocus) {
