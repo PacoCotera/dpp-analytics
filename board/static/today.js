@@ -448,8 +448,8 @@ function drawChart() {
     .attr('rx', Math.min(4, x.bandwidth() / 4))
     .attr('fill', (row) => {
       const day = row.date.getUTCDay();
-      if (data.is_live && row.business_date === data.local_today) return '#e58b1f';
-      return day === 0 || day === 6 ? '#d8c09b' : '#b78b4d';
+      if (data.is_live && row.business_date === data.local_today) return 'var(--dpp-data2)';
+      return day === 0 || day === 6 ? 'var(--dpp-data6)' : 'var(--dpp-data1)';
     });
 
   const dividers = group.append('g').attr('pointer-events', 'none');
@@ -464,7 +464,7 @@ function drawChart() {
         .attr('x2', xx)
         .attr('y1', 0)
         .attr('y2', innerHeight)
-        .attr('stroke', '#e58b1f')
+        .attr('stroke', 'var(--dpp-data2)')
         .attr('stroke-width', 1.4)
         .attr('opacity', 0.82);
     } else if (row.date.getUTCDay() === 1) {
@@ -474,7 +474,7 @@ function drawChart() {
         .attr('x2', xx)
         .attr('y1', 0)
         .attr('y2', innerHeight)
-        .attr('stroke', '#c9c0b4')
+        .attr('stroke', 'var(--dpp-data-incomplete)')
         .attr('opacity', 0.48);
     }
   });
@@ -498,7 +498,7 @@ function drawChart() {
         .tickPadding(8)
         .tickFormat((key) => d3.utcFormat(rows.length <= 8 ? '%a' : '%-d')(parseDate(key))),
     )
-    .call((axis) => axis.select('.domain').attr('stroke', '#cfc5b7'));
+    .call((axis) => axis.select('.domain').attr('stroke', 'var(--dpp-data-grid)'));
 
   let tooltip = host.querySelector('.dpp-chart-tooltip');
   if (!tooltip) {
