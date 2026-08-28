@@ -392,6 +392,8 @@ Observed:
 - The latest settlement reconciles, but its API has null settlement start, end, and deposit dates.
 - The card renders `—–— settlement · deposit —` even though settlement ID `27148998881` and report ID `66913020679` are available.
 
+Continuity note, 2026-08-28: production at `470b84d5` still returns settlement `27148998881` / report `66913020679` with null start, end and deposit dates. The reconciled card still renders `—–— settlement · deposit —`. Scope is unchanged.
+
 Impact: The most recent settlement appears malformed and is difficult to identify.
 
 Acceptance criteria:

@@ -16,15 +16,6 @@ function step(label, value, kind = '') {
   return `<div class="bridge-step ${kind}"><span>${label}</span><strong class="${tone}">${cashMoney(numeric)}</strong></div>`;
 }
 
-function shortDate(value) {
-  if (!value) return '—';
-  const text = String(value).slice(0, 10);
-  const date = new Date(`${text}T12:00:00`);
-  return Number.isNaN(date.getTime())
-    ? text
-    : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 function renderCashBridge(payload) {
   const bridge = payload.cash_bridge || {};
   const card = byId('cashSettlementCard');
@@ -47,10 +38,18 @@ function renderCashBridge(payload) {
 
   const reconciled = bridge.status === 'RECONCILED';
   state.textContent = reconciled ? 'RECONCILED CASH' : 'CHECK RECONCILIATION';
-  const range = `${shortDate(bridge.settlement_start_date)}–${shortDate(bridge.settlement_end_date)}`;
-  const deposit = shortDate(bridge.deposit_date);
+  const display = bridge.settlement_display || {};
   const delta = Number(bridge.reconciliation_delta || 0);
-  sub.textContent = `${CASH_BASIS_LABEL} · ${range} settlement · deposit ${deposit} · ${bridge.line_count || 0} source lines · ${reconciled ? 'Amazon report total reconciled to the cent' : `reconciliation delta ${cashMoney(delta)}`}`;
+  sub.textContent = [
+    CASH_BASIS_LABEL,
+    display.identity_label,
+    display.period_label,
+    display.deposit_label,
+    `${bridge.line_count || 0} source lines`,
+    reconciled ? 'Amazon report total reconciled to the cent' : `reconciliation delta ${cashMoney(delta)}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   body.innerHTML = [
     step('Customer activity incl. IVA', bridge.customer_activity_incl_tax),

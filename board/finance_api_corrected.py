@@ -16,6 +16,7 @@ is shown as cash timing, never as business-period revenue or contribution.
 """
 
 from finance_api_legacy import finance_payload as _legacy_finance_payload
+from finance_settlement import settlement_display_contract
 
 
 def _policy(connect, marketplace: str) -> dict:
@@ -143,6 +144,14 @@ def _latest_cash_bridge(connect, marketplace: str) -> dict:
     selected_report_reconciled = bool(row.get("selected_report_reconciled"))
     status = "RECONCILED" if selected_report_reconciled and abs(delta) <= 0.02 else "UNRECONCILED"
 
+    settlement_display = settlement_display_contract(
+        row.get("settlement_id"),
+        row.get("report_id"),
+        row.get("settlement_start_date"),
+        row.get("settlement_end_date"),
+        row.get("deposit_date"),
+    )
+
     return {
         "status": status,
         "basis": "AMAZON_SETTLEMENT_REPORT",
@@ -152,6 +161,7 @@ def _latest_cash_bridge(connect, marketplace: str) -> dict:
         "settlement_start_date": row.get("settlement_start_date"),
         "settlement_end_date": row.get("settlement_end_date"),
         "deposit_date": row.get("deposit_date"),
+        "settlement_display": settlement_display,
         "currency": row.get("currency"),
         "customer_principal": principal,
         "customer_tax": customer_tax,

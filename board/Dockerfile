@@ -58,6 +58,7 @@ COPY board/ads_state.py .
 # corrects OPEN/finalizing Sales & Traffic from gross shopper spend to net revenue;
 # closed history is already corrected by explicit RESTATED versions in migration 037.
 COPY board/finance_emergency.py ./finance_api_legacy.py
+COPY board/finance_settlement.py .
 COPY board/finance_api_corrected.py ./finance_api.py
 COPY board/inventory_api.py .
 COPY board/catalog_api.py .

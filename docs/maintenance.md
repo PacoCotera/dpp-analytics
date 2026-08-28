@@ -118,6 +118,8 @@ The current month is OPEN and provisional. Closed management months come from im
 
 Cash transferred by Amazon is not the same as economic contribution. Keep cash timing and contribution reporting separate.
 
+`board/finance_settlement.py` owns the latest-settlement display contract used by the canonical Finance adapter. It preserves settlement/report identifiers and exposes `KNOWN`, `PARTIAL`, or `UNKNOWN` date availability with explicit fragments for missing start, end, or deposit dates. The browser renders these API fragments and must not substitute punctuation placeholders for absent dates.
+
 ## Production-owned local configuration
 
 Production secrets and mutable business configuration live on the host, not in Git.
