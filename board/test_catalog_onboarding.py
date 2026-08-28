@@ -42,6 +42,32 @@ def connect_with(rows):
 
 
 class CatalogOnboardingTest(unittest.TestCase):
+    def test_structural_parents_are_excluded_from_onboarding_and_counts(self):
+        rows = [
+            {
+                "sku": "PNC-CURRENT",
+                "asin": "B0HGNS3FHB",
+                "product_role": "STRUCTURAL_PARENT",
+                "source_state": "INACTIVE",
+                "is_onboarding": True,
+                "source_attention": False,
+            },
+            {
+                "sku": "CHILD",
+                "asin": "BCHILD",
+                "product_role": "SELLABLE_VARIATION",
+                "source_state": "SOURCE_READY",
+                "is_onboarding": True,
+                "source_attention": False,
+            },
+        ]
+        with patch("catalog_onboarding._taxonomy_skus", return_value=set()):
+            payload = catalog_onboarding_snapshot(connect_with(rows), "MX")
+
+        self.assertEqual([row["sku"] for row in payload["items"]], ["CHILD"])
+        self.assertEqual(payload["summary"]["onboarding"], 1)
+        self.assertNotIn("PNC-CURRENT", [row["sku"] for row in payload["attention"]])
+
     def test_new_source_ready_unmapped_is_onboarding_not_actionable(self):
         rows = [
             {

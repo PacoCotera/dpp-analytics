@@ -29,16 +29,22 @@ def catalog_onboarding_snapshot(connect, marketplace: str) -> dict:
     with connect() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            SELECT seller_sku AS sku, asin, status, source_state, first_seen_at,
-                   listing_fetched_at, catalog_last_attempt_at, catalog_enriched_at,
-                   age_seconds, is_onboarding, source_attention
-            FROM mart.catalog_onboarding_state
-            WHERE marketplace_id=%s
-            ORDER BY source_attention DESC, is_onboarding DESC, first_seen_at DESC, seller_sku
+            SELECT o.seller_sku AS sku, o.asin, o.status, o.source_state, o.first_seen_at,
+                   o.listing_fetched_at, o.catalog_last_attempt_at, o.catalog_enriched_at,
+                   o.age_seconds, o.is_onboarding, o.source_attention, p.product_role
+            FROM mart.catalog_onboarding_state o
+            LEFT JOIN mart.catalog_portfolio_product p
+              ON p.marketplace_id=o.marketplace_id AND p.seller_sku=o.seller_sku
+            WHERE o.marketplace_id=%s
+            ORDER BY o.source_attention DESC, o.is_onboarding DESC, o.first_seen_at DESC, o.seller_sku
             """,
             (marketplace,),
         )
-        rows = [dict(row) for row in cur.fetchall()]
+        rows = [
+            dict(row)
+            for row in cur.fetchall()
+            if row.get("product_role") != "STRUCTURAL_PARENT"
+        ]
 
     for row in rows:
         sku = str(row.get("sku") or "")
@@ -83,10 +89,10 @@ def catalog_onboarding_snapshot(connect, marketplace: str) -> dict:
             "seller_mapped": sum(1 for row in rows if row.get("seller_taxonomy_mapped")),
             "grace_hours": 48,
         },
-        # Keep inactive listings in lifecycle evidence. They are not decision
-        # surfaces, but their presence proves why an unmapped SKU is not yet a
-        # seller-taxonomy incident and avoids an impossible "transient but no
-        # lifecycle row" state during Amazon catalog propagation.
+        # Keep inactive offer/alias listings in lifecycle evidence. Structural
+        # parents were removed above because they are hierarchy, not products
+        # being onboarded. Remaining inactive evidence proves why an unmapped
+        # SKU is not yet a seller-taxonomy incident during propagation.
         "items": rows,
         "attention": [row for row in rows if row.get("requires_seller_action")],
     }

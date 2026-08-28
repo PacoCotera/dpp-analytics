@@ -73,6 +73,8 @@ Commercial product identity is assembled server-side from normalized SKU/ASIN re
 
 Every sellable product exposes one canonical identity object from the Catalog API owner. A `SELLABLE_VARIATION` must have a distinct parent ASIN and use that same parent as its family ASIN. A `SELLABLE_STANDALONE` has no canonical parent and uses its own ASIN as its family ASIN; a source self-parent is retained only as audit evidence. Seller-owned family names may replace generic display labels, but their absence must not turn a child variation into “Standalone.”
 
+A `STRUCTURAL_PARENT` is a non-sellable variation container. It is excluded from sellable/active/inactive KPIs, dimensional rollups, decision queues, SKU mode and Catalog onboarding/Data Health counts. The parent row remains in API hierarchy evidence and may be attached to a family only when that family has at least one sellable child; a parent-only container is not a commercial family.
+
 The browser may group/sort/filter data for presentation, but canonical family/variation membership and role semantics should come from the API/data layer. During catalog onboarding, missing dimensions or seller taxonomy may be provisional; consumers must use the lifecycle/source-readiness fields instead of assuming a newly discovered SKU is fully populated.
 
 ### Inventory
