@@ -1,4 +1,5 @@
 import { byId, escapeHtml, fetchJson, formatBusinessClock, formatCount, integer, money } from './ui-utils.js';
+import { loadAdsChartDependencies } from './ads-chart-loader.js';
 let operatingTrusted = false;
 const ratioPercent = (v) => (v == null ? '—' : `${(Number(v) * 100).toFixed(1)}%`);
 const deltaPercent = (v) => (v == null ? '—' : `${Number(v) > 0 ? '+' : ''}${Number(v).toFixed(1)}%`);
@@ -272,8 +273,10 @@ async function start() {
   try {
     const p = await fetchJson('/api/ads');
     byId('clock').textContent = formatBusinessClock(p.local_time);
-    if (p.connection?.state === 'READY' && p.status === 'ready') renderReady(p);
-    else renderUnavailable(p);
+    if (p.connection?.state === 'READY' && p.status === 'ready') {
+      await loadAdsChartDependencies();
+      renderReady(p);
+    } else renderUnavailable(p);
   } catch (e) {
     operatingTrusted = false;
     byId('emptyState').hidden = false;

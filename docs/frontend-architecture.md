@@ -71,6 +71,10 @@ Pages choose the correct analytical chart but should not independently recreate 
 demand pages pass canonical series to the shared owner; `chart-system.js` renders an explicit range-empty state
 when the selected metric is all zero.
 
+Pages with a canonical non-chart state may defer the shared chart runtime. Ads owns this boundary in
+`ads-chart-loader.js`: the page loads chart CSS, D3 and `chart-system.js` only after its API reports both a
+`READY` connection and `ready` reporting data, while retaining the release revision on every dynamic URL.
+
 Shared mechanical formatting lives in `static/format-core.js` and is re-exported by `ui-utils.js`. Page modules use
 its count, currency, and month-year formatters instead of assembling plurals, currency signs, or abbreviated years.
 

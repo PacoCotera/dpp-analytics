@@ -526,6 +526,11 @@ Observed:
 - With authorization pending and no Ads data, the page still loads D3 and the chart system.
 - The audited compressed D3 transfer was about 93 KB, with about 279 KB decoded, before any chart could be rendered.
 
+Continuity note, 2026-08-28: deployed main `a44384ad` reports canonical Ads state `NOT_CONNECTED`
+and API status `awaiting_ads_data`, while the empty state still loads `chart-system.css`, D3, and
+`chart-system.js`. DPP Chromium measured 92,719 encoded / 279,707 decoded bytes for D3 and 7,046 encoded /
+32,017 decoded bytes for the chart runtime. Scope is unchanged.
+
 Impact: The empty state does unnecessary parsing and transfer work, especially on a cold visit.
 
 Acceptance criteria:
