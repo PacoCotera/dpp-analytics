@@ -117,6 +117,7 @@ try {
     throw new Error(`/api/product?sku=PNC-001L returned ${auditedProductResponse.status}`);
   const auditedIdentity = auditedProductResponse.body.commercial?.identity || {};
   await page.goto(`${baseUrl}/product?sku=PNC-001L`, { waitUntil: 'networkidle', timeout: 20000 });
+  await page.locator('#productReference summary').click();
   await page.locator('.product-health__facts').waitFor({ state: 'visible', timeout: 15000 });
   const renderedFamilyIdentity = await page.evaluate(() => {
     const facts = [...document.querySelectorAll('.product-health__fact')];
