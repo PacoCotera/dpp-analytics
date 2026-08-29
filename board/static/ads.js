@@ -10,7 +10,7 @@ function setMetric(id, value) {
   e.textContent = value;
 }
 function renderEvidenceWindow(summary) {
-  byId('storyTitle').textContent = '28-day operating evidence';
+  byId('storyTitle').textContent = '28-day performance';
   const range =
     summary.period_start && summary.period_end
       ? `${summary.period_start} through ${summary.period_end}`
@@ -57,7 +57,7 @@ function renderQuality(p) {
     badge.textContent = 'Verify data';
     badge.classList.add('attention');
     band.classList.add('attention');
-    title.textContent = 'Use Ads metrics as evidence, not as an action trigger.';
+    title.textContent = 'Use Ads metrics for review, not as an action trigger.';
     const issues = (q.issues || [])
       .slice(0, 3)
       .map((i) => `${issueLabel(i.quality_state)} (${integer(i.days)}d)`)

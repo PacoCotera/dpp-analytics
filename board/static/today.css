@@ -1232,7 +1232,7 @@ body.today-app .today-section {
   gap: 5px;
 }
 
-.today-section {
+body.today-app .today-main .today-section {
   margin-top: 14px;
   padding: 20px 22px;
 }
@@ -1362,7 +1362,7 @@ body.today-app .rhythm {
   }
 
   .today-lead__head,
-  .today-section {
+  body.today-app .today-main .today-section {
     padding: 16px;
   }
 

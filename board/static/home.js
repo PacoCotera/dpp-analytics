@@ -61,7 +61,7 @@ function renderAttention(data, decisionCount) {
     title.textContent = 'Nothing needs attention';
     copy.textContent = 'No stockout, production or planning exception is currently flagged.';
     container.innerHTML =
-      '<div class="attention-clear"><strong>Operations are clear.</strong><p>Use the demand pulse and business-health evidence to understand performance; there is no immediate inventory action.</p></div>';
+      '<div class="attention-clear"><strong>Operations are clear.</strong><p>Demand and business health show no immediate inventory action.</p></div>';
     return;
   }
   const total = Math.max(attention.length, decisionCount),
@@ -120,7 +120,7 @@ function renderBusinessHealth(data) {
 function businessLead(read = {}) {
   const explanation = String(read.explanation || '').trim();
   const sentences = explanation.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
-  const headline = String(sentences.shift() || 'Current business evidence').trim();
+  const headline = String(sentences.shift() || 'Current business performance').trim();
   return {
     headline,
     detail: sentences.join(' ').trim() || 'Current demand and operating exceptions are shown below.',

@@ -294,7 +294,7 @@ import { formatCount, money } from './format-core.js';
   }
 
   function selectedProductLabel() {
-    if (SKU === 'all') return 'All order evidence';
+    if (SKU === 'all') return 'All orders';
     const product = (DATA?.geography?.products || []).find((x) => String(x.analysis_sku || x.sku) === SKU);
     return product?.product || SKU;
   }
@@ -462,7 +462,7 @@ import { formatCount, money } from './format-core.js';
         const code = String(Number(feature.properties?.state_code || 0)).padStart(2, '0');
         const row = byCode.get(code);
         const name = META_BY_CODE.get(code)?.name || feature.properties?.state_name || code;
-        return `${name}: ${formatMetric(metricValue(row))} ${metricLabel()}. Open postal evidence.`;
+        return `${name}: ${formatMetric(metricValue(row))} ${metricLabel()}. Open postal detail.`;
       })
       .on('pointerenter pointermove focus', function (event, feature) {
         const code = String(Number(feature.properties?.state_code || 0)).padStart(2, '0');
@@ -687,7 +687,7 @@ import { formatCount, money } from './format-core.js';
     if (secondary) {
       if (!product.is_current_offer) suffix = ' · Historical transactions';
       else if (!product.is_active_offer) suffix = ` · ${product.status || 'Inactive offer'}`;
-      else suffix = ` · No ${selectedWindowLabel()} evidence`;
+      else suffix = ` · No ${selectedWindowLabel()} activity`;
     }
     return `<option value="${esc(sku)}">${esc(product.product || sku)} · ${esc(sku)}${esc(suffix)}</option>`;
   }
@@ -703,9 +703,9 @@ import { formatCount, money } from './format-core.js';
     if (product) {
       const primaryOptions = primary.map((item) => productOption(item)).join('');
       const secondaryOptions = SHOW_SECONDARY_PRODUCTS
-        ? `<optgroup label="Historical, inactive, or no evidence">${secondary.map((item) => productOption(item, true)).join('')}</optgroup>`
+        ? `<optgroup label="Historical, inactive, or no activity">${secondary.map((item) => productOption(item, true)).join('')}</optgroup>`
         : '';
-      product.innerHTML = `<option value="all">All order evidence</option><optgroup label="Current offers with ${esc(selectedWindowLabel())} evidence">${primaryOptions}</optgroup>${secondaryOptions}`;
+      product.innerHTML = `<option value="all">All orders</option><optgroup label="Current offers with ${esc(selectedWindowLabel())} activity">${primaryOptions}</optgroup>${secondaryOptions}`;
       product.value = SKU;
     }
     if (secondaryButton) {
@@ -717,7 +717,7 @@ import { formatCount, money } from './format-core.js';
     }
     setText(
       'geoProductScope',
-      `${primary.length} current products with ${selectedWindowLabel()} evidence · ${secondary.length} historical, inactive, or no-evidence products ${SHOW_SECONDARY_PRODUCTS ? 'shown' : 'hidden'}`,
+      `${primary.length} current products with ${selectedWindowLabel()} activity · ${secondary.length} historical, inactive, or inactive-window products ${SHOW_SECONDARY_PRODUCTS ? 'shown' : 'hidden'}`,
     );
   }
 

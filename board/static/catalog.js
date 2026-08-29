@@ -495,8 +495,7 @@ function renderPortfolio() {
   if (familyMode) {
     setHead();
     $('modeSource').textContent = 'Family = child roll-up';
-    $('portfolioFootMain').innerHTML =
-      '<b>Family metrics</b> roll up sellable children. Structural parents are containers, never selling/converting offers.';
+    $('portfolioFootMain').textContent = 'Roll-up of sellable child products.';
     const rows = familySorted();
     $('portfolio').innerHTML = rows.length
       ? rows.map(familyRow).join('')
@@ -507,8 +506,7 @@ function renderPortfolio() {
   if (mode === 'sku') {
     setHead('Sellable SKU');
     $('modeSource').textContent = 'SKU = purchasable combination';
-    $('portfolioFootMain').innerHTML =
-      '<b>SKU metrics</b> are child/standalone offer facts. Parent containers and operational aliases are excluded.';
+    $('portfolioFootMain').textContent = 'Purchasable child and standalone offers.';
     const rows = skuRows();
     $('portfolio').innerHTML = rows.length
       ? analysisRows(rows, skuAnalysisRow, 'SKU')
@@ -519,8 +517,7 @@ function renderPortfolio() {
   if (mode === 'deleted') {
     setHead('Deleted SKU');
     $('modeSource').textContent = 'Deleted = absent from latest Amazon snapshot';
-    $('portfolioFootMain').innerHTML =
-      '<b>Deleted SKUs</b> are preserved only for historical transaction attribution. They are excluded from current offers, families, KPIs, filters and decisions.';
+    $('portfolioFootMain').textContent = 'Historical only; excluded from the current portfolio.';
     let rows = DATA.deleted_products || [];
     if (query) rows = rows.filter((row) => JSON.stringify(row).toLowerCase().includes(query));
     $('portfolio').innerHTML = rows.length
@@ -547,8 +544,7 @@ function renderPortfolio() {
   rows = sortAnalysisRows(rows);
 
   setHead(label);
-  $('portfolioFootMain').innerHTML =
-    '<b>Dimensional metrics</b> recompute conversion from total units ÷ total sessions. Differences are descriptive signals, not proof that the variation attribute caused performance.';
+  $('portfolioFootMain').textContent = 'Conversion = total units ÷ total sessions.';
   $('portfolio').innerHTML = rows.length
     ? analysisRows(
         rows,

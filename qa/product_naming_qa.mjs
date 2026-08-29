@@ -38,7 +38,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const summary = { ok: false, rows: 0, sources: {}, skus: new Set(), endpoints: [] };
 
 try {
-  await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await page.goto(`${baseUrl}/business`, { waitUntil: 'domcontentloaded', timeout: 20000 });
   const payloads = await page.evaluate(async () => {
     const urls = ['/api/home', '/api/today', '/api/sales', '/api/catalog', '/api/inventory', '/api/ads'];
     const entries = await Promise.all(urls.map(async url => {

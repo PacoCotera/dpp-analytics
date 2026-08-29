@@ -51,6 +51,7 @@ for (const [key, expected] of Object.entries(expectedCases)) {
 const routes = [
   "/",
   "/today",
+  "/business",
   "/sales",
   "/catalog",
   "/inventory",

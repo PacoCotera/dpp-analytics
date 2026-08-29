@@ -6,8 +6,8 @@
   "schemaVersion": 1,
   "defaultProfileId": "warm-studio",
   "storageKey": "dpp.presentation.v1",
-  "paletteRevision": "initial-accessible-2026-08-28",
-  "paletteNote": "Initial implementation values selected for legibility and contrast; they are not source-extracted swatches.",
+  "paletteRevision": "theme-aligned-2026-08-29",
+  "paletteNote": "Theme-native implementation values selected for legibility and contrast; they are not source-extracted swatches.",
   "profiles": [
     {
       "id": "warm-studio",

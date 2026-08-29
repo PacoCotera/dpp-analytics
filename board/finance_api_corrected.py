@@ -178,7 +178,7 @@ def _latest_cash_bridge(connect, marketplace: str) -> dict:
         "report_selection": "ONE_CANONICAL_RECONCILED_REPORT_PER_SETTLEMENT",
         "note": (
             "Cash settlement identity, not business-period P&L. Customer activity is net of any refunds present in this settlement. "
-            "Duplicate/revised Amazon report copies are retained as raw evidence but counted once. Detailed selling/FBA fee subtypes remain grouped until separately validated."
+            "Duplicate/revised Amazon report copies are retained but counted once. Detailed selling/FBA fee subtypes remain grouped until separately validated."
         ),
     }
 

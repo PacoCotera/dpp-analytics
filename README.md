@@ -19,14 +19,14 @@ The stack is defined in `compose.yml`. Production configuration and secrets live
 
 | Route | Decision surface | Backend owner |
 | --- | --- | --- |
-| `/today` | Live operating pulse and recent order evidence | canonical Today adapter over `board/today_api.py` |
-| `/` / `/home` | Business state and priority decisions | `board/server.py` (`home_payload`) |
+| `/` (`/today` alias) | Live operating pulse and recent orders | canonical Today adapter over `board/today_api.py` |
+| `/business` (`/home` alias) | Business state and priority decisions | `board/server.py` (`home_payload`) |
 | `/sales` | Revenue, momentum, run rate, products and orders | canonical Sales adapter over `board/sales_api.py` |
 | `/catalog` | Portfolio, family/variation analysis and commercial health | `board/catalog_api.py` |
 | `/product?sku=...` | Single-product workspace | canonical Product adapter over `board/product_api.py` |
 | `/inventory` | Stock, cover and production/replenishment actions | `board/inventory_api.py` |
 | `/ads` | Paid demand, efficiency, campaigns, targets and search terms | `board/ads_api.py` |
-| `/finance` | Current economics, immutable closes and accounting evidence | production Finance implementation described in `docs/maintenance.md` |
+| `/finance` | Current economics, immutable closes and accounting detail | production Finance implementation described in `docs/maintenance.md` |
 | `/trajectory` | Structural momentum across multiple time horizons | `board/trajectory_api.py` |
 | `/data-health` | Source freshness, coverage and trust | `board/health_api.py` |
 

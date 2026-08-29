@@ -7,8 +7,8 @@ const outDir = process.argv[3] || "/out";
 await fs.mkdir(outDir, { recursive: true });
 
 const routes = [
-  { name: "business", url: "/" },
-  { name: "today", url: "/today" },
+  { name: "today", url: "/" },
+  { name: "business", url: "/business" },
   { name: "sales", url: "/sales" },
   { name: "catalog", url: "/catalog" },
   { name: "product", url: "/product?sku=PNC-001" },

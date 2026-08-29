@@ -7,8 +7,8 @@ const outDir = process.argv[3] || '/out';
 await fs.mkdir(outDir, { recursive: true });
 
 const surfaces = [
-  { route: '/', api: '/api/home?refresh=1', rules: ['BUSINESS_MOMENTUM_V1'], minimumButtons: 1 },
-  { route: '/today', api: '/api/today?refresh=1', rules: ['TODAY_PACE_V1', 'TODAY_BUSINESS_CONTEXT_V1'], minimumButtons: 2 },
+  { route: '/business', api: '/api/home?refresh=1', rules: ['BUSINESS_MOMENTUM_V1'], minimumButtons: 1 },
+  { route: '/', api: '/api/today?refresh=1', rules: ['TODAY_PACE_V1', 'TODAY_BUSINESS_CONTEXT_V1'], minimumButtons: 2 },
   { route: '/sales', api: '/api/sales?refresh=1', rules: ['TODAY_PACE_V1', 'SALES_PRODUCT_CHANGE_V1', 'SALES_CONCENTRATION_V1', 'SALES_BREADTH_V1'], minimumButtons: 4 },
   { route: '/catalog', api: '/api/catalog?refresh=1', rules: ['CATALOG_COMMERCIAL_STATE_V1', 'CATALOG_FAMILY_STATE_V1', 'CATALOG_DIMENSION_CONVERSION_V1'], minimumButtons: 1 },
   { route: '/product?sku=PNC-001L', api: '/api/product?sku=PNC-001L&refresh=1', rules: ['CATALOG_COMMERCIAL_STATE_V1'], minimumButtons: 1 },

@@ -37,10 +37,7 @@
           <div>
             <div class="kicker">Management finance</div>
             <h1 class="page-header__title">Finance</h1>
-            <p class="page-header__description">
-              Contribution, close state and immutable monthly history. Revenue, withheld tax and payout cash
-              remain separate.
-            </p>
+            <p class="page-header__description">Contribution, close state and monthly history.</p>
           </div>
           <div class="period-meta page-header__aside">
             <strong id="periodLabel">Current month</strong>
@@ -56,20 +53,17 @@
               <div class="money-cell">
                 <div class="eyebrow">Net sales ex IVA</div>
                 <div id="sales" class="big-money">—</div>
-                <div class="cell-note">Management revenue before Mexico IVA.</div>
+                <div class="cell-note">Before Mexico IVA.</div>
               </div>
               <div class="money-cell">
                 <div class="eyebrow">IVA withheld</div>
                 <div id="iva" class="big-money">—</div>
-                <div class="cell-note">
-                  Included in the shopper price; Amazon withholds/remits it, so it is not DPP revenue or
-                  payout cash.
-                </div>
+                <div class="cell-note">Withheld and remitted by Amazon.</div>
               </div>
               <div class="money-cell">
                 <div class="eyebrow">Gross customer spend</div>
                 <div id="gross" class="big-money">—</div>
-                <div class="cell-note">Customer-facing product spend including IVA.</div>
+                <div class="cell-note">Shopper spend including IVA.</div>
               </div>
             </div>
 
@@ -79,9 +73,7 @@
 
           <aside class="status-rail">
             <h2>Current accounting state</h2>
-            <p id="statusCopy">
-              OPEN is provisional. Amazon closure and seller COGS readiness are tracked independently.
-            </p>
+            <p id="statusCopy">OPEN is provisional; Amazon close and seller COGS are tracked separately.</p>
             <div class="rail-row rail-row--release">
               <span>Order releases</span><strong id="releaseCoverage">—</strong>
             </div>
@@ -91,10 +83,7 @@
             <div class="rail-row rail-row--cash cash">
               <span>Amazon payout cash posted this month</span><strong id="cash">—</strong>
             </div>
-            <p class="cell-note">
-              Cash timing only. Amazon payout is after IVA withholding and settlement deductions; transfer
-              dates can differ from the business month that generated the sale.
-            </p>
+            <p class="cell-note">Cash timing only; payout dates can differ from the sales month.</p>
             <div class="rail-row rail-row--history">
               <span>Management-closed months</span><strong id="closedCount">—</strong>
             </div>
@@ -130,9 +119,7 @@
             <div class="finance-read__head">
               <div>
                 <h2 class="finance-read__title">Current month contribution</h2>
-                <div class="finance-read__sub">
-                  Live OPEN-month estimate. Standard product costs can still change this period.
-                </div>
+                <div class="finance-read__sub">Live OPEN-month estimate.</div>
               </div>
               <div class="finance-read__state">OPEN · provisional</div>
             </div>
@@ -160,19 +147,13 @@
                   <div>
                     <h2 class="finance-read__title">Latest Amazon settlement → payout</h2>
                     <div id="cashBridgeSub" class="finance-read__sub">
-                      Cash settlement evidence, not sales-period P&amp;L. Loading latest reconciled
-                      settlement.
+                      Cash settlement timing, not sales-period P&amp;L.
                     </div>
                   </div>
                   <div id="cashBridgeState" class="finance-read__state">CASH TIMING</div>
                 </div>
                 <div id="cashSettlementBridge" class="bridge"></div>
-                <p class="finance-read__sub">
-                  The settlement starts with customer activity inside that settlement, including IVA and any
-                  refunds Amazon settled there. IVA withheld never reaches DPP cash. Detailed selling/FBA fee
-                  subtypes remain grouped until separately validated; the signed settlement total must still
-                  reconcile exactly to payout.
-                </p>
+                <p class="finance-read__sub">Signed settlement total reconciles to payout.</p>
               </div>
             </details>
           </article>
@@ -181,9 +162,7 @@
             <div class="finance-read__head">
               <div>
                 <h2 id="progressionTitle" class="finance-read__title">Contribution trajectory</h2>
-                <div id="progressionSub" class="finance-read__sub">
-                  Choose an accounting window to inspect cumulative contribution or drill into one month.
-                </div>
+                <div id="progressionSub" class="finance-read__sub">Contribution by accounting month.</div>
               </div>
               <div id="progressionState" class="finance-read__state">CALENDAR YTD</div>
             </div>
@@ -280,10 +259,7 @@
           <div class="finance-read__head">
             <div>
               <h2 class="finance-read__title">Months awaiting management close</h2>
-              <div class="finance-read__sub">
-                Amazon-side finalization and seller-owned COGS are separate. Missing product cost never makes
-                Amazon accounting look open.
-              </div>
+              <div class="finance-read__sub">Amazon close and seller COGS remain separate.</div>
             </div>
             <div class="finance-read__state" id="pendingCount">—</div>
           </div>
@@ -295,9 +271,7 @@
             <div>
               <h2 class="finance-read__title">Immutable month report</h2>
               <div class="finance-read__sub">
-                Current OPEN month appears first as provisional. Closed rows below are the latest immutable
-                close version; RESTATED is always explicit. Amounts are shown to cents so each row reconciles
-                from the visible operands.
+                OPEN is provisional; CLOSED and RESTATED rows are immutable.
               </div>
             </div>
           </div>
@@ -309,16 +283,14 @@
 
         <section class="finance-evidence" data-dpp-qa="finance-evidence">
           <details>
-            <summary>Amazon accounting evidence</summary>
+            <summary>Amazon accounting detail</summary>
             <div id="events"></div>
           </details>
         </section>
       </main>
 
       <footer class="footer">
-        <span
-          >Finances v2024 + Amazon settlement reports · RELEASED only · IVA withheld before payout · immutable
-          management closes</span
+        <span>Amazon settlement reports · RELEASED orders · immutable management closes</span
         ><span>Dirty Pawz Press Analytics</span>
         <span class="footer-build">main __DPP_BUILD_SHA__</span>
       </footer>

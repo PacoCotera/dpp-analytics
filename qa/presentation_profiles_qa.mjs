@@ -50,7 +50,7 @@ page.on('console', (message) => {
   if (message.type() === 'error') errors.push(message.text());
 });
 
-const response = await page.goto(baseUrl + '/', {
+const response = await page.goto(baseUrl + '/business', {
   waitUntil: 'domcontentloaded',
   timeout: 20_000,
 });

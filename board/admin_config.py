@@ -176,7 +176,7 @@ def build_admin_catalog(catalog_payload: dict, snapshot: dict) -> dict:
         "deleted_products": deleted,
         "lifecycle_basis": {
             "current": "Latest complete Amazon Seller Listings snapshot",
-            "identity": "Amazon Catalog Items parent-child evidence",
+            "identity": "Amazon Catalog Items parent-child data",
             "deleted": "Retained seller-listing history; excluded from current editing and rollups",
         },
     }
