@@ -171,6 +171,9 @@ async function verifySalesOverview(page) {
     const reference = document.getElementById('salesReference');
     const primary = document.querySelector('.sales-signal.primary');
     const today = document.querySelector('.sales-utility-today');
+    const ruleTrigger = [...document.querySelectorAll('.sales-page .rule-trigger')]
+      .find(element => element.getClientRects().length > 0);
+    const todayLink = document.querySelector('.sales-utility-today .btn');
     return {
       mobile,
       signalsBeforeChart: Boolean(
@@ -179,8 +182,20 @@ async function verifySalesOverview(page) {
       referenceOpen: Boolean(reference?.hasAttribute('open')),
       primaryVisible: Boolean(primary && primary.getBoundingClientRect().height > 0),
       todayVisible: Boolean(today && today.getBoundingClientRect().height > 0),
+      ruleTriggerHeight: ruleTrigger?.getBoundingClientRect().height || 0,
+      ruleTriggerFont: Number.parseFloat(ruleTrigger ? getComputedStyle(ruleTrigger).fontSize : '0'),
+      todayLinkHeight: todayLink?.getBoundingClientRect().height || 0,
+      todayLinkFont: Number.parseFloat(todayLink ? getComputedStyle(todayLink).fontSize : '0'),
     };
   });
+  if (
+    state.ruleTriggerHeight < 24 ||
+    state.ruleTriggerFont < 14 ||
+    state.todayLinkHeight < 24 ||
+    state.todayLinkFont < 14
+  ) {
+    throw new Error(`Sales utility control floor mismatch: ${JSON.stringify(state)}`);
+  }
   if (
     state.mobile &&
     (!state.signalsBeforeChart || state.referenceOpen || !state.primaryVisible || !state.todayVisible)
@@ -337,6 +352,7 @@ async function verifyBusiness(page) {
           (before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING),
       );
     return {
+      evidenceHeadline: document.getElementById('stateHeadline')?.textContent?.trim(),
       activeNav: document.querySelector('.nav-primary-set > a.active')?.textContent?.trim(),
       brandPath: brand ? new URL(brand.href).pathname : '',
       singleRead: Boolean(
@@ -395,6 +411,7 @@ async function verifyBusiness(page) {
     };
   });
   if (
+    state.evidenceHeadline !== 'Current evidence' ||
     state.activeNav !== 'Business' ||
     state.brandPath !== '/today' ||
     !state.singleRead ||
@@ -808,6 +825,11 @@ async function verifyTrajectory(page) {
     const reference = document.getElementById('portfolioReference');
     const chartScroll = document.querySelector('.trajectory-chart-scroll');
     const priority = [...document.querySelectorAll('.structure-priority .structure-card')];
+    const evidence = [...document.querySelectorAll(
+      '.trajectory-page .kicker,.trajectory-page .page-header__description,.trajectory-page .metric-window-note,.trajectory-page .state-read__eyebrow,.trajectory-page .state-read__copy,.trajectory-page .state-read__meta,.trajectory-page .section-header__description',
+    )].filter(element => element.getClientRects().length > 0);
+    const ruleTrigger = [...document.querySelectorAll('.trajectory-page .rule-trigger')]
+      .find(element => element.getClientRects().length > 0);
     return {
       mobile,
       emptyPaidVisible: Boolean(paidEmpty && paid && window.getComputedStyle(paid).display !== 'none'),
@@ -816,8 +838,13 @@ async function verifyTrajectory(page) {
       priorityCards: priority.length,
       priorityVisible: priority.filter(card => card.getBoundingClientRect().height > 0).length,
       chartContained: Boolean(chartScroll && chartScroll.scrollWidth > chartScroll.clientWidth),
+      evidenceFloor: evidence.every(element => Number.parseFloat(getComputedStyle(element).fontSize) >= 14),
+      ruleTriggerHeight: ruleTrigger?.getBoundingClientRect().height || 0,
+      ruleTriggerFont: Number.parseFloat(ruleTrigger ? getComputedStyle(ruleTrigger).fontSize : '0'),
     };
   });
+  if (!state.evidenceFloor || state.ruleTriggerHeight < 24 || state.ruleTriggerFont < 14)
+    throw new Error(`Trajectory evidence/control floor mismatch: ${JSON.stringify(state)}`);
   if (
     state.mobile &&
     (state.emptyPaidVisible ||

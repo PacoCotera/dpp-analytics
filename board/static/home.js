@@ -125,7 +125,7 @@ function render(data) {
     read = data.business_momentum || {};
   document.getElementById('clock').textContent = formatBusinessClock(data.local_time);
   document.getElementById('fresh').textContent = 'Live operating data';
-  document.getElementById('stateHeadline').textContent = read.label;
+  document.getElementById('stateHeadline').textContent = 'Current evidence';
   document.getElementById('stateCopy').textContent = read.explanation;
   document.getElementById('homeBusinessWindow').textContent = formatMetricWindow(
     data.metric_windows?.RECONCILED_BUSINESS_T28,
