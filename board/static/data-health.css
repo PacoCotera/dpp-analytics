@@ -790,19 +790,22 @@ body.data-health-page .health-summary {
 }
 
 body.data-health-page .health-summary__body {
-  grid-template-columns: 126px minmax(0, 1fr);
-  min-height: 126px;
-  padding: 12px 18px;
+  grid-template-columns: 82px minmax(0, 1fr);
+  min-height: 94px;
+  padding: 10px 16px;
 }
 
 body.data-health-page .health-summary__count {
-  min-height: 92px;
-  font-size: clamp(34px, 4vw, 48px);
+  width: 68px;
+  height: 68px;
+  min-height: 68px;
+  border-radius: 18px;
+  font-size: 32px;
 }
 
 body.data-health-page .health-title {
-  margin: 3px 0 4px;
-  font-size: clamp(23px, 2.2vw, 31px);
+  margin: 2px 0 3px;
+  font-size: clamp(21px, 1.8vw, 27px);
 }
 
 body.data-health-page .health-copy,

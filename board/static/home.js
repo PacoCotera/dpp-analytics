@@ -12,6 +12,47 @@ import {
   tone,
 } from './ui-utils.js';
 
+let homeWindow = '90d';
+let homePayload = null;
+
+function homeWindowRows(rows) {
+  const all = Array.isArray(rows) ? rows : [];
+  if (homeWindow === '28d') return all.slice(-28);
+  if (homeWindow === 'ytd') {
+    const latestYear = String(all.at(-1)?.business_date || '').slice(0, 4);
+    return all.filter((row) => String(row.business_date || '').startsWith(latestYear));
+  }
+  return all.slice(-90);
+}
+
+function renderDemandChart() {
+  if (!homePayload || !window.DPPCharts?.demandRhythm) return;
+  const rolling = homePayload.rolling || {};
+  const cutoff = String(rolling.business_date || '').slice(0, 10);
+  const reconciled = (homePayload.series || []).filter(
+    (row) => !cutoff || String(row.business_date || '').slice(0, 10) <= cutoff,
+  );
+  const rows = homeWindowRows(reconciled);
+  const description = document.getElementById('homeDemandDescription');
+  const label = homeWindow === '28d' ? '28 days' : homeWindow === 'ytd' ? 'Year to date' : '90 days';
+  description.textContent = `${label} · shopper spend incl. IVA · reconciled Sales & Traffic · seven-day signal${homeWindow === '90d' ? ' · current week partial' : ''}`;
+  window.DPPCharts.demandRhythm('#spark', rows, { showCurrentWeek: homeWindow !== '28d' });
+}
+
+function bindDemandWindow() {
+  document.querySelectorAll('[data-home-window]').forEach((button) => {
+    button.addEventListener('click', () => {
+      homeWindow = button.dataset.homeWindow;
+      document.querySelectorAll('[data-home-window]').forEach((item) => {
+        const active = item === button;
+        item.classList.toggle('active', active);
+        item.setAttribute('aria-pressed', String(active));
+      });
+      renderDemandChart();
+    });
+  });
+}
+
 function renderAds(ads) {
   const a = ads || {},
     panel = document.getElementById('adsRead'),
@@ -128,6 +169,7 @@ function businessLead(read = {}) {
 }
 
 function render(data) {
+  homePayload = data;
   const today = data.today || {},
     rolling = data.rolling || {},
     inventory = data.inventory_summary || {},
@@ -158,13 +200,7 @@ function render(data) {
   renderAds(data.ads);
   renderAttention(data, decisionCount);
   renderBusinessHealth(data);
-  if (window.DPPCharts?.homeRhythm) {
-    const cutoff = String(rolling.business_date || '').slice(0, 10),
-      reconciledSeries = (data.series || []).filter(
-        (row) => !cutoff || String(row.business_date || '').slice(0, 10) <= cutoff,
-      );
-    window.DPPCharts.homeRhythm('#spark', reconciledSeries, data.weekly_products);
-  }
+  renderDemandChart();
 }
 async function load() {
   try {
@@ -174,5 +210,6 @@ async function load() {
     document.getElementById('stateCopy').textContent = error.message;
   }
 }
+bindDemandWindow();
 load();
 setInterval(load, 60_000);

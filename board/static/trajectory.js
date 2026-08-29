@@ -10,6 +10,10 @@ import {
   percent,
 } from './ui-utils.js';
 
+let trajectoryPayload = null;
+let trajectoryWindow = '180d';
+let trajectoryResizeFrame = 0;
+
 function toneClass(value) {
   const n = Number(value);
   if (n > 0) return 'good';
@@ -51,15 +55,39 @@ function renderAds(ads = {}) {
     : '';
 }
 function renderHorizons(rows) {
-  const maxDelta = Math.max(...rows.map((i) => Math.abs(Number(i.delta_pct || 0))), 10);
   byId('horizons').innerHTML = rows
     .map((item) => {
       const delta = Number(item.delta_pct || 0),
-        width = Math.max(4, Math.min(100, (Math.abs(delta) / maxDelta) * 100)),
         tone = toneClass(delta);
-      return `<div class="trajectory-horizon"><div class="trajectory-horizon__label">${escapeHtml(item.label)}</div><div><progress class="trajectory-horizon__track ${tone}" max="100" value="${width}" aria-label="${escapeHtml(item.label)} relative change magnitude"></progress><div class="trajectory-horizon__copy">${money(item.sales)} · ${money(item.daily_avg)}/day · ${formatCount(item.orders, 'order')}</div></div><div class="trajectory-horizon__delta ${tone}">${percent(item.delta_pct)}</div></div>`;
+      return `<div class="trajectory-horizon">
+        <div class="trajectory-horizon__head"><span class="trajectory-horizon__label">${escapeHtml(item.label)}</span><strong class="trajectory-horizon__delta ${tone}">${percent(item.delta_pct)}</strong></div>
+        <strong class="trajectory-horizon__value">${money(item.sales)}</strong>
+        <div class="trajectory-horizon__copy"><span>${money(item.daily_avg)}/day</span><span>${formatCount(item.orders, 'order')}</span><span>vs prior ${escapeHtml(item.label)}</span></div>
+      </div>`;
     })
     .join('');
+}
+
+function trajectoryRows() {
+  const rows = trajectoryPayload?.series || [];
+  if (trajectoryWindow === '90d') return rows.slice(-90);
+  if (trajectoryWindow === 'ytd') {
+    const year = String(rows.at(-1)?.business_date || '').slice(0, 4);
+    return rows.filter((row) => String(row.business_date || '').startsWith(year));
+  }
+  return rows.slice(-180);
+}
+
+function renderTrajectoryChart() {
+  if (!trajectoryPayload || !window.DPPCharts) return;
+  const rows = trajectoryRows();
+  const days = rows.length;
+  const label =
+    trajectoryWindow === '90d' ? '90 days' : trajectoryWindow === 'ytd' ? 'Year to date' : '180 days';
+  const weekly = days > 120;
+  byId('trajectoryChartDescription').textContent =
+    `${label} · ${weekly ? 'weekly average daily' : 'daily'} shopper spend incl. IVA · 28-day moving average · reconciled Sales & Traffic`;
+  window.DPPCharts.trajectory('#chart', rows, { aggregate: weekly ? 'weekly' : 'daily' });
 }
 function renderPortfolio(p = {}) {
   const active = Number(p.active_skus || 0),
@@ -118,6 +146,7 @@ function renderWeeks(rows = []) {
     : '<div class="empty"><strong>No weekly history yet.</strong></div>';
 }
 function render(payload) {
+  trajectoryPayload = payload;
   const headline = payload.headline || {},
     horizons = payload.horizons || [],
     ads = payload.ads || {};
@@ -132,11 +161,22 @@ function render(payload) {
   renderStory(payload.trajectory_read, payload.interpretation_rules, ads);
   renderAds(ads);
   renderHorizons(horizons);
-  if (window.DPPCharts) window.DPPCharts.trajectory('#chart', payload.series || []);
+  renderTrajectoryChart();
   renderPortfolio(payload.portfolio);
   renderWeeks(payload.weekly);
 }
 function bindInteractions() {
+  document.querySelectorAll('[data-trajectory-window]').forEach((button) => {
+    button.addEventListener('click', () => {
+      trajectoryWindow = button.dataset.trajectoryWindow;
+      document.querySelectorAll('[data-trajectory-window]').forEach((item) => {
+        const active = item === button;
+        item.classList.toggle('active', active);
+        item.setAttribute('aria-pressed', String(active));
+      });
+      renderTrajectoryChart();
+    });
+  });
   byId('helpBtn').addEventListener('click', () => {
     const button = byId('helpBtn');
     const help = byId('help');
@@ -145,6 +185,16 @@ function bindInteractions() {
     help.hidden = !expanded;
     help.classList.toggle('show', expanded);
   });
+  const host = document.querySelector('.trajectory-chart-host');
+  if (window.ResizeObserver && host) {
+    new ResizeObserver(() => {
+      if (trajectoryResizeFrame) return;
+      trajectoryResizeFrame = window.requestAnimationFrame(() => {
+        trajectoryResizeFrame = 0;
+        renderTrajectoryChart();
+      });
+    }).observe(host);
+  }
 }
 async function start() {
   bindInteractions();

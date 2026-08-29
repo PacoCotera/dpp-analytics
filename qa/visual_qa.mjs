@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -8,6 +8,7 @@ const viewports = {
   mobile: { width: 412, height: 915, isMobile: true, hasTouch: true },
   tablet: { width: 1024, height: 768, isMobile: false, hasTouch: true },
   desktop: { width: 1600, height: 1000, isMobile: false, hasTouch: false },
+  wide: { width: 2560, height: 1440, isMobile: false, hasTouch: false },
 };
 const wait = (page, selector) => page.locator(selector).first().waitFor({ state: 'visible', timeout: 5000 });
 
@@ -286,6 +287,7 @@ async function verifyToday(page) {
     const drivers = document.querySelector('.today-drivers-panel');
     const rhythm = document.querySelector('[data-dpp-qa="today-rhythm"]');
     const operations = document.querySelector('.today-operations');
+    const primary = document.querySelector('.workspace-grid--today-primary');
     const evidenceSection = document.querySelector('.today-evidence');
     const evidence = document.getElementById('todayBusinessEvidence');
     const reference = document.getElementById('todayProductsReference');
@@ -296,10 +298,12 @@ async function verifyToday(page) {
       mobile,
       recipeMatch: Boolean(
         main &&
-          [...main.children].filter(item => item.matches('section')).every(
-            (section, index) => section === [overview, rhythm, operations, evidenceSection][index]
+          [...main.children].every(
+            (child, index) => child === [overview, primary, evidenceSection][index]
           ) &&
-          [...main.children].filter(item => item.matches('section')).length === 4
+          main.children.length === 3 &&
+          primary?.children[0] === rhythm &&
+          primary?.children[1] === operations
       ),
       queueBeforeDrivers: Boolean(
         queue && drivers && queue.getBoundingClientRect().top <= drivers.getBoundingClientRect().top
@@ -344,6 +348,7 @@ async function verifyBusiness(page) {
     const demand = document.querySelector('[data-dpp-qa="business-demand"]');
     const decisions = document.querySelector('[data-dpp-qa="business-decisions"]');
     const health = document.querySelector('[data-dpp-qa="business-health"]');
+    const secondary = document.querySelector('.workspace-grid--business-secondary');
     const dataHealthCard = document.querySelector('.business-health-card[href="/data-health"]');
     const healthContract = payload.health_contract || {};
     const pipelineScope = healthContract.pipeline_scope || {};
@@ -371,17 +376,19 @@ async function verifyBusiness(page) {
           document.querySelectorAll('main').length === 1 &&
           main.querySelectorAll('h1').length === 1 &&
           main.querySelector('h1')?.textContent?.trim() === expectedHeadline &&
-          sections.length === 4,
+          main.children.length === 3,
       ),
       hierarchy: Boolean(
         sections[0] === overview &&
           sections[1] === demand &&
-          sections[2] === decisions &&
-          sections[3] === health &&
+          sections.length === 2 &&
           overview?.parentElement === main &&
           demand?.parentElement === main &&
-          decisions?.parentElement === main &&
-          health?.parentElement === main &&
+          secondary?.parentElement === main &&
+          decisions?.parentElement === secondary &&
+          health?.parentElement === secondary &&
+          secondary.children[0] === decisions &&
+          secondary.children[1] === health &&
           precedes(overview, demand) &&
           precedes(demand, decisions) &&
           precedes(decisions, health),
@@ -401,15 +408,15 @@ async function verifyBusiness(page) {
       healthCopy: dataHealthCard?.querySelector('p')?.textContent || '',
       healthConditionCount: Number(healthOverall.active_condition_count || 0),
       healthAffectedDomains: healthOverall.affected_domains || [],
-      rhythmCurrentBand: document.querySelectorAll('#spark .home-rhythm__current-week').length,
+      rhythmCurrentBand: document.querySelectorAll('#spark .demand-rhythm__current-period').length,
       rhythmLatestRead: Boolean(
-        document.querySelector('#spark .home-rhythm__latest-dot') &&
-          document.querySelector('#spark .home-rhythm__latest-label'),
+        document.querySelector('#spark .demand-rhythm__latest-dot') &&
+          document.querySelector('#spark .demand-rhythm__latest-label'),
       ),
       rhythmExceptionalDays: document.querySelectorAll(
-        '#spark .home-rhythm__bar--exceptional',
+        '#spark .demand-rhythm__bar--exceptional',
       ).length,
-      rhythmWeekendDays: document.querySelectorAll('#spark .home-rhythm__bar--weekend').length,
+      rhythmWeekendDays: document.querySelectorAll('#spark .demand-rhythm__bar--weekend').length,
       signalCopy: document
         .querySelector('[data-dpp-qa="business-demand"] .section-header__description')
         ?.textContent?.replace(/\s+/g, ' ')
@@ -452,11 +459,7 @@ async function verifyBusiness(page) {
 async function verifyDataHealth(page) {
   await assertWorkspaceLandmarks(page, ['data-health-overview', 'catalog-onboarding']);
   await wait(page, '.health-summary');
-  const mobile = await page.evaluate(() => window.innerWidth <= 640);
-  if (mobile) {
-    await page.locator('#toggle').click();
-    await wait(page, '#jobs .health-job');
-  }
+  await wait(page, '#jobs .health-job');
   const state = await page.evaluate(async () => {
     const [response, homeResponse] = await Promise.all([
       fetch('/api/data-health', { cache: 'no-store' }),
@@ -492,6 +495,12 @@ async function verifyDataHealth(page) {
         'error_message' in job
       ),
       problems: problems.length,
+      renderedJobs: document.querySelectorAll('#jobs .health-job').length,
+      syncActions: [...document.querySelectorAll('#jobs .sync-now')].filter(
+        button => button.getClientRects().length > 0
+      ).length,
+      toggleExpanded: document.getElementById('toggle')?.getAttribute('aria-expanded'),
+      toggleCopy: document.getElementById('toggle')?.textContent?.trim(),
       attentionVisible: Boolean(attention && !attention.hidden),
       incidents: incidents.length,
       incidentStructure: incidents.every(incident =>
@@ -550,6 +559,10 @@ async function verifyDataHealth(page) {
     !state.homeApiOk ||
     !state.checkedAt ||
     !state.jobs ||
+    state.renderedJobs !== state.jobs ||
+    state.syncActions !== state.jobs ||
+    state.toggleExpanded !== 'true' ||
+    state.toggleCopy !== 'Problems only' ||
     !state.contractComplete ||
     !state.compactCoverage ||
     state.healthContractId !== 'BUSINESS_DECISION_HEALTH_V1' ||
@@ -834,7 +847,8 @@ async function verifyTrajectory(page) {
     const paidEmpty = paid?.classList.contains('paid-context--empty');
     const guide = document.getElementById('trajectoryGuide');
     const reference = document.getElementById('portfolioReference');
-    const chartScroll = document.querySelector('.trajectory-chart-scroll');
+    const chart = document.getElementById('chart');
+    const chartHost = chart?.closest('.chart-host');
     const priority = [...document.querySelectorAll('.structure-priority .structure-card')];
     const evidence = [...document.querySelectorAll(
       '.trajectory-page .kicker,.trajectory-page .page-header__description,.trajectory-page .metric-window-note,.trajectory-page .state-read__eyebrow,.trajectory-page .state-read__copy,.trajectory-page .state-read__meta,.trajectory-page .section-header__description',
@@ -848,13 +862,27 @@ async function verifyTrajectory(page) {
       referenceOpen: Boolean(reference?.hasAttribute('open')),
       priorityCards: priority.length,
       priorityVisible: priority.filter(card => card.getBoundingClientRect().height > 0).length,
-      chartContained: Boolean(chartScroll && chartScroll.scrollWidth > chartScroll.clientWidth),
+      chartContained: Boolean(
+        chart &&
+          chartHost &&
+          chart.getBoundingClientRect().width <= chartHost.getBoundingClientRect().width + 2 &&
+          chartHost.scrollWidth <= chartHost.clientWidth + 2
+      ),
+      chartBars: chart?.querySelectorAll('.dpp-bar').length || 0,
+      progressBars: document.querySelectorAll('progress').length,
       evidenceFloor: evidence.every(element => Number.parseFloat(getComputedStyle(element).fontSize) >= 14),
       ruleTriggerHeight: ruleTrigger?.getBoundingClientRect().height || 0,
       ruleTriggerFont: Number.parseFloat(ruleTrigger ? getComputedStyle(ruleTrigger).fontSize : '0'),
     };
   });
-  if (!state.evidenceFloor || state.ruleTriggerHeight < 24 || state.ruleTriggerFont < 14)
+  if (
+    !state.evidenceFloor ||
+    state.ruleTriggerHeight < 24 ||
+    state.ruleTriggerFont < 14 ||
+    !state.chartContained ||
+    state.chartBars > 32 ||
+    state.progressBars
+  )
     throw new Error(`Trajectory evidence/control floor mismatch: ${JSON.stringify(state)}`);
   if (
     state.mobile &&
@@ -862,8 +890,7 @@ async function verifyTrajectory(page) {
       state.guideOpen ||
       state.referenceOpen ||
       state.priorityCards !== 3 ||
-      state.priorityVisible !== 3 ||
-      !state.chartContained)
+      state.priorityVisible !== 3)
   ) {
     throw new Error(`Trajectory mobile hierarchy mismatch: ${JSON.stringify(state)}`);
   }
@@ -1158,9 +1185,9 @@ async function verifySalesOrders(page) {
 }
 
 const scenarios = [
-  ['today', '/', ['mobile', 'desktop'], verifyToday],
+  ['today', '/', ['mobile', 'desktop', 'wide'], verifyToday],
   ['today-wall', '/?wall=1', ['desktop']],
-  ['business', '/business', ['mobile', 'tablet', 'desktop'], verifyBusiness],
+  ['business', '/business', ['mobile', 'tablet', 'desktop', 'wide'], verifyBusiness],
   ['sales-overview', '/sales', ['mobile', 'tablet', 'desktop'], verifySalesOverview],
   ['sales-products', '/sales', ['mobile', 'desktop'], verifySalesProducts],
   ['sales-orders', '/sales', ['mobile', 'desktop'], verifySalesOrders],
@@ -1177,8 +1204,8 @@ const scenarios = [
   ['finance-overview', '/finance', ['mobile', 'desktop'], verifyFinanceReport],
   ['finance-closed', '/finance', ['mobile', 'tablet', 'desktop'], verifyFinanceClosed],
   ['finance-ledger', '/finance', ['mobile', 'desktop'], verifyFinanceEvidence],
-  ['trajectory', '/trajectory', ['mobile', 'desktop'], verifyTrajectory],
-  ['data-health', '/data-health', ['mobile', 'desktop'], verifyDataHealth],
+  ['trajectory', '/trajectory', ['mobile', 'desktop', 'wide'], verifyTrajectory],
+  ['data-health', '/data-health', ['mobile', 'desktop', 'wide'], verifyDataHealth],
   ['admin', '/admin', ['mobile', 'desktop'], verifyAdmin],
 ].map(([name, url, views, action]) => ({ name, url, views, action }));
 
@@ -1213,11 +1240,20 @@ for (const [name, url] of [['ads', '/ads'], ['data-health', '/data-health'], ['a
 
 await fs.mkdir(outDir, { recursive: true });
 for (const entry of await fs.readdir(outDir)) await fs.rm(path.join(outDir, entry), { recursive: true, force: true });
-const browser = await chromium.launch({ headless: true });
 const results = [];
 const safeName = value => value.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+const requestedBrowsers = new Set((process.env.DPP_QA_BROWSERS || 'chromium,webkit').split(',').map(value => value.trim()));
+const requestedScenarios = new Set((process.env.DPP_QA_SCENARIOS || '').split(',').map(value => value.trim()).filter(Boolean));
+const plannedScenarios = requestedScenarios.size ? scenarios.filter(scenario => requestedScenarios.has(scenario.name)) : scenarios;
+const browserPlans = [
+  { name: 'chromium', engine: chromium, scenarios: plannedScenarios },
+  { name: 'webkit', engine: webkit, scenarios: plannedScenarios.filter(scenario => ['today', 'business', 'trajectory', 'data-health'].includes(scenario.name)) },
+].filter(plan => requestedBrowsers.has(plan.name));
 
-for (const scenario of scenarios) for (const viewportName of scenario.views) {
+for (const plan of browserPlans) {
+const browser = await plan.engine.launch({ headless: true });
+for (const scenario of plan.scenarios) for (const viewportName of scenario.views) {
+  if (plan.name === 'webkit' && !['mobile', 'desktop', 'wide'].includes(viewportName)) continue;
   const viewport = viewports[viewportName];
   const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, isMobile: viewport.isMobile, hasTouch: viewport.hasTouch, deviceScaleFactor: 1 });
   if (scenario.profile) {
@@ -1233,7 +1269,7 @@ for (const scenario of scenarios) for (const viewportName of scenario.views) {
   page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
   page.on('console', msg => { if (msg.type() === 'error') errors.push(`console: ${msg.text()}`); if (msg.type() === 'warning') warnings.push(`console: ${msg.text()}`); });
   page.on('response', async response => { if (response.status() >= 400 && response.url().startsWith(baseUrl)) failedResponses.push(`${response.status()} ${response.request().method()} ${response.url()}`); });
-  const result = { scenario: scenario.name, viewport: viewportName, profile: scenario.profile || 'warm-studio', width: viewport.width, height: viewport.height, url: `${baseUrl}${scenario.url}`, screenshot: null, metrics: null, errors, warnings, failedResponses, ok: false };
+  const result = { browser: plan.name, scenario: scenario.name, viewport: viewportName, profile: scenario.profile || 'warm-studio', width: viewport.width, height: viewport.height, url: `${baseUrl}${scenario.url}`, screenshot: null, metrics: null, errors, warnings, failedResponses, ok: false };
   try {
     const response = await page.goto(result.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
     if (!response?.ok()) throw new Error(`navigation returned ${response?.status() || 'no response'}`);
@@ -1272,18 +1308,26 @@ for (const scenario of scenarios) for (const viewportName of scenario.views) {
         const clippedY = element.scrollHeight > element.clientHeight + 2 && (style.overflowY === 'hidden' || style.overflowY === 'clip');
         return (clippedX || clippedY) && (element.innerText || element.textContent || '').trim();
       }).slice(0, 20).map(element => ({ element: signature(element), deltaX: element.scrollWidth - element.clientWidth, deltaY: element.scrollHeight - element.clientHeight }));
+      const internalScrollers = mainElements.filter(element => {
+        const style = getComputedStyle(element);
+        return (style.overflowX === 'auto' || style.overflowX === 'scroll') && element.scrollWidth > element.clientWidth + 2;
+      }).slice(0, 20).map(element => ({ element: signature(element), deltaX: element.scrollWidth - element.clientWidth }));
       const doc = document.documentElement, body = document.body, scrollWidth = Math.max(doc.scrollWidth, body.scrollWidth);
-      return { title: document.title, bodyTextLength: (body.innerText || '').length, activeTab: document.querySelector('.tabs button.active,.view-tabs button.active,.analysis-modes button.active')?.textContent?.trim() || null, scrollWidth, scrollHeight: Math.max(doc.scrollHeight, body.scrollHeight), horizontalOverflowPx: Math.max(0, scrollWidth - doc.clientWidth), uncontainedElements, clippedContainers, smallTextCount: smallText.length, smallTapTargetCount: smallTargets.length };
+      const main = document.querySelector('main');
+      return { title: document.title, bodyTextLength: (body.innerText || '').length, activeTab: document.querySelector('.tabs button.active,.view-tabs button.active,.analysis-modes button.active')?.textContent?.trim() || null, scrollWidth, scrollHeight: Math.max(doc.scrollHeight, body.scrollHeight), horizontalOverflowPx: Math.max(0, scrollWidth - doc.clientWidth), mainViewportUse: Number(((main?.getBoundingClientRect().width || 0) / window.innerWidth).toFixed(3)), internalScrollers, uncontainedElements, clippedContainers, smallTextCount: smallText.length, smallTapTargetCount: smallTargets.length };
     }, { viewportName });
     if (viewportName === 'mobile' && result.metrics.uncontainedElements.length) errors.push(`mobile component overflow: ${JSON.stringify(result.metrics.uncontainedElements)}`);
     if (viewportName === 'mobile' && result.metrics.clippedContainers.length) errors.push(`mobile clipped content: ${JSON.stringify(result.metrics.clippedContainers)}`);
-    const fileName = `${safeName(scenario.name)}-${viewportName}.png`;
+    if (['mobile', 'wide'].includes(viewportName) && result.metrics.horizontalOverflowPx > 2) errors.push(`${viewportName} document overflow: ${result.metrics.horizontalOverflowPx}px`);
+    if (viewportName === 'wide' && result.metrics.mainViewportUse < 0.82) errors.push(`wide workspace uses only ${result.metrics.mainViewportUse} of viewport width`);
+    if (viewportName === 'wide' && result.metrics.internalScrollers.length) errors.push(`wide internal scrolling: ${JSON.stringify(result.metrics.internalScrollers)}`);
+    const fileName = `${plan.name}-${safeName(scenario.name)}-${viewportName}.png`;
     await page.screenshot({ path: path.join(outDir, fileName), fullPage: true });
     result.screenshot = fileName;
     result.ok = !errors.length && !failedResponses.length;
   } catch (err) {
     errors.push(`qa: ${err.message}`);
-    const fileName = `${safeName(scenario.name)}-${viewportName}-error.png`;
+    const fileName = `${plan.name}-${safeName(scenario.name)}-${viewportName}-error.png`;
     await page.screenshot({ path: path.join(outDir, fileName), fullPage: true }).catch(() => {});
     result.screenshot = fileName;
   }
@@ -1291,11 +1335,12 @@ for (const scenario of scenarios) for (const viewportName of scenario.views) {
   await context.close();
 }
 await browser.close();
+}
 
 const summary = { generatedAt: new Date().toISOString(), baseUrl, captures: results.length, successfulCaptures: results.filter(x => x.ok).length, navigationFailures: results.filter(x => !x.ok).length, consoleErrorCount: results.reduce((n, x) => n + x.errors.length, 0), failedResponseCount: results.reduce((n, x) => n + x.failedResponses.length, 0), horizontalOverflowCaptures: results.filter(x => (x.metrics?.horizontalOverflowPx || 0) > 2).length, smallTextSignals: results.reduce((n, x) => n + (x.metrics?.smallTextCount || 0), 0), smallTapTargetSignals: results.reduce((n, x) => n + (x.metrics?.smallTapTargetCount || 0), 0), results };
 await fs.writeFile(path.join(outDir, 'summary.json'), JSON.stringify(summary, null, 2));
-const lines = ['# DPP Visual QA', '', `Generated: ${summary.generatedAt}`, `Base URL: ${baseUrl}`, '', `**${summary.successfulCaptures}/${summary.captures} captures succeeded.**`, '', '| Screen | Viewport | Active tab | Overflow | Small text | Small tap targets | Browser errors |', '|---|---:|---|---:|---:|---:|---:|'];
-for (const r of results) lines.push(`| ${r.scenario} | ${r.viewport} ${r.width}×${r.height} | ${r.metrics?.activeTab ?? '—'} | ${r.metrics?.horizontalOverflowPx ?? '—'}px | ${r.metrics?.smallTextCount ?? '—'} | ${r.metrics?.smallTapTargetCount ?? '—'} | ${r.errors.length} |`);
+const lines = ['# DPP Visual QA', '', `Generated: ${summary.generatedAt}`, `Base URL: ${baseUrl}`, '', `**${summary.successfulCaptures}/${summary.captures} captures succeeded.**`, '', '| Browser | Screen | Viewport | Active tab | Overflow | Small text | Small tap targets | Browser errors |', '|---|---|---:|---|---:|---:|---:|---:|'];
+for (const r of results) lines.push(`| ${r.browser} | ${r.scenario} | ${r.viewport} ${r.width}×${r.height} | ${r.metrics?.activeTab ?? '—'} | ${r.metrics?.horizontalOverflowPx ?? '—'}px | ${r.metrics?.smallTextCount ?? '—'} | ${r.metrics?.smallTapTargetCount ?? '—'} | ${r.errors.length} |`);
 lines.push('', '## Signals', '', `- Horizontal overflow: ${summary.horizontalOverflowCaptures} capture(s)`, `- Small-text signals: ${summary.smallTextSignals}`, `- Small tap-target signals: ${summary.smallTapTargetSignals}`, `- Failed local HTTP responses: ${summary.failedResponseCount}`, `- Browser/page errors: ${summary.consoleErrorCount}`, '', '_Screenshots remain the source of truth for visual judgment._', '');
 await fs.writeFile(path.join(outDir, 'report.md'), lines.join('\n'));
 console.log(JSON.stringify({ captures: summary.captures, successful: summary.successfulCaptures, navigationFailures: summary.navigationFailures, overflowCaptures: summary.horizontalOverflowCaptures, smallTextSignals: summary.smallTextSignals, smallTapTargetSignals: summary.smallTapTargetSignals, failedResponses: summary.failedResponseCount, browserErrors: summary.consoleErrorCount }, null, 2));

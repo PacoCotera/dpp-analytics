@@ -58,42 +58,6 @@ body.sales-page .sales-operating-grid {
   flex: 1;
 }
 
-.sales-range {
-  display: inline-flex;
-  flex: none;
-  gap: 2px;
-  padding: 3px;
-  border: var(--border-width) solid var(--line);
-  border-radius: var(--pill-radius);
-  background: var(--dpp-surface-subtle);
-}
-
-.sales-range button {
-  min-width: 42px;
-  height: 27px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: var(--pill-radius);
-  appearance: none;
-  background: transparent;
-  color: var(--muted);
-  font-family: var(--dpp-font-detail, inherit);
-  font-size: var(--dpp-metadata-size, 14px);
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.sales-range button.active {
-  background: var(--ink);
-  color: var(--dpp-interaction-text);
-}
-
-.sales-range button:focus-visible {
-  outline: 2px solid var(--dpp-focus-ring);
-  outline-offset: 2px;
-}
-
 .sales-page .sales-state-rail {
   display: flex;
   flex-direction: column;
@@ -914,11 +878,6 @@ body.sales-page .sales-operating-grid {
     font-size: var(--dpp-metadata-size, 14px);
   }
 
-  .sales-range button {
-    min-width: 39px;
-    padding: 0 7px;
-  }
-
   .sales-chart-kpi-rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin: 2px 3px 0;
@@ -1625,17 +1584,6 @@ body.sales-page .product-contribution-header {
 
   .sales-chart-header {
     gap: 8px;
-  }
-
-  .sales-range {
-    padding: 2px;
-  }
-
-  .sales-range button {
-    min-width: 36px;
-    height: 26px;
-    padding: 0 6px;
-    font-size: var(--dpp-metadata-size, 14px);
   }
 
   .sales-state-rail > .sales-signal.primary {

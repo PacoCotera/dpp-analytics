@@ -30,7 +30,7 @@
       </header>
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
-      <main class="trajectory-main" aria-labelledby="storyTitle">
+      <main class="workspace trajectory-main" aria-labelledby="storyTitle">
         <section class="trajectory-lead" data-dpp-qa="trajectory-overview">
           <div>
             <div class="state-read__eyebrow">Trajectory · commercial trend</div>
@@ -46,89 +46,116 @@
           </div>
         </section>
 
-        <section class="page-section trajectory-evidence" data-dpp-qa="trajectory-evidence">
-          <div class="panel">
-            <div class="panel__header">
-              <div>
-                <h2 class="panel__title">Trend history</h2>
-                <div class="panel__description">
-                  180 days · daily shopper spend incl. IVA · 28-day moving average · reconciled Sales &amp;
-                  Traffic
+        <div class="workspace-grid workspace-grid--trajectory-primary">
+          <section class="page-section trajectory-evidence" data-dpp-qa="trajectory-evidence">
+            <div class="panel panel--chart">
+              <div class="panel__header">
+                <div>
+                  <h2 class="panel__title">Trend history</h2>
+                  <div class="panel__description" id="trajectoryChartDescription">
+                    180 days · weekly average daily shopper spend · 28-day moving average · reconciled Sales
+                    &amp; Traffic
+                  </div>
+                </div>
+                <div
+                  class="segmented-control segmented-control--fill time-window-control"
+                  role="group"
+                  aria-label="Trajectory time window"
+                >
+                  <button
+                    class="segmented-control__item"
+                    type="button"
+                    data-trajectory-window="90d"
+                    aria-pressed="false"
+                  >
+                    90D
+                  </button>
+                  <button
+                    class="segmented-control__item active"
+                    type="button"
+                    data-trajectory-window="180d"
+                    aria-pressed="true"
+                  >
+                    180D
+                  </button>
+                  <button
+                    class="segmented-control__item"
+                    type="button"
+                    data-trajectory-window="ytd"
+                    aria-pressed="false"
+                  >
+                    YTD
+                  </button>
+                </div>
+              </div>
+              <div class="panel__body">
+                <div class="chart-host trajectory-chart-host">
+                  <svg
+                    id="chart"
+                    class="trajectory-chart"
+                    viewBox="0 0 1000 330"
+                    preserveAspectRatio="none"
+                  ></svg>
                 </div>
               </div>
             </div>
-            <div class="panel__body">
-              <div
-                class="trajectory-chart-scroll"
-                role="region"
-                aria-label="Trajectory chart; scroll horizontally on smaller screens"
-                tabindex="0"
-              >
-                <svg
-                  id="chart"
-                  class="trajectory-chart"
-                  viewBox="0 0 1000 330"
-                  preserveAspectRatio="none"
-                ></svg>
-              </div>
-            </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="page-section trajectory-horizons" data-dpp-qa="trajectory-horizons">
-          <div class="panel">
-            <div class="panel__header">
-              <div>
-                <h2 class="panel__title">Horizon comparison</h2>
-                <div class="panel__description">
-                  Read 28D and longer first; 7D is acceleration and noise context.
-                </div>
-              </div>
-              <button class="btn" id="helpBtn" type="button" aria-controls="help" aria-expanded="false">
-                Why these windows?
-              </button>
-            </div>
-            <div class="panel__body">
-              <div id="horizons"></div>
-              <div class="notice trajectory-help" id="help" hidden>
-                <strong>7D</strong> reacts quickly but is noisy. <strong>28D</strong> preserves weekday mix
-                and is the main operating signal. <strong>56D</strong> tests persistence.
-                <strong>90D</strong> distinguishes a durable step-change from a short burst.
-              </div>
-            </div>
-          </div>
-          <details class="trajectory-why" id="trajectoryGuide">
-            <summary>
-              <span><strong>Horizon guide</strong><small>How to read mixed signals</small></span>
-            </summary>
-            <div class="list">
-              <div class="list-row">
+          <section class="page-section trajectory-horizons" data-dpp-qa="trajectory-horizons">
+            <div class="panel">
+              <div class="panel__header">
                 <div>
-                  <div class="row-title">Short down, long up</div>
-                  <div class="row-sub">Recent softness inside a still-improving business.</div>
+                  <h2 class="panel__title">Horizon comparison</h2>
+                  <div class="panel__description">
+                    Read 28D and longer first; 7D is acceleration and noise context.
+                  </div>
                 </div>
+                <button class="btn" id="helpBtn" type="button" aria-controls="help" aria-expanded="false">
+                  Why these windows?
+                </button>
               </div>
-              <div class="list-row">
-                <div>
-                  <div class="row-title">Short up, long flat</div>
-                  <div class="row-sub">Acceleration worth watching, not yet structural.</div>
-                </div>
-              </div>
-              <div class="list-row">
-                <div>
-                  <div class="row-title">All up</div>
-                  <div class="row-sub">Broad strengthening across time horizons.</div>
-                </div>
-              </div>
-              <div class="list-row">
-                <div>
-                  <div class="row-title">All down</div>
-                  <div class="row-sub">Broad-based slowdown that deserves diagnosis.</div>
+              <div class="panel__body">
+                <div id="horizons"></div>
+                <div class="notice trajectory-help" id="help" hidden>
+                  <strong>7D</strong> reacts quickly but is noisy. <strong>28D</strong> preserves weekday mix
+                  and is the main operating signal. <strong>56D</strong> tests persistence.
+                  <strong>90D</strong> distinguishes a durable step-change from a short burst.
                 </div>
               </div>
             </div>
-          </details>
-        </section>
+            <details class="trajectory-why" id="trajectoryGuide">
+              <summary>
+                <span><strong>Horizon guide</strong><small>How to read mixed signals</small></span>
+              </summary>
+              <div class="list">
+                <div class="list-row">
+                  <div>
+                    <div class="row-title">Short down, long up</div>
+                    <div class="row-sub">Recent softness inside a still-improving business.</div>
+                  </div>
+                </div>
+                <div class="list-row">
+                  <div>
+                    <div class="row-title">Short up, long flat</div>
+                    <div class="row-sub">Acceleration worth watching, not yet structural.</div>
+                  </div>
+                </div>
+                <div class="list-row">
+                  <div>
+                    <div class="row-title">All up</div>
+                    <div class="row-sub">Broad strengthening across time horizons.</div>
+                  </div>
+                </div>
+                <div class="list-row">
+                  <div>
+                    <div class="row-title">All down</div>
+                    <div class="row-sub">Broad-based slowdown that deserves diagnosis.</div>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </section>
+        </div>
 
         <section class="paid-context" id="paidContext">
           <div>

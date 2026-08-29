@@ -1,6 +1,5 @@
 .today-app .today-main {
   width: 100%;
-  max-width: var(--content-max);
   min-width: 0;
   margin: 0 auto;
 }
@@ -404,34 +403,6 @@
 
 .latest-age {
   margin-top: 8px;
-}
-
-.periods {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px;
-  border: var(--border-width) solid var(--line);
-  border-radius: var(--pill-radius);
-  background: var(--dpp-surface-subtle);
-}
-
-.period {
-  min-width: 50px;
-  min-height: var(--control-height);
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--pill-radius);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 760;
-}
-
-.period.active {
-  background: var(--dpp-interaction);
-  color: var(--dpp-interaction-text);
 }
 
 .rhythm-insight {
@@ -994,15 +965,6 @@ html.wall-mode body.shell-drawer-open {
     border-left: 0;
   }
 
-  .rhythm {
-    min-width: 620px;
-  }
-
-  .rhythm-host {
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-  }
-
   .rhythm-rail {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1052,14 +1014,6 @@ html.wall-mode body.shell-drawer-open {
 
   .today-hero__metric:first-child {
     border-top: 0;
-  }
-
-  .periods {
-    width: 100%;
-  }
-
-  .period {
-    flex: 1 1 0;
   }
 
   .today-product {
@@ -1234,7 +1188,8 @@ body.today-app .today-section {
 
 body.today-app .today-main .today-section {
   margin-top: 14px;
-  padding: 20px 22px;
+  padding: 0;
+  overflow: hidden;
 }
 
 body.today-app .today-section:last-child {
@@ -1242,7 +1197,7 @@ body.today-app .today-section:last-child {
 }
 
 body.today-app .today-section-header {
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 body.today-app .today-section-header h2,
@@ -1257,7 +1212,7 @@ body.today-app .today-panel__sub {
 }
 
 .today-demand {
-  padding-bottom: 16px;
+  padding-bottom: 0;
 }
 
 body.today-app .rhythm-host {
@@ -1361,8 +1316,12 @@ body.today-app .rhythm {
     padding-top: 12px;
   }
 
-  .today-lead__head,
-  body.today-app .today-main .today-section {
+  body.today-app .today-main .today-section-header {
+    display: grid;
+    width: 100%;
+  }
+
+  .today-lead__head {
     padding: 16px;
   }
 
@@ -1412,6 +1371,20 @@ body.today-app .rhythm {
     width: 100%;
     min-width: 0;
     height: 220px;
+  }
+}
+
+@media (min-width: 1800px) {
+  .workspace-grid--today-primary .today-operations-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-grid--today-primary .today-operations-grid > .today-panel + .today-panel {
+    margin-top: 16px;
+    padding-top: 16px;
+    padding-left: 0;
+    border-top: var(--border-width) solid var(--line);
+    border-left: 0;
   }
 }
 

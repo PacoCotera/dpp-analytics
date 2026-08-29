@@ -34,7 +34,7 @@
         ><a href="/finance">Finance</a>
       </nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
-      <main class="home-main">
+      <main class="workspace home-main">
         <section class="business-hero" aria-labelledby="stateHeadline" data-dpp-qa="business-overview">
           <div class="business-hero__lead">
             <div class="section-label">Business pulse</div>
@@ -80,14 +80,46 @@
           <div class="section-header">
             <div>
               <h2 class="section-header__title" id="demandTitle">Demand pulse</h2>
-              <p class="section-header__description">
+              <p class="section-header__description" id="homeDemandDescription">
                 13 weeks · shopper spend incl. IVA · reconciled Sales &amp; Traffic · seven-day signal ·
                 current week partial
               </p>
             </div>
-            <a class="section-header__action" href="/sales">Open Sales <span aria-hidden="true">→</span></a>
+            <div class="section-header__action">
+              <div
+                class="segmented-control segmented-control--fill time-window-control"
+                role="group"
+                aria-label="Business demand time window"
+              >
+                <button
+                  class="segmented-control__item"
+                  type="button"
+                  data-home-window="28d"
+                  aria-pressed="false"
+                >
+                  28D
+                </button>
+                <button
+                  class="segmented-control__item active"
+                  type="button"
+                  data-home-window="90d"
+                  aria-pressed="true"
+                >
+                  90D
+                </button>
+                <button
+                  class="segmented-control__item"
+                  type="button"
+                  data-home-window="ytd"
+                  aria-pressed="false"
+                >
+                  YTD
+                </button>
+              </div>
+              <a href="/sales">Open Sales <span aria-hidden="true">→</span></a>
+            </div>
           </div>
-          <div class="demand-chart">
+          <div class="chart-host demand-chart">
             <svg
               class="spark"
               id="spark"
@@ -98,49 +130,59 @@
           </div>
         </section>
 
-        <section
-          class="home-surface decisions-module"
-          aria-labelledby="decisionsTitle"
-          data-dpp-qa="business-decisions"
-        >
-          <header class="decisions-header">
-            <div>
-              <div class="section-label">Decisions</div>
-              <h2 id="decisionsTitle">Inventory decisions</h2>
-              <strong class="attention-title" id="attentionTitle">Checking for exceptions…</strong>
-              <p class="attention-copy" id="attentionCopy">
-                Inventory and operating exceptions that need a decision appear here.
-              </p>
-            </div>
-            <div class="attention-count" id="attentionCount" aria-label="Current operating exceptions">—</div>
-          </header>
-          <div id="attention" aria-live="polite"></div>
-        </section>
-
-        <section class="home-health" aria-labelledby="healthTitle" data-dpp-qa="business-health">
-          <div class="section-label">Business health</div>
-          <h2 id="healthTitle">What can change the next decision</h2>
-          <div class="business-health-grid" id="businessHealth" aria-live="polite">
-            <div class="empty"><strong>Reading business health</strong>One moment.</div>
-          </div>
-
-          <section class="ads-read" id="adsRead" aria-label="Advertising context" hidden>
-            <div class="ads-read__head">
+        <div class="workspace-grid workspace-grid--business-secondary">
+          <section
+            class="home-surface decisions-module"
+            aria-labelledby="decisionsTitle"
+            data-dpp-qa="business-decisions"
+          >
+            <header class="decisions-header">
               <div>
-                <div class="ads-read__eyebrow">Paid media context</div>
-                <strong id="adsHeadline">Waiting for Amazon Ads access</strong>
+                <div class="section-label">Decisions</div>
+                <h2 id="decisionsTitle">Inventory decisions</h2>
+                <strong class="attention-title" id="attentionTitle">Checking for exceptions…</strong>
+                <p class="attention-copy" id="attentionCopy">
+                  Inventory and operating exceptions that need a decision appear here.
+                </p>
               </div>
-              <a href="/ads">Open Ads <span aria-hidden="true">→</span></a>
-            </div>
-            <div class="ads-read__metrics" id="adsMetrics" hidden>
-              <div><strong id="adsSpend">—</strong><span>28-day spend</span></div>
-              <div><strong id="adsRoas">—</strong><span>ROAS</span></div>
-              <div><strong id="adsAcos">—</strong><span>ACOS</span></div>
-              <div><strong id="adsTacos">—</strong><span>TACOS</span></div>
-            </div>
-            <p id="adsNote">Sales interpretation remains independent until advertising data is available.</p>
+              <div class="attention-count" id="attentionCount" aria-label="Current operating exceptions">
+                —
+              </div>
+            </header>
+            <div id="attention" aria-live="polite"></div>
           </section>
-        </section>
+
+          <section
+            class="home-health home-surface"
+            aria-labelledby="healthTitle"
+            data-dpp-qa="business-health"
+          >
+            <div class="section-label">Business health</div>
+            <h2 id="healthTitle">What can change the next decision</h2>
+            <div class="business-health-grid" id="businessHealth" aria-live="polite">
+              <div class="empty"><strong>Reading business health</strong>One moment.</div>
+            </div>
+
+            <section class="ads-read" id="adsRead" aria-label="Advertising context" hidden>
+              <div class="ads-read__head">
+                <div>
+                  <div class="ads-read__eyebrow">Paid media context</div>
+                  <strong id="adsHeadline">Waiting for Amazon Ads access</strong>
+                </div>
+                <a href="/ads">Open Ads <span aria-hidden="true">→</span></a>
+              </div>
+              <div class="ads-read__metrics" id="adsMetrics" hidden>
+                <div><strong id="adsSpend">—</strong><span>28-day spend</span></div>
+                <div><strong id="adsRoas">—</strong><span>ROAS</span></div>
+                <div><strong id="adsAcos">—</strong><span>ACOS</span></div>
+                <div><strong id="adsTacos">—</strong><span>TACOS</span></div>
+              </div>
+              <p id="adsNote">
+                Sales interpretation remains independent until advertising data is available.
+              </p>
+            </section>
+          </section>
+        </div>
       </main>
       <footer class="footer home-footer">
         <span>MXN · commercial sales = shopper spend incl. IVA</span

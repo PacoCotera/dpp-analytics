@@ -63,62 +63,42 @@
   text-transform: uppercase;
 }
 .trajectory-horizon {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 92px;
-  gap: 14px;
-  align-items: center;
-  padding: 14px 0;
-  border-top: var(--border-width) solid var(--dpp-border);
+  min-width: 0;
+  padding: 13px 14px;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--dpp-surface-raised, var(--surface));
 }
-.trajectory-horizon:first-child {
-  border-top: 0;
+.trajectory-horizon__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
 .trajectory-horizon__label {
-  font-size: 20px;
+  color: var(--muted);
+  font-family: var(--dpp-font-detail, inherit);
+  font-size: 13px;
   font-weight: 850;
-  letter-spacing: -0.04em;
+  letter-spacing: 0.06em;
 }
-.trajectory-horizon__track {
+.trajectory-horizon__value {
   display: block;
-  overflow: hidden;
-  width: 100%;
-  height: 12px;
-  border: 0;
-  border-radius: var(--pill-radius);
-  appearance: none;
-  background: var(--dpp-surface-subtle);
-}
-.trajectory-horizon__track::-webkit-progress-bar {
-  border-radius: var(--pill-radius);
-  background: var(--dpp-surface-subtle);
-}
-.trajectory-horizon__track::-webkit-progress-value {
-  border-radius: var(--pill-radius);
-  background: var(--dpp-data-incomplete);
-}
-.trajectory-horizon__track::-moz-progress-bar {
-  border-radius: var(--pill-radius);
-  background: var(--dpp-data-incomplete);
-}
-.trajectory-horizon__track.good::-webkit-progress-value {
-  background: var(--dpp-data4);
-}
-.trajectory-horizon__track.good::-moz-progress-bar {
-  background: var(--dpp-data4);
-}
-.trajectory-horizon__track.bad::-webkit-progress-value {
-  background: var(--dpp-data6);
-}
-.trajectory-horizon__track.bad::-moz-progress-bar {
-  background: var(--dpp-data6);
+  margin-top: 7px;
+  font-family: var(--dpp-font-display, inherit);
+  font-size: 23px;
+  font-variant-numeric: tabular-nums;
 }
 .trajectory-horizon__copy {
-  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin-top: 7px;
   color: var(--muted);
   font-size: var(--dpp-metadata-size, 14px);
 }
 .trajectory-horizon__delta {
-  font-size: 23px;
+  font-size: 18px;
   font-weight: 850;
   text-align: right;
 }
@@ -126,10 +106,6 @@
   display: block;
   width: 100%;
   height: 330px;
-}
-.trajectory-chart-scroll {
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
 }
 .trajectory-why {
   border-color: var(--dpp-warning);
@@ -356,8 +332,6 @@
     line-height: 1.3;
   }
   .trajectory-chart {
-    width: 700px;
-    min-width: 700px;
     height: 245px;
   }
   .trajectory-why__desktop-header {
@@ -593,12 +567,18 @@ body.trajectory-page .trajectory-chart {
   align-items: start;
 }
 
+#horizons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 body.trajectory-page .trajectory-horizon {
-  padding: 10px 0;
+  padding: 12px 13px;
 }
 
 body.trajectory-page .trajectory-horizon__label {
-  font-size: 17px;
+  font-size: 13px;
 }
 
 body.trajectory-page .trajectory-horizon__delta {
@@ -794,7 +774,6 @@ body.trajectory-page .structure-reference {
 /* Continuous evidence sequence: sections own hierarchy, objects own bounds. */
 .trajectory-main {
   width: 100%;
-  max-width: var(--content-max);
   min-width: 0;
   margin: 0 auto;
 }
@@ -874,14 +853,14 @@ body.trajectory-page .structure-reference {
     border-left: var(--border-width) solid var(--dpp-border);
   }
 
-  body.trajectory-page .trajectory-chart-scroll {
-    overflow-x: auto;
+  body.trajectory-page .trajectory-chart {
+    width: 100%;
+    min-width: 0;
+    height: 280px;
   }
 
-  body.trajectory-page .trajectory-chart {
-    width: 560px;
-    min-width: 560px;
-    height: 280px;
+  #horizons {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .structure-priority {
@@ -895,5 +874,15 @@ body.trajectory-page .structure-reference {
 
   .structure-card + .structure-card {
     border-top: var(--border-width) solid var(--dpp-border);
+  }
+}
+
+@media (min-width: 1800px) {
+  .workspace-grid--trajectory-primary .trajectory-horizons {
+    display: block;
+  }
+
+  .workspace-grid--trajectory-primary .trajectory-why {
+    margin-top: 10px;
   }
 }

@@ -82,20 +82,23 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
 
             cur.execute(
                 """
-                WITH c AS (SELECT %s::date AS d),
-                days AS (SELECT generate_series(c.d-89,c.d,interval '1 day')::date AS business_date FROM c),
+                WITH c AS (
+                  SELECT %s::date AS d,
+                         least(date_trunc('year',%s::date)::date,%s::date-89) AS start_d
+                ),
+                days AS (SELECT generate_series(c.start_d,c.d,interval '1 day')::date AS business_date FROM c),
                 s AS (
                   SELECT business_date,ordered_product_sales AS sales,units_ordered AS units,
                          sessions,page_views,units_ordered,unit_session_percentage
                   FROM core.asin_sales_traffic_daily,c
-                  WHERE marketplace_id=%s AND asin=%s AND business_date BETWEEN c.d-89 AND c.d
+                  WHERE marketplace_id=%s AND asin=%s AND business_date BETWEEN c.start_d AND c.d
                 ), ad AS (
                   SELECT d.business_date,sum(d.spend) AS ad_spend,sum(d.attributed_sales) AS ad_attributed_sales
                   FROM ads.daily_advertised_product d
                   JOIN ads.account a USING(account_id),c
                   WHERE a.marketplace_id=%s
                     AND (d.advertised_sku=%s OR d.advertised_asin=%s)
-                    AND d.business_date BETWEEN c.d-89 AND c.d
+                    AND d.business_date BETWEEN c.start_d AND c.d
                   GROUP BY d.business_date
                 )
                 SELECT d.business_date,COALESCE(s.sales,0)::numeric(14,2) AS sales,
@@ -104,7 +107,7 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
                 FROM days d LEFT JOIN s USING(business_date) LEFT JOIN ad USING(business_date)
                 ORDER BY d.business_date
                 """,
-                (product_cutoff, marketplace, asin, marketplace, sku, asin),
+                (product_cutoff, product_cutoff, product_cutoff, marketplace, asin, marketplace, sku, asin),
             )
             payload["series"] = list(cur.fetchall())
 

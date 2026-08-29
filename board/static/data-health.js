@@ -8,7 +8,7 @@ import {
 } from './ui-utils.js';
 
 let jobs = [];
-let expanded = false;
+let expanded = true;
 let catalogHealth = {};
 
 function duration(seconds, compact = false) {
@@ -275,8 +275,8 @@ function render(payload) {
       ? `${caution.map((domain) => domain.label).join(', ')} ${caution.length === 1 ? 'is' : 'are'} affected. Pipeline and catalog lifecycle detail are below.`
       : 'The affected condition is not currently blocking a decision-critical business surface.';
   } else {
-    byId('summaryEyebrow').textContent = 'All decision health inside contract';
-    byId('healthTitle').textContent = '0 active data conditions';
+    byId('summaryEyebrow').textContent = 'Decision data inside contract';
+    byId('healthTitle').textContent = 'All decision data is current';
     byId('healthCopy').textContent = Number(catalogSummary.onboarding || 0)
       ? `All ${critical.length} decision surfaces are supported. ${catalogSummary.onboarding} new catalog item${Number(catalogSummary.onboarding) === 1 ? ' is' : 's are'} still inside normal Amazon propagation.`
       : `All ${critical.length} decision surfaces are supported within each source’s own cadence and grace period.`;
@@ -301,7 +301,7 @@ function render(payload) {
 function bindInteractions() {
   byId('toggle').addEventListener('click', () => {
     expanded = !expanded;
-    byId('toggle').textContent = expanded ? 'Show problems only' : 'Show all jobs';
+    byId('toggle').textContent = expanded ? 'Problems only' : 'All jobs';
     byId('toggle').setAttribute('aria-expanded', String(expanded));
     renderJobs();
   });

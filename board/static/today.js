@@ -49,13 +49,6 @@ function weekday(value) {
   }).format(parseDate(value));
 }
 
-function shortMoney(value) {
-  const numeric = Math.abs(Number(value || 0));
-  return numeric >= 1000
-    ? `$${(numeric / 1000).toFixed(numeric >= 10000 ? 0 : 1)}k`
-    : `$${Math.round(numeric)}`;
-}
-
 function shiftDate(value, days) {
   const date = parseDate(value);
   date.setUTCDate(date.getUTCDate() + days);
@@ -349,7 +342,7 @@ function renderBusinessRead() {
 }
 
 function periodRows() {
-  const rows = data.recent_daily || [];
+  const rows = period === 'ytd' ? data.daily_history || data.recent_daily || [] : data.recent_daily || [];
   if (period === '7') return rows.slice(-7);
   if (period === 'mtd') {
     const selected = data.selected_date || rows.at(-1)?.business_date || '';
@@ -396,141 +389,21 @@ function drawChart() {
       units: Number(row.units || 0),
     }))
     .filter((row) => row.date);
-  const host = byId('rhythm').parentElement;
-  const svg = d3.select('#rhythm');
-
-  if (!rows.length) {
-    svg.selectAll('*').remove();
-    return;
-  }
-
+  if (!rows.length || !window.DPPCharts?.demandRhythm) return;
   renderRhythmInsight();
-  const width = Math.max(300, Math.round(host.getBoundingClientRect().width));
-  const compact = width < 560;
-  const height = compact ? 220 : width < 900 ? 245 : 275;
-  const margin = { top: 16, right: 8, bottom: 34, left: compact ? 46 : 54 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-  const yTicks = compact ? 4 : 5;
-
-  svg.selectAll('*').remove();
-  svg.attr('viewBox', `0 0 ${width} ${height}`);
-
-  const group = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-  const x = d3
-    .scaleBand()
-    .domain(rows.map((row) => row.business_date))
-    .range([0, innerWidth])
-    .padding(rows.length <= 8 ? 0.18 : 0.24);
-  const y = d3
-    .scaleLinear()
-    .domain([0, d3.max(rows, (row) => row.sales) || 1])
-    .nice(yTicks)
-    .range([innerHeight, 0]);
-
-  group
-    .append('g')
-    .attr('class', 'dpp-grid')
-    .call(d3.axisLeft(y).ticks(yTicks).tickSize(-innerWidth).tickFormat(''));
-  group
-    .append('g')
-    .attr('class', 'dpp-axis')
-    .call(d3.axisLeft(y).ticks(yTicks).tickSize(0).tickPadding(7).tickFormat(shortMoney))
-    .call((axis) => axis.select('.domain').remove());
-
-  const bars = group
-    .selectAll('rect')
-    .data(rows)
-    .join('rect')
-    .attr('class', 'dpp-bar')
-    .attr('x', (row) => x(row.business_date))
-    .attr('width', x.bandwidth())
-    .attr('y', (row) => y(row.sales))
-    .attr('height', (row) => Math.max(1, innerHeight - y(row.sales)))
-    .attr('rx', Math.min(4, x.bandwidth() / 4))
-    .attr('fill', (row) => {
-      const day = row.date.getUTCDay();
-      if (data.is_live && row.business_date === data.local_today) return 'var(--dpp-data2)';
-      return day === 0 || day === 6 ? 'var(--dpp-data6)' : 'var(--dpp-data1)';
-    });
-
-  const dividers = group.append('g').attr('pointer-events', 'none');
-  rows.forEach((row, index) => {
-    if (!index) return;
-    const previous = rows[index - 1];
-    const xx = x(row.business_date) - (x.step() - x.bandwidth()) / 2;
-    if (row.date.getUTCMonth() !== previous.date.getUTCMonth()) {
-      dividers
-        .append('line')
-        .attr('x1', xx)
-        .attr('x2', xx)
-        .attr('y1', 0)
-        .attr('y2', innerHeight)
-        .attr('stroke', 'var(--dpp-data2)')
-        .attr('stroke-width', 1.4)
-        .attr('opacity', 0.82);
-    } else if (row.date.getUTCDay() === 1) {
-      dividers
-        .append('line')
-        .attr('x1', xx)
-        .attr('x2', xx)
-        .attr('y1', 0)
-        .attr('y2', innerHeight)
-        .attr('stroke', 'var(--dpp-data-incomplete)')
-        .attr('opacity', 0.48);
-    }
-  });
-
-  const targetTicks = rows.length <= 8 ? rows.length : width < 520 ? 4 : width < 850 ? 5 : 7;
-  const tickStep = Math.max(1, Math.ceil(rows.length / targetTicks));
-  const ticks = rows
-    .filter(
-      (row, index) => rows.length <= 8 || index === 0 || index === rows.length - 1 || index % tickStep === 0,
-    )
-    .map((row) => row.business_date);
-  group
-    .append('g')
-    .attr('class', 'dpp-axis')
-    .attr('transform', `translate(0,${innerHeight})`)
-    .call(
-      d3
-        .axisBottom(x)
-        .tickValues(ticks)
-        .tickSize(0)
-        .tickPadding(8)
-        .tickFormat((key) => d3.utcFormat(rows.length <= 8 ? '%a' : '%-d')(parseDate(key))),
-    )
-    .call((axis) => axis.select('.domain').attr('stroke', 'var(--dpp-data-grid)'));
-
-  let tooltip = host.querySelector('.dpp-chart-tooltip');
-  if (!tooltip) {
-    tooltip = document.createElement('div');
-    tooltip.className = 'dpp-chart-tooltip';
-    host.appendChild(tooltip);
-  }
-
-  bars
-    .on('pointerenter pointermove', function showTooltip(_event, row) {
-      if (width < 640) return;
-      const hostRect = host.getBoundingClientRect();
-      const barRect = this.getBoundingClientRect();
-      tooltip.innerHTML = `<strong>${d3.utcFormat('%a, %b %-d')(row.date)}</strong><span>Shopper spend ${money(row.sales)}</span><span>${formatCount(row.orders, 'order')} · ${formatCount(row.units, 'unit')}</span><span>Includes IVA · Amazon Orders</span>`;
-      tooltip.style.left = `${Math.min(hostRect.width - 90, Math.max(90, barRect.left - hostRect.left + barRect.width / 2))}px`;
-      tooltip.style.top = `${Math.max(54, barRect.top - hostRect.top + 8)}px`;
-      tooltip.classList.add('show');
-    })
-    .on('pointerleave', () => tooltip.classList.remove('show'));
-
-  const totalSales = d3.sum(rows, (row) => row.sales);
+  const stats = window.DPPCharts.demandRhythm('#rhythm', rows, { showCurrentWeek: false }) || {};
+  const totalSales = stats.total ?? d3.sum(rows, (row) => row.sales);
   const closed = rows.filter((row) => !(data.is_live && row.business_date === data.local_today));
-  const average = d3.mean(closed, (row) => row.sales) || 0;
-  const best = d3.max(closed, (row) => row.sales) || 0;
+  const average = stats.average ?? d3.mean(closed, (row) => row.sales) ?? 0;
+  const best = stats.best ?? d3.max(closed, (row) => row.sales) ?? 0;
   byId('rhythmRail').innerHTML =
     `<div class="rhythm-kpi"><div class="label">Shopper spend</div><strong>${money(totalSales)}</strong><small>selected window · incl. IVA</small></div><div class="rhythm-kpi"><div class="label">Closed-day pace</div><strong>${money(average)}</strong><small>average shopper spend</small></div><div class="rhythm-kpi"><div class="label">Best day</div><strong>${money(best)}</strong><small>inside this window</small></div>`;
   byId('rhythmSub').textContent =
     period === 'mtd'
       ? `Daily shopper spend · month through ${data.is_live ? 'today' : d3.utcFormat('%b %-d')(parseDate(data.selected_date))}`
-      : `Daily shopper spend · ${rows.length} days`;
+      : period === 'ytd'
+        ? `Daily shopper spend · ${String(data.selected_date || data.local_today).slice(0, 4)} year to date`
+        : `Daily shopper spend · ${rows.length} days`;
 }
 
 function renderLatestOrder(latest, live) {
@@ -657,9 +530,9 @@ async function load() {
 }
 
 function bindInteractions() {
-  document.querySelectorAll('.period').forEach((button) => {
+  document.querySelectorAll('[data-period]').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('.period').forEach((item) => {
+      document.querySelectorAll('[data-period]').forEach((item) => {
         item.classList.remove('active');
         item.setAttribute('aria-pressed', 'false');
       });

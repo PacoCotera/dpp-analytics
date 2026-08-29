@@ -32,8 +32,8 @@
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
-      <main class="today-main">
-        <section class="today-lead" aria-labelledby="todayTitle" data-dpp-qa="today-overview">
+      <main class="workspace today-main">
+        <section class="panel today-lead" aria-labelledby="todayTitle" data-dpp-qa="today-overview">
           <div class="today-lead__head">
             <div>
               <div class="today-section-label">Live operating day</div>
@@ -82,105 +82,135 @@
           </div>
         </section>
 
-        <section
-          class="today-section today-demand"
-          aria-labelledby="todayDemandTitle"
-          data-dpp-qa="today-rhythm"
-        >
-          <div class="today-section-header today-panel__head">
-            <div>
-              <div class="today-section-label">Demand pulse</div>
-              <h2 id="todayDemandTitle" class="today-panel__title">Recent rhythm</h2>
-              <p class="today-panel__sub" id="rhythmSub">
-                Same shopper-spend incl.-IVA basis across the selected window
-              </p>
+        <div class="workspace-grid workspace-grid--today-primary">
+          <section
+            class="panel panel--chart page-section today-section today-demand"
+            aria-labelledby="todayDemandTitle"
+            data-dpp-qa="today-rhythm"
+          >
+            <div class="panel__header today-section-header today-panel__head">
+              <div>
+                <div class="today-section-label">Demand pulse</div>
+                <h2 id="todayDemandTitle" class="today-panel__title">Recent rhythm</h2>
+                <p class="today-panel__sub" id="rhythmSub">
+                  Same shopper-spend incl.-IVA basis across the selected window
+                </p>
+              </div>
+              <div
+                class="segmented-control segmented-control--fill time-window-control"
+                role="group"
+                aria-label="Sales rhythm window"
+                data-no-swipe
+              >
+                <button class="segmented-control__item" type="button" data-period="7" aria-pressed="false">
+                  7D
+                </button>
+                <button class="segmented-control__item" type="button" data-period="mtd" aria-pressed="false">
+                  MTD
+                </button>
+                <button
+                  class="segmented-control__item active"
+                  type="button"
+                  data-period="30"
+                  aria-pressed="true"
+                >
+                  30D
+                </button>
+                <button class="segmented-control__item" type="button" data-period="ytd" aria-pressed="false">
+                  YTD
+                </button>
+              </div>
             </div>
-            <div class="periods" role="group" aria-label="Sales rhythm window" data-no-swipe>
-              <button class="period" type="button" data-period="7" aria-pressed="false">7D</button>
-              <button class="period" type="button" data-period="mtd" aria-pressed="false">MTD</button>
-              <button class="period active" type="button" data-period="30" aria-pressed="true">30D</button>
+            <div class="panel__body">
+              <div class="chart-host rhythm-host">
+                <svg id="rhythm" class="rhythm" viewBox="0 0 900 190"></svg>
+              </div>
+              <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
+              <div class="rhythm-rail" id="rhythmRail"></div>
             </div>
-          </div>
-          <div class="rhythm-host"><svg id="rhythm" class="rhythm" viewBox="0 0 900 190"></svg></div>
-          <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
-          <div class="rhythm-rail" id="rhythmRail"></div>
-        </section>
+          </section>
 
-        <section class="today-section today-operations" aria-labelledby="todayOperationsTitle">
-          <div class="today-section-header">
-            <div>
-              <div class="today-section-label">Next decisions</div>
-              <h2 id="todayOperationsTitle">Order queue and product drivers</h2>
+          <section
+            class="panel page-section today-section today-operations"
+            aria-labelledby="todayOperationsTitle"
+          >
+            <div class="panel__header today-section-header">
+              <div>
+                <div class="today-section-label">Next decisions</div>
+                <h2 id="todayOperationsTitle">Order queue and product drivers</h2>
+              </div>
             </div>
-          </div>
-          <div class="today-operations-grid">
-            <section class="today-panel order-flow-panel" id="orderFlowPanel">
-              <div class="today-panel__head">
-                <div>
-                  <div class="today-panel__title">Order queue</div>
-                  <div class="today-panel__sub">Current Amazon fulfillment state</div>
+            <div class="panel__body today-operations-grid">
+              <section class="today-panel order-flow-panel" id="orderFlowPanel">
+                <div class="today-panel__head">
+                  <div>
+                    <div class="today-panel__title">Order queue</div>
+                    <div class="today-panel__sub">Current Amazon fulfillment state</div>
+                  </div>
                 </div>
-              </div>
-              <div class="order-flow-grid" id="orderFlowGrid">
-                <div class="empty">Reading open orders…</div>
-              </div>
-              <div class="order-flow-foot" id="orderFlowFoot"></div>
-            </section>
-            <section class="today-panel today-drivers-panel">
-              <div class="today-panel__head">
-                <div>
-                  <div class="today-panel__title" id="productsTitle">What is driving today</div>
-                  <div class="today-panel__sub">Ranked shopper-spend contribution · incl. IVA</div>
+                <div class="order-flow-grid" id="orderFlowGrid">
+                  <div class="empty">Reading open orders…</div>
                 </div>
-              </div>
-              <div class="today-products" id="products">
-                <div class="empty">Products will appear as orders arrive.</div>
-              </div>
-            </section>
-          </div>
-        </section>
+                <div class="order-flow-foot" id="orderFlowFoot"></div>
+              </section>
+              <section class="today-panel today-drivers-panel">
+                <div class="today-panel__head">
+                  <div>
+                    <div class="today-panel__title" id="productsTitle">What is driving today</div>
+                    <div class="today-panel__sub">Ranked shopper-spend contribution · incl. IVA</div>
+                  </div>
+                </div>
+                <div class="today-products" id="products">
+                  <div class="empty">Products will appear as orders arrive.</div>
+                </div>
+              </section>
+            </div>
+          </section>
+        </div>
 
-        <section class="today-section today-evidence" aria-labelledby="todayEvidenceTitle">
-          <div class="today-section-header">
+        <section class="panel page-section today-section today-evidence" aria-labelledby="todayEvidenceTitle">
+          <div class="panel__header today-section-header">
             <div>
               <div class="today-section-label">Reference</div>
               <h2 id="todayEvidenceTitle">Benchmarks and order detail</h2>
             </div>
           </div>
-          <details class="today-business-evidence" id="todayBusinessEvidence" open>
-            <summary>
-              <span><strong>Business benchmarks</strong><small>MTD, 30D, WTD and latest order</small></span
-              ><b id="todayBusinessToggle">View ↓</b>
-            </summary>
-            <div class="context-list" id="contextList"></div>
-            <section class="latest">
-              <div class="latest-title">Latest sale · shopper spend incl. IVA</div>
-              <div id="latest"><div class="empty">Waiting for today’s first order.</div></div>
-              <div class="latest-age" id="latestAge"></div>
-            </section>
-          </details>
-          <details class="today-orders today-open-orders" id="openOrdersPanel">
-            <summary>
-              <span
-                ><strong>Open orders</strong
-                ><small id="openOrderSummary"
-                  >Current Amazon-processing, unshipped and partial orders · no customer PII</small
-                ></span
-              ><b id="openOrderToggle">View ↓</b>
-            </summary>
-            <div class="order-grid operational-order-grid" id="openOrderGrid"></div>
-          </details>
-          <details class="today-orders" id="ordersPanel">
-            <summary>
-              <span
-                ><strong>Order detail</strong
-                ><small id="orderSummary"
-                  >Shopper spend incl. IVA for the selected day · no customer PII</small
-                ></span
-              ><b id="orderToggle">View ↓</b>
-            </summary>
-            <div class="order-grid operational-order-grid" id="orderGrid"></div>
-          </details>
+          <div class="panel__body">
+            <details class="today-business-evidence" id="todayBusinessEvidence" open>
+              <summary>
+                <span><strong>Business benchmarks</strong><small>MTD, 30D, WTD and latest order</small></span
+                ><b id="todayBusinessToggle">View ↓</b>
+              </summary>
+              <div class="context-list" id="contextList"></div>
+              <section class="latest">
+                <div class="latest-title">Latest sale · shopper spend incl. IVA</div>
+                <div id="latest"><div class="empty">Waiting for today’s first order.</div></div>
+                <div class="latest-age" id="latestAge"></div>
+              </section>
+            </details>
+            <details class="today-orders today-open-orders" id="openOrdersPanel">
+              <summary>
+                <span
+                  ><strong>Open orders</strong
+                  ><small id="openOrderSummary"
+                    >Current Amazon-processing, unshipped and partial orders · no customer PII</small
+                  ></span
+                ><b id="openOrderToggle">View ↓</b>
+              </summary>
+              <div class="order-grid operational-order-grid" id="openOrderGrid"></div>
+            </details>
+            <details class="today-orders" id="ordersPanel">
+              <summary>
+                <span
+                  ><strong>Order detail</strong
+                  ><small id="orderSummary"
+                    >Shopper spend incl. IVA for the selected day · no customer PII</small
+                  ></span
+                ><b id="orderToggle">View ↓</b>
+              </summary>
+              <div class="order-grid operational-order-grid" id="orderGrid"></div>
+            </details>
+          </div>
         </section>
       </main>
 

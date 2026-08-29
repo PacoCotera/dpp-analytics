@@ -3,7 +3,7 @@
 **Status:** In delivery  
 **Tracker:** [#231](https://github.com/PacoCotera/dpp-analytics/issues/231)  
 **Reference:** Approved Business mockup  
-**Scope:** Presentation architecture and canonical workspace routes; APIs and business definitions remain unchanged
+**Scope:** Presentation architecture, canonical workspace routes and the history required by shared chart windows; business definitions remain unchanged
 
 ## Why this correction exists
 
@@ -60,7 +60,18 @@ All operational tables share one contract:
 - The plot receives more space than its title, legend and interpretation combined.
 - Axes, comparison periods, partial periods and tooltips come from the shared chart system.
 - A chart uses the data palette; navigation, brand and severity colors do not become series colors.
+- Demand bars and their comparison line use the same shared renderer on Business and Today.
+- Every chart time-window selector uses the shared control treatment and offers YTD when date history exists.
+- Long daily series aggregate into meaningful weekly marks before bars become too narrow to compare.
 - Range and metric choices are compact controls and persist in URL state when they change the analysis.
+
+### Ergonomics
+
+- Wide workspaces use available inline space for the dominant chart and its decision support; they do not preserve a narrow desktop composition in the center of a large viewport.
+- Analytical charts size to their container. They do not create internal horizontal scrolling while unused viewport width is available.
+- Secondary cards may sit beside a dominant chart on wide screens, but collapse in reading order before either becomes cramped.
+- A healthy-state summary never replaces operational controls. Data Health always exposes every pipeline row and its row-level action by default; “Problems only” is an optional filter.
+- Compact horizon summaries use comparable numbers and labels. Decorative progress bars do not substitute for the main trajectory chart.
 
 ## Page recipes
 
@@ -82,7 +93,7 @@ All operational tables share one contract:
 
 - The information order stays the same across widths.
 - KPI strips wrap without turning into tall narrative cards.
-- Dense charts and tables contain their own horizontal scroll when compression would destroy readability.
+- Dense tables contain their own horizontal scroll when compression would destroy readability. Charts reflow or aggregate their marks instead of forcing a fixed plot width.
 - Toolbars wrap before labels truncate; primary actions remain reachable without horizontal page overflow.
 - Mobile drawers, menus, tabs and disclosures preserve keyboard and screen-reader state.
 
