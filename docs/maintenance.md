@@ -250,8 +250,10 @@ When changing `compose.yml` or `.env.example`, validate them together. The templ
 Production browser QA records page/viewport captures plus browser console errors, failed responses and horizontal-overflow checks. Treat it as a deployment requirement, not decorative screenshots.
 `qa/admin_qa.mjs` proves the published Admin entrypoint, unauthenticated API denial, authenticated current/deleted pre-population, a non-mutating save/reload, ordinary Catalog consumption of the persisted values, and logout denial. The QA container uses the host network and published port so it exercises the same remote-access policy as the public route. Deployment passes only the Admin password through a temporary mode-0600 env file and deletes it during cleanup; the password is never written to QA output.
 It also intercepts one save with an artificial revision conflict and delays one non-mutating save so the browser must preserve both conflict drafts and edits made while a request is in flight without changing production configuration.
-Its Product scenarios cover both a populated demand chart and the all-zero PNC-001L sales/units states. An
-all-zero selected metric must render the explicit range-empty message with no bars or numeric axis ticks.
+Its Product scenarios cover both a populated demand chart and deterministic all-zero sales/units states. The
+zero-demand scenario derives a fixture from a valid live Product response, then replaces only its series values;
+it must not depend on a production SKU continuing to have no orders. An all-zero selected metric must render the
+explicit range-empty message with no bars or numeric axis ticks.
 `qa/ui_format_qa.mjs` verifies the deployed shared count/currency/month-year helpers plus the Business, Finance,
 and Data Health labels that depend on them.
 The same suite runs `qa/accessibility_qa.mjs` across every primary workspace. It rejects missing/duplicate level-one
