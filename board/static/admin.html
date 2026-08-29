@@ -39,8 +39,13 @@
         <button id="logout" class="admin-secondary is-hidden" type="button">Sign out</button>
       </header>
 
-      <main>
-        <section id="loginPanel" class="admin-login" aria-labelledby="loginTitle">
+      <main data-dpp-qa="admin-workspace">
+        <section
+          id="loginPanel"
+          class="admin-login"
+          aria-labelledby="loginTitle"
+          data-dpp-qa="admin-authentication"
+        >
           <div>
             <p class="admin-eyebrow">Protected workspace</p>
             <h2 id="loginTitle">Sign in to edit product configuration</h2>
@@ -57,7 +62,12 @@
           </form>
         </section>
 
-        <section id="adminPanel" class="is-hidden" aria-labelledby="catalogAdminTitle">
+        <section
+          id="adminPanel"
+          class="is-hidden"
+          aria-labelledby="catalogAdminTitle"
+          data-dpp-qa="admin-catalog-editor"
+        >
           <div class="admin-summary-head">
             <div>
               <p class="admin-eyebrow">Canonical lifecycle</p>

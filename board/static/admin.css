@@ -8,7 +8,7 @@
 
 .admin-eyebrow {
   margin: 0 0 7px;
-  color: var(--accent-dark, #94520b);
+  color: var(--accent-ink);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -25,8 +25,8 @@
   padding: 32px;
   border: 1px solid var(--line);
   border-radius: 24px;
-  background: rgba(255, 253, 249, 0.8);
-  box-shadow: 0 16px 42px rgba(52, 43, 29, 0.08);
+  background: var(--surface);
+  box-shadow: var(--shadow-high);
 }
 
 .admin-login h2,
@@ -52,7 +52,7 @@
 .admin-field > span,
 .admin-search > span,
 .taxonomy-title {
-  color: #665f56;
+  color: var(--muted);
   font-size: 11px;
   font-weight: 760;
   letter-spacing: 0.04em;
@@ -65,9 +65,9 @@
   width: 100%;
   min-height: 43px;
   padding: 9px 11px;
-  border: 1px solid #d7cdbf;
+  border: var(--border-width) solid var(--line);
   border-radius: 11px;
-  background: #fffdfa;
+  background: var(--dpp-surface-raised, var(--surface));
   color: var(--ink);
   font: inherit;
 }
@@ -76,8 +76,8 @@
 .admin-field input:focus,
 .admin-search input:focus,
 .taxonomy-row input:focus {
-  border-color: #b96e1c;
-  outline: 3px solid rgba(229, 139, 31, 0.16);
+  border-color: var(--dpp-interaction, var(--accent));
+  outline: 3px solid color-mix(in srgb, var(--dpp-focus-ring, var(--info)) 20%, transparent);
 }
 
 .admin-login-form button,
@@ -88,8 +88,8 @@
   min-height: 42px;
   border: 0;
   border-radius: 11px;
-  background: var(--ink);
-  color: #fff8ed;
+  background: var(--dpp-interaction, var(--ink));
+  color: var(--dpp-interaction-text, #fff);
   font: inherit;
   font-size: 12px;
   font-weight: 780;
@@ -99,8 +99,8 @@
 .admin-secondary,
 .taxonomy-add,
 .taxonomy-remove {
-  border: 1px solid #d7cdbf;
-  background: #fffdfa;
+  border: var(--border-width) solid var(--line);
+  background: var(--dpp-surface-raised, var(--surface));
   color: var(--ink);
 }
 
@@ -111,12 +111,12 @@
 .admin-status {
   min-height: 18px;
   margin: 0;
-  color: #8a4d0a;
+  color: var(--warn);
   font-size: 12px;
 }
 
 .admin-status.is-error {
-  color: #a42924;
+  color: var(--bad);
 }
 
 .admin-summary-head {
@@ -144,7 +144,7 @@
   padding: 16px 18px;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: rgba(255, 253, 249, 0.76);
+  background: var(--surface);
 }
 
 .admin-summary strong,
@@ -167,8 +167,8 @@
   padding: 12px 15px;
   border-left: 3px solid var(--accent);
   border-radius: 0 11px 11px 0;
-  background: #fff4df;
-  color: #68410f;
+  background: var(--warn-soft);
+  color: var(--warn-ink);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -181,7 +181,7 @@
 .product-editor {
   border: 1px solid var(--line);
   border-radius: 19px;
-  background: rgba(255, 253, 249, 0.82);
+  background: var(--surface);
   overflow: hidden;
 }
 
@@ -204,7 +204,7 @@
   height: 70px;
   border-radius: 13px;
   object-fit: contain;
-  background: #f3eee6;
+  background: var(--media-canvas);
 }
 
 .product-image-placeholder {
@@ -226,7 +226,7 @@
 
 .product-identity span {
   margin-top: 4px;
-  color: #5f574e;
+  color: var(--muted);
   line-height: 1.35;
 }
 
@@ -239,8 +239,8 @@
   align-self: start;
   padding: 6px 9px;
   border-radius: 999px;
-  background: #e4f3e7;
-  color: #245f35;
+  background: var(--good-soft);
+  color: var(--good-ink);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -248,8 +248,8 @@
 }
 
 .admin-badge.needs {
-  background: #fff0d2;
-  color: #8a4d0a;
+  background: var(--warn-soft);
+  color: var(--warn-ink);
 }
 
 .source-evidence {
@@ -257,8 +257,8 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 12px 18px;
-  background: #f7f3ec;
-  color: #655d53;
+  background: var(--dpp-surface-subtle, var(--paper-2));
+  color: var(--muted);
   font-size: 11px;
 }
 
@@ -301,7 +301,7 @@
 .taxonomy-remove {
   min-height: 40px;
   padding: 0;
-  color: #8a312b;
+  color: var(--bad);
   font-size: 18px;
 }
 
@@ -338,7 +338,7 @@
   padding: 16px 18px;
   border: 1px solid var(--line);
   border-radius: 17px;
-  background: rgba(255, 253, 249, 0.65);
+  background: var(--surface);
 }
 
 .admin-history summary {
@@ -357,7 +357,7 @@
   gap: 12px;
   padding: 10px 0;
   border-top: 1px solid var(--line);
-  color: #625b52;
+  color: var(--muted);
   font-size: 12px;
 }
 

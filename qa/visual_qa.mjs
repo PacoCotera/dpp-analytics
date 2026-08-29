@@ -11,7 +11,33 @@ const viewports = {
 };
 const wait = (page, selector) => page.locator(selector).first().waitFor({ state: 'visible', timeout: 5000 });
 
+async function assertWorkspaceLandmarks(page, names) {
+  const missing = await page.evaluate(expected => {
+    const available = new Set(
+      [...document.querySelectorAll('[data-dpp-qa]')].map(element => element.getAttribute('data-dpp-qa')),
+    );
+    return expected.filter(name => !available.has(name));
+  }, names);
+  if (missing.length) throw new Error(`Missing workspace landmarks: ${missing.join(', ')}`);
+}
+
 async function verifyAds(page, view = 'overview') {
+  await assertWorkspaceLandmarks(page, ['ads-workspace', 'ads-overview']);
+  const navigation = await page.evaluate(() => {
+    const tabs = document.querySelector('.ads-page .subnav');
+    return {
+      mobile: window.innerWidth <= 640,
+      pageOverflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+      tabCount: tabs?.querySelectorAll('.subnav__item').length || 0,
+      containedOverflow: Boolean(tabs && tabs.scrollWidth >= tabs.clientWidth),
+    };
+  });
+  if (
+    navigation.mobile &&
+    (navigation.pageOverflow > 1 || navigation.tabCount !== 5 || !navigation.containedOverflow)
+  ) {
+    throw new Error(`Ads mobile navigation mismatch: ${JSON.stringify(navigation)}`);
+  }
   const payload = await page.evaluate(async () => (await (await fetch('/api/ads', { cache: 'no-store' })).json()));
   if (payload.connection?.state !== 'READY' || payload.status !== 'ready') return wait(page, '#emptyState');
   if (view === 'campaigns') {
@@ -286,6 +312,7 @@ async function verifyBusiness(page) {
   }
 }
 async function verifyDataHealth(page) {
+  await assertWorkspaceLandmarks(page, ['data-health-workspace', 'data-health-summary', 'data-health-pipeline']);
   await wait(page, '.health-summary');
   const mobile = await page.evaluate(() => window.innerWidth <= 640);
   if (mobile) {
@@ -349,6 +376,8 @@ async function verifyDataHealth(page) {
       renderedConditionCount: Number(document.getElementById('summaryCount')?.textContent),
       expectedConditionCount: Number(healthContract.overall?.active_condition_count || 0),
       warehouseClosed: !document.querySelector('.warehouse-reference')?.hasAttribute('open'),
+      warehouseSummaryHeight:
+        document.querySelector('.warehouse-reference summary')?.getBoundingClientRect().height || 0,
       genericRingRemoved: !document.getElementById('ring'),
       refreshCopy: document.getElementById('healthUpdated')?.textContent || '',
       mobilePipelineMetrics:
@@ -377,6 +406,7 @@ async function verifyDataHealth(page) {
     !state.stateMappingDefined ||
     state.renderedConditionCount !== state.expectedConditionCount ||
     !state.warehouseClosed ||
+    state.warehouseSummaryHeight < 44 ||
     !state.genericRingRemoved ||
     !state.mobilePipelineMetrics ||
     !state.refreshCopy.includes('refreshes every 60s') ||
@@ -426,6 +456,7 @@ async function catalogSemantic(page) {
 }
 
 async function verifyCatalog(page) {
+  await assertWorkspaceLandmarks(page, ['catalog-workspace', 'catalog-overview', 'catalog-controls', 'catalog-results']);
   await page.locator('.family').first().waitFor({ state: 'visible', timeout: 15000 });
   const semantic = await catalogSemantic(page);
   if (semantic.errors?.length) throw new Error(`Catalog semantic QA: ${semantic.errors.join('; ')}`);
@@ -487,6 +518,7 @@ async function verifyCatalogMode(page, mode) {
 }
 
 async function verifyProductWorkspace(page) {
+  await assertWorkspaceLandmarks(page, ['product-workspace', 'product-identity', 'product-metrics', 'product-analysis', 'product-order-evidence']);
   await wait(page, '.hero-name');
   await wait(page, '#chart .dpp-bar');
   const payload = await page.evaluate(async () =>
@@ -661,6 +693,7 @@ async function verifyTrajectory(page) {
     throw new Error(`Trajectory desktop evidence is collapsed: ${JSON.stringify(state)}`);
 }
 async function verifyInventory(page) {
+  await assertWorkspaceLandmarks(page, ['inventory-workspace', 'inventory-actions', 'inventory-records']);
   if ((await page.evaluate(() => window.innerWidth)) > 640) {
     await wait(page, '#rows tr');
     return;
@@ -736,6 +769,7 @@ async function verifyFinanceWindows(page) {
 }
 
 async function verifyFinanceReport(page) {
+  await assertWorkspaceLandmarks(page, ['finance-workspace', 'finance-current-period', 'finance-analysis', 'finance-evidence']);
   await wait(page, '#currentLines .finance-line');
   const isMobile = (await page.evaluate(() => window.innerWidth)) <= 640;
   if (isMobile) {

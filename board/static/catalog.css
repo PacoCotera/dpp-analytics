@@ -2,11 +2,7 @@
    Shared shell/layout tokens live in theme.css and layout-system.css. */
 
 .catalog-shell {
-  --good: #39744c;
-  --warn: #9d680c;
-  --bad: #b45142;
-  --quiet: #81786d;
-  --paper: #fffdf9;
+  --quiet: var(--muted);
 }
 
 .catalog-shell .app {
@@ -99,15 +95,15 @@
 .attention-item {
   min-width: 0;
   padding-left: 9px;
-  border-left: 2px solid #d8cfc2;
+  border-left: 2px solid var(--line);
 }
 
 .attention-item.bad {
-  border-color: #c86c5e;
+  border-color: var(--bad);
 }
 
 .attention-item.warn {
-  border-color: #d09a45;
+  border-color: var(--warn);
 }
 
 .attention-item strong {
@@ -157,10 +153,10 @@
 
 .mode,
 .filter {
-  border: 1px solid #d5cdc1;
+  border: var(--border-width) solid var(--line);
   border-radius: 999px;
-  background: #f8f4ed;
-  color: #665f56;
+  background: var(--dpp-surface-subtle, var(--paper-2));
+  color: var(--muted);
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
@@ -176,7 +172,7 @@
 .filter.active {
   border-color: var(--ink);
   background: var(--ink);
-  color: #fff;
+  color: var(--dpp-interaction-text, #fff);
 }
 
 .mode-source {
@@ -197,7 +193,7 @@
 .search {
   height: 38px;
   padding: 0 14px;
-  border: 1px solid #d4ccc0;
+  border: var(--border-width) solid var(--line);
   border-radius: 999px;
   outline: none;
   background: var(--paper);
@@ -206,8 +202,8 @@
 }
 
 .search:focus {
-  border-color: #b98036;
-  box-shadow: 0 0 0 3px rgb(229 139 31 / 12%);
+  border-color: var(--dpp-interaction, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dpp-focus-ring, var(--info)) 18%, transparent);
 }
 
 .filters {
@@ -228,10 +224,10 @@
 .select {
   height: 34px;
   padding: 0 28px 0 10px;
-  border: 1px solid #d5cdc1;
+  border: var(--border-width) solid var(--line);
   border-radius: 999px;
   background: var(--paper);
-  color: #4e4841;
+  color: var(--ink);
   font-size: 9.5px;
   font-weight: 750;
 }
@@ -283,7 +279,7 @@
 }
 
 .family[open] > summary {
-  background: #faf7f1;
+  background: var(--dpp-surface-subtle, var(--paper-2));
 }
 
 .identity,
@@ -301,8 +297,8 @@
 .identity img,
 .child-identity img,
 .catalog-image-placeholder {
-  border: 1px solid #ece5db;
-  background: #fff;
+  border: var(--border-width) solid var(--line);
+  background: var(--media-canvas);
   object-fit: contain;
 }
 
@@ -390,7 +386,7 @@
 }
 
 .chev {
-  color: #9f9588;
+  color: var(--muted);
   font-size: 16px;
   transition: transform 0.15s;
 }
@@ -401,7 +397,7 @@
 
 .children {
   padding: 0 10px 9px 70px;
-  background: #faf7f1;
+  background: var(--dpp-surface-subtle, var(--paper-2));
 }
 
 .child-head,
@@ -428,7 +424,7 @@
 
 .child {
   padding: 8px;
-  border-top: 1px solid #e7dfd4;
+  border-top: var(--border-width) solid var(--line);
   color: inherit;
   text-decoration: none;
 }
@@ -465,7 +461,7 @@
 
 .alias-note {
   padding: 7px 8px;
-  border-top: 1px solid #e7dfd4;
+  border-top: var(--border-width) solid var(--line);
   color: var(--muted);
   font-size: 8.5px;
 }
@@ -503,7 +499,7 @@
   height: 7px;
   margin-right: 7px;
   border-radius: 50%;
-  background: #c39a62;
+  background: var(--dpp-data2, var(--accent));
 }
 
 .analysis-row .signal span {
@@ -511,7 +507,7 @@
 }
 
 .analysis-open {
-  color: #9f9588;
+  color: var(--muted);
   font-size: 14px;
 }
 
@@ -538,7 +534,7 @@
 }
 
 .portfolio-foot b {
-  color: #655d53;
+  color: var(--muted);
 }
 
 .catalog-shell .empty {
@@ -814,14 +810,14 @@
     min-width: 0;
     padding: 8px 7px;
     border-radius: 10px;
-    background: #f3eee6;
+    background: var(--dpp-surface-subtle, var(--paper-2));
   }
 
   .family > summary > .cell::before,
   .analysis-row > .cell::before,
   .child > .cell::before {
     display: block;
-    color: #8d8377;
+    color: var(--muted);
     font-size: 7.5px;
     font-weight: 820;
     letter-spacing: 0.06em;

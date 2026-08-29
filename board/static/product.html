@@ -30,15 +30,19 @@
       </header>
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
-      <main>
-        <section class="product-hero panel" id="hero">
+      <main data-dpp-qa="product-workspace">
+        <section class="product-hero panel" id="hero" data-dpp-qa="product-identity">
           <div class="hero-img skeleton"></div>
           <div>
             <div class="hero-sku">Loading product</div>
             <h1 class="hero-name">One moment…</h1>
           </div>
         </section>
-        <section class="kpi-rail product-kpi-rail" aria-label="Product key metrics">
+        <section
+          class="kpi-rail product-kpi-rail"
+          aria-label="Product key metrics"
+          data-dpp-qa="product-metrics"
+        >
           <div
             class="kpi product-kpi"
             title="Reconciled Amazon Sales &amp; Traffic shopper spend including IVA. Finance derives net revenue ex IVA separately."
@@ -67,7 +71,7 @@
           <p class="metric-window-note" id="productDemandWindow">Loading product-demand window</p>
           <p class="metric-window-note" id="productVelocityWindow">Loading inventory-velocity window</p>
         </div>
-        <section class="dashboard-grid product-workspace">
+        <section class="dashboard-grid product-workspace" data-dpp-qa="product-analysis">
           <div class="panel product-chart-panel">
             <div class="panel__header">
               <div>
@@ -147,7 +151,7 @@
             </div>
           </aside>
         </section>
-        <details class="evidence" id="ordersPanel">
+        <details class="evidence" id="ordersPanel" data-dpp-qa="product-order-evidence">
           <summary>
             <span
               ><strong>Order evidence</strong
