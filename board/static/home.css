@@ -8,7 +8,7 @@
 .ads-read__eyebrow {
   color: var(--accent-ink);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 820;
   letter-spacing: 0.08em;
   line-height: 1.2;
@@ -62,7 +62,7 @@
   overflow: hidden;
   color: var(--dpp-text-subtle);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -93,7 +93,7 @@
 
 .home-kpi-rail .kpi__label {
   margin-top: 7px;
-  font-size: 13px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.25;
 }
 
@@ -101,7 +101,7 @@
   display: block;
   margin-top: 3px;
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -137,7 +137,7 @@
 .home-main .section-header__description {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 
@@ -146,7 +146,7 @@
   align-items: center;
   gap: 12px;
   color: var(--dpp-interaction);
-  font-size: 13px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 780;
   text-decoration: none;
   white-space: nowrap;
@@ -206,7 +206,7 @@
 .attention-copy {
   margin: 2px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 
@@ -260,7 +260,7 @@
   border: var(--border-width) solid currentColor;
   border-radius: var(--pill-radius);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 820;
   letter-spacing: 0.035em;
   line-height: 1;
@@ -290,7 +290,7 @@
 .attention-item .sku {
   color: var(--muted);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -305,7 +305,7 @@
 .attention-item .meta,
 .attention-reason {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.3;
 }
 
@@ -332,7 +332,7 @@
 
 .attention-cover span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 .attention-clear {
@@ -348,7 +348,7 @@
 .attention-clear p {
   margin: 3px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 
@@ -363,7 +363,7 @@
   border-radius: var(--radius-sm);
   background: var(--dpp-surface-subtle, var(--surface));
   color: var(--dpp-interaction);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 780;
   text-decoration: none;
 }
@@ -402,7 +402,7 @@
   gap: 12px;
   color: var(--muted);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 780;
   letter-spacing: 0.03em;
   line-height: 1.25;
@@ -446,7 +446,7 @@
 .business-health-card p {
   margin: 3px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 
@@ -476,7 +476,7 @@
   min-height: 32px;
   align-items: center;
   color: var(--dpp-interaction);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 780;
 }
 
@@ -510,7 +510,7 @@
 .ads-read__metrics span,
 .ads-read p {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 .ads-read p {

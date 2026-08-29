@@ -39,7 +39,7 @@
 .dpp-chart .dpp-axis text {
   fill: var(--dpp-text-muted, var(--muted));
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 600;
 }
 
@@ -52,14 +52,14 @@
 .dpp-chart .dpp-label {
   fill: var(--dpp-text, var(--ink));
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 750;
 }
 
 .dpp-chart .dpp-value {
   fill: var(--dpp-text, var(--ink));
   font-family: var(--dpp-font-display, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: var(--dpp-kpi-weight, 800);
   font-variant-numeric: tabular-nums;
 }
@@ -67,7 +67,7 @@
 .dpp-chart .dpp-muted {
   fill: var(--dpp-text-muted, var(--muted));
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 10px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 650;
 }
 
@@ -171,7 +171,7 @@
   stroke-linejoin: round;
   paint-order: stroke;
   font-family: var(--dpp-font-display, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: var(--dpp-kpi-weight, 800);
   pointer-events: none;
 }
@@ -179,7 +179,7 @@
 .demand-rhythm__current-label {
   fill: var(--dpp-data-incomplete);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 9px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 800;
   letter-spacing: 0.08em;
   pointer-events: none;
@@ -218,7 +218,7 @@
 .dpp-chart .dpp-legend text {
   fill: var(--dpp-text-muted, var(--muted));
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 10px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 700;
 }
 
@@ -234,7 +234,7 @@
   color: var(--dpp-chrome-text, var(--surface));
   box-shadow: var(--dpp-shadow-high, var(--shadow-high));
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.4;
   pointer-events: none;
   opacity: 0;
@@ -251,7 +251,7 @@
   display: block;
   margin-bottom: 2px;
   font-family: var(--dpp-font-display, inherit);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 .dpp-chart-tooltip span {
@@ -267,7 +267,7 @@
 
 .dpp-chart-tooltip.home-week-tooltip strong {
   margin-bottom: 6px;
-  font-size: 12.5px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 .dpp-chart-tooltip.home-week-tooltip .home-tip-row {
@@ -294,7 +294,7 @@
   padding-top: 6px;
   border-top: var(--border-width) solid var(--dpp-chrome-border, var(--line));
   color: var(--dpp-chrome-muted, var(--muted));
-  font-size: 10.5px;
+  font-size: var(--dpp-metadata-size, 14px);
   white-space: nowrap;
 }
 
@@ -304,7 +304,7 @@
   color: var(--dpp-text-muted, var(--muted));
   gap: 7px;
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 10px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 750;
 }
 
@@ -376,11 +376,11 @@
 
 @media (max-width: 640px) {
   .dpp-chart .dpp-axis text {
-    font-size: 11px;
+    font-size: var(--dpp-metadata-size, 14px);
   }
 
   .dpp-chart .dpp-value {
-    font-size: 11px;
+    font-size: var(--dpp-metadata-size, 14px);
   }
 
   .dpp-chart-scroll .dpp-chart--wide {

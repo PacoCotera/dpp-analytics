@@ -254,7 +254,7 @@ h1 {
   margin-top: 3px;
   color: var(--muted);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.4;
 }
 
@@ -274,7 +274,7 @@ h1 {
   margin-top: 3px;
   color: var(--muted);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 .product-line {
@@ -307,7 +307,7 @@ h1 {
   margin-bottom: 3px;
   color: var(--faint);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 10px;
+  font-size: var(--dpp-metadata-size, 14px);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -328,7 +328,7 @@ h1 {
   border-radius: var(--panel-radius);
   background: var(--dpp-surface-subtle, var(--paper-2));
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.45;
 }
 
@@ -399,7 +399,7 @@ h1 {
   }
 
   .kicker {
-    font-size: 12px;
+    font-size: var(--dpp-metadata-size, 14px);
   }
 
   h1 {
@@ -412,7 +412,7 @@ h1 {
   }
 
   .row-sub {
-    font-size: 13px;
+    font-size: var(--dpp-metadata-size, 14px);
   }
 
   .row-value strong {
@@ -420,7 +420,7 @@ h1 {
   }
 
   .row-value small {
-    font-size: 12px;
+    font-size: var(--dpp-metadata-size, 14px);
   }
 
   .product-name {
@@ -428,12 +428,12 @@ h1 {
   }
 
   .product-sku {
-    font-size: 12px;
+    font-size: var(--dpp-metadata-size, 14px);
   }
 
   .chip {
     min-height: 30px;
-    font-size: 11.5px;
+    font-size: var(--dpp-metadata-size, 14px);
   }
 
   .notice {

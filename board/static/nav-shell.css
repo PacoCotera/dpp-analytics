@@ -134,7 +134,7 @@ body.shell-drawer-open {
   margin-top: 4px;
   color: var(--dpp-chrome-muted);
   font-family: var(--dpp-font-detail);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   letter-spacing: 0.04em;
   line-height: 1.25;
   white-space: nowrap;
@@ -173,7 +173,7 @@ body.shell-drawer-open {
 .shell-header-context__eyebrow {
   color: var(--dpp-header-muted);
   font-family: var(--dpp-font-detail);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 650;
   letter-spacing: 0.075em;
   line-height: 1.2;
@@ -199,7 +199,7 @@ body.shell-drawer-open {
 .top-meta {
   color: var(--dpp-header-muted);
   font-family: var(--dpp-font-detail);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.25;
   text-align: right;
 }
@@ -243,7 +243,7 @@ body.shell-drawer-open {
 }
 
 .appearance-button__label {
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 760;
   line-height: 1.05;
 }
@@ -252,7 +252,7 @@ body.shell-drawer-open {
   max-width: 170px;
   overflow: hidden;
   color: var(--dpp-header-muted);
-  font-size: 10px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.05;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -365,13 +365,13 @@ body.shell-drawer-open {
   border-top: var(--dpp-border-width) solid var(--dpp-chrome-border);
   color: var(--dpp-chrome-muted);
   font-family: var(--dpp-font-detail);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 
 .app-sidebar__footer strong {
   color: var(--dpp-chrome-text);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 720;
 }
 
@@ -512,7 +512,7 @@ body.shell-drawer-open {
 
 .appearance-option__copy small {
   color: var(--dpp-text-muted);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.3;
 }
 
@@ -529,7 +529,7 @@ body.shell-drawer-open {
   border-top: var(--dpp-border-width) solid var(--dpp-border);
   color: var(--dpp-text-subtle);
   font-family: var(--dpp-font-detail);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   letter-spacing: 0.04em;
   line-height: 1.4;
   text-transform: uppercase;
@@ -647,7 +647,7 @@ body.shell-drawer-open {
   }
 
   .top-meta strong {
-    font-size: 11px;
+    font-size: var(--dpp-metadata-size, 14px);
     white-space: nowrap;
   }
 
@@ -721,7 +721,7 @@ body.shell-drawer-open {
     padding: 13px 18px 16px;
     border-top: var(--dpp-border-width) solid var(--dpp-chrome-border);
     color: var(--dpp-chrome-muted);
-    font-size: 12px;
+    font-size: var(--dpp-metadata-size, 14px);
   }
 
   .app-sidebar__footer strong {
