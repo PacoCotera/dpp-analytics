@@ -178,14 +178,16 @@
         </section>
 
         <section class="catalog-evidence" data-dpp-qa="catalog-evidence" aria-label="Portfolio data">
-          <div class="portfolio-head" id="portfolioHead">
-            <span>Family / product</span><span>Commercial read</span
+          <div class="portfolio-head" id="portfolioHead" role="row">
+            <span role="columnheader">Family / product</span><span role="columnheader">Commercial read</span
             ><span
+              role="columnheader"
               title="Amazon orderedProductSales from Sales &amp; Traffic. Production reconciliation confirms this matches shopper spend including IVA; Finance derives net revenue separately."
               >28D shopper spend incl. IVA</span
-            ><span>Traffic → CVR</span><span>Units → stock</span><span>Economics</span><span></span>
+            ><span role="columnheader">Traffic → CVR</span><span role="columnheader">Units → stock</span
+            ><span role="columnheader">Economics</span><span role="columnheader">Open</span>
           </div>
-          <div class="portfolio" id="portfolio" aria-live="polite">
+          <div class="portfolio" id="portfolio" role="rowgroup" aria-live="polite">
             <div class="empty">Loading commercial portfolio…</div>
           </div>
           <div class="portfolio-foot">

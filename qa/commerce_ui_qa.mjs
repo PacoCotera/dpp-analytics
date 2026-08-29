@@ -153,6 +153,13 @@ assert(
   "Catalog: accessible search/results/mobile disclosure contract is incomplete",
 );
 assert(
+  (catalog.html.match(/role="columnheader"/g) || []).length === 7 &&
+    catalog.html.includes('role="rowgroup"') &&
+    catalog.js.includes('role="rowheader"') &&
+    catalog.js.includes("evidence.setAttribute('role', 'table')"),
+  "Catalog: flat analysis table relationships are incomplete",
+);
+assert(
   catalog.js.includes(
     "closest('.catalog-filter-field').hidden = !familyMode",
   ) &&
@@ -219,10 +226,12 @@ assert(
   "Inventory: disclosure/filter accessibility state is incomplete",
 );
 assert(
-  inventory.css.includes(".inventory-reference summary") &&
-    inventory.css.includes(".inventory-cards") &&
+  inventory.css.includes(".inventory-table tbody tr") &&
+    inventory.css.includes('content: attr(data-label)') &&
+    !inventory.html.includes('id="inventoryCards"') &&
+    !inventory.js.includes('mobileInventoryMarkup') &&
     inventory.css.includes("position: sticky"),
-  "Inventory: mobile disclosure/cards or sticky table evidence is missing",
+  "Inventory: single responsive table or sticky evidence is missing",
 );
 
 assert(

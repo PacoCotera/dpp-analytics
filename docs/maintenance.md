@@ -109,6 +109,11 @@ New SKUs and deletions require no code list. The latest completed Seller Listing
 
 Inventory combines FBA inventory state with seller-SKU velocity from Amazon Orders. `inventory_api.py` joins the current Amazon offer contract for portfolio rollups and owns reference-row lifecycle plus canonical-SKU identity. The browser defaults to current stock-bearing offers and only exposes alias, retired, archived or no-velocity rows through explicit filters. Action semantics such as `STOCKOUT`, `PRODUCE`, `PLAN`, `OK` and `HOLD` belong in the data/API layer. The browser renders those actions; it should not independently invent replenishment thresholds. This order-based velocity is intentionally distinct from reconciled CHILD-ASIN product demand on Sales, Catalog and Product Workspace.
 
+Inventory owns one native evidence table for every viewport. Phone CSS presents those same rows as labeled cards;
+do not add a second mobile renderer or omit lifecycle, canonical identity, stock-state, velocity, or status fields.
+Catalog family mode remains a hierarchical disclosure, while its flat dimension, combination, SKU, and deleted
+views expose explicit table, row-group, row-header, column-header, and cell relationships.
+
 ### Ads
 
 Ads reports Amazon-attributed performance plus an independent total-seller-sales denominator for TACOS. Never compute “organic sales” as total seller sales minus Amazon-attributed ad sales; attribution windows overlap and can restate.

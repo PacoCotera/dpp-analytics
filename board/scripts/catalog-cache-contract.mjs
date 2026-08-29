@@ -29,7 +29,9 @@ if (/metric-basis-ui\.js/.test(productHtml)) {
 }
 if (
   source.includes('<a class="child"') ||
-  !source.includes('<div class="analysis-row">\n    <a class="analysis-identity analysis-link"') ||
+  source.includes('<a class="analysis-row') ||
+  !source.includes('<div class="analysis-row" role="row">') ||
+  !source.includes('<div class="analysis-identity" role="rowheader"><a class="analysis-link"') ||
   !source.includes('</summary>\n    ${familyRule ?')
 ) {
   failures.push(`${owner}: rule disclosure must render beside, not inside, row links and summaries`);
