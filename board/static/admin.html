@@ -29,7 +29,7 @@
       </header>
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
-      <main>
+      <main data-dpp-qa="admin-workspace">
         <header class="page-header" data-dpp-qa="admin-workspace-header">
           <div>
             <div class="kicker">Seller-owned catalog values</div>
@@ -40,7 +40,12 @@
           </div>
           <button id="logout" class="admin-secondary is-hidden" type="button">Sign out</button>
         </header>
-        <section id="loginPanel" class="admin-login" aria-labelledby="loginTitle">
+        <section
+          id="loginPanel"
+          class="admin-login"
+          aria-labelledby="loginTitle"
+          data-dpp-qa="admin-authentication"
+        >
           <div>
             <p class="admin-eyebrow">Protected workspace</p>
             <h2 id="loginTitle">Sign in to edit product configuration</h2>
@@ -61,7 +66,7 @@
           id="adminPanel"
           class="is-hidden"
           aria-labelledby="catalogAdminTitle"
-          data-dpp-qa="admin-product-editors"
+          data-dpp-qa="admin-catalog-editor"
         >
           <div class="admin-summary-head">
             <div>
@@ -89,7 +94,7 @@
             Blank fields are never guessed. Saving an empty field clears only that seller-owned value;
             effective-dated COGS history and closed Finance snapshots are preserved.
           </div>
-          <div id="productEditors" class="admin-products"></div>
+          <div id="productEditors" class="admin-products" data-dpp-qa="admin-product-editors"></div>
           <p id="adminSearchEmpty" class="admin-search-empty" hidden>No current offers match this search.</p>
 
           <details class="admin-history">
