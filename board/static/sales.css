@@ -1781,4 +1781,36 @@ body.sales-page .product-contribution-header {
     overflow-wrap: anywhere;
     white-space: normal;
   }
+
+  body.sales-page #products .product-read {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.sales-page #products .product-read__card {
+    grid-column: auto;
+    border-top: var(--border-width) solid var(--dpp-border);
+    border-left: 0;
+  }
+
+  body.sales-page #products .product-read__card:first-child {
+    border-top: 0;
+  }
+
+  body.sales-page #products .product-read__head {
+    flex-wrap: wrap;
+  }
+
+  body.sales-page #products .rule-trigger {
+    max-width: 100%;
+    margin-left: 0;
+  }
+
+  body.sales-page #skuRows .product-name {
+    display: block;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: unset;
+  }
 }
