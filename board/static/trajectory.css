@@ -310,6 +310,10 @@
     font-size: 30px;
   }
 
+  .paid-context--empty {
+    display: none;
+  }
+
   .paid-context {
     align-items: flex-start;
     flex-direction: column;

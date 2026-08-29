@@ -823,11 +823,11 @@
   }
 
   .sales-main {
-    order: initial;
+    order: 2;
   }
 
   .sales-state-rail {
-    order: initial;
+    order: 1;
     gap: 0;
   }
 

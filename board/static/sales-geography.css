@@ -296,7 +296,7 @@
   padding: 10px 12px;
   border-radius: 12px;
   background: var(--dpp-chrome);
-  color: var(--dpp-interaction-text);
+  color: var(--dpp-chrome-text);
   box-shadow: var(--dpp-shadow-high);
   pointer-events: none;
 }

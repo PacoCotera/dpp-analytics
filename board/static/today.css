@@ -74,7 +74,7 @@
 }
 
 .day-choice span {
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 .day-choice.active {
@@ -229,9 +229,9 @@
 .today-hero__copy .rule-trigger {
   grid-column: 2;
   width: max-content;
-  min-height: 32px;
+  min-height: var(--control-height);
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 .today-read-result {
@@ -244,9 +244,9 @@
 }
 
 .today-read-panel > .rule-trigger {
-  min-height: 32px;
+  min-height: var(--control-height);
   margin: 8px 0 0 8px;
-  font-size: 13px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 .today-read-panel > p {
@@ -386,7 +386,7 @@
 .product-identity {
   color: var(--muted);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 13px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 
@@ -418,7 +418,7 @@
 
 .period {
   min-width: 50px;
-  min-height: 38px;
+  min-height: var(--control-height);
   padding: 0 12px;
   border: 0;
   border-radius: var(--pill-radius);
@@ -701,7 +701,7 @@
   padding: 3px 8px;
   border: var(--border-width) solid currentColor;
   border-radius: var(--pill-radius);
-  font-size: 13px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 800;
   line-height: 1;
 }
@@ -787,7 +787,7 @@
 .operational-order__item .item-id,
 .operational-order__item .item-qty {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 
@@ -839,6 +839,73 @@
 :root[data-dpp-profile='weyland'] .page-header__title {
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+html.wall-mode,
+html.wall-mode body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+html.wall-mode body {
+  min-width: 0;
+}
+
+html.wall-mode body.shell-drawer-open {
+  overflow-y: auto;
+}
+
+.wall-mode .app-sidebar,
+.wall-mode .shell-backdrop,
+.wall-mode .shell-menu-button,
+.wall-mode .shell-mobile-brand,
+.wall-mode .shell-header-context,
+.wall-mode .appearance-trigger,
+.wall-mode .appearance-panel,
+.wall-mode .primary-nav,
+.wall-mode .day-picker {
+  display: none;
+}
+
+.wall-mode .app {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 clamp(18px, 2.4vw, 36px) 18px;
+  overflow-x: clip;
+}
+
+.wall-mode .shell-global-header.topbar {
+  position: static;
+  min-height: 52px;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: var(--border-width) solid var(--dpp-header-border);
+  background: transparent;
+  box-shadow: none;
+}
+
+.wall-mode .shell-header-actions {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.wall-mode .top-meta {
+  display: block;
+  color: var(--dpp-header-muted);
+  text-align: right;
+}
+
+.wall-mode .top-meta span {
+  display: inline;
+}
+
+.wall-mode .today-main {
+  max-width: none;
+  margin: 0;
 }
 
 .wall-mode .today-page-header {

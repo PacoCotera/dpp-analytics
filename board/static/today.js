@@ -15,6 +15,8 @@ let period = '30';
 let selectedDate = new URLSearchParams(window.location.search).get('date') || '';
 let refreshTimer = null;
 let lastWidth = 0;
+let rhythmResizeFrame = 0;
+let pendingRhythmWidth = 0;
 const mobileHierarchy = window.matchMedia('(max-width: 640px)');
 
 const AMAZON_PROCESSING = new Set(['PENDING', 'PENDING_AVAILABILITY', 'INVOICE_UNCONFIRMED']);
@@ -703,10 +705,16 @@ function bindInteractions() {
   if (window.ResizeObserver) {
     new ResizeObserver((entries) => {
       const width = Math.round(entries[0]?.contentRect?.width || 0);
-      if (data && width && Math.abs(width - lastWidth) > 12) {
-        lastWidth = width;
+      if (!width) return;
+      pendingRhythmWidth = width;
+      if (rhythmResizeFrame) return;
+      rhythmResizeFrame = window.requestAnimationFrame(() => {
+        rhythmResizeFrame = 0;
+        const nextWidth = pendingRhythmWidth;
+        if (!data || Math.abs(nextWidth - lastWidth) <= 12) return;
+        lastWidth = nextWidth;
         drawChart();
-      }
+      });
     }).observe(byId('rhythm').parentElement);
   }
 }

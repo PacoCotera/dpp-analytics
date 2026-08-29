@@ -41,13 +41,7 @@
               Live shopper demand, current Amazon order state and the evidence behind today’s operating read.
             </p>
           </div>
-          <div
-            class="day-picker"
-            id="dayPicker"
-            role="group"
-            aria-label="Operating day"
-            data-no-swipe
-          ></div>
+          <div class="day-picker" id="dayPicker" role="group" aria-label="Operating day" data-no-swipe></div>
         </header>
 
         <section class="today-section today-overview" aria-labelledby="todayOverviewTitle">
@@ -55,7 +49,10 @@
             <div>
               <div class="today-section-label">Overview</div>
               <h2 id="todayOverviewTitle">Selected-day position</h2>
-              <p>Shopper-facing spend including IVA from Amazon Orders; fees and settlement proceeds are excluded.</p>
+              <p>
+                Shopper-facing spend including IVA from Amazon Orders; fees and settlement proceeds are
+                excluded.
+              </p>
             </div>
           </div>
           <div class="today-overview-grid">
@@ -103,7 +100,11 @@
           </div>
         </section>
 
-        <section class="today-section today-demand" aria-labelledby="todayDemandTitle">
+        <section
+          class="today-section today-demand today-rhythm-panel"
+          data-dpp-qa="today-rhythm"
+          aria-labelledby="todayDemandTitle"
+        >
           <div class="today-section-header today-panel__head">
             <div>
               <div class="today-section-label">Demand</div>
@@ -128,7 +129,9 @@
             <div>
               <div class="today-section-label">Operations</div>
               <h2 id="todayOperationsTitle">Queue and product drivers</h2>
-              <p>Current fulfillment state first, followed by the products contributing to the selected day.</p>
+              <p>
+                Current fulfillment state first, followed by the products contributing to the selected day.
+              </p>
             </div>
           </div>
           <div class="today-operations-grid">
