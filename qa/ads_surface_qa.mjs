@@ -77,7 +77,7 @@ try{
       check('Ads empty headline derives from connection state',adsHeadline===adsConnection.headline,adsHeadline);
       check('Ads empty detail derives from connection state',adsDetail===adsConnection.detail,adsDetail);
       check('Ads unavailable drill-down tabs are disabled',unavailableTabs.every(tab=>tab.disabled&&tab.ariaDisabled==='true'),JSON.stringify(unavailableTabs));
-      check('Ads unavailable drill-down state is explained',availability.includes(adsConnection.detail),availability);
+      check('Ads unavailable drill-down state is explained once',availability==='Only Overview is available in the current Advertising connection state.'&&!availability.includes(adsConnection.detail),availability);
       check('Ads empty state skips every chart dependency',chartState.paths.length===0,chartState.paths.join(', '));
       check('Ads empty state does not initialize chart runtime',!chartState.runtime,String(chartState.runtime));
     }else{
@@ -140,7 +140,8 @@ try{
     const disconnectedChartState=await chartAssetState(disconnectedPage);
     check('Deterministic disconnected Ads keeps Overview enabled',tabs[0]?.view==='overview'&&!tabs[0].disabled&&tabs[0].ariaDisabled==='false',JSON.stringify(tabs));
     check('Deterministic disconnected Ads disables every drill-down',tabs.slice(1).every(tab=>tab.disabled&&tab.ariaDisabled==='true'),JSON.stringify(tabs));
-    check('Deterministic disconnected Ads explains disabled views',((await disconnectedPage.locator('#adsViewAvailability').textContent())||'').includes('Connect Amazon Ads'),await disconnectedPage.locator('#adsViewAvailability').textContent());
+    const disconnectedAvailability=((await disconnectedPage.locator('#adsViewAvailability').textContent())||'').trim();
+    check('Deterministic disconnected Ads explains disabled views once',disconnectedAvailability==='Only Overview is available in the current Advertising connection state.'&&!disconnectedAvailability.includes('Connect Amazon Ads'),disconnectedAvailability);
     check('Deterministic disconnected Ads contains mobile tabs',await disconnectedPage.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
     check('Deterministic disconnected Ads remains chart-free',disconnectedChartState.paths.length===0&&disconnectedChartState.dependencyNodes===0,JSON.stringify(disconnectedChartState));
   }finally{

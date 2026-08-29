@@ -8,7 +8,7 @@
     { href: '/catalog', label: 'Products', key: 'products' },
     { href: '/inventory', label: 'Inventory', key: 'inventory', className: 'nav-mobile-secondary' },
     { href: '/finance', label: 'Finance', key: 'finance', className: 'nav-mobile-secondary' },
-    { href: '/ads', label: 'Ads', key: 'ads' },
+    { href: '/ads', label: 'Advertising', key: 'ads' },
     { href: '/trajectory', label: 'Trajectory', key: 'trajectory' },
     { href: '/data-health', label: 'Data Health', key: 'data-health' },
     { href: '/admin', label: 'Admin', key: 'admin' },
@@ -378,6 +378,7 @@
     const nav = app?.querySelector('.primary-nav');
     if (!app || !topbar || !nav) return;
 
+    document.title = `Dirty Pawz Press · ${currentDomain().label}`;
     buildNavigation(nav);
     const sidebar = createSidebar(nav);
     const backdrop = createBackdrop();

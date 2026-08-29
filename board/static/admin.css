@@ -40,7 +40,7 @@
   letter-spacing: 0.04em;
 }
 
-.admin-login-form input,
+.admin-login-form input:not(.sr-only),
 .admin-field input,
 .admin-search input,
 .taxonomy-row input {
@@ -54,7 +54,7 @@
   font: inherit;
 }
 
-.admin-login-form input:focus,
+.admin-login-form input:not(.sr-only):focus,
 .admin-field input:focus,
 .admin-search input:focus,
 .taxonomy-row input:focus {

@@ -783,11 +783,21 @@ body.shell-drawer-open {
 
 @media (max-width: 520px) {
   .shell-header-context {
-    display: none;
+    display: block;
+    min-width: 0;
+  }
+
+  .shell-header-context__title {
+    display: block;
+    max-width: 132px;
   }
 
   .shell-header-actions {
     margin-left: auto;
+  }
+
+  .shell-header-actions .top-meta {
+    display: none;
   }
 
   .appearance-panel {
