@@ -393,7 +393,6 @@ main > .page-header .page-header__description {
   align-items: end;
   justify-content: space-between;
   gap: 24px;
-  margin: 12px 0 20px;
   margin: 0;
   padding: 14px 16px 12px;
   border: var(--border-width) solid var(--line);

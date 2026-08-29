@@ -412,7 +412,7 @@
   --dpp-info: #8fbf7d;
   --dpp-info-surface: #1a3220;
   --dpp-info-text: #c0e7b5;
-  --dpp-font-body: ui-monospace, 'Cascadia Mono', 'Roboto Mono', 'Courier New', monospace;
+  --dpp-font-body: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --dpp-font-display: ui-monospace, 'Cascadia Mono', 'Roboto Mono', 'Courier New', monospace;
   --dpp-font-detail: ui-monospace, 'Cascadia Mono', 'Roboto Mono', 'Courier New', monospace;
   --dpp-heading-weight: 850;
@@ -429,4 +429,9 @@
   --dpp-shadow-high: 0 0 28px #74ff951a;
   --dpp-panel-texture: repeating-linear-gradient(0deg, transparent 0 23px, #74ff950d 23px 24px);
   --dpp-motion-duration: 100ms;
+}
+@media (max-width: 640px) {
+  :root[data-dpp-theme='weyland'] {
+    --dpp-panel-texture: none;
+  }
 }

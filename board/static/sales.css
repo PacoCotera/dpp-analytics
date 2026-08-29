@@ -760,7 +760,6 @@
 }
 
 .sales-reference > summary {
-  display: none;
   display: flex;
   min-height: 84px;
   align-items: center;
@@ -917,7 +916,6 @@
 
 .sales-operating-grid {
   grid-template-columns: minmax(0, 1fr) minmax(285px, 330px);
-  gap: 18px;
   gap: 0;
   overflow: hidden;
   border: var(--border-width) solid var(--dpp-border);
@@ -1009,7 +1007,7 @@
 
 @media (max-width: 720px) {
   .sales-main {
-    order: 2;
+    order: 1;
   }
 
   .sales-state-rail > .sales-utility-today {
@@ -1444,7 +1442,21 @@
 
 @media (max-width: 620px) {
   .sales-lead {
-    padding-top: 14px;
+    gap: 8px;
+    padding-top: 10px;
+  }
+
+  .sales-lead .page-header {
+    padding-block: 10px 6px;
+  }
+
+  .sales-lead .page-header__description,
+  .sales-basis-note {
+    display: none;
+  }
+
+  .sales-lead > .metric-window-note {
+    margin-top: 0;
   }
 
   .sales-lead .subnav {
@@ -1555,7 +1567,7 @@
   .sales-state-rail {
     gap: 0;
     display: grid;
-    order: -1;
+    order: 2;
     grid-template-columns: minmax(0, 1fr);
     border-left: var(--border-width) solid var(--dpp-border);
   }

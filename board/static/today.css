@@ -1321,20 +1321,50 @@ html.wall-mode .today-section {
   }
 
   .today-lead__head {
-    padding: 16px;
-  }
-
-  .today-kpi {
-    min-height: 82px;
+    gap: 10px;
     padding: 12px;
   }
 
+  .today-lead h1 {
+    margin: 2px 0 4px;
+    font-size: 27px;
+  }
+
+  .today-lead__read {
+    font-size: 16px;
+  }
+
+  .today-lead__head p {
+    display: none;
+  }
+
+  .today-kpi {
+    min-height: 66px;
+    padding: 8px 10px;
+  }
+
   .today-kpi__value {
-    font-size: 25px;
+    font-size: 22px;
+  }
+
+  .today-kpi__label,
+  .today-kpi small {
+    margin-top: 4px;
+    line-height: 1.15;
+  }
+
+  .today-kpi small {
+    display: none;
   }
 
   .today-context {
-    padding: 12px 14px;
+    gap: 4px 8px;
+    padding: 8px 10px;
+  }
+
+  .today-context > span,
+  .today-context > p {
+    display: none;
   }
 
   .today-operations-grid {

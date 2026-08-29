@@ -357,6 +357,7 @@ const routes = [
     name: "catalog",
     path: "/catalog",
     ready: ".family",
+    firstSurface: '[data-dpp-qa="catalog-decisions"]',
     anchors: [
       "catalog-overview",
       "catalog-decisions",
@@ -368,6 +369,7 @@ const routes = [
     name: "product",
     path: "/product?sku=DPP-001",
     ready: "#chart .dpp-bar",
+    firstSurface: '[data-dpp-qa="product-analysis"]',
     anchors: [
       "product-identity",
       "product-kpis",
@@ -382,6 +384,7 @@ const routes = [
     path: "/inventory",
     ready: "#rows tr",
     readyState: "attached",
+    firstSurface: '[data-dpp-qa="inventory-actions"]',
     anchors: [
       "inventory-overview",
       "inventory-actions",
@@ -398,7 +401,7 @@ function assert(condition, message) {
 
 async function inspectRoute(page, route, expectedProfile) {
   return page.evaluate(
-    ({ routeName, profileId, anchors }) => {
+    ({ routeName, profileId, anchors, firstSurface }) => {
       const visible = (element) => {
         const style = getComputedStyle(element);
         return (
@@ -493,6 +496,14 @@ async function inspectRoute(page, route, expectedProfile) {
         undersizedPrimary: primary.filter(({ height }) => height < 40),
         smallText,
         nested,
+        firstSurfaceTop:
+          document.querySelector(firstSurface)?.getBoundingClientRect().top + window.scrollY,
+        documentHeight: document.documentElement.scrollHeight,
+        leadBounds: [...document.querySelectorAll("main > *")].slice(0, 6).map((element) => ({
+          key: element.id || element.className,
+          top: Math.round(element.getBoundingClientRect().top + window.scrollY),
+          height: Math.round(element.getBoundingClientRect().height),
+        })),
         visibleAnchors: anchors.filter((anchor) => {
           const element = document.querySelector(`[data-dpp-qa="${anchor}"]`);
           return element && visible(element);
@@ -504,6 +515,7 @@ async function inspectRoute(page, route, expectedProfile) {
       routeName: route.name,
       profileId: expectedProfile,
       anchors: route.anchors,
+      firstSurface: route.firstSurface,
     },
   );
 }
@@ -587,6 +599,12 @@ try {
         state.visibleAnchors.length === route.anchors.length,
         `${route.name}/${testCase.width}: missing visible hierarchy anchors ${route.anchors.filter((anchor) => !state.visibleAnchors.includes(anchor)).join(", ")}`,
       );
+      if (testCase.width <= 480) {
+        assert(
+          state.firstSurfaceTop <= 760,
+          `${route.name}/${testCase.width}: first decision surface starts at ${Math.round(state.firstSurfaceTop)}px ${JSON.stringify(state.leadBounds)}`,
+        );
+      }
       assert(
         browserErrors.length === 0,
         `${route.name}/${testCase.width}: ${browserErrors.join("; ")}`,
@@ -674,7 +692,13 @@ try {
         }
       }
 
-      results.push({ route: route.name, ...testCase, state: "PASS" });
+      results.push({
+        route: route.name,
+        ...testCase,
+        firstSurfaceTop: state.firstSurfaceTop,
+        documentHeight: state.documentHeight,
+        state: "PASS",
+      });
       await context.close();
     }
   }
@@ -694,6 +718,23 @@ if (failures.length) {
     ),
   );
   process.exit(1);
+}
+
+for (const route of routes) {
+  const warm = results.find(
+    (result) =>
+      result.route === route.name &&
+      result.profile === "warm-studio" &&
+      result.width === 320,
+  );
+  const weyland = results.find(
+    (result) =>
+      result.route === route.name && result.profile === "weyland" && result.width === 320,
+  );
+  assert(
+    weyland.documentHeight <= warm.documentHeight * 1.2,
+    `${route.name}/320: Weyland is ${Math.round((weyland.documentHeight / warm.documentHeight) * 100)}% of Warm Studio height`,
+  );
 }
 
 console.log(

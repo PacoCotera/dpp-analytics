@@ -585,27 +585,50 @@
 }
 
 @media (max-width: 480px) {
+  .business-hero {
+    gap: 10px;
+    padding: 14px 0 12px;
+  }
+
   .business-headline h1 {
     font-size: 27px;
   }
 
+  #stateCopy {
+    display: none;
+  }
+
   .home-kpi-rail {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .home-kpi-rail .kpi,
   .home-kpi-rail .kpi:nth-child(odd) {
-    padding: 13px 14px;
+    min-height: 66px;
+    padding: 8px 10px;
     border-top: var(--border-width) solid var(--line);
+    border-left: var(--border-width) solid var(--line);
+  }
+
+  .home-kpi-rail .kpi:nth-child(odd) {
     border-left: 0;
   }
 
-  .home-kpi-rail .kpi:first-child {
+  .home-kpi-rail .kpi:nth-child(-n + 2) {
     border-top: 0;
   }
 
   .home-kpi-rail .kpi__value {
-    font-size: 26px;
+    font-size: 22px;
+  }
+
+  .home-kpi-rail .kpi__label {
+    margin-top: 4px;
+    line-height: 1.15;
+  }
+
+  .home-kpi-rail .kpi__note {
+    display: none;
   }
 
   .home-surface {

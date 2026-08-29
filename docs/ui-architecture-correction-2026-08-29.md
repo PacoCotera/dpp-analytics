@@ -73,6 +73,12 @@ All operational tables share one contract:
 - A healthy-state summary never replaces operational controls. Data Health always exposes every pipeline row and its row-level action by default; “Problems only” is an optional filter.
 - Compact horizon summaries use comparable numbers and labels. Decorative progress bars do not substitute for the main trajectory chart.
 
+### Presentation profiles
+
+- A presentation profile may change color, display typography and decorative character, but it must not change task order or materially increase page length.
+- Weyland uses monospace for headings, labels and numeric display while long-form body copy retains the shared UI sans stack.
+- Decorative panel texture is suppressed at phone widths so it does not compete with dense operating content.
+
 ## Page recipes
 
 | Route | Business question | Lead and summary | Dominant surface | Supporting detail |
@@ -96,6 +102,7 @@ All operational tables share one contract:
 - Dense tables contain their own horizontal scroll when compression would destroy readability. Charts reflow or aggregate their marks instead of forcing a fixed plot width.
 - Toolbars wrap before labels truncate; primary actions remain reachable without horizontal page overflow.
 - Mobile drawers, menus, tabs and disclosures preserve keyboard and screen-reader state.
+- At phone widths, the first dominant chart, table or action queue begins within the first useful 760 CSS pixels of document content on covered routes.
 
 ## Delivery blocks
 

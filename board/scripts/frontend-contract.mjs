@@ -146,6 +146,24 @@ check(
   `stylesheet ownership differs from the declared presentation layers: ${actualStyles.join(', ')}`,
 );
 
+for (const stylesheet of actualStyles) {
+  const stylesheetAst = postcss.parse(readFileSync(join(staticRoot, stylesheet), 'utf8'), {
+    from: stylesheet,
+  });
+  stylesheetAst.walkRules((rule) => {
+    const declarationOwners = new Map();
+    rule.walkDecls((declaration) => {
+      const property = declaration.prop.toLowerCase();
+      check(
+        !declarationOwners.has(property),
+        stylesheet,
+        `${rule.selector} declares ${property} more than once in the same rule`,
+      );
+      declarationOwners.set(property, declaration.source.start.line);
+    });
+  });
+}
+
 for (const page of pages) {
   const html = readFileSync(join(staticRoot, page), 'utf8');
   const css = [...html.matchAll(/<link\b[^>]*href=["']([^"']+\.css(?:\?[^"']*)?)["'][^>]*>/gi)].map((match) =>

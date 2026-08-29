@@ -531,7 +531,6 @@ main {
 }
 
 .coverage {
-  padding: 18px;
   padding: 12px 14px;
 }
 
@@ -685,12 +684,42 @@ main {
 
 @media (max-width: 640px) {
   .inventory-page-header {
-    padding-block: 16px;
+    padding-block: 0;
+  }
+
+  .inventory-page-header > div:first-child {
+    padding: 12px;
+  }
+
+  .inventory-page-header .page-header__title {
+    font-size: 27px;
+  }
+
+  .inventory-thresholds {
+    display: none;
   }
 
   .inventory-header-actions {
     display: grid;
-    gap: 10px;
+    gap: 8px;
+  }
+
+  .inventory-header-actions .kpi {
+    min-height: 66px;
+    padding: 8px 10px;
+  }
+
+  .inventory-header-actions .kpi__value {
+    font-size: 22px;
+  }
+
+  .inventory-header-actions .kpi__label {
+    padding-top: 4px;
+    line-height: 1.15;
+  }
+
+  .inventory-header-actions .kpi__note {
+    display: none;
   }
 
   .inventory-header-actions .kpi-rail,
@@ -700,7 +729,7 @@ main {
 
   .inventory-actions,
   .inventory-records {
-    padding-block: 18px;
+    padding-block: 14px;
   }
 
   .action-card {
