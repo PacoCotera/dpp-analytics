@@ -30,112 +30,30 @@
       </header>
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
-      <main class="trajectory-main" aria-labelledby="trajectoryTitle">
-        <section class="page-header">
+      <main class="trajectory-main" aria-labelledby="storyTitle">
+        <section class="trajectory-lead" data-dpp-qa="trajectory-overview">
           <div>
-            <div class="kicker">Commercial trend</div>
-            <h1 class="page-header__title" id="trajectoryTitle">Trajectory</h1>
-            <p class="page-header__description">
-              Comparable shopper-spend windows, moving averages, and portfolio breadth across short and
-              structural horizons.
-            </p>
-            <p class="metric-window-note" id="trajectoryBusinessWindow">Loading seller-performance window</p>
-          </div>
-        </section>
-        <section class="state-read">
-          <div>
-            <div class="state-read__eyebrow">Current comparison</div>
-            <h2 class="state-read__title" id="storyTitle">Reading momentum…</h2>
+            <div class="state-read__eyebrow">Trajectory · commercial trend</div>
+            <h1 class="state-read__title" id="storyTitle">Reading momentum…</h1>
             <p class="state-read__copy" id="storyCopy">
               Comparing short, medium and longer shopper-spend horizons.
             </p>
+            <p class="metric-window-note" id="trajectoryBusinessWindow">Loading seller-performance window</p>
           </div>
           <div class="state-read__meta">
-            <strong class="story-number" id="headline">—</strong><br />28-day shopper-spend change vs prior 28
-            days
+            <strong class="story-number" id="headline">—</strong
+            ><span>28-day shopper-spend change vs prior 28 days</span>
           </div>
         </section>
-        <section class="paid-context" id="paidContext">
-          <div>
-            <div class="paid-context__eyebrow">Paid-media context</div>
-            <strong id="paidTitle">Waiting for Amazon Ads access</strong>
-            <div class="paid-context__copy" id="paidCopy">
-              Trajectory remains seller-sales led. Paid support will appear here when decision-grade
-              advertising coverage is available.
-            </div>
-          </div>
-          <div class="paid-context__metrics" id="paidMetrics"></div>
-        </section>
-        <section class="page-section">
-          <div class="dashboard-grid dashboard-grid--main-rail">
-            <div class="panel">
-              <div class="panel__header">
-                <div>
-                  <h2 class="panel__title">Horizon comparison</h2>
-                  <div class="panel__description">
-                    Shopper spend incl. IVA · reconciled Amazon Sales &amp; Traffic. Read 28D and longer
-                    first; 7D is acceleration/noise context.
-                  </div>
-                </div>
-                <button class="btn" id="helpBtn" type="button" aria-controls="help" aria-expanded="false">
-                  Why these windows?
-                </button>
-              </div>
-              <div class="panel__body">
-                <div id="horizons"></div>
-                <div class="notice trajectory-help" id="help" hidden>
-                  <strong>7D</strong> reacts quickly but is noisy. <strong>28D</strong> preserves weekday mix
-                  and is our main operating signal. <strong>56D</strong> tests persistence.
-                  <strong>90D</strong> separates a durable step-change from a short burst.
-                </div>
-              </div>
-            </div>
-            <details class="panel trajectory-why" id="trajectoryGuide" open>
-              <summary>
-                <span><strong>Horizon guide</strong><small>How to read mixed horizons</small></span>
-              </summary>
-              <div class="panel__header trajectory-why__desktop-header">
-                <div>
-                  <h2 class="panel__title">Horizon guide</h2>
-                  <div class="panel__description">Use the shape, not one percentage.</div>
-                </div>
-              </div>
-              <div class="panel__body list">
-                <div class="list-row">
-                  <div>
-                    <div class="row-title">Short down, long up</div>
-                    <div class="row-sub">Recent softness inside a still-improving business.</div>
-                  </div>
-                </div>
-                <div class="list-row">
-                  <div>
-                    <div class="row-title">Short up, long flat</div>
-                    <div class="row-sub">Acceleration worth watching, not yet structural.</div>
-                  </div>
-                </div>
-                <div class="list-row">
-                  <div>
-                    <div class="row-title">All up</div>
-                    <div class="row-sub">Broad strengthening across time horizons.</div>
-                  </div>
-                </div>
-                <div class="list-row">
-                  <div>
-                    <div class="row-title">All down</div>
-                    <div class="row-sub">Broad-based slowdown that deserves diagnosis.</div>
-                  </div>
-                </div>
-              </div>
-            </details>
-          </div>
-        </section>
-        <section class="page-section">
+
+        <section class="page-section trajectory-evidence" data-dpp-qa="trajectory-evidence">
           <div class="panel">
             <div class="panel__header">
               <div>
                 <h2 class="panel__title">Trend evidence</h2>
                 <div class="panel__description">
-                  Shopper spend incl. IVA · daily with 28-day moving average · 180 days.
+                  180 days · daily shopper spend incl. IVA · 28-day moving average · reconciled Sales &amp;
+                  Traffic
                 </div>
               </div>
             </div>
@@ -156,7 +74,75 @@
             </div>
           </div>
         </section>
-        <section class="page-section">
+
+        <section class="page-section trajectory-horizons" data-dpp-qa="trajectory-horizons">
+          <div class="panel">
+            <div class="panel__header">
+              <div>
+                <h2 class="panel__title">Horizon comparison</h2>
+                <div class="panel__description">
+                  Read 28D and longer first; 7D is acceleration and noise context.
+                </div>
+              </div>
+              <button class="btn" id="helpBtn" type="button" aria-controls="help" aria-expanded="false">
+                Why these windows?
+              </button>
+            </div>
+            <div class="panel__body">
+              <div id="horizons"></div>
+              <div class="notice trajectory-help" id="help" hidden>
+                <strong>7D</strong> reacts quickly but is noisy. <strong>28D</strong> preserves weekday mix
+                and is the main operating signal. <strong>56D</strong> tests persistence.
+                <strong>90D</strong> distinguishes a durable step-change from a short burst.
+              </div>
+            </div>
+          </div>
+          <details class="trajectory-why" id="trajectoryGuide">
+            <summary>
+              <span><strong>Horizon guide</strong><small>How to read mixed signals</small></span>
+            </summary>
+            <div class="list">
+              <div class="list-row">
+                <div>
+                  <div class="row-title">Short down, long up</div>
+                  <div class="row-sub">Recent softness inside a still-improving business.</div>
+                </div>
+              </div>
+              <div class="list-row">
+                <div>
+                  <div class="row-title">Short up, long flat</div>
+                  <div class="row-sub">Acceleration worth watching, not yet structural.</div>
+                </div>
+              </div>
+              <div class="list-row">
+                <div>
+                  <div class="row-title">All up</div>
+                  <div class="row-sub">Broad strengthening across time horizons.</div>
+                </div>
+              </div>
+              <div class="list-row">
+                <div>
+                  <div class="row-title">All down</div>
+                  <div class="row-sub">Broad-based slowdown that deserves diagnosis.</div>
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="paid-context" id="paidContext">
+          <div>
+            <div class="paid-context__eyebrow">Paid-media context</div>
+            <strong id="paidTitle">Waiting for Amazon Ads access</strong>
+            <div class="paid-context__copy" id="paidCopy">
+              Trajectory remains seller-sales led. Paid support will appear here when decision-grade
+              advertising coverage is available.
+            </div>
+          </div>
+          <div class="paid-context__metrics" id="paidMetrics"></div>
+        </section>
+
+        <section class="page-section trajectory-portfolio" data-dpp-qa="trajectory-portfolio">
           <div class="panel">
             <div class="panel__header">
               <div>
@@ -174,7 +160,7 @@
             </div>
           </div>
         </section>
-        <section class="page-section">
+        <section class="page-section trajectory-weeks">
           <div class="week-guide">
             <div>
               <h2 class="section-header__title">Weekly volatility</h2>

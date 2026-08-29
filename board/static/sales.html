@@ -33,58 +33,59 @@
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
-      <header class="page-header">
-        <div>
-          <div class="kicker">Commercial evidence</div>
-          <h1 class="page-header__title" id="salesTitle">Sales</h1>
-          <p class="page-header__description">
-            Shopper spend across time windows, product contribution, and order geography.
-          </p>
-        </div>
-      </header>
+      <section class="sales-lead" aria-labelledby="salesTitle">
+        <header class="page-header">
+          <div>
+            <div class="kicker">Commercial evidence</div>
+            <h1 class="page-header__title" id="salesTitle">Sales</h1>
+            <p class="page-header__description">
+              Demand performance, product contribution and order geography.
+            </p>
+          </div>
+        </header>
 
-      <nav class="subnav tabs" aria-label="Sales views" role="tablist">
-        <button
-          class="subnav__item active"
-          id="salesOverviewTab"
-          type="button"
-          role="tab"
-          data-view="overview"
-          aria-controls="overview"
-          aria-selected="true"
-        >
-          Overview
-        </button>
-        <button
-          class="subnav__item"
-          id="salesProductsTab"
-          type="button"
-          role="tab"
-          data-view="products"
-          aria-controls="products"
-          aria-selected="false"
-        >
-          Drivers
-        </button>
-        <button
-          class="subnav__item"
-          id="salesGeographyTab"
-          type="button"
-          role="tab"
-          data-view="geography"
-          aria-controls="geography"
-          aria-selected="false"
-        >
-          Geography
-        </button>
-      </nav>
+        <nav class="subnav tabs" aria-label="Sales views" role="tablist">
+          <button
+            class="subnav__item active"
+            id="salesOverviewTab"
+            type="button"
+            role="tab"
+            data-view="overview"
+            aria-controls="overview"
+            aria-selected="true"
+          >
+            Overview
+          </button>
+          <button
+            class="subnav__item"
+            id="salesProductsTab"
+            type="button"
+            role="tab"
+            data-view="products"
+            aria-controls="products"
+            aria-selected="false"
+          >
+            Drivers
+          </button>
+          <button
+            class="subnav__item"
+            id="salesGeographyTab"
+            type="button"
+            role="tab"
+            data-view="geography"
+            aria-controls="geography"
+            aria-selected="false"
+          >
+            Geography
+          </button>
+        </nav>
 
-      <div class="notice sales-basis-note" role="note" aria-label="Sales monetary basis">
-        <strong>Sales page basis:</strong> every sales amount is <strong>shopper spend incl. IVA</strong>.
-        Historical periods use reconciled Amazon Sales &amp; Traffic; Today and order evidence use Amazon
-        Orders. <strong>Net sales ex IVA live in Finance.</strong>
-      </div>
-      <p class="metric-window-note" id="salesBusinessWindow">Loading seller-performance window</p>
+        <p class="sales-basis-note" role="note" aria-label="Sales monetary basis">
+          Shopper spend incl. IVA · reconciled Sales &amp; Traffic · live Today evidence uses Amazon Orders ·
+          net sales ex IVA lives in Finance
+        </p>
+        <p class="metric-window-note" id="salesBusinessWindow">Loading seller-performance window</p>
+      </section>
 
       <main id="overview" class="view active" role="tabpanel" tabindex="0" aria-labelledby="salesOverviewTab">
         <section class="dashboard-grid sales-operating-grid">
@@ -146,7 +147,7 @@
               <a href="/today" class="btn">Open Today →</a>
             </section>
 
-            <details class="sales-reference" id="salesReference" open>
+            <details class="sales-reference" id="salesReference">
               <summary>
                 <span><strong>Momentum and YTD</strong><small>Secondary sales context</small></span
                 ><b id="salesReferenceToggle">View ↓</b>

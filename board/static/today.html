@@ -33,70 +33,52 @@
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
       <main class="today-main">
-        <header class="page-header today-page-header">
-          <div>
-            <div class="today-section-label">Operating day</div>
-            <h1 class="page-header__title">Today</h1>
-            <p class="page-header__description">
-              Live shopper demand, current Amazon order state and the evidence behind today’s operating read.
-            </p>
-          </div>
-          <div class="day-picker" id="dayPicker" role="group" aria-label="Operating day" data-no-swipe></div>
-        </header>
-
-        <section class="today-section today-overview" aria-labelledby="todayOverviewTitle">
-          <div class="today-section-header">
+        <section class="today-lead" aria-labelledby="todayTitle" data-dpp-qa="today-overview">
+          <div class="today-lead__head">
             <div>
-              <div class="today-section-label">Overview</div>
-              <h2 id="todayOverviewTitle">Selected-day position</h2>
-              <p>
-                Shopper-facing spend including IVA from Amazon Orders; fees and settlement proceeds are
-                excluded.
-              </p>
+              <div class="today-section-label">Live operating day</div>
+              <h1 id="todayTitle">Today</h1>
+              <strong class="today-lead__read" id="dayHeadline">Reading today…</strong>
+              <p id="dayExplanation">Comparing the selected day with recent shopper-spend context.</p>
             </div>
+            <div
+              class="day-picker"
+              id="dayPicker"
+              role="group"
+              aria-label="Operating day"
+              data-no-swipe
+            ></div>
           </div>
-          <div class="today-overview-grid">
-            <section
-              class="today-hero"
+
+          <div class="today-kpis" aria-label="Today operating KPIs">
+            <div
+              class="today-kpi today-kpi--sales"
               title="Shopper-facing product spend including IVA. Amazon ITEM + TAX is used when complete; provisional tax-exclusive item values are normalized to the marketplace IVA basis. Settlement proceeds and Amazon fees are excluded."
             >
-              <div class="today-eyebrow" id="salesLabel">Shopper spend today · incl. IVA</div>
-              <div class="today-hero__value"><span class="currency">$</span><span id="sales">—</span></div>
-              <div class="today-hero__metrics" aria-label="Today operating KPIs">
-                <div class="today-hero__metric"><strong id="orders">—</strong><span>Orders</span></div>
-                <div class="today-hero__metric"><strong id="units">—</strong><span>Units</span></div>
-                <div class="today-hero__metric">
-                  <strong id="pendingOrdersKpi">—</strong><span>Amazon processing</span
-                  ><small id="pendingOrdersKpiNote">Current Amazon state</small>
-                </div>
-              </div>
-              <div class="today-hero__read" aria-live="polite">
-                <div class="today-hero__copy">
-                  <span class="today-read-label">Selected-day comparison</span>
-                  <strong id="dayHeadline">Reading today…</strong>
-                  <p id="dayExplanation">Comparing the selected day with recent shopper-spend context.</p>
-                </div>
-              </div>
-            </section>
+              <strong class="today-kpi__value"
+                ><span class="currency">$</span><span id="sales">—</span></strong
+              >
+              <span class="today-kpi__label" id="salesLabel">Shopper spend today · incl. IVA</span>
+            </div>
+            <div class="today-kpi">
+              <strong class="today-kpi__value" id="orders">—</strong
+              ><span class="today-kpi__label">Orders</span>
+            </div>
+            <div class="today-kpi">
+              <strong class="today-kpi__value" id="units">—</strong
+              ><span class="today-kpi__label">Units</span>
+            </div>
+            <div class="today-kpi">
+              <strong class="today-kpi__value" id="pendingOrdersKpi">—</strong>
+              <span class="today-kpi__label">Amazon processing</span>
+              <small id="pendingOrdersKpiNote">Current Amazon state</small>
+            </div>
+          </div>
 
-            <section class="today-read-panel" aria-labelledby="todayBusinessReadTitle">
-              <div class="today-eyebrow">Business context</div>
-              <h2 id="todayBusinessReadTitle" class="sr-only">Business context</h2>
-              <strong class="today-read-result" id="pulseHeadline">Reading the business…</strong>
-              <p id="pulseExplanation">Separating today’s signal from the broader trend.</p>
-              <details class="today-business-evidence" id="todayBusinessEvidence" open>
-                <summary>
-                  <span><strong>Benchmark detail</strong><small>MTD, 30D, WTD and latest order</small></span
-                  ><b id="todayBusinessToggle">View ↓</b>
-                </summary>
-                <div class="context-list" id="contextList"></div>
-                <section class="latest">
-                  <div class="latest-title">Latest sale · shopper spend incl. IVA</div>
-                  <div id="latest"><div class="empty">Waiting for today’s first order.</div></div>
-                  <div class="latest-age" id="latestAge"></div>
-                </section>
-              </details>
-            </section>
+          <div class="today-context" aria-live="polite">
+            <span>Business context</span>
+            <strong id="pulseHeadline">Reading the business…</strong>
+            <p id="pulseExplanation">Separating today’s signal from the broader trend.</p>
           </div>
         </section>
 
@@ -107,7 +89,7 @@
         >
           <div class="today-section-header today-panel__head">
             <div>
-              <div class="today-section-label">Demand</div>
+              <div class="today-section-label">Demand pulse</div>
               <h2 id="todayDemandTitle" class="today-panel__title">Recent rhythm</h2>
               <p class="today-panel__sub" id="rhythmSub">
                 Same shopper-spend incl.-IVA basis across the selected window
@@ -119,19 +101,16 @@
               <button class="period active" type="button" data-period="30" aria-pressed="true">30D</button>
             </div>
           </div>
-          <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
           <div class="rhythm-host"><svg id="rhythm" class="rhythm" viewBox="0 0 900 190"></svg></div>
+          <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
           <div class="rhythm-rail" id="rhythmRail"></div>
         </section>
 
         <section class="today-section today-operations" aria-labelledby="todayOperationsTitle">
           <div class="today-section-header">
             <div>
-              <div class="today-section-label">Operations</div>
-              <h2 id="todayOperationsTitle">Queue and product drivers</h2>
-              <p>
-                Current fulfillment state first, followed by the products contributing to the selected day.
-              </p>
+              <div class="today-section-label">Next decisions</div>
+              <h2 id="todayOperationsTitle">Order queue and product drivers</h2>
             </div>
           </div>
           <div class="today-operations-grid">
@@ -165,10 +144,21 @@
           <div class="today-section-header">
             <div>
               <div class="today-section-label">Evidence</div>
-              <h2 id="todayEvidenceTitle">Order detail</h2>
-              <p>Operational records without customer personally identifiable information.</p>
+              <h2 id="todayEvidenceTitle">Benchmarks and order detail</h2>
             </div>
           </div>
+          <details class="today-business-evidence" id="todayBusinessEvidence" open>
+            <summary>
+              <span><strong>Business benchmarks</strong><small>MTD, 30D, WTD and latest order</small></span
+              ><b id="todayBusinessToggle">View ↓</b>
+            </summary>
+            <div class="context-list" id="contextList"></div>
+            <section class="latest">
+              <div class="latest-title">Latest sale · shopper spend incl. IVA</div>
+              <div id="latest"><div class="empty">Waiting for today’s first order.</div></div>
+              <div class="latest-age" id="latestAge"></div>
+            </section>
+          </details>
           <details class="today-orders today-open-orders" id="openOrdersPanel">
             <summary>
               <span

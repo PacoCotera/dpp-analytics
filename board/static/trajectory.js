@@ -10,8 +10,6 @@ import {
   percent,
 } from './ui-utils.js';
 
-const mobile = window.matchMedia('(max-width: 640px)');
-
 function toneClass(value) {
   const n = Number(value);
   if (n > 0) return 'good';
@@ -87,7 +85,7 @@ function renderPortfolio(p = {}) {
   const secondary = [cards[1], cards[2], cards[3]];
   byId('portfolio').innerHTML = `
     <div class="structure-priority">${priority.map(card).join('')}</div>
-    <details class="structure-reference" id="portfolioReference" open>
+    <details class="structure-reference" id="portfolioReference">
       <summary><span><strong>Additional portfolio benchmarks</strong><small>Per-SKU and leader context</small></span></summary>
       <div class="structure-secondary">${secondary.map(card).join('')}</div>
     </details>`;
@@ -97,12 +95,6 @@ function renderPortfolio(p = {}) {
     : '';
 }
 
-function syncMobileHierarchy() {
-  ['trajectoryGuide', 'portfolioReference'].forEach((id) => {
-    const disclosure = byId(id);
-    if (disclosure) disclosure.open = !mobile.matches;
-  });
-}
 function weekLabel(item, index) {
   if (item.current_week) return 'Current week';
   if (index === 1) return 'Previous week';
@@ -143,7 +135,6 @@ function render(payload) {
   if (window.DPPCharts) window.DPPCharts.trajectory('#chart', payload.series || []);
   renderPortfolio(payload.portfolio);
   renderWeeks(payload.weekly);
-  syncMobileHierarchy();
 }
 function bindInteractions() {
   byId('helpBtn').addEventListener('click', () => {
@@ -154,8 +145,6 @@ function bindInteractions() {
     help.hidden = !expanded;
     help.classList.toggle('show', expanded);
   });
-  mobile.addEventListener('change', syncMobileHierarchy);
-  syncMobileHierarchy();
 }
 async function start() {
   bindInteractions();
