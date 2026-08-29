@@ -117,16 +117,27 @@ function renderBusinessHealth(data) {
     </a>`;
 }
 
+function businessLead(read = {}) {
+  const explanation = String(read.explanation || '').trim();
+  const sentences = explanation.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
+  const headline = String(sentences.shift() || 'Current business evidence').trim();
+  return {
+    headline,
+    detail: sentences.join(' ').trim() || 'Current demand and operating exceptions are shown below.',
+  };
+}
+
 function render(data) {
   const today = data.today || {},
     rolling = data.rolling || {},
     inventory = data.inventory_summary || {},
     decisionCount = Number(inventory.needs_action || 0),
-    read = data.business_momentum || {};
+    read = data.business_momentum || {},
+    lead = businessLead(read);
   document.getElementById('clock').textContent = formatBusinessClock(data.local_time);
   document.getElementById('fresh').textContent = 'Live operating data';
-  document.getElementById('stateHeadline').textContent = 'Current evidence';
-  document.getElementById('stateCopy').textContent = read.explanation;
+  document.getElementById('stateHeadline').textContent = lead.headline;
+  document.getElementById('stateCopy').textContent = lead.detail;
   document.getElementById('homeBusinessWindow').textContent = formatMetricWindow(
     data.metric_windows?.RECONCILED_BUSINESS_T28,
   );

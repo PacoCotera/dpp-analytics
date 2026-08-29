@@ -26,14 +26,19 @@ Owns only global visual tokens and typography:
 `static/ui-shell.js` and `static/nav-shell.css` own application-wide orientation and navigation behavior:
 
 - brand and primary navigation
+- compact desktop brand row and horizontal domain navigation
 - active destination state
 - More menu
 - workspace identity
-- mobile page/workspace swipes
+- accessible mobile navigation drawer
 - tab keyboard accessibility
 - shared favicon declaration and brand mark
 
 A page must not implement a second primary navigation system.
+
+The shell and route compositions follow the active architecture in
+[`ui-architecture-correction-2026-08-29.md`](ui-architecture-correction-2026-08-29.md). The approved Business
+reference does not use a permanent desktop sidebar or duplicate the current page identity in global chrome.
 
 ### 3. Layout system
 
@@ -91,6 +96,11 @@ Each workspace owns a small explicit trio where appropriate:
 Page modules do not own global typography, primary navigation, generic KPI/panel/table geometry or duplicated formatting utilities. Shared formatting, escaping and the `fetchJson()` interface live in `static/ui-utils.js`. `static/data-cache.js` owns only transport reuse: session-scoped JSON TTL caching and same-page in-flight request deduplication. Neither shared frontend utility may redefine accounting, reconciliation, attribution, catalog or inventory semantics.
 
 The Sales workspace retains the existing `sales-canonical.js` filename because it is already the single live renderer; the historical filename does not imply another Sales runtime.
+
+Page composition is not a generic sequence of page header, KPI cards and panels. Each route implements the
+business-question recipe documented in `ui-architecture-correction-2026-08-29.md`: a compact lead, an optional
+comparable KPI strip, one dominant working surface and only the supporting evidence needed for the next decision.
+Introductory copy and legends must remain subordinate to charts, tables, queues and reports.
 
 ### 6. Data/API
 

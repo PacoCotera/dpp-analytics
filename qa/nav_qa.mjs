@@ -24,7 +24,7 @@ function assert(condition, message) {
 }
 
 async function readDomains(page) {
-  return page.locator('.nav-primary-set > a').evaluateAll((links) =>
+  return page.locator('.nav-primary-set a.domain-link').evaluateAll((links) =>
     links.map((link) => ({
       label: link.textContent.trim(),
       href: new URL(link.href).pathname,
@@ -47,7 +47,7 @@ async function assertDomainContract(page, activeLabel) {
     actual.find(({ label }) => label === 'Products')?.href === '/catalog',
     'Products must map to /catalog',
   );
-  assert((await page.locator('.nav-more').count()) === 0, 'retired More navigation is still present');
+  assert((await page.locator('.nav-more').count()) === 1, 'desktop More navigation is missing');
 }
 
 async function assertNoDocumentOverflow(page, label) {
@@ -116,24 +116,27 @@ for (const testCase of cases) {
     if (mobile)
       overflowChecks.push(await assertNoDocumentOverflow(page, `${testCase.name} direct load`));
 
-    const brandHref = await page.locator('#app-sidebar a.brand').getAttribute('href');
+    const brandHref = await page.locator('.shell-global-header a.brand').getAttribute('href');
     assert(brandHref === '/today', `brand link ${brandHref} != /today`);
 
     const sidebar = page.locator('#app-sidebar');
     const menuButton = page.locator('.shell-menu-button');
     if (!mobile) {
-      assert(await sidebar.isVisible(), 'desktop sidebar is not visible');
-      assert((await sidebar.getAttribute('aria-hidden')) === 'false', 'desktop sidebar is hidden');
-      assert(!(await sidebar.getAttribute('inert')), 'desktop sidebar is inert');
+      assert(await sidebar.isVisible(), 'desktop navigation is not visible');
+      assert((await sidebar.getAttribute('aria-hidden')) === 'false', 'desktop navigation is hidden');
+      assert(!(await sidebar.getAttribute('inert')), 'desktop navigation is inert');
       assert(!(await menuButton.isVisible()), 'mobile menu button is visible on desktop');
 
-      const sidebarBox = await sidebar.boundingBox();
+      const navBox = await page.locator('#app-navigation').boundingBox();
       const headerBox = await page.locator('.shell-global-header').boundingBox();
-      assert(sidebarBox && headerBox, 'desktop shell geometry is unavailable');
+      assert(navBox && headerBox, 'desktop shell geometry is unavailable');
       assert(
-        headerBox.x >= sidebarBox.x + sidebarBox.width - 1,
-        'global header is not anchored to the sidebar edge',
+        Math.abs(headerBox.x - navBox.x) <= 1 && Math.abs(headerBox.width - navBox.width) <= 1,
+        'desktop header and navigation do not share one content frame',
       );
+      assert(navBox.height <= 56, 'desktop domain navigation is too tall');
+      assert(!(await page.locator('.app-sidebar__header').isVisible()), 'drawer header leaks onto desktop');
+      assert(!(await page.locator('.app-sidebar__footer').isVisible()), 'drawer footer leaks onto desktop');
     } else {
       assert(await menuButton.isVisible(), 'mobile navigation trigger is not visible');
       assert((await menuButton.getAttribute('aria-expanded')) === 'false', 'drawer starts expanded');

@@ -29,10 +29,6 @@
     return path;
   }
 
-  function currentDomain() {
-    return DOMAINS.find((item) => item.href === normalizedPath()) || DOMAINS[0];
-  }
-
   function isCurrent(href) {
     return normalizedPath() === href;
   }
@@ -56,13 +52,14 @@
 
   function buildNavigation(nav) {
     nav.innerHTML = '';
+    nav.id = 'app-navigation';
     nav.classList.add('app-navigation');
     nav.setAttribute('aria-label', 'Business domains');
 
     const primary = document.createElement('div');
     primary.className = 'nav-primary-set';
 
-    for (const item of DOMAINS) {
+    const buildLink = (item) => {
       const anchor = document.createElement('a');
       anchor.href = item.href;
       anchor.className = 'domain-link';
@@ -80,10 +77,33 @@
       label.className = 'domain-link__label';
       label.textContent = item.label;
       anchor.append(marker, label);
-      primary.appendChild(anchor);
-    }
+      return anchor;
+    };
+
+    for (const item of DOMAINS.slice(0, 6)) primary.appendChild(buildLink(item));
+
+    const more = document.createElement('details');
+    more.className = 'nav-more';
+    if (DOMAINS.slice(6).some((item) => isCurrent(item.href))) more.classList.add('active');
+    const summary = document.createElement('summary');
+    summary.innerHTML = '<span>More</span><span aria-hidden="true">⌄</span>';
+    const menu = document.createElement('div');
+    menu.className = 'nav-more__menu';
+    for (const item of DOMAINS.slice(6)) menu.appendChild(buildLink(item));
+    more.append(summary, menu);
+    primary.appendChild(more);
 
     nav.appendChild(primary);
+
+    document.addEventListener('pointerdown', (event) => {
+      if (more.open && !more.contains(event.target)) more.removeAttribute('open');
+    });
+    more.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && more.open) {
+        more.removeAttribute('open');
+        summary.focus();
+      }
+    });
   }
 
   function createSidebar(nav) {
@@ -102,8 +122,8 @@
     brand.innerHTML =
       '<span class="mark" aria-hidden="true">DP</span>' +
       '<span class="brand-copy">' +
-      '<span class="brand-title">DPP ANALYTICS</span>' +
-      '<span class="brand-sub">Business workspace</span>' +
+      '<span class="brand-title">DIRTY PAWZ PRESS</span>' +
+      '<span class="brand-sub">Business · Amazon Mexico</span>' +
       '</span>';
 
     const closeButton = document.createElement('button');
@@ -338,14 +358,6 @@
       '<span class="shell-menu-button__icon" aria-hidden="true"><span></span><span></span><span></span></span>';
     menuButton.addEventListener('click', () => openDrawer(menuButton));
 
-    const context = document.createElement('div');
-    context.className = 'shell-header-context';
-    context.innerHTML =
-      '<span class="shell-header-context__eyebrow">DPP Analytics</span>' +
-      '<strong class="shell-header-context__title">' +
-      currentDomain().label +
-      '</strong>';
-
     const actions = document.createElement('div');
     actions.className = 'shell-header-actions';
     const meta = topbar.querySelector('.top-meta');
@@ -363,8 +375,8 @@
     actions.appendChild(appearance);
 
     topbar.prepend(menuButton);
-    if (brand) brand.classList.add('shell-mobile-brand');
-    topbar.append(context, actions);
+    if (brand) brand.classList.add('shell-brand');
+    topbar.append(actions);
     createAppearancePanel(appearance);
     syncAppearance();
   }
@@ -379,9 +391,10 @@
     const sidebar = createSidebar(nav);
     const backdrop = createBackdrop();
     const skipLink = document.querySelector('.skip-link');
-    if (skipLink) skipLink.after(backdrop, sidebar);
-    else document.body.prepend(backdrop, sidebar);
+    if (skipLink) skipLink.after(backdrop);
+    else document.body.prepend(backdrop);
     createGlobalHeader(topbar);
+    topbar.after(sidebar);
     syncDrawerMode();
 
     if (typeof mobileMedia.addEventListener === 'function')
