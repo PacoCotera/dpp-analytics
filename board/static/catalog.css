@@ -867,6 +867,13 @@
     grid-column: 1 / -1;
   }
 
+  .child-name {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .child > .signal {
     padding-top: 9px;
     border-top: var(--border-width) solid var(--line);

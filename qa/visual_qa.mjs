@@ -24,17 +24,10 @@ async function assertWorkspaceLandmarks(page, names) {
 
 async function verifyControlTrustAppearance(page, expectedProfile) {
   await wait(page, 'main');
-  await page.waitForFunction(() => {
-    if (document.body.classList.contains('finance-page')) return Boolean(document.querySelector('#currentLines .finance-line'));
-    if (document.body.classList.contains('ads-page')) return !document.getElementById('readyState')?.hidden || !document.getElementById('emptyState')?.hidden;
-    if (document.body.classList.contains('data-health-page')) return document.getElementById('summaryCount')?.textContent?.trim() !== '—';
-    if (document.body.classList.contains('admin-shell')) return Boolean(document.getElementById('loginPanel'));
-    return false;
-  }, null, { timeout: 10000 });
   const state = await page.evaluate(profileId => {
     const root = document.documentElement;
     const css = getComputedStyle(root);
-    const visible = node => node.getClientRects().length > 0;
+    const visible = node => node.getClientRects().length > 0 && !node.closest('.sr-only');
     const surfaces = [...document.querySelectorAll(
       '.admin-login,.product-editor,.ads-quality,.ads-action-card,.health-summary,.incident,.domain-summary,.source,.bridge-step,.pending-row,.history-row'
     )].filter(visible);
@@ -43,6 +36,55 @@ async function verifyControlTrustAppearance(page, expectedProfile) {
       return channels.length ? Math.max(...channels) : 0;
     };
     const controls = [...document.querySelectorAll('main button,main input,main select,main summary')].filter(visible);
+    const expectedLabels = {
+      '/': 'Today', '/business': 'Business', '/sales': 'Sales', '/catalog': 'Products',
+      '/product': 'Products', '/inventory': 'Inventory', '/finance': 'Finance',
+      '/ads': 'Advertising', '/trajectory': 'Trajectory', '/data-health': 'Data Health',
+      '/admin': 'Admin',
+    };
+    const expectedLabel = expectedLabels[location.pathname] || 'Today';
+    const colorLuminance = value => {
+      const source = String(value).trim();
+      const shorthand = source.startsWith('#') && [4, 5].includes(source.length);
+      const hex = shorthand
+        ? source.slice(1, 4).split('').map(channel => channel + channel)
+        : source.slice(1, 7).match(/../g);
+      const channels = source.startsWith('#')
+        ? (hex || []).map(channel => Number.parseInt(channel, 16) / 255)
+        : (source.match(/[\d.]+/g) || []).slice(0, 3).map(channel => Number(channel) / 255);
+      if (channels.length !== 3 || channels.some(channel => !Number.isFinite(channel))) return null;
+      const linear = channels.map(channel => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+    };
+    const contrast = (first, second) => {
+      const a = colorLuminance(first);
+      const b = colorLuminance(second);
+      if (a === null || b === null) return 0;
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    };
+    const token = name => css.getPropertyValue(name).trim();
+    const nonTextPairs = [
+      ['--dpp-focus-ring', '--dpp-page'], ['--dpp-focus-ring', '--dpp-surface'],
+      ['--dpp-border-strong', '--dpp-page'], ['--dpp-border-strong', '--dpp-surface'],
+      ['--dpp-data-incomplete', '--dpp-surface'],
+      ...['--dpp-data1', '--dpp-data2', '--dpp-data3', '--dpp-data4', '--dpp-data5', '--dpp-data6']
+        .map(name => [name, '--dpp-surface']),
+    ];
+    const nonTextContrastRatios = nonTextPairs.map(([foreground, background]) => ({
+      pair: `${foreground}/${background}`,
+      ratio: Number(contrast(token(foreground), token(background)).toFixed(2)),
+    }));
+    const renderedChartChecks = [...document.querySelectorAll(
+      '.dpp-chart .dpp-bar,.dpp-chart .dpp-line,.dpp-chart .dpp-dot,.dpp-chart .dpp-bubble,.dpp-chart .dpp-quadrant-line,.dpp-chart .dpp-axis path,.dpp-chart .dpp-axis line'
+    )].filter(visible).map(node => {
+      const style = getComputedStyle(node);
+      const stroke = style.stroke !== 'none' && Number.parseFloat(style.strokeWidth) > 0 ? style.stroke : '';
+      const color = stroke || (style.fill !== 'none' ? style.fill : '');
+      return {
+        element: `${node.tagName.toLowerCase()}.${[...node.classList].join('.')}`,
+        ratio: Number(contrast(color, token('--dpp-surface')).toFixed(2)),
+      };
+    }).filter(item => Number.isFinite(item.ratio));
     return {
       theme: root.getAttribute('data-dpp-theme'),
       profile: root.getAttribute('data-dpp-profile'),
@@ -66,6 +108,14 @@ async function verifyControlTrustAppearance(page, expectedProfile) {
         window.innerWidth > 640 ||
         css.getPropertyValue('--dpp-panel-texture').trim() === 'none',
       contained: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
+      nonTextContrastFloor: nonTextContrastRatios.every(item => item.ratio >= 3),
+      nonTextContrastRatios,
+      renderedChartContrastFloor: renderedChartChecks.every(item => item.ratio >= 3),
+      renderedChartChecks,
+      shellIdentity:
+        document.querySelector('.nav-primary-set a.active .domain-link__label')?.textContent?.trim() === expectedLabel &&
+        document.querySelector('.shell-header-context__title')?.textContent?.trim() === expectedLabel,
+      pageTitle: document.title === `Dirty Pawz Press · ${expectedLabel}`,
     };
   }, expectedProfile);
   if (
@@ -78,6 +128,10 @@ async function verifyControlTrustAppearance(page, expectedProfile) {
     !state.weylandType ||
     !state.weylandMobileTexture ||
     !state.contained ||
+    !state.nonTextContrastFloor ||
+    !state.renderedChartContrastFloor ||
+    !state.shellIdentity ||
+    !state.pageTitle ||
     (expectedProfile === 'weyland' && state.profile !== 'weyland')
   ) {
     throw new Error(`Control/trust ${expectedProfile} appearance mismatch: ${JSON.stringify(state)}`);
@@ -87,7 +141,7 @@ async function verifyControlTrustAppearance(page, expectedProfile) {
 async function verifyAdmin(page) {
   await wait(page, '#loginPanel');
   const state = await page.evaluate(() => {
-    const visible = node => node.getClientRects().length > 0;
+    const visible = node => node.getClientRects().length > 0 && !node.closest('.sr-only');
     const evidence = [...document.querySelectorAll('.admin-shell .kicker,.admin-shell .page-header__description,.admin-eyebrow,.admin-login p,.admin-status')].filter(visible);
     const controls = [...document.querySelectorAll('#loginPanel input,#loginPanel button')].filter(visible);
     return {
@@ -126,11 +180,17 @@ async function verifyAds(page, view = 'overview') {
       return {
         overviewEnabled: tabs[0]?.dataset.adsView === 'overview' && !tabs[0].disabled,
         drillsDisabled: tabs.slice(1).every(tab => tab.disabled && tab.getAttribute('aria-disabled') === 'true'),
-        explained: Boolean(note && !note.hidden && note.textContent.includes(connectionDetail || '')),
+        explained: Boolean(
+          note && !note.hidden &&
+          note.textContent.trim() === 'Only Overview is available in the current Advertising connection state.' &&
+          !note.textContent.includes(connectionDetail || 'missing connection detail')
+        ),
+        singleDetailOwner:
+          document.querySelector('#emptyState p')?.textContent?.trim() === connectionDetail,
         contained: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
       };
     }, payload.connection?.detail || '');
-    if (!disconnected.overviewEnabled || !disconnected.drillsDisabled || !disconnected.explained || !disconnected.contained) {
+    if (!disconnected.overviewEnabled || !disconnected.drillsDisabled || !disconnected.explained || !disconnected.singleDetailOwner || !disconnected.contained) {
       throw new Error(`Ads disconnected-state presentation mismatch: ${JSON.stringify(disconnected)}`);
     }
     return;
@@ -1303,7 +1363,7 @@ const scenarios = [
   ['admin', '/admin', ['mobile', 'desktop'], verifyAdmin],
 ].map(([name, url, views, action, setup]) => ({ name, url, views, action, setup }));
 
-const financeProfiles = [
+const presentationProfiles = [
   'warm-studio',
   'midnight-saffron',
   'aubergine-aqua',
@@ -1311,19 +1371,16 @@ const financeProfiles = [
   'aubergine-dark',
   'weyland',
 ];
-for (const profile of financeProfiles) {
-  scenarios.push({
-    name: `finance-${profile}`,
-    url: '/finance',
-    views: ['mobile', 'desktop'],
-    profile,
-    action: page => verifyControlTrustAppearance(page, profile),
-  });
-}
-for (const [name, url] of [['ads', '/ads'], ['data-health', '/data-health'], ['admin', '/admin']]) {
-  for (const profile of ['midnight-dark', 'weyland']) {
+const presentationRoutes = [
+  ['today', '/'], ['business', '/business'], ['sales', '/sales'], ['products', '/catalog'],
+  ['product', '/product?sku=PNC-001'], ['inventory', '/inventory'], ['finance', '/finance'],
+  ['advertising', '/ads'], ['trajectory', '/trajectory'], ['data-health', '/data-health'],
+  ['admin', '/admin'],
+];
+for (const [name, url] of presentationRoutes) {
+  for (const profile of presentationProfiles) {
     scenarios.push({
-      name: `${name}-${profile}`,
+      name: `profile-${name}-${profile}`,
       url,
       views: ['mobile', 'desktop'],
       profile,

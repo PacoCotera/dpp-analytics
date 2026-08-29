@@ -13,7 +13,7 @@ const domains = [
   { label: 'Products', href: '/catalog' },
   { label: 'Inventory', href: '/inventory' },
   { label: 'Finance', href: '/finance' },
-  { label: 'Ads', href: '/ads' },
+  { label: 'Advertising', href: '/ads' },
   { label: 'Trajectory', href: '/trajectory' },
   { label: 'Data Health', href: '/data-health' },
   { label: 'Admin', href: '/admin' },
@@ -141,6 +141,10 @@ for (const testCase of cases) {
       assert(await page.locator('.app-sidebar__footer').isVisible(), 'sidebar footer is missing on desktop');
     } else {
       assert(await menuButton.isVisible(), 'mobile navigation trigger is not visible');
+      assert(
+        (await page.locator('.shell-header-context__title').textContent())?.trim() === testCase.active,
+        'mobile header does not expose the active destination',
+      );
       assert((await menuButton.getAttribute('aria-expanded')) === 'false', 'drawer starts expanded');
       assert((await sidebar.getAttribute('aria-hidden')) === 'true', 'closed drawer is exposed');
       assert((await sidebar.getAttribute('inert')) !== null, 'closed drawer is not inert');

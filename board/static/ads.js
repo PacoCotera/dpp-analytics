@@ -230,7 +230,7 @@ function renderUnavailable(p) {
     connection.detail || 'The current Amazon Ads connection state could not be read.';
   byId('adsViewAvailability').hidden = false;
   byId('adsViewAvailability').textContent =
-    `Additional views are unavailable. ${connection.detail || 'Reporting readiness has not been confirmed.'}`;
+    'Only Overview is available in the current Advertising connection state.';
   byId('asof').textContent = connection.badge || 'Ads state unavailable';
   setViewAvailability(false);
   renderTargets([]);
@@ -259,7 +259,7 @@ async function start() {
     byId('asof').textContent = 'Ads unavailable';
     byId('adsViewAvailability').hidden = false;
     byId('adsViewAvailability').textContent =
-      'Additional views are unavailable while the Ads API cannot be reached.';
+      'Only Overview is available while Advertising reporting cannot be reached.';
     setViewAvailability(false);
   }
 }

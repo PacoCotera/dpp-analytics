@@ -69,7 +69,7 @@ jobs:
             echo "$name=$value" >>"$GITHUB_OUTPUT"
           }
 
-          emit frontend '^(board/(static/|presentation/|scripts/)|board/(package\.json|eslint\.config\.js|\.stylelintrc\.json|\.prettierrc\.json)$)'
+          emit frontend '^(board/(static/|presentation/|scripts/)|board/(package(-lock)?\.json|eslint\.config\.js|\.stylelintrc\.json|\.prettierrc\.json)$)'
           emit board_python '^board/[^/]+\.py$'
           emit board_image '^(board/(Dockerfile|[^/]+\.py)$|compose\.yml$|\.env\.example$)'
           emit worker_image '^app/'
@@ -95,7 +95,7 @@ jobs:
           node-version: 22
 
       - name: Install frontend tooling
-        run: npm install --no-package-lock --ignore-scripts
+        run: npm ci --ignore-scripts
 
       - name: Lint and verify formatting
         run: npm run quality

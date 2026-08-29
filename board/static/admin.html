@@ -55,6 +55,17 @@
             </p>
           </div>
           <form id="loginForm" class="admin-login-form">
+            <label class="sr-only" for="adminUsername">Username</label>
+            <input
+              id="adminUsername"
+              class="sr-only"
+              name="username"
+              type="text"
+              value="admin"
+              autocomplete="username"
+              tabindex="-1"
+              readonly
+            />
             <label for="password">Admin password</label>
             <input id="password" name="password" type="password" autocomplete="current-password" required />
             <button type="submit">Sign in</button>

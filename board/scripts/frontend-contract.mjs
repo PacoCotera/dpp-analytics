@@ -485,7 +485,7 @@ check(
 );
 
 const contractedControlHeightSelector =
-  /\.(?:btn|subnav__item|segmented-control__item|choice-control|mode|filter|how-btn)(?![\w-])/;
+  /\.(?:btn|subnav__item|segmented-control__item|choice-control|rule-trigger|mode|filter|how-btn)(?![\w-])/;
 for (const stylesheet of ['theme.css', 'layout-system.css', ...Object.values(pageStyles)]) {
   const css = readFileSync(join(staticRoot, stylesheet), 'utf8');
   for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {

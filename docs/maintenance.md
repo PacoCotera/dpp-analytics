@@ -120,7 +120,7 @@ Ads reports Amazon-attributed performance plus an independent total-seller-sales
 
 Amazon Ads connection lifecycle is separate from reporting quality. The worker publishes one non-secret state in `ops.integration_state`: `NOT_CONNECTED`, `AUTHORIZATION_PENDING`, `BACKFILL_RUNNING`, `READY`, or `FAILED`. `board/ads_state.py` owns the matching badge, headline and detail contract consumed by both Product and Ads APIs. Page runtimes render that contract and must not infer authorization or backfill state from missing report rows.
 
-The Ads document loads only its shell, page styles and lightweight runtime before the connection payload is
+The Advertising document loads only its shell, page styles and lightweight runtime before the connection payload is
 known. `ads.js` calls `ads-chart-loader.js` only for the API-owned `READY` connection plus `ready` reporting
 status; that loader then requests shared chart CSS, D3 and `chart-system.js` with the current asset revision.
 Disconnected, authorization-pending, backfill and failure states must render without downloading or parsing
@@ -264,7 +264,7 @@ and Data Health labels that depend on them.
 The same suite runs `qa/accessibility_qa.mjs` across every primary workspace. It rejects missing/duplicate level-one
 headings, unnamed visible links, missing toggle-button state, broken native keyboard activation, and loss of the
 Finance monthly report's table relationships.
-`qa/visual_qa.mjs` additionally checks the 14px evidence floor, 40px control floor, mobile Finance/Data Health table semantics, contained Ads tabs and the complete Finance six-profile matrix plus dark/Weyland smoke coverage for Ads, Data Health and Admin. `qa/ads_surface_qa.mjs` deterministically covers ready and disconnected Ads states, API-owned action reasons and chart-free disconnected loading.
+`qa/visual_qa.mjs` additionally checks the 14px evidence floor, 40px control floor, rendered chart and non-text contrast, mobile Finance/Data Health table semantics, contained Advertising tabs, mobile destination identity, and every primary route in all six presentation profiles at mobile and desktop widths. `qa/ads_surface_qa.mjs` deterministically covers ready and disconnected Advertising states, one connection-detail owner, API-owned action reasons and chart-free disconnected loading. Frontend tooling is pinned by `board/package-lock.json`; CI must use `npm ci`.
 `qa/analysis_state_qa.mjs` exercises Sales and Catalog direct links, refresh, Back, and Forward. When adding a
 persistent view choice, document its URL key in `frontend-architecture.md` and extend this browser gate.
 `qa/presentation_profiles_qa.mjs` checks the six-profile registry and apply/persistence contract on the Business

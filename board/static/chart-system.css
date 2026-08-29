@@ -33,7 +33,7 @@
 
 .dpp-chart .dpp-axis path,
 .dpp-chart .dpp-axis line {
-  stroke: var(--dpp-border, var(--line));
+  stroke: var(--dpp-border-strong, var(--line));
 }
 
 .dpp-chart .dpp-axis text {

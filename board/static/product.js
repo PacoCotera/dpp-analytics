@@ -415,7 +415,6 @@ function render(payload) {
   const economics = payload.economics || {};
   const ads = payload.ads || {};
 
-  document.title = `${profile.product || profile.sku || 'Product'} · DPP`;
   byId('clock').textContent = formatBusinessClock(payload.local_time);
   byId('asof').textContent = `Historical through ${String(payload.business_date || '').slice(5)}`;
   byId('productDemandWindow').textContent = formatMetricWindow(
