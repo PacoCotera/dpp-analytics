@@ -57,7 +57,14 @@ async function verifyControlTrustAppearance(page, expectedProfile) {
       controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
       metadataFloor: Number.parseFloat(css.getPropertyValue('--dpp-metadata-size')) >= 14,
       weylandType:
-        profileId !== 'weyland' || /mono|courier/i.test(getComputedStyle(document.body).fontFamily),
+        profileId !== 'weyland' ||
+        (!/mono|courier/i.test(getComputedStyle(document.body).fontFamily) &&
+          /mono|courier/i.test(css.getPropertyValue('--dpp-font-display')) &&
+          /mono|courier/i.test(css.getPropertyValue('--dpp-font-detail'))),
+      weylandMobileTexture:
+        profileId !== 'weyland' ||
+        window.innerWidth > 640 ||
+        css.getPropertyValue('--dpp-panel-texture').trim() === 'none',
       contained: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
     };
   }, expectedProfile);
@@ -69,6 +76,7 @@ async function verifyControlTrustAppearance(page, expectedProfile) {
     !state.controlFloor ||
     !state.metadataFloor ||
     !state.weylandType ||
+    !state.weylandMobileTexture ||
     !state.contained ||
     (expectedProfile === 'weyland' && state.profile !== 'weyland')
   ) {
