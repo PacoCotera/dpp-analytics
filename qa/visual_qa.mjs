@@ -185,8 +185,8 @@ async function verifySalesOverview(page) {
     const todayLink = document.querySelector('.sales-utility-today .btn');
     return {
       mobile,
-      signalsBeforeChart: Boolean(
-        signals && chart && signals.getBoundingClientRect().top < chart.getBoundingClientRect().top
+      chartBeforeSignals: Boolean(
+        signals && chart && chart.getBoundingClientRect().top < signals.getBoundingClientRect().top
       ),
       referenceOpen: Boolean(reference?.hasAttribute('open')),
       primaryVisible: Boolean(primary && primary.getBoundingClientRect().height > 0),
@@ -207,7 +207,7 @@ async function verifySalesOverview(page) {
   }
   if (
     state.mobile &&
-    (!state.signalsBeforeChart || state.referenceOpen || !state.primaryVisible || !state.todayVisible)
+    (!state.chartBeforeSignals || state.referenceOpen || !state.primaryVisible || !state.todayVisible)
   ) {
     throw new Error(`Sales Overview mobile hierarchy mismatch: ${JSON.stringify(state)}`);
   }
