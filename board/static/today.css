@@ -1004,16 +1004,21 @@ html.wall-mode body.shell-drawer-open {
   }
 
   .rhythm-rail {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .rhythm-kpi:nth-child(odd) {
+    padding-left: 16px;
+    border-left: var(--border-width) solid var(--line);
+  }
+
+  .rhythm-kpi:first-child {
     padding-left: 0;
     border-left: 0;
   }
 
   .rhythm-kpi:nth-child(n + 3) {
-    border-top: var(--border-width) solid var(--line);
+    border-top: 0;
   }
 
   .order-grid,

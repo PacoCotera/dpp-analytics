@@ -528,6 +528,10 @@
 }
 
 @media (max-width: 640px) {
+  .trajectory-main .paid-context--empty {
+    display: none;
+  }
+
   .dashboard-grid--main-rail {
     overflow: visible;
     border: 0;
