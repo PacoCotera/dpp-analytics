@@ -29,21 +29,21 @@
 }
 
 .day-picker {
-  display: flex;
-  max-width: min(560px, 48vw);
+  display: grid;
+  width: 100%;
+  max-width: min(560px, 100%);
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   align-items: stretch;
   gap: 4px;
-  overflow-x: auto;
   padding: 4px;
   border: var(--border-width) solid var(--line);
   border-radius: var(--pill-radius);
   background: var(--dpp-surface-subtle);
-  overscroll-behavior-inline: contain;
 }
 
 .day-choice {
   display: grid;
-  min-width: 58px;
+  min-width: 0;
   min-height: var(--control-height);
   flex: 1 0 auto;
   place-items: center;
@@ -1380,9 +1380,7 @@ html.wall-mode .today-section {
   }
 
   .day-picker {
-    display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    overflow: visible;
     border-radius: var(--radius-sm);
   }
 

@@ -249,7 +249,7 @@
 }
 
 .inventory-table {
-  min-width: 1160px;
+  min-width: 100%;
   table-layout: fixed;
 }
 
@@ -363,12 +363,15 @@
 }
 
 .status-dot {
-  display: inline-flex;
+  display: inline-grid;
+  max-width: 100%;
+  grid-template-columns: 9px minmax(0, 1fr);
   align-items: center;
   gap: 7px;
   font-size: 14px;
   font-weight: 720;
-  white-space: nowrap;
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .status-dot::before {
@@ -394,10 +397,6 @@
 
 .status-dot.good::before {
   background: var(--good);
-}
-
-.inventory-cards {
-  display: none;
 }
 
 .footer-build {
@@ -773,127 +772,85 @@ main {
     background: transparent;
   }
 
-  .inventory-cards {
-    display: grid;
-    gap: 10px;
+  .inventory-shell .data-table-scroll {
+    overflow: visible;
   }
 
-  .inv-card {
+  .inventory-table,
+  .inventory-table tbody {
     display: block;
-    min-height: 96px;
-    padding: 14px;
-    border: var(--border-width) solid var(--line);
-    border-radius: var(--panel-radius);
-    background-color: var(--surface);
-    background-image: var(--dpp-panel-texture, none);
-  }
-
-  .inv-card__top {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
-    align-items: start;
-  }
-
-  .inv-card .product-name {
-    display: -webkit-box;
-    overflow: hidden;
-    white-space: normal;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-
-  .inv-card .action {
-    justify-self: end;
-  }
-
-  .inv-card-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: var(--border-width) solid var(--line);
-  }
-
-  .inv-card-metric {
+    width: 100%;
     min-width: 0;
-    padding: 0 10px;
-    border-left: var(--border-width) solid var(--line);
+    max-width: 100%;
   }
 
-  .inv-card-metric:first-child {
-    padding-left: 0;
-    border-left: 0;
+  .inventory-table {
+    table-layout: auto;
   }
 
-  .inv-card-metric strong,
-  .inv-card-metric span {
-    display: block;
+  .inventory-table colgroup {
+    display: none;
   }
 
-  .inv-card-metric strong {
-    font-family: var(--dpp-font-display, inherit);
-    font-size: 19px;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .inv-card-metric span {
-    margin-top: 4px;
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.35;
-  }
-
-  .inv-card--reference {
-    background: var(--dpp-surface-subtle, var(--paper-2));
-  }
-
-  .inv-reference-note {
-    margin: 8px 0 0 55px;
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.45;
-  }
-
-  .inventory-reference {
-    margin-top: 2px;
+  .inventory-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
     overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .inventory-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .inventory-table tbody tr {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     border: var(--border-width) solid var(--line);
     border-radius: var(--panel-radius);
     background: var(--surface);
   }
 
-  .inventory-reference summary {
-    display: flex;
-    min-height: 48px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 0 14px;
-    font-size: 14px;
-    font-weight: 800;
-    list-style: none;
-    cursor: pointer;
-  }
-
-  .inventory-reference summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .inventory-reference summary strong {
-    color: var(--muted);
-    font-size: 14px;
-    font-weight: 680;
-  }
-
-  .inventory-reference__list {
+  .inventory-table tbody th,
+  .inventory-table tbody td {
     display: grid;
-    gap: 8px;
-    padding: 0 8px 8px;
+    min-width: 0;
+    align-content: start;
+    gap: 5px;
+    padding: 10px 12px;
+    border-bottom: var(--border-width) solid var(--line);
+    text-align: left;
   }
 
-  .inventory-reference:not([open]) > .inventory-reference__list {
-    display: none;
+  .inventory-table tbody th {
+    grid-column: 1 / -1;
+  }
+
+  .inventory-table tbody td:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .inventory-table tbody td::before {
+    color: var(--muted);
+    font-family: var(--dpp-font-detail, inherit);
+    font-size: var(--dpp-metadata-size, 14px);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1.25;
+    text-transform: uppercase;
+    content: attr(data-label);
+  }
+
+  .inventory-table .product-name {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .inventory-foot {

@@ -433,7 +433,7 @@ async function inspectRoute(page, route, expectedProfile) {
           ? ".mode, .filter, .search, .select, .rule-trigger, .analysis-open"
           : routeName === "product"
             ? "main button, main summary, .hero-price .btn"
-            : ".how-btn, .filter, .search, .inventory-reference summary, .section-header__action";
+            : ".how-btn, .filter, .search, .section-header__action";
       const primary = [...document.querySelectorAll(primarySelector)]
         .filter(visible)
         .map((element) => ({

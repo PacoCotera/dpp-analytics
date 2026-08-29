@@ -71,52 +71,9 @@ function filteredRows() {
   });
 }
 
-function inventoryCardMarkup(row) {
-  const action = normalizeAction(row.action);
-  const reference = action === 'HOLD';
-
-  return `<a class="inv-card${reference ? ' inv-card--reference' : ''}" href="/product?sku=${encodeURIComponent(row.sku)}">
-    <div class="inv-card__top">
-      <div class="stock-product">${productMarkup(row)}</div>
-      <span class="${actionClass(action)}">${action}</span>
-    </div>
-    ${
-      reference
-        ? `<div class="inv-reference-note"><strong>${integer(row.available)}</strong> available · ${escapeHtml(LIFECYCLE_LABELS[row.inventory_lifecycle] || row.inventory_lifecycle)}${row.canonical_sku && row.canonical_sku !== row.sku ? ` · canonical ${escapeHtml(row.canonical_sku)}` : ''}</div>`
-        : `<div class="inv-card-metrics">
-            <div class="inv-card-metric"><strong>${integer(row.available)}</strong><span>Available</span></div>
-            <div class="inv-card-metric"><strong>${integer(row.units_t28)}</strong><span>28D order units</span></div>
-            <div class="inv-card-metric"><strong>${daysCover(row)}</strong><span>Days cover</span></div>
-          </div>`
-    }
-  </a>`;
-}
-
-function mobileInventoryMarkup(rows) {
-  if (!rows.length) return '<div class="empty"><strong>No matching SKUs.</strong></div>';
-
-  const query = byId('search').value.trim();
-  if (state.filter !== 'current' || query) return rows.map(inventoryCardMarkup).join('');
-
-  const operatingRows = rows.filter((row) => normalizeAction(row.action) !== 'HOLD');
-  const referenceRows = rows.filter((row) => normalizeAction(row.action) === 'HOLD');
-  const operatingMarkup = operatingRows.length
-    ? operatingRows.map(inventoryCardMarkup).join('')
-    : '<div class="empty"><strong>No active inventory.</strong></div>';
-  const referenceMarkup = referenceRows.length
-    ? `<details class="inventory-reference">
-        <summary><span>Reference inventory</span><strong>${referenceRows.length} no-velocity SKUs</strong></summary>
-        <div class="inventory-reference__list">${referenceRows.map(inventoryCardMarkup).join('')}</div>
-      </details>`
-    : '';
-
-  return `${operatingMarkup}${referenceMarkup}`;
-}
-
 function renderRows() {
   const rows = filteredRows();
   const tableBody = byId('rows');
-  const cards = byId('inventoryCards');
 
   tableBody.innerHTML = rows.length
     ? rows
@@ -124,21 +81,19 @@ function renderRows() {
           const [status, kind] = statusInfo(row.action);
           return `<tr>
             <th scope="row"><a class="stock-product" href="/product?sku=${encodeURIComponent(row.sku)}">${productMarkup(row)}</a></th>
-            <td>${escapeHtml(LIFECYCLE_LABELS[row.inventory_lifecycle] || row.inventory_lifecycle)}</td>
-            <td><span class="product-sku">${escapeHtml(row.canonical_sku || '—')}</span></td>
-            <td><span class="${actionClass(row.action)}">${normalizeAction(row.action)}</span></td>
-            <td class="num">${integer(row.available)}</td>
-            <td class="num">${integer(row.inbound)}</td>
-            <td class="num">${integer(row.reserved)}</td>
-            <td class="num">${integer(row.units_t28)}</td>
-            <td class="num cover ${kind}">${daysCover(row)}</td>
-            <td><span class="status-dot ${kind}">${status}</span></td>
+            <td data-label="Lifecycle">${escapeHtml(LIFECYCLE_LABELS[row.inventory_lifecycle] || row.inventory_lifecycle)}</td>
+            <td data-label="Canonical SKU"><span class="product-sku">${escapeHtml(row.canonical_sku || '—')}</span></td>
+            <td data-label="Action"><span class="${actionClass(row.action)}">${normalizeAction(row.action)}</span></td>
+            <td class="num" data-label="Available">${integer(row.available)}</td>
+            <td class="num" data-label="Inbound">${integer(row.inbound)}</td>
+            <td class="num" data-label="Reserved">${integer(row.reserved)}</td>
+            <td class="num" data-label="28D order units">${integer(row.units_t28)}</td>
+            <td class="num cover ${kind}" data-label="Days cover">${daysCover(row)}</td>
+            <td data-label="Status"><span class="status-dot ${kind}">${status}</span></td>
           </tr>`;
         })
         .join('')
     : '<tr><td colspan="10"><div class="empty"><strong>No matching SKUs.</strong> Try another filter.</div></td></tr>';
-
-  cards.innerHTML = mobileInventoryMarkup(rows);
 }
 
 function renderQueue() {

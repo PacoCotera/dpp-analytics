@@ -300,6 +300,7 @@ async function verifyToday(page) {
     const evidence = document.getElementById('todayBusinessEvidence');
     const reference = document.getElementById('todayProductsReference');
     const priority = [...document.querySelectorAll('.today-products-priority .today-product')];
+    const dayPicker = document.getElementById('dayPicker');
     const rhythmKpis = [...document.querySelectorAll('.rhythm-kpi')];
     const tops = rhythmKpis.map(item => Math.round(item.getBoundingClientRect().top));
     return {
@@ -323,8 +324,11 @@ async function verifyToday(page) {
       priorityVisible: priority.filter(item => item.getBoundingClientRect().height > 0).length,
       rhythmKpis: rhythmKpis.length,
       rhythmTopSpread: tops.length ? Math.max(...tops) - Math.min(...tops) : null,
+      dayPickerContained: Boolean(dayPicker && dayPicker.scrollWidth <= dayPicker.clientWidth + 2),
     };
   });
+  if (!state.dayPickerContained)
+    throw new Error(`Today day picker overflow: ${JSON.stringify(state)}`);
   if (
     state.mobile &&
     (!state.recipeMatch ||
@@ -684,14 +688,29 @@ async function verifyCatalogMode(page, mode) {
   const mobileDensity = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('.portfolio .analysis-row')];
     const disclosure = document.querySelector('.catalog-reference-disclosure');
+    const evidence = document.querySelector('.catalog-evidence');
     return {
       mobile: window.innerWidth <= 720,
       total: rows.length,
       visible: rows.filter((row) => row.getClientRects().length > 0).length,
       disclosure: Boolean(disclosure),
       disclosureOpen: Boolean(disclosure?.hasAttribute('open')),
+      semanticTable: evidence?.getAttribute('role') === 'table',
+      columnHeaders: document.querySelectorAll('#portfolioHead [role="columnheader"]').length,
+      rowGroup: document.getElementById('portfolio')?.getAttribute('role') === 'rowgroup',
+      semanticRows: rows.every(row =>
+        row.getAttribute('role') === 'row' &&
+        row.querySelectorAll(':scope > [role="rowheader"]').length === 1 &&
+        row.querySelectorAll(':scope > [role="cell"]').length === 6
+      ),
     };
   });
+  if (
+    !mobileDensity.semanticTable ||
+    mobileDensity.columnHeaders !== 7 ||
+    !mobileDensity.rowGroup ||
+    !mobileDensity.semanticRows
+  ) throw new Error(`Catalog table semantics mismatch: ${JSON.stringify(mobileDensity)}`);
   if (mobileDensity.mobile && mobileDensity.total > 6) {
     if (!mobileDensity.disclosure || mobileDensity.disclosureOpen || mobileDensity.visible !== 6) {
       throw new Error(`Catalog mobile density mismatch: ${JSON.stringify(mobileDensity)}`);
@@ -927,30 +946,83 @@ async function verifyInventory(page) {
     'inventory-records',
     'inventory-evidence',
   ]);
-  if ((await page.evaluate(() => window.innerWidth)) > 640) {
-    await wait(page, '#rows tr');
-    return;
-  }
-  await wait(page, '#inventoryCards .inv-card');
+  await wait(page, '#rows tr');
+  const tableContainment = await page.evaluate(() => {
+    const scroll = document.querySelector('.inventory-shell .data-table-scroll');
+    const table = document.querySelector('.inventory-table');
+    const scrollRect = scroll?.getBoundingClientRect();
+    const tableRect = table?.getBoundingClientRect();
+    const assistiveHidden = element => {
+      let ancestor = element;
+      while (ancestor && ancestor !== document.documentElement) {
+        const style = getComputedStyle(ancestor);
+        if (
+          style.clip === 'rect(0px, 0px, 0px, 0px)' ||
+          style.clipPath === 'inset(50%)'
+        ) return true;
+        ancestor = ancestor.parentElement;
+      }
+      return false;
+    };
+    const overflowing = scroll && scrollRect ? [...scroll.querySelectorAll('*')]
+      .filter(element =>
+        !assistiveHidden(element) && element.getBoundingClientRect().right > scrollRect.right + 2
+      )
+      .slice(0, 5)
+      .map(element => ({
+        element: element.tagName.toLowerCase(),
+        className: element.className || '',
+        text: (element.textContent || '').trim().slice(0, 40),
+        right: Math.round(element.getBoundingClientRect().right),
+      })) : [];
+    const requiresNoScroll = window.innerWidth >= 1180;
+    return {
+      contained: Boolean(
+        scroll && table &&
+        (!requiresNoScroll || scroll.scrollWidth <= scroll.clientWidth + 2) &&
+        tableRect.right <= scrollRect.right + 2 &&
+        overflowing.length === 0
+      ),
+      scrollClientWidth: scroll?.clientWidth || 0,
+      scrollWidth: scroll?.scrollWidth || 0,
+      scrollRight: scrollRect?.right || 0,
+      tableRight: tableRect?.right || 0,
+      requiresNoScroll,
+      overflowing,
+    };
+  });
+  if (!tableContainment.contained)
+    throw new Error(`Inventory table introduces unintended horizontal scrolling: ${JSON.stringify(tableContainment)}`);
+  if ((await page.evaluate(() => window.innerWidth)) > 640) return;
 
   const contract = await page.evaluate(async () => {
     const payload = await (await fetch('/api/inventory', { cache: 'no-store' })).json();
-    const holdCount = (payload.rows || []).filter((row) => row.action === 'HOLD').length;
-    const details = document.querySelector('.inventory-reference');
+    const expected = (payload.rows || []).filter(row => row.is_default_inventory).length;
+    const rows = [...document.querySelectorAll('#rows tr')];
+    const requiredLabels = [
+      'Lifecycle', 'Canonical SKU', 'Action', 'Available', 'Inbound', 'Reserved',
+      '28D order units', 'Days cover', 'Status',
+    ];
     return {
-      holdCount,
-      hasDetails: Boolean(details),
-      detailsOpen: Boolean(details?.open),
-      visibleReferenceCards: [...document.querySelectorAll('.inv-card--reference')].filter(
-        (element) => element.getBoundingClientRect().height > 0,
-      ).length,
+      expected,
+      rendered: rows.length,
+      visible: rows.filter(row => row.getBoundingClientRect().height > 0).length,
+      singleRenderer: !document.getElementById('inventoryCards'),
+      complete: rows.every(row => {
+        const labels = [...row.querySelectorAll('td[data-label]')].map(cell => cell.dataset.label);
+        return row.querySelector('th[scope="row"]') &&
+          requiredLabels.every(label => labels.includes(label));
+      }),
+      tableVisible: document.querySelector('.inventory-table')?.getBoundingClientRect().height > 0,
     };
   });
-
-  if (contract.holdCount && !contract.hasDetails)
-    throw new Error('Inventory mobile default is missing collapsed reference inventory');
-  if (contract.detailsOpen || contract.visibleReferenceCards)
-    throw new Error('Inventory mobile default exposes the no-velocity reference wall');
+  if (
+    contract.rendered !== contract.expected ||
+    contract.visible !== contract.expected ||
+    !contract.singleRenderer ||
+    !contract.complete ||
+    !contract.tableVisible
+  ) throw new Error(`Inventory responsive table mismatch: ${JSON.stringify(contract)}`);
 }
 
 async function assertFinanceChartMarks(page, label) {
@@ -1302,8 +1374,19 @@ for (const scenario of plan.scenarios) for (const viewportName of scenario.views
     result.metrics = await page.evaluate(({ viewportName }) => {
       const visible = el => {
         const r = el.getBoundingClientRect(), s = getComputedStyle(el);
-        const clippedForAssistiveTech =
-          s.clip === 'rect(0px, 0px, 0px, 0px)' || s.clipPath === 'inset(50%)';
+        let ancestor = el;
+        let clippedForAssistiveTech = false;
+        while (ancestor && ancestor !== document.documentElement) {
+          const ancestorStyle = getComputedStyle(ancestor);
+          if (
+            ancestorStyle.clip === 'rect(0px, 0px, 0px, 0px)' ||
+            ancestorStyle.clipPath === 'inset(50%)'
+          ) {
+            clippedForAssistiveTech = true;
+            break;
+          }
+          ancestor = ancestor.parentElement;
+        }
         return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' &&
           Number(s.opacity || 1) > 0 && !clippedForAssistiveTech;
       };

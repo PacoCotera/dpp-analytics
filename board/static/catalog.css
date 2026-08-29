@@ -237,6 +237,11 @@
   color: var(--accent-ink);
 }
 
+.analysis-open-cell {
+  display: grid;
+  place-items: center;
+}
+
 .family[open] .chev {
   transform: rotate(90deg);
 }
@@ -332,6 +337,7 @@
 }
 
 .analysis-link {
+  display: block;
   color: inherit;
   text-decoration: none;
 }
@@ -634,6 +640,16 @@
     display: none;
   }
 
+  .catalog-evidence[role='table'] .portfolio-head {
+    position: absolute;
+    display: grid;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
   .family > summary,
   .analysis-row {
     grid-template-columns: minmax(240px, 2fr) minmax(180px, 1.25fr) repeat(3, minmax(110px, 0.85fr)) 40px;
@@ -822,7 +838,7 @@
   }
 
   .chev,
-  .analysis-open {
+  .analysis-open-cell {
     grid-row: 1;
     grid-column: 4;
   }
