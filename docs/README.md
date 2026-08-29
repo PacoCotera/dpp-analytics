@@ -9,7 +9,8 @@ This directory is the maintainer-facing map of the application. The goal is to m
 | What is this repo and where does each major subsystem live? | [`../README.md`](../README.md) |
 | I need to change or debug a page. Where do I start? | [`maintenance.md`](maintenance.md) |
 | Which frontend layer owns navigation, layout, charts or page-specific behavior? | [`frontend-architecture.md`](frontend-architecture.md) |
-| What is the approved 2026 UI revamp direction and delivery plan? | [`ui-revamp-2026-08-28.md`](ui-revamp-2026-08-28.md) and [tracker #206](https://github.com/PacoCotera/dpp-analytics/issues/206) |
+| What is the current UI architecture, page-recipe and density correction? | [`ui-architecture-correction-2026-08-29.md`](ui-architecture-correction-2026-08-29.md) and [tracker #231](https://github.com/PacoCotera/dpp-analytics/issues/231) |
+| What did the preceding 2026 UI revamp establish? | [`ui-revamp-2026-08-28.md`](ui-revamp-2026-08-28.md) and [tracker #206](https://github.com/PacoCotera/dpp-analytics/issues/206) |
 | How are repeated API queries cached, how fresh may a page be, and where should KPI precomputation live? | [`reporting-cache-architecture.md`](reporting-cache-architecture.md) |
 | Which source is authoritative for Today, Sales, Finance, Ads, Catalog or Inventory? | [`data-model.md`](data-model.md) |
 | What exactly does a money number mean: shopper spend, Amazon sales, Finance net sales, payout or Ads attribution? | [`metric-basis.md`](metric-basis.md) |

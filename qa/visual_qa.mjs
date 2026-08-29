@@ -329,13 +329,9 @@ async function verifyBusiness(page) {
     );
     const total = Math.max(exceptions.length, Number(payload.inventory_summary?.needs_action || 0));
     const main = document.querySelector('main.home-main');
-    const sections = main
-      ? [...main.children].filter(element => element.classList.contains('home-section'))
-      : [];
+    const sections = main ? [...main.children].filter(element => element.matches('section')) : [];
     const overview = document.querySelector('[data-dpp-qa="business-overview"]');
     const demand = document.querySelector('[data-dpp-qa="business-demand"]');
-    const operations = document.querySelector('[data-dpp-qa="business-operations"]');
-    const operationsLayout = operations?.querySelector('.operations-layout');
     const decisions = document.querySelector('[data-dpp-qa="business-decisions"]');
     const health = document.querySelector('[data-dpp-qa="business-health"]');
     const dataHealthCard = document.querySelector('.business-health-card[href="/data-health"]');
@@ -344,6 +340,10 @@ async function verifyBusiness(page) {
     const healthOverall = healthContract.overall || {};
     const ads = document.getElementById('adsRead');
     const brand = document.querySelector('.topbar a.brand');
+    const explanation = String(payload.business_momentum?.explanation || '').trim();
+    const expectedHeadline =
+      (explanation.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [])[0]?.trim() ||
+      'Current business evidence';
     const top = (element) => element?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
     const precedes = (before, after) =>
       Boolean(
@@ -353,24 +353,25 @@ async function verifyBusiness(page) {
       );
     return {
       evidenceHeadline: document.getElementById('stateHeadline')?.textContent?.trim(),
-      activeNav: document.querySelector('.nav-primary-set > a.active')?.textContent?.trim(),
+      expectedHeadline,
+      activeNav: document.querySelector('.nav-primary-set a.active')?.textContent?.trim(),
       brandPath: brand ? new URL(brand.href).pathname : '',
       singleRead: Boolean(
         main &&
           document.querySelectorAll('main').length === 1 &&
           main.querySelectorAll('h1').length === 1 &&
-          main.querySelector('h1')?.textContent?.trim() === 'Business' &&
-          sections.length === 3,
+          main.querySelector('h1')?.textContent?.trim() === expectedHeadline &&
+          sections.length === 4,
       ),
       hierarchy: Boolean(
         sections[0] === overview &&
           sections[1] === demand &&
-          sections[2] === operations &&
+          sections[2] === decisions &&
+          sections[3] === health &&
           overview?.parentElement === main &&
           demand?.parentElement === main &&
-          operations?.parentElement === main &&
-          decisions?.parentElement === operationsLayout &&
-          health?.parentElement === operationsLayout &&
+          decisions?.parentElement === main &&
+          health?.parentElement === main &&
           precedes(overview, demand) &&
           precedes(demand, decisions) &&
           precedes(decisions, health),
@@ -411,7 +412,7 @@ async function verifyBusiness(page) {
     };
   });
   if (
-    state.evidenceHeadline !== 'Current evidence' ||
+    state.evidenceHeadline !== state.expectedHeadline ||
     state.activeNav !== 'Business' ||
     state.brandPath !== '/today' ||
     !state.singleRead ||

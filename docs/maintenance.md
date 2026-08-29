@@ -44,8 +44,8 @@ Before adding page-specific code, check whether the behavior belongs in one of t
 | `presentation-registry.js` / `presentation-profiles.css` | generated browser registry and semantic token scopes; do not edit directly |
 | `presentation.js` | synchronous profile restoration, root attributes, browser chrome, local preference and public apply/reset API |
 | `theme.css` | global token aliases, typography and base visual language |
-| `nav-shell.css` | application navigation presentation |
-| `ui-shell.js` | primary navigation, active route, More menu, workspace identity, tab keyboard behavior and mobile swipe behavior |
+| `nav-shell.css` | compact desktop brand/navigation frame and accessible mobile drawer presentation |
+| `ui-shell.js` | primary navigation, active route, More menu, global identity, tab keyboard behavior and mobile drawer behavior |
 | `layout-system.css` | reusable page headers, KPI rails, panels, grids, segmented controls, tables and status strips |
 | `chart-system.css` / `chart-system.js` | reusable chart grammar, axes, tooltips, legends, period treatment and shared chart forms |
 | `data-cache.js` | session-scoped GET JSON cache, browser in-flight dedupe and endpoint freshness policy |

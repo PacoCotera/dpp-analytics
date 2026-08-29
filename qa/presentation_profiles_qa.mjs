@@ -139,21 +139,26 @@ for (const profileId of expectedProfileIds) {
 
 const structure = await page.evaluate(() => ({
   h1: [...document.querySelectorAll('main h1')].map((heading) => heading.textContent.trim()),
-  sectionLabels: [...document.querySelectorAll('main > .home-section > .section-header .section-label, main > .home-section > .page-header .section-label')].map(
-    (label) => label.textContent.trim(),
+  pageRecipes: [...document.querySelectorAll('main > section[data-dpp-qa]')].map(
+    (section) => section.getAttribute('data-dpp-qa'),
   ),
   kpis: document.querySelectorAll('.home-kpi-rail > .kpi').length,
-  operationModules: document.querySelectorAll('.operations-layout > section').length,
+  healthCards: document.querySelectorAll('.business-health-grid > .business-health-card').length,
   skipTarget: document.querySelector('.skip-link')?.getAttribute('href'),
   mainId: document.querySelector('main')?.previousElementSibling?.id,
 }));
-assert(JSON.stringify(structure.h1) === JSON.stringify(['Business']), 'Business must have one h1');
+assert(structure.h1.length === 1, 'Business must have one h1');
 assert(
-  JSON.stringify(structure.sectionLabels) === JSON.stringify(['Overview', 'Demand', 'Operations']),
-  `Business hierarchy differs: ${JSON.stringify(structure.sectionLabels)}`,
+  JSON.stringify(structure.pageRecipes) === JSON.stringify([
+    'business-overview',
+    'business-demand',
+    'business-decisions',
+    'business-health',
+  ]),
+  `Business hierarchy differs: ${JSON.stringify(structure.pageRecipes)}`,
 );
 assert(structure.kpis === 4, `Business KPI rail contains ${structure.kpis} items`);
-assert(structure.operationModules === 2, 'Business operations must anchor Decisions and Health');
+assert(structure.healthCards === 3, 'Business health must contain three decision domains');
 assert(structure.skipTarget === '#main-content' && structure.mainId === 'main-content', 'skip link is broken');
 
 await page.reload({ waitUntil: 'domcontentloaded', timeout: 20_000 });
