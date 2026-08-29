@@ -23,6 +23,32 @@ const pageStyles = {
   'today.html': 'today.css',
   'trajectory.html': 'trajectory.css',
 };
+const requiredQaMarkers = {
+  'admin.html': [
+    'admin-workspace',
+    'admin-workspace-header',
+    'admin-authentication',
+    'admin-catalog-editor',
+    'admin-product-editors',
+  ],
+  'ads.html': ['ads-workspace', 'ads-workspace-header', 'ads-overview', 'ads-operating-evidence'],
+  'data_health.html': [
+    'data-health-workspace',
+    'data-health-overview',
+    'data-health-summary',
+    'data-health-pipeline',
+    'catalog-onboarding',
+  ],
+  'finance.html': [
+    'finance-workspace',
+    'finance-accounting-header',
+    'finance-accounting-overview',
+    'finance-current-period',
+    'finance-analysis',
+    'finance-immutable-history',
+    'finance-evidence',
+  ],
+};
 const sharedStyles = ['theme.css', 'nav-shell.css', 'layout-system.css'];
 const presentationAssets = [
   'presentation-registry.js',
@@ -45,9 +71,7 @@ const theme = readFileSync(join(staticRoot, 'theme.css'), 'utf8');
 const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
 const presentationRuntime = readFileSync(join(staticRoot, 'presentation.js'), 'utf8');
 const presentationCss = readFileSync(join(staticRoot, 'presentation-profiles.css'), 'utf8');
-const presentationRegistry = JSON.parse(
-  readFileSync(join(root, 'presentation', 'profiles.json'), 'utf8'),
-);
+const presentationRegistry = JSON.parse(readFileSync(join(root, 'presentation', 'profiles.json'), 'utf8'));
 const todayHtml = readFileSync(join(staticRoot, 'today.html'), 'utf8');
 const todayScript = readFileSync(join(staticRoot, 'today.js'), 'utf8');
 const salesGeographyScript = readFileSync(join(staticRoot, 'sales-geography-v2.js'), 'utf8');
@@ -102,9 +126,7 @@ for (const page of pages) {
   );
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
   const localAssets = [
-    ...html.matchAll(
-      /<(script|link)\b[^>]*(?:src|href)=["'](\/assets\/[^"']+)["'][^>]*>/gi,
-    ),
+    ...html.matchAll(/<(script|link)\b[^>]*(?:src|href)=["'](\/assets\/[^"']+)["'][^>]*>/gi),
   ].map((match) => ({
     tag: match[1].toLowerCase(),
     name: basename(match[2].split('?')[0]),
@@ -114,9 +136,7 @@ for (const page of pages) {
   const classNames = [...html.matchAll(/\bclass=["']([^"']*)["']/gi)].flatMap((match) =>
     match[1].trim().split(/\s+/),
   );
-  const qaMarkers = [...html.matchAll(/\bdata-dpp-qa=["']([^"']+)["']/gi)].map(
-    (match) => match[1],
-  );
+  const qaMarkers = [...html.matchAll(/\bdata-dpp-qa=["']([^"']+)["']/gi)].map((match) => match[1]);
 
   check(page in pageStyles, page, 'page stylesheet is not declared in the frontend contract');
   check(
@@ -129,6 +149,9 @@ for (const page of pages) {
     page,
     'data-dpp-qa markers must be unique within a workspace',
   );
+  for (const marker of requiredQaMarkers[page] || []) {
+    check(qaMarkers.includes(marker), page, `missing stable data-dpp-qa marker ${marker}`);
+  }
   check(
     !/<meta\b[^>]*\bname=["']theme-color["'][^>]*>/i.test(html),
     page,
@@ -236,9 +259,7 @@ check(
 );
 const cssProfileIds = [
   ...new Set(
-    [...presentationCss.matchAll(/:root\[data-dpp-theme=["']([^"']+)["']\]/g)].map(
-      (match) => match[1],
-    ),
+    [...presentationCss.matchAll(/:root\[data-dpp-theme=["']([^"']+)["']\]/g)].map((match) => match[1]),
   ),
 ];
 check(
@@ -290,7 +311,11 @@ check(
   'today.js',
   'Today must have exactly one live refresh loop',
 );
-check(!/MutationObserver/.test(todayScript), 'today.js', 'Today must not use post-render correction observers');
+check(
+  !/MutationObserver/.test(todayScript),
+  'today.js',
+  'Today must not use post-render correction observers',
+);
 check(
   /@media \(prefers-reduced-motion: reduce\)/.test(theme) &&
     /transition-duration:\s*0\.01ms !important/.test(theme) &&

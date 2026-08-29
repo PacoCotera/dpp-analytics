@@ -324,7 +324,7 @@
 
 .warehouse-reference summary {
   display: flex;
-  min-height: var(--control-height);
+  min-height: max(44px, var(--control-height));
   align-items: center;
   justify-content: space-between;
   gap: 14px;
