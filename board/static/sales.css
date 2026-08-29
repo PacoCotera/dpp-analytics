@@ -359,10 +359,10 @@
 
 .sales-utility-today .btn {
   grid-area: link;
-  min-height: 0;
+  min-height: 24px;
   height: auto;
   justify-content: flex-end;
-  padding: 0;
+  padding: 4px 0;
   border: 0;
   border-radius: 0;
   background: transparent;

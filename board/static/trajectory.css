@@ -16,6 +16,16 @@
   border-bottom: var(--border-width) solid var(--line);
   background: var(--dpp-surface-subtle);
 }
+.trajectory-page .kicker,
+.trajectory-page .page-header__description,
+.trajectory-page .metric-window-note,
+.trajectory-page .state-read__eyebrow,
+.trajectory-page .state-read__copy,
+.trajectory-page .state-read__meta,
+.trajectory-page .section-header__description {
+  font-size: var(--dpp-metadata-size, 14px);
+}
+
 .paid-context__eyebrow {
   margin-bottom: 3px;
   color: var(--muted);

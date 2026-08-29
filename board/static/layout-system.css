@@ -140,14 +140,14 @@
 .rule-trigger {
   display: inline-flex;
   align-items: center;
-  min-height: 22px;
+  min-height: 24px;
   margin-left: 6px;
   padding: 2px 7px;
   border: var(--border-width) solid var(--line);
   border-radius: var(--pill-radius);
   background: var(--dpp-surface-raised, var(--surface));
   color: var(--accent-ink);
-  font-size: 9px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 800;
   letter-spacing: 0.03em;
   white-space: nowrap;

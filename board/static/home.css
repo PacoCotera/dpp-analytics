@@ -132,7 +132,7 @@
 .business-signal__result .rule-trigger {
   min-height: 32px;
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 .business-signal__evidence {
