@@ -844,6 +844,20 @@ async function verifyProductZeroDemand(page) {
   }
 }
 
+async function mockProductZeroDemand(context) {
+  await context.route('**/api/product?**', async route => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('sku') !== 'PNC-001L') {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    const payload = await response.json();
+    payload.series = (payload.series || []).map(row => ({ ...row, sales: 0, units: 0 }));
+    await route.fulfill({ response, json: payload });
+  });
+}
+
 
 async function verifyTrajectory(page) {
   await wait(page, '.trajectory-horizon');
@@ -1205,7 +1219,7 @@ const scenarios = [
   ['catalog-combinations', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'pair')],
   ['catalog-sku', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'sku')],
   ['product-pnc-001', '/product?sku=PNC-001', ['mobile', 'desktop'], verifyProductWorkspace],
-  ['product-pnc-001l-zero', '/product?sku=PNC-001L', ['desktop'], verifyProductZeroDemand],
+  ['product-zero-demand', '/product?sku=PNC-001L', ['desktop'], verifyProductZeroDemand, mockProductZeroDemand],
   ['inventory', '/inventory', ['mobile', 'tablet', 'desktop'], verifyInventory],
   ['ads-overview', '/ads', ['mobile', 'tablet', 'desktop'], p => verifyAds(p)],
   ['ads-campaigns', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'campaigns')],
@@ -1215,7 +1229,7 @@ const scenarios = [
   ['trajectory', '/trajectory', ['mobile', 'desktop', 'wide'], verifyTrajectory],
   ['data-health', '/data-health', ['mobile', 'desktop', 'wide'], verifyDataHealth],
   ['admin', '/admin', ['mobile', 'desktop'], verifyAdmin],
-].map(([name, url, views, action]) => ({ name, url, views, action }));
+].map(([name, url, views, action, setup]) => ({ name, url, views, action, setup }));
 
 const financeProfiles = [
   'warm-studio',
@@ -1272,6 +1286,7 @@ for (const scenario of plan.scenarios) for (const viewportName of scenario.views
       );
     }, scenario.profile);
   }
+  if (scenario.setup) await scenario.setup(context);
   const page = await context.newPage();
   const errors = [], warnings = [], failedResponses = [];
   page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
