@@ -828,12 +828,12 @@ body.data-health-page .section-header__title {
 }
 
 body.data-health-page .domain-summary {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 7px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
 }
 
 body.data-health-page .domain-group {
-  min-height: 84px;
+  min-height: 58px;
   padding: 9px 10px;
 }
 
@@ -879,7 +879,7 @@ body.data-health-page .warehouse-reference {
 
 @media (max-width: 980px) {
   body.data-health-page .domain-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
