@@ -139,7 +139,7 @@ for (const profileId of expectedProfileIds) {
 
 const structure = await page.evaluate(() => ({
   h1: [...document.querySelectorAll('main h1')].map((heading) => heading.textContent.trim()),
-  pageRecipes: [...document.querySelectorAll('main > section[data-dpp-qa]')].map(
+  pageRecipes: [...document.querySelectorAll('main section[data-dpp-qa]')].map(
     (section) => section.getAttribute('data-dpp-qa'),
   ),
   kpis: document.querySelectorAll('.home-kpi-rail > .kpi').length,
