@@ -92,7 +92,7 @@ async function verifyAdmin(page) {
 }
 
 async function verifyAds(page, view = 'overview') {
-  await assertWorkspaceLandmarks(page, ['ads-workspace', 'ads-overview']);
+  await assertWorkspaceLandmarks(page, ['ads-workspace-header', 'ads-operating-evidence']);
   const navigation = await page.evaluate(() => {
     const tabs = document.querySelector('.ads-page .subnav');
     return {
@@ -422,7 +422,7 @@ async function verifyBusiness(page) {
   }
 }
 async function verifyDataHealth(page) {
-  await assertWorkspaceLandmarks(page, ['data-health-workspace', 'data-health-summary', 'data-health-pipeline']);
+  await assertWorkspaceLandmarks(page, ['data-health-overview', 'catalog-onboarding']);
   await wait(page, '.health-summary');
   const mobile = await page.evaluate(() => window.innerWidth <= 640);
   if (mobile) {
@@ -584,7 +584,12 @@ async function catalogSemantic(page) {
 }
 
 async function verifyCatalog(page) {
-  await assertWorkspaceLandmarks(page, ['catalog-workspace', 'catalog-overview', 'catalog-controls', 'catalog-results']);
+  await assertWorkspaceLandmarks(page, [
+    'catalog-overview',
+    'catalog-decisions',
+    'catalog-controls',
+    'catalog-evidence',
+  ]);
   await page.locator('.family').first().waitFor({ state: 'visible', timeout: 15000 });
   const semantic = await catalogSemantic(page);
   if (semantic.errors?.length) throw new Error(`Catalog semantic QA: ${semantic.errors.join('; ')}`);
@@ -646,7 +651,14 @@ async function verifyCatalogMode(page, mode) {
 }
 
 async function verifyProductWorkspace(page) {
-  await assertWorkspaceLandmarks(page, ['product-workspace', 'product-identity', 'product-metrics', 'product-analysis', 'product-order-evidence']);
+  await assertWorkspaceLandmarks(page, [
+    'product-identity',
+    'product-kpis',
+    'product-analysis',
+    'product-decisions',
+    'product-order-evidence',
+    'product-family-evidence',
+  ]);
   await wait(page, '.hero-name');
   await wait(page, '#chart .dpp-bar');
   const payload = await page.evaluate(async () =>
@@ -821,7 +833,13 @@ async function verifyTrajectory(page) {
     throw new Error(`Trajectory desktop evidence is collapsed: ${JSON.stringify(state)}`);
 }
 async function verifyInventory(page) {
-  await assertWorkspaceLandmarks(page, ['inventory-workspace', 'inventory-actions', 'inventory-records']);
+  await assertWorkspaceLandmarks(page, [
+    'inventory-overview',
+    'inventory-actions',
+    'inventory-controls',
+    'inventory-records',
+    'inventory-evidence',
+  ]);
   if ((await page.evaluate(() => window.innerWidth)) > 640) {
     await wait(page, '#rows tr');
     return;
@@ -897,7 +915,11 @@ async function verifyFinanceWindows(page) {
 }
 
 async function verifyFinanceReport(page) {
-  await assertWorkspaceLandmarks(page, ['finance-workspace', 'finance-current-period', 'finance-analysis', 'finance-evidence']);
+  await assertWorkspaceLandmarks(page, [
+    'finance-accounting-header',
+    'finance-accounting-overview',
+    'finance-immutable-history',
+  ]);
   await wait(page, '#currentLines .finance-line');
   const isMobile = (await page.evaluate(() => window.innerWidth)) <= 640;
   if (isMobile) {

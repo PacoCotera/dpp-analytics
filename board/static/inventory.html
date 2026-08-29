@@ -31,8 +31,8 @@
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
-      <main data-dpp-qa="inventory-workspace">
-        <section class="page-header inventory-page-header">
+      <main>
+        <section class="page-header inventory-page-header" data-dpp-qa="inventory-overview">
           <div>
             <div class="kicker">Inventory manager</div>
             <h1 class="page-header__title">Inventory</h1>
@@ -62,7 +62,9 @@
                 ><small class="kpi__note">units</small>
               </div>
             </div>
-            <button class="how-btn" id="howBtn" type="button">How actions work</button>
+            <button class="how-btn" id="howBtn" type="button" aria-expanded="false" aria-controls="how">
+              How actions work
+            </button>
           </div>
         </section>
 
@@ -72,7 +74,7 @@
           recent selling velocity, so producing more needs judgment rather than an automatic signal.
         </div>
 
-        <section class="page-section" data-dpp-qa="inventory-actions">
+        <section class="page-section inventory-actions" data-dpp-qa="inventory-actions">
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Action queue</h2>
@@ -83,7 +85,7 @@
             <a class="section-header__action" href="#all">Browse reference inventory ↓</a>
           </div>
           <div class="dashboard-grid inventory-decision-grid">
-            <div class="action-list" id="queue">
+            <div class="action-list" id="queue" aria-live="polite">
               <div class="empty"><strong>Checking stock</strong></div>
             </div>
             <aside class="panel coverage">
@@ -94,7 +96,7 @@
           </div>
         </section>
 
-        <section class="page-section" id="all" data-dpp-qa="inventory-records">
+        <section class="page-section inventory-records" id="all" data-dpp-qa="inventory-records">
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Inventory records</h2>
@@ -105,32 +107,48 @@
             </div>
           </div>
 
-          <div class="inventory-tools">
-            <input id="search" class="search" type="search" placeholder="Search product or SKU…" />
-            <div class="filters" role="group" aria-label="Inventory status filter">
-              <button class="filter active" type="button" data-filter="current" aria-pressed="true">
-                Current stock
-              </button>
-              <button class="filter" type="button" data-filter="attention" aria-pressed="false">
-                Needs action
-              </button>
-              <button class="filter" type="button" data-filter="ok" aria-pressed="false">Healthy</button>
-              <button class="filter" type="button" data-filter="no_velocity" aria-pressed="false">
-                No velocity
-              </button>
-              <button class="filter" type="button" data-filter="alias" aria-pressed="false">Aliases</button>
-              <button class="filter" type="button" data-filter="retired" aria-pressed="false">Retired</button>
-              <button class="filter" type="button" data-filter="archived" aria-pressed="false">
-                Archived
-              </button>
-              <button class="filter" type="button" data-filter="all" aria-pressed="false">All records</button>
+          <div class="inventory-tools" data-dpp-qa="inventory-controls">
+            <label class="inventory-field inventory-search-field" for="search">
+              <span>Search records</span>
+              <input id="search" class="search" type="search" placeholder="Product, SKU or canonical SKU" />
+            </label>
+            <div class="inventory-field inventory-filter-field">
+              <span>Record scope</span>
+              <div class="filters" role="group" aria-label="Inventory status filter">
+                <button class="filter active" type="button" data-filter="current" aria-pressed="true">
+                  Current stock
+                </button>
+                <button class="filter" type="button" data-filter="attention" aria-pressed="false">
+                  Needs action
+                </button>
+                <button class="filter" type="button" data-filter="ok" aria-pressed="false">Healthy</button>
+                <button class="filter" type="button" data-filter="no_velocity" aria-pressed="false">
+                  No velocity
+                </button>
+                <button class="filter" type="button" data-filter="alias" aria-pressed="false">Aliases</button>
+                <button class="filter" type="button" data-filter="retired" aria-pressed="false">
+                  Retired
+                </button>
+                <button class="filter" type="button" data-filter="archived" aria-pressed="false">
+                  Archived
+                </button>
+                <button class="filter" type="button" data-filter="all" aria-pressed="false">
+                  All records
+                </button>
+              </div>
             </div>
-            <span class="export-link">Reference view</span>
+            <span class="export-link" aria-hidden="true">Reference view</span>
           </div>
 
-          <div class="data-table-shell data-table-shell--cards-on-mobile inventory-shell">
+          <div
+            class="data-table-shell data-table-shell--cards-on-mobile inventory-shell"
+            data-dpp-qa="inventory-evidence"
+          >
             <div class="data-table-scroll">
               <table class="data-table inventory-table">
+                <caption>
+                  Inventory records and action evidence
+                </caption>
                 <colgroup>
                   <col class="product" />
                   <col class="lifecyclec" />
@@ -145,16 +163,16 @@
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Product</th>
-                    <th>Lifecycle</th>
-                    <th>Canonical SKU</th>
-                    <th>Action</th>
-                    <th class="num">Available</th>
-                    <th class="num">Inbound</th>
-                    <th class="num">Reserved</th>
-                    <th class="num">28D order units</th>
-                    <th class="num">Days cover</th>
-                    <th>Status</th>
+                    <th scope="col">Product</th>
+                    <th scope="col">Lifecycle</th>
+                    <th scope="col">Canonical SKU</th>
+                    <th scope="col">Action</th>
+                    <th class="num" scope="col">Available</th>
+                    <th class="num" scope="col">Inbound</th>
+                    <th class="num" scope="col">Reserved</th>
+                    <th class="num" scope="col">28D order units</th>
+                    <th class="num" scope="col">Days cover</th>
+                    <th scope="col">Status</th>
                   </tr>
                 </thead>
                 <tbody id="rows"></tbody>

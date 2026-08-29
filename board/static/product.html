@@ -30,7 +30,7 @@
       </header>
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
-      <main data-dpp-qa="product-workspace">
+      <main>
         <section class="product-hero panel" id="hero" data-dpp-qa="product-identity">
           <div class="hero-img skeleton"></div>
           <div>
@@ -41,7 +41,7 @@
         <section
           class="kpi-rail product-kpi-rail"
           aria-label="Product key metrics"
-          data-dpp-qa="product-metrics"
+          data-dpp-qa="product-kpis"
         >
           <div
             class="kpi product-kpi"
@@ -114,8 +114,12 @@
             </div>
             <div class="panel__body"><svg id="chart" class="product-chart" viewBox="0 0 900 260"></svg></div>
           </div>
-          <aside class="decision-rail" aria-label="Product decisions">
-            <div class="panel decision-block decision-block--inventory">
+          <aside class="panel decision-rail" aria-label="Product decisions" data-dpp-qa="product-decisions">
+            <div class="decision-rail__header">
+              <div class="section-label">Decision rail</div>
+              <h2>Product decisions</h2>
+            </div>
+            <div class="decision-block decision-block--inventory">
               <div class="decision-label">Inventory</div>
               <strong id="invDecision">—</strong>
               <p id="invRead">Reading stock position.</p>
@@ -125,7 +129,7 @@
                 <div><b id="velocity">—</b><span>order units/day</span></div>
               </div>
             </div>
-            <div class="panel decision-block decision-block--economics">
+            <div class="decision-block decision-block--economics">
               <div class="decision-label">Economics</div>
               <strong id="econDecision">—</strong>
               <p id="econRead">
@@ -133,7 +137,7 @@
                 IVA.
               </p>
             </div>
-            <div class="panel decision-block decision-block--listing">
+            <div class="decision-block decision-block--listing">
               <div class="decision-label">Commercial state</div>
               <strong id="listingState">—</strong>
               <p id="listingNote">Reading listing and variation identity.</p>
@@ -144,7 +148,7 @@
               <span class="sr-only" id="inventoryNote">availability</span>
               <span class="sr-only" id="adsNote">advertising context</span>
             </div>
-            <div class="panel decision-block decision-block--ads">
+            <div class="decision-block decision-block--ads">
               <div class="decision-label">Advertising</div>
               <strong id="adsDecision">—</strong>
               <p id="adsRead">Paid-support context is separate from seller demand.</p>
@@ -165,7 +169,12 @@
             </button>
           </div>
         </details>
-        <details class="panel product-reference" id="productReference" open>
+        <details
+          class="panel product-reference"
+          id="productReference"
+          open
+          data-dpp-qa="product-family-evidence"
+        >
           <summary>
             <span>
               <strong>Variation family</strong>
@@ -198,6 +207,5 @@
     <script src="/assets/vendor/d3.v7.min.js"></script>
     <script src="/assets/chart-system.js"></script>
     <script type="module" src="/assets/product.js"></script>
-    <script src="/assets/metric-basis-ui.js"></script>
   </body>
 </html>

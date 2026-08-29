@@ -22,7 +22,7 @@ try {
   if (!response?.ok()) throw new Error(`Admin navigation returned ${response?.status() || 'no response'}`);
   await page.locator('#loginPanel').waitFor({ state: 'visible', timeout: 5000 });
   const landmarks = await page.locator('[data-dpp-qa]').evaluateAll(elements => elements.map(element => element.getAttribute('data-dpp-qa')));
-  for (const expected of ['admin-workspace', 'admin-authentication', 'admin-catalog-editor']) {
+  for (const expected of ['admin-workspace-header', 'admin-product-editors']) {
     if (!landmarks.includes(expected)) throw new Error(`Admin workspace landmark is missing: ${expected}`);
   }
 

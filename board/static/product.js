@@ -68,7 +68,8 @@ function listedDate(value) {
 }
 
 function ratioPercent(value) {
-  return value === null || value === undefined ? '—' : percent(100 * Number(value), { sign: false });
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return '—';
+  return percent(100 * Number(value), { sign: false });
 }
 
 function decimal(value, digits = 2) {
@@ -244,24 +245,31 @@ function renderInventoryDecision(profile, commercial) {
 
   let decision = 'Inventory is stable.';
   let read = 'Coverage is healthy at the current selling velocity.';
+  let tone = 'healthy';
 
   if (commercial.catalog_membership === 'DELETED') {
     decision = 'No current inventory decision.';
     read = 'Deleted SKUs are excluded from replenishment decisions.';
+    tone = 'neutral';
   } else if (profile.inventory_action === 'STOCKOUT') {
     decision = 'Replenish now.';
     read = 'Stocked out with recent demand.';
+    tone = 'critical';
   } else if (profile.inventory_action === 'PRODUCE') {
     decision = 'Production is urgent.';
     read = 'Less than 14 days cover including inbound.';
+    tone = 'critical';
   } else if (profile.inventory_action === 'PLAN') {
     decision = 'Plan replenishment.';
     read = '14–27 days cover including inbound.';
+    tone = 'warning';
   } else if (profile.inventory_action !== 'OK') {
     decision = 'Review before producing.';
     read = 'Recent velocity is not strong enough for a confident replenishment read.';
+    tone = 'neutral';
   }
 
+  byId('invDecision').closest('.decision-block').dataset.tone = tone;
   byId('invDecision').textContent = decision;
   byId('invRead').textContent = read;
 }
