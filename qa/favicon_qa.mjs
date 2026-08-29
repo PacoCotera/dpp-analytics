@@ -9,6 +9,7 @@ await fs.mkdir(outDir, { recursive: true });
 const routes = [
   "/",
   "/today",
+  "/business",
   "/sales",
   "/catalog",
   "/inventory",

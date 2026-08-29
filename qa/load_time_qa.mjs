@@ -9,8 +9,8 @@ await fs.mkdir(outDir, { recursive: true });
 
 const viewport = { width: 1440, height: 900 };
 const PAGES = [
-  { key: 'business', url: '/', neutral: '/today' },
-  { key: 'today', url: '/today', neutral: '/' },
+  { key: 'today', url: '/', neutral: '/business' },
+  { key: 'business', url: '/business', neutral: '/' },
   { key: 'sales', url: '/sales', neutral: '/' },
   { key: 'catalog', url: '/catalog', neutral: '/' },
   { key: 'inventory', url: '/inventory', neutral: '/' },

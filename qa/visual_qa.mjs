@@ -424,7 +424,7 @@ async function verifyBusiness(page) {
   if (
     state.evidenceHeadline !== state.expectedHeadline ||
     state.activeNav !== 'Business' ||
-    state.brandPath !== '/today' ||
+    state.brandPath !== '/' ||
     !state.singleRead ||
     !state.hierarchy ||
     state.exceptionItems !== state.expectedItems ||
@@ -1158,9 +1158,9 @@ async function verifySalesOrders(page) {
 }
 
 const scenarios = [
-  ['today', '/today', ['mobile', 'desktop'], verifyToday],
-  ['today-wall', '/today?wall=1', ['desktop']],
-  ['business', '/', ['mobile', 'tablet', 'desktop'], verifyBusiness],
+  ['today', '/', ['mobile', 'desktop'], verifyToday],
+  ['today-wall', '/?wall=1', ['desktop']],
+  ['business', '/business', ['mobile', 'tablet', 'desktop'], verifyBusiness],
   ['sales-overview', '/sales', ['mobile', 'tablet', 'desktop'], verifySalesOverview],
   ['sales-products', '/sales', ['mobile', 'desktop'], verifySalesProducts],
   ['sales-orders', '/sales', ['mobile', 'desktop'], verifySalesOrders],

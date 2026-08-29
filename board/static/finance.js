@@ -484,31 +484,27 @@ function renderCurrentBridge(current) {
   byId('currentLines').innerHTML = [
     financeLine(
       'Amazon order economics released so far',
-      'Released shipment/refund finance against orders from this month.',
+      'Released shipment and refund postings.',
       current.amazon_order_net,
     ),
     financeLine(
       'Other Amazon postings / timing',
-      'Released service fees, adjustments and reimbursements posted this month.',
+      'Service fees, adjustments and reimbursements.',
       row.other_amazon_postings,
     ),
     financeLine(
       'Product COGS',
-      'Editable standard/effective-dated direct cost for this OPEN month.',
+      'Current standard product cost.',
       -Math.abs(Number(current.product_cogs || 0)),
     ),
     financeLine(
       'Current-month advertising',
-      ads == null
-        ? 'Advertising accrual is not yet available for this accounting month.'
-        : 'Campaign spend accrued by advertising date.',
+      ads == null ? 'Not available yet.' : 'Accrued campaign spend.',
       ads == null ? 'Pending' : -Math.abs(Number(ads)),
     ),
     financeLine(
       ads == null ? 'Contribution before current-month advertising' : 'Estimated contribution so far',
-      current.cogs_complete
-        ? 'Useful live estimate, not a closed result.'
-        : 'Incomplete until seller product-cost coverage is complete.',
+      current.cogs_complete ? 'Provisional.' : 'Waiting for product costs.',
       contribution,
       'total',
     ),
@@ -530,8 +526,7 @@ function renderYtd(ytd) {
     return;
   }
 
-  byId('ytdSub').textContent =
-    `${ytd.months} closed months through ${monthLabel(ytd.through_month)}. Amounts shown to cents.`;
+  byId('ytdSub').textContent = `${ytd.months} closed months through ${monthLabel(ytd.through_month)}.`;
   byId('ytdBridge').innerHTML = [
     bridgeStepExact('Sales ex IVA', ytd.net_sales_ex_vat),
     bridgeStepExact('Amazon effect', ytd.amazon_order_effect),
@@ -666,22 +661,14 @@ function windowDescription(windowKey, rows, currentRow) {
   const containsOpen = rows.some((row) => row._current);
   const adsPending = rows.some((row) => row._current && row._adsPending);
   const suffix = containsOpen
-    ? ` The OPEN month is provisional${adsPending ? ' and currently excludes pending advertising' : ''}.`
-    : ' All displayed months are management-closed.';
-  const range = first && last ? `${monthLongLabel(first.month)} to ${monthLongLabel(last.month)}.` : '';
+    ? `Includes provisional OPEN month${adsPending ? '; Ads pending' : ''}.`
+    : 'Management-closed months.';
+  const range = first && last ? `${monthLongLabel(first.month)}–${monthLongLabel(last.month)}.` : '';
 
-  if (windowKey === '3m')
-    return `Three accounting months, reset to $0 at the start of the window. ${range}${suffix}`;
-  if (windowKey === 'ytd') return `Calendar YTD, reset to $0 on January 1. ${range}${suffix}`;
-  if (windowKey === '12m')
-    return `Rolling 12 accounting months, reset to $0 at the start of the window. ${range}${suffix}`;
-  if (windowKey === 'lastYear')
-    return `Previous calendar year using available operating history. ${range}${suffix}`;
-  if (windowKey === 'all')
-    return `Full operating history from the first available accounting month. ${range}${suffix}`;
+  if (windowKey !== 'month') return `${range} ${suffix}`;
   return currentRow?._current
-    ? `${monthLongLabel(currentRow.month)} detail. OPEN values are provisional${currentRow._adsPending ? '; advertising is still pending' : ''}.`
-    : `${monthLongLabel(currentRow?.month)} detail from the immutable management-close snapshot.`;
+    ? `${monthLongLabel(currentRow.month)} · provisional${currentRow._adsPending ? ' · Ads pending' : ''}.`
+    : `${monthLongLabel(currentRow?.month)} · management closed.`;
 }
 
 function updateWindowControls() {
@@ -756,7 +743,7 @@ function renderWindow() {
   const cogsRead = viewState.includeCogs
     ? 'Product COGS is included.'
     : 'Product COGS is excluded; the trajectory shows contribution before product COGS.';
-  sub.textContent = `${windowDescription(viewState.window, windowRows)} ${cogsRead} Click any month to inspect its contribution bridge.`;
+  sub.textContent = `${windowDescription(viewState.window, windowRows)} ${cogsRead}`;
   state.textContent = stateLabels[viewState.window] || 'RUNNING RESULT';
   legend.innerHTML = [
     '<span class="legend-key"><strong class="pos">+</strong>Positive month</span>',
@@ -764,8 +751,7 @@ function renderWindow() {
     windowRows.some((row) => row._current)
       ? '<span class="legend-key"><i class="legend-swatch open"></i>OPEN · provisional</span>'
       : '',
-    `<span class="legend-key"><strong>${viewState.includeCogs ? 'COGS' : 'PRE-COGS'}</strong> ${viewState.includeCogs ? 'included' : 'view'}</span>`,
-    '<span class="legend-key"><i class="legend-swatch"></i>Window total</span>',
+    `<span class="legend-key"><strong>${viewState.includeCogs ? 'COGS' : 'PRE-COGS'}</strong></span>`,
   ].join('');
   svg.setAttribute(
     'aria-label',

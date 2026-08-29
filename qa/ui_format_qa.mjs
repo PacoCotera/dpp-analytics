@@ -20,7 +20,7 @@ page.on("console", (message) => {
 });
 
 try {
-  await page.goto(`${baseUrl}/`, { waitUntil: "networkidle", timeout: 20000 });
+  await page.goto(`${baseUrl}/business`, { waitUntil: "networkidle", timeout: 20000 });
   const shared = await page.evaluate(async () => {
     const formats = await import(`/assets/format-core.js?qa=${Date.now()}`);
     return {

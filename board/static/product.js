@@ -331,7 +331,7 @@ function renderAds(ads, commercial) {
   if (commercial.catalog_membership === 'DELETED') {
     byId('adsDecision').textContent = 'No current Ads decision';
     byId('adsRead').textContent =
-      'Deleted SKUs are excluded from current paid-support decisions; historical order evidence remains available.';
+      'Deleted SKUs are excluded from current paid-support decisions; order history remains available.';
     return;
   }
   const connection = ads.connection || {};
@@ -360,7 +360,7 @@ function renderAds(ads, commercial) {
 
 function renderOrders(orders = [], profile = {}) {
   byId('orderSummary').textContent =
-    `${formatCount(orders.length, 'recent order')} · shopper spend incl. IVA · evidence only`;
+    `${formatCount(orders.length, 'recent order')} · shopper spend incl. IVA`;
   byId('orders').innerHTML = orders.length
     ? orders
         .map((order, index) => {

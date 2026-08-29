@@ -248,7 +248,7 @@ def sales_payload(connect, decorate_products, marketplace: str) -> dict:
             "id": "GROSS_CUSTOMER_SPEND",
             "label": "Shopper spend incl. IVA",
             "source": "Amazon Orders",
-            "definition": "Customer product spend on one tax-inclusive basis from explicit ITEM+TAX evidence where available; settlement fees are excluded.",
+            "definition": "Customer product spend on one tax-inclusive basis from ITEM+TAX detail where available; settlement fees are excluded.",
         },
         "finance_boundary": "Finance separately reports net sales ex IVA, IVA withheld, and gross customer spend.",
     }

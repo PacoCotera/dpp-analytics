@@ -17,8 +17,8 @@ The board is server-rendered only in the sense that Python serves static HTML an
 
 | Route | API / business owner | HTML | CSS | Browser runtime |
 | --- | --- | --- | --- | --- |
-| `/today` | `board/today_api.py` | `board/static/today.html` | `today.css` | `today.js` + tiny synchronous `today-bootstrap.js` for wall mode |
-| `/`, `/home`, `/index.html` | `board/home_api.py`; shared decision health: `board/health_contract.py` | `home.html` | `home.css` | `home.js` |
+| `/`, `/today` | `board/today_api.py` | `board/static/today.html` | `today.css` | `today.js` + tiny synchronous `today-bootstrap.js` for wall mode |
+| `/business`, `/home`, `/index.html` | `board/home_api.py`; shared decision health: `board/health_contract.py` | `home.html` | `home.css` | `home.js` |
 | `/sales` | canonical Sales adapter over `board/sales_api.py`; lazy Geography: `board/sales_geography_api.py` | `sales.html` | `sales.css` + `sales-geography.css` | `sales-canonical.js` + lazy `sales-geography.js` / `sales-geography-v2.js` |
 | `/catalog` | `board/catalog_api.py` | `catalog.html` | `catalog.css` | `catalog.js` |
 | `/product?sku=...` | `board/product_api.py` | `product.html` | `product.css` | `product.js` |
@@ -44,8 +44,8 @@ Before adding page-specific code, check whether the behavior belongs in one of t
 | `presentation-registry.js` / `presentation-profiles.css` | generated browser registry and semantic token scopes; do not edit directly |
 | `presentation.js` | synchronous profile restoration, root attributes, browser chrome, local preference and public apply/reset API |
 | `theme.css` | global token aliases, typography and base visual language |
-| `nav-shell.css` | compact desktop brand/navigation frame and accessible mobile drawer presentation |
-| `ui-shell.js` | primary navigation, active route, More menu, global identity, tab keyboard behavior and mobile drawer behavior |
+| `nav-shell.css` | fixed desktop sidebar, connected global header and accessible mobile drawer presentation |
+| `ui-shell.js` | ordered primary navigation, active route, global identity, tab keyboard behavior and mobile drawer behavior |
 | `layout-system.css` | reusable page headers, KPI rails, panels, grids, segmented controls, tables and status strips |
 | `chart-system.css` / `chart-system.js` | reusable chart grammar, axes, tooltips, legends, period treatment and shared chart forms |
 | `data-cache.js` | session-scoped GET JSON cache, browser in-flight dedupe and endpoint freshness policy |

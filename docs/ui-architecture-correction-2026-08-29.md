@@ -3,21 +3,21 @@
 **Status:** In delivery  
 **Tracker:** [#231](https://github.com/PacoCotera/dpp-analytics/issues/231)  
 **Reference:** Approved Business mockup  
-**Scope:** Presentation architecture only; routes, APIs and business definitions remain unchanged
+**Scope:** Presentation architecture and canonical workspace routes; APIs and business definitions remain unchanged
 
 ## Why this correction exists
 
-The 2026-08-28 revamp established shared tokens and a shared shell, but it retained the previous page compositions. The result was visually themed legacy pages rather than one coherent application: a permanent desktop sidebar diverged from the approved mockup, page identity was duplicated, explanations displaced evidence, and tables, filters, decisions and status surfaces followed different grammars by route.
+The 2026-08-28 revamp established shared tokens and a persistent shell, but several later composition changes retained too much legacy structure and incorrectly replaced the approved desktop sidebar with horizontal navigation. The result was visually themed legacy pages rather than one coherent application: explanations displaced working surfaces, and tables, filters, decisions and status surfaces followed different grammars by route.
 
 This correction treats information architecture as a first-class contract. Every page has a distinct business question and therefore a deliberate recipe, while all pages share one compact visual language.
 
 ## Shared application frame
 
-- Desktop uses a compact brand row followed by horizontal domain navigation.
-- Business, Today, Sales, Products, Inventory and Finance are direct destinations. Ads, Trajectory, Data Health and Admin live in a native More menu.
-- Mobile uses the same ordered destinations in an accessible drawer.
-- Page content aligns to the same centered frame as the header and navigation.
-- The global header does not repeat the current page title. Each page has exactly one logical `h1` inside its content.
+- Desktop uses a fixed, full-height left sidebar with all ten destinations visible.
+- Today is first, is served at `/`, and is the default destination. Business is served at `/business`; `/today`, `/home` and `/index.html` remain compatible aliases.
+- Mobile collapses the same ordered destinations into an accessible hamburger drawer.
+- Page content and the global header occupy the workspace to the right of the sidebar.
+- The global header provides compact workspace context without replacing the page's single logical `h1`.
 - Global time, freshness and Appearance controls remain compact and secondary to the working surface.
 
 ## Visual grammar
@@ -37,8 +37,8 @@ Every page uses this order when the elements exist:
 1. page lead: business question, current interpretation and local controls;
 2. compact KPI strip: three to five comparable measures;
 3. dominant working surface: chart, table, queue, report or form;
-4. supporting evidence: no more than three parallel modules before a second major section;
-5. provenance and rule detail: adjacent to the evidence it qualifies.
+4. supporting detail: no more than three parallel modules before a second major section;
+5. provenance and definition detail: adjacent to the value it qualifies.
 
 Cards represent bounded objects such as a decision, product, incident or health domain. Ordinary sections use alignment, dividers and shared surfaces instead of card grids.
 
@@ -64,17 +64,17 @@ All operational tables share one contract:
 
 ## Page recipes
 
-| Route | Business question | Lead and summary | Dominant surface | Supporting evidence |
+| Route | Business question | Lead and summary | Dominant surface | Supporting detail |
 | --- | --- | --- | --- | --- |
-| Business `/` | What changed and what needs a decision? | API-owned business pulse plus four KPIs | 13-week demand pulse | inventory decisions; Finance, Inventory and Data confidence health cards |
-| Today `/today` | What is happening today and what should I watch next? | live operating state plus three rhythm KPIs | intraday/order rhythm | priority queue and concise evidence disclosure |
-| Sales `/sales` | How is demand performing and what explains it? | selected view/range plus comparable KPIs | sales trend or ranked driver view | product and geography evidence appropriate to the selected view |
+| Today `/` | What is happening today and what should I watch next? | live operating state plus three rhythm KPIs | intraday/order rhythm | priority queue and concise reference disclosure |
+| Business `/business` | What changed and what needs a decision? | API-owned business pulse plus four KPIs | 13-week demand pulse | inventory decisions; Finance, Inventory and Data confidence health cards |
+| Sales `/sales` | How is demand performing and what explains it? | selected view/range plus comparable KPIs | sales trend or ranked driver view | product and geography detail appropriate to the selected view |
 | Products `/catalog` | Which products need attention or investigation? | portfolio count, window and compact filters | sortable product table | family or status summaries only when they change prioritization |
 | Product `/product` | What is happening for this product? | product identity, current state and key measures | demand/availability trajectory | inventory, contribution and Ads context; one decision rail |
 | Inventory `/inventory` | What should be produced, planned or monitored? | explicit API-owned thresholds and action counts | action-first inventory table | portfolio coverage summary and source/cutoff disclosure |
 | Finance `/finance` | What did the business earn and what is closed? | close state, period and contribution KPIs | management P&L table | IVA bridge, settlement timing and COGS readiness |
 | Ads `/ads` | Is Ads connected, decision-grade and effective? | API-owned connection/reporting state | canonical connection state or performance view | actions and drill-down tables only when reporting is ready |
-| Trajectory `/trajectory` | Is performance structurally improving? | signal, eligibility and selected window | trajectory chart | compact evidence table and rule disclosure |
+| Trajectory `/trajectory` | Is performance structurally improving? | signal, eligibility and selected window | trajectory chart | compact history table and definition disclosure |
 | Data Health `/data-health` | Can current decisions trust their inputs? | overall contract state and affected domains | job/stream health table | incidents and onboarding tasks |
 | Admin `/admin` | What seller-owned configuration needs maintenance? | authentication or configuration scope | focused sign-in form or editable product table | validation, conflict and audit state adjacent to the edited object |
 

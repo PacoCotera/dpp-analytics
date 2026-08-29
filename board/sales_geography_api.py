@@ -141,7 +141,7 @@ def _canonical_coverage(
     )
     result["geography_first_date"] = dates[0] if dates else None
     result["geography_last_date"] = dates[-1] if dates else None
-    result["geography_date_basis"] = "resolved SEPOMEX postal-order evidence"
+    result["geography_date_basis"] = "resolved SEPOMEX postal-order history"
     return result
 
 
@@ -263,7 +263,7 @@ def _canonical_product_analysis(
         "window_anchor": "geography.coverage.geography_last_date",
         "definition": (
             "Current Amazon seller-catalog offers own product identity; historical seller SKUs "
-            "remain transaction evidence and aliases sharing a current offer ASIN roll into that "
+            "remain transaction history and aliases sharing a current offer ASIN roll into that "
             "offer's analysis_sku."
         ),
     }

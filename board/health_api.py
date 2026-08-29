@@ -24,7 +24,7 @@ JOB_DEFINITIONS = {
     ("amazon_spapi", "orders_v2026"): {
         "label": "Orders",
         "operation": "Amazon SP-API · Orders v2026-01-01",
-        "purpose": "Powers Today sales, recent-order evidence and fulfillment status.",
+        "purpose": "Powers Today sales, recent orders and fulfillment status.",
         "domain": "Today",
         "interval_seconds": lambda: _seconds("ORDERS_INTERVAL_SECONDS", 180),
         "grace_seconds": 420,
@@ -40,7 +40,7 @@ JOB_DEFINITIONS = {
     ("amazon_spapi", "finances_v2024"): {
         "label": "Finance transactions",
         "operation": "Amazon SP-API · Finances v2024-06-19",
-        "purpose": "Powers Amazon posting evidence and open-period contribution.",
+        "purpose": "Powers Amazon postings and open-period contribution.",
         "domain": "Finance",
         "interval_seconds": lambda: _seconds("FINANCES_INTERVAL_SECONDS", 14400),
         "grace_seconds": 7200,
@@ -48,7 +48,7 @@ JOB_DEFINITIONS = {
     ("amazon_reports", "settlement_reports_v2"): {
         "label": "Settlement reports",
         "operation": "Amazon SP-API · Reports settlement feed",
-        "purpose": "Provides payout and settlement evidence for Finance.",
+        "purpose": "Provides payout and settlement detail for Finance.",
         "domain": "Finance",
         "interval_seconds": lambda: _seconds("SETTLEMENT_REPORTS_INTERVAL_SECONDS", 21600),
         "grace_seconds": 21600,
@@ -296,7 +296,7 @@ def health_board_payload(connect, marketplace: str) -> dict:
             "contract": {
                 "discovery": "The latest complete Seller Listings snapshot is authoritative for current seller SKUs; records absent from it are retained only as deleted history. Catalog Items owns enrichment and current parent-child relationships.",
                 "grace": "New/partial offers have a 48-hour onboarding grace. Catalog is retried every 30 minutes while an ASIN is known but source enrichment is unresolved.",
-                "source_attention": "After 48 hours, missing ASIN or unresolved Catalog evidence is a source-completeness exception.",
+                "source_attention": "After 48 hours, missing ASIN or unresolved Catalog data is a source-completeness exception.",
                 "taxonomy_attention": "Seller taxonomy becomes actionable only after source enrichment is ready and the onboarding grace has elapsed.",
             },
         },

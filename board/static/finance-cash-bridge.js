@@ -1,6 +1,6 @@
 import { byId, fetchJson, money } from './ui-utils.js';
 
-const CASH_BASIS_LABEL = 'Cash settlement evidence, not sales-period P&L';
+const CASH_BASIS_LABEL = 'Cash settlement timing, not sales-period P&L';
 
 function cashMoney(value) {
   if (value === null || value === undefined) return '—';
@@ -42,8 +42,7 @@ function renderCashBridge(payload) {
     display.identity_label,
     display.period_label,
     display.deposit_label,
-    `${bridge.line_count || 0} source lines`,
-    reconciled ? 'Amazon report total reconciled to the cent' : `reconciliation delta ${cashMoney(delta)}`,
+    reconciled ? '' : `Delta ${cashMoney(delta)}`,
   ]
     .filter(Boolean)
     .join(' · ');

@@ -2,8 +2,8 @@
   'use strict';
 
   const DOMAINS = [
-    { href: '/', label: 'Business', key: 'business' },
-    { href: '/today', label: 'Today', key: 'today', className: 'today-link' },
+    { href: '/', label: 'Today', key: 'today', className: 'today-link' },
+    { href: '/business', label: 'Business', key: 'business' },
     { href: '/sales', label: 'Sales', key: 'sales' },
     { href: '/catalog', label: 'Products', key: 'products' },
     { href: '/inventory', label: 'Inventory', key: 'inventory', className: 'nav-mobile-secondary' },
@@ -25,8 +25,13 @@
   function normalizedPath() {
     const path = rawPath();
     if (path === '/product') return '/catalog';
-    if (path === '/home' || path === '/index.html') return '/';
+    if (path === '/today') return '/';
+    if (path === '/home' || path === '/index.html') return '/business';
     return path;
+  }
+
+  function currentDomain() {
+    return DOMAINS.find((item) => item.href === normalizedPath()) || DOMAINS[0];
   }
 
   function isCurrent(href) {
@@ -37,12 +42,12 @@
     const brand = document.querySelector('.topbar .brand');
     if (!brand) return null;
     if (brand.matches('a')) {
-      brand.href = '/today';
+      brand.href = '/';
       brand.setAttribute('aria-label', 'Open Today');
       return brand;
     }
     const link = document.createElement('a');
-    link.href = '/today';
+    link.href = '/';
     link.className = brand.className;
     link.innerHTML = brand.innerHTML;
     link.setAttribute('aria-label', 'Open Today');
@@ -80,30 +85,8 @@
       return anchor;
     };
 
-    for (const item of DOMAINS.slice(0, 6)) primary.appendChild(buildLink(item));
-
-    const more = document.createElement('details');
-    more.className = 'nav-more';
-    if (DOMAINS.slice(6).some((item) => isCurrent(item.href))) more.classList.add('active');
-    const summary = document.createElement('summary');
-    summary.innerHTML = '<span>More</span><span aria-hidden="true">⌄</span>';
-    const menu = document.createElement('div');
-    menu.className = 'nav-more__menu';
-    for (const item of DOMAINS.slice(6)) menu.appendChild(buildLink(item));
-    more.append(summary, menu);
-    primary.appendChild(more);
-
+    for (const item of DOMAINS) primary.appendChild(buildLink(item));
     nav.appendChild(primary);
-
-    document.addEventListener('pointerdown', (event) => {
-      if (more.open && !more.contains(event.target)) more.removeAttribute('open');
-    });
-    more.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && more.open) {
-        more.removeAttribute('open');
-        summary.focus();
-      }
-    });
   }
 
   function createSidebar(nav) {
@@ -117,7 +100,7 @@
 
     const brand = document.createElement('a');
     brand.className = 'brand app-sidebar__brand';
-    brand.href = '/today';
+    brand.href = '/';
     brand.setAttribute('aria-label', 'Open Today');
     brand.innerHTML =
       '<span class="mark" aria-hidden="true">DP</span>' +
@@ -374,9 +357,17 @@
       '<span class="appearance-button__current"></span>';
     actions.appendChild(appearance);
 
+    const context = document.createElement('div');
+    context.className = 'shell-header-context';
+    context.innerHTML =
+      '<span class="shell-header-context__eyebrow">DPP Analytics</span>' +
+      '<strong class="shell-header-context__title">' +
+      currentDomain().label +
+      '</strong>';
+
     topbar.prepend(menuButton);
-    if (brand) brand.classList.add('shell-brand');
-    topbar.append(actions);
+    if (brand) brand.classList.add('shell-mobile-brand');
+    topbar.append(context, actions);
     createAppearancePanel(appearance);
     syncAppearance();
   }
@@ -391,10 +382,9 @@
     const sidebar = createSidebar(nav);
     const backdrop = createBackdrop();
     const skipLink = document.querySelector('.skip-link');
-    if (skipLink) skipLink.after(backdrop);
-    else document.body.prepend(backdrop);
+    if (skipLink) skipLink.after(backdrop, sidebar);
+    else document.body.prepend(backdrop, sidebar);
     createGlobalHeader(topbar);
-    topbar.after(sidebar);
     syncDrawerMode();
 
     if (typeof mobileMedia.addEventListener === 'function')

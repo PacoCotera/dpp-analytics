@@ -103,7 +103,7 @@ function weekLabel(item, index) {
 function renderWeeks(rows = []) {
   byId('weekSummary').textContent = rows.length
     ? `${rows.length} recent weeks · newest first`
-    : 'Recent weekly evidence';
+    : 'Recent weekly history';
   byId('weeks').innerHTML = rows.length
     ? rows
         .map((item, index) => {

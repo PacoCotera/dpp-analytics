@@ -26,10 +26,9 @@ Owns only global visual tokens and typography:
 `static/ui-shell.js` and `static/nav-shell.css` own application-wide orientation and navigation behavior:
 
 - brand and primary navigation
-- compact desktop brand row and horizontal domain navigation
+- fixed, full-height desktop domain sidebar
 - active destination state
-- More menu
-- workspace identity
+- compact global header and workspace identity
 - accessible mobile navigation drawer
 - tab keyboard accessibility
 - shared favicon declaration and brand mark
@@ -37,8 +36,9 @@ Owns only global visual tokens and typography:
 A page must not implement a second primary navigation system.
 
 The shell and route compositions follow the active architecture in
-[`ui-architecture-correction-2026-08-29.md`](ui-architecture-correction-2026-08-29.md). The approved Business
-reference does not use a permanent desktop sidebar or duplicate the current page identity in global chrome.
+[`ui-architecture-correction-2026-08-29.md`](ui-architecture-correction-2026-08-29.md). The approved desktop
+frame uses a persistent left sidebar; only mobile collapses it into a drawer. Today is the first and default
+workspace.
 
 ### 3. Layout system
 
@@ -99,7 +99,7 @@ The Sales workspace retains the existing `sales-canonical.js` filename because i
 
 Page composition is not a generic sequence of page header, KPI cards and panels. Each route implements the
 business-question recipe documented in `ui-architecture-correction-2026-08-29.md`: a compact lead, an optional
-comparable KPI strip, one dominant working surface and only the supporting evidence needed for the next decision.
+comparable KPI strip, one dominant working surface and only the supporting detail needed for the next decision.
 Introductory copy and legends must remain subordinate to charts, tables, queues and reports.
 
 ### 6. Data/API
@@ -205,7 +205,7 @@ New and migrated files should be readable and formatted when touched even before
 9. Ads consolidation, including Targets/Search Terms and elimination of duplicate `/api/ads` fetch/injected DOM: **done**.
 10. Shared shell owns navigation, tab accessibility and mobile swipe behavior: **done**.
 11. Superseded Finance frontend layers, Sales overrides, Home, Today, Ads and generic refinement layers: **removed**.
-12. Legacy unused `index.html`: **removed**; `/`, `/home` and `/index.html` are served by canonical `home.html`.
+12. Legacy unused `index.html`: **removed**; `/` serves Today, while `/business`, `/home` and `/index.html` serve canonical `home.html`.
 13. Orphan Today layout/operations styles and the separate Data Health catalog-onboarding stylesheet: **removed/consolidated**.
 14. Full frontend lint on the consolidated source tree: **required and green before review/deploy**.
 15. Production visual regression review at desktop/mobile widths: **required before accepting the refactor**.

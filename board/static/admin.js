@@ -92,7 +92,7 @@ function taxonomyRow(name = '', value = '') {
 function sourceEvidence(product) {
   const evidence = element('div', 'source-evidence');
   const family = element('div');
-  family.append(element('b', '', 'Amazon family evidence'));
+  family.append(element('b', '', 'Amazon family data'));
   family.append(
     document.createTextNode(
       product.parent_asin
@@ -107,7 +107,7 @@ function sourceEvidence(product) {
     .join(' · ');
   variation.append(document.createTextNode(sourceAttributes || 'No variation attributes supplied'));
   const stock = element('div');
-  stock.append(element('b', '', 'Current listing evidence'));
+  stock.append(element('b', '', 'Current listing data'));
   stock.append(
     document.createTextNode(
       `${product.status || 'Unknown status'} · ${product.available} available · ${product.inbound} inbound`,
@@ -169,7 +169,7 @@ function editorFor(product) {
     }),
     field('Seller family name', 'family_name', config.taxonomy.family_name, {
       wide: true,
-      placeholder: 'Blank leaves the Amazon family evidence unchanged',
+      placeholder: 'Blank leaves the Amazon family unchanged',
     }),
     field('Optional image override · HTTPS', 'image_url', config.label.image_url, {
       placeholder: 'Normally supplied by Amazon Catalog Items',

@@ -49,7 +49,7 @@ DOMAIN_DEFINITIONS = (
 )
 
 SUPPORTING_STREAM_REASONS = {
-    ("amazon_reports", "settlement_reports_v2"): "Supporting Finance settlement evidence; not one of the six primary decision-input pipelines.",
+    ("amazon_reports", "settlement_reports_v2"): "Supporting Finance settlement data; not one of the six primary decision-input pipelines.",
     ("amazon_spapi", "orders_geography_state_v2026"): "Supporting Sales geography enrichment; not one of the six primary decision-input pipelines.",
     ("dpp_finance", "month_close"): "Supporting Finance close evaluation; not one of the six primary decision-input pipelines.",
     ("amazon_ads", "sponsored_products_reporting_v3"): "Optional Ads reporting; excluded from the core count until Ads is configured and is always reported separately.",
@@ -146,7 +146,7 @@ def build_health_contract(jobs: list[dict], catalog_summary: dict, ads_summary: 
                 "domain": "Products",
                 "count": source_attention,
                 "state": "failed",
-                "label": "Overdue Amazon catalog source evidence",
+                "label": "Overdue Amazon catalog source data",
             }
         )
     if taxonomy_attention:

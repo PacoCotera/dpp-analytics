@@ -7,8 +7,8 @@ const outDir = process.argv[3] || '/out';
 await fs.mkdir(outDir, { recursive: true });
 
 const domains = [
-  { label: 'Business', href: '/' },
-  { label: 'Today', href: '/today' },
+  { label: 'Today', href: '/' },
+  { label: 'Business', href: '/business' },
   { label: 'Sales', href: '/sales' },
   { label: 'Products', href: '/catalog' },
   { label: 'Inventory', href: '/inventory' },
@@ -47,7 +47,7 @@ async function assertDomainContract(page, activeLabel) {
     actual.find(({ label }) => label === 'Products')?.href === '/catalog',
     'Products must map to /catalog',
   );
-  assert((await page.locator('.nav-more').count()) === 1, 'desktop More navigation is missing');
+  assert((await page.locator('.nav-more').count()) === 0, 'obsolete More navigation is present');
 }
 
 async function assertNoDocumentOverflow(page, label) {
@@ -69,7 +69,7 @@ async function assertNoDocumentOverflow(page, label) {
 }
 
 const cases = [
-  { name: 'business-desktop', url: '/', width: 1600, height: 1000, active: 'Business' },
+  { name: 'business-desktop', url: '/business', width: 1600, height: 1000, active: 'Business' },
   {
     name: 'today-mobile',
     url: '/today',
@@ -117,7 +117,7 @@ for (const testCase of cases) {
       overflowChecks.push(await assertNoDocumentOverflow(page, `${testCase.name} direct load`));
 
     const brandHref = await page.locator('.shell-global-header a.brand').getAttribute('href');
-    assert(brandHref === '/today', `brand link ${brandHref} != /today`);
+    assert(brandHref === '/', `brand link ${brandHref} != /`);
 
     const sidebar = page.locator('#app-sidebar');
     const menuButton = page.locator('.shell-menu-button');
@@ -129,14 +129,16 @@ for (const testCase of cases) {
 
       const navBox = await page.locator('#app-navigation').boundingBox();
       const headerBox = await page.locator('.shell-global-header').boundingBox();
+      const sidebarBox = await sidebar.boundingBox();
       assert(navBox && headerBox, 'desktop shell geometry is unavailable');
       assert(
-        Math.abs(headerBox.x - navBox.x) <= 1 && Math.abs(headerBox.width - navBox.width) <= 1,
-        'desktop header and navigation do not share one content frame',
+        sidebarBox && sidebarBox.x === 0 && Math.abs(sidebarBox.width - 244) <= 1,
+        'desktop sidebar is not anchored to the left edge',
       );
-      assert(navBox.height <= 56, 'desktop domain navigation is too tall');
-      assert(!(await page.locator('.app-sidebar__header').isVisible()), 'drawer header leaks onto desktop');
-      assert(!(await page.locator('.app-sidebar__footer').isVisible()), 'drawer footer leaks onto desktop');
+      assert(headerBox.x >= 244, 'desktop header overlaps the sidebar');
+      assert(navBox.height > 400, 'desktop domain navigation is not vertical');
+      assert(await page.locator('.app-sidebar__header').isVisible(), 'sidebar header is missing on desktop');
+      assert(await page.locator('.app-sidebar__footer').isVisible(), 'sidebar footer is missing on desktop');
     } else {
       assert(await menuButton.isVisible(), 'mobile navigation trigger is not visible');
       assert((await menuButton.getAttribute('aria-expanded')) === 'false', 'drawer starts expanded');

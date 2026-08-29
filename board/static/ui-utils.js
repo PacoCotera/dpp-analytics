@@ -152,7 +152,7 @@ export function bindRuleDisclosure(rules = {}) {
 export function ruleTrigger(evaluation, rules = interpretationRules) {
   if (!evaluation?.rule_id || !rules?.[evaluation.rule_id]) return '';
   const encoded = escapeHtml(JSON.stringify(evaluation));
-  return `<button class="rule-trigger" type="button" data-rule-id="${escapeHtml(evaluation.rule_id)}" data-rule-version="${escapeHtml(evaluation.rule_version)}" data-rule-evaluation="${encoded}" aria-label="Open ${escapeHtml(evaluation.label || 'interpretation')} rule">Rule v${escapeHtml(evaluation.rule_version)}</button>`;
+  return `<button class="rule-trigger" type="button" data-rule-id="${escapeHtml(evaluation.rule_id)}" data-rule-version="${escapeHtml(evaluation.rule_version)}" data-rule-evaluation="${encoded}" aria-label="Open ${escapeHtml(evaluation.label || 'interpretation')} definition">Definition</button>`;
 }
 
 export function mountRuleTrigger(target, evaluation, rules = {}) {

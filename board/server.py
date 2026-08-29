@@ -534,8 +534,11 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         pages = {
-            "/": HOME_INDEX,
+            "/": TODAY_INDEX,
             "/today": TODAY_INDEX,
+            "/business": HOME_INDEX,
+            "/home": HOME_INDEX,
+            "/index.html": HOME_INDEX,
             "/sales": SALES_INDEX,
             "/catalog": CATALOG_INDEX,
             "/inventory": INVENTORY_INDEX,
