@@ -856,7 +856,6 @@
   max-width: 100%;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--dpp-metadata-size, 14px);
 }
 
 #products.page-section,
@@ -1531,8 +1530,8 @@
     font-size: 30px;
   }
 
-  .sales-chart-kpi-label {
-    font-size: var(--dpp-metadata-size, 14px);
+  .sales-chart-kpi-label,
+  .sales-chart-kpi-note {
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
@@ -1541,10 +1540,6 @@
 
   .sales-chart-kpi-value {
     font-size: 16px;
-  }
-
-  .sales-chart-kpi-note {
-    font-size: var(--dpp-metadata-size, 14px);
   }
 }
 

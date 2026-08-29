@@ -1300,7 +1300,13 @@ for (const scenario of plan.scenarios) for (const viewportName of scenario.views
     await page.waitForTimeout(1000);
     if (scenario.action) { await scenario.action(page); await page.waitForTimeout(500); }
     result.metrics = await page.evaluate(({ viewportName }) => {
-      const visible = el => { const r = el.getBoundingClientRect(), s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity || 1) > 0; };
+      const visible = el => {
+        const r = el.getBoundingClientRect(), s = getComputedStyle(el);
+        const clippedForAssistiveTech =
+          s.clip === 'rect(0px, 0px, 0px, 0px)' || s.clipPath === 'inset(50%)';
+        return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' &&
+          Number(s.opacity || 1) > 0 && !clippedForAssistiveTech;
+      };
       const signature = element => `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${[...element.classList].slice(0, 3).map(name => `.${name}`).join('')}`;
       const hasHorizontalScrollAncestor = element => {
         let ancestor = element.parentElement;
