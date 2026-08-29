@@ -773,8 +773,8 @@ body.trajectory-page .structure-reference {
   }
 
   .trajectory-chart {
-    width: 700px;
-    min-width: 700px;
+    width: 100%;
+    min-width: 0;
     height: 280px;
   }
 
@@ -872,6 +872,16 @@ body.trajectory-page .structure-reference {
 
   .dashboard-grid--main-rail > .panel + .panel {
     border-left: var(--border-width) solid var(--dpp-border);
+  }
+
+  body.trajectory-page .trajectory-chart-scroll {
+    overflow: hidden;
+  }
+
+  body.trajectory-page .trajectory-chart {
+    width: 100%;
+    min-width: 0;
+    height: 280px;
   }
 
   .structure-priority {

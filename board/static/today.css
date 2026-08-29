@@ -1391,12 +1391,27 @@ body.today-app .rhythm {
     border-left: 0;
   }
 
-  .rhythm-host {
-    overflow-x: auto;
+  .day-picker {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+    border-radius: var(--radius-sm);
   }
 
-  .rhythm {
-    min-width: 620px;
+  .day-choice {
+    min-width: 0;
+    width: 100%;
+    padding-inline: 5px;
+  }
+
+  body.today-app .rhythm-host {
+    overflow: hidden;
+  }
+
+  body.today-app .rhythm {
+    width: 100%;
+    min-width: 0;
+    height: 220px;
   }
 }
 

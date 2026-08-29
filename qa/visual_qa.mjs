@@ -1242,14 +1242,41 @@ for (const scenario of scenarios) for (const viewportName of scenario.views) {
     if (scenario.action) { await scenario.action(page); await page.waitForTimeout(500); }
     result.metrics = await page.evaluate(({ viewportName }) => {
       const visible = el => { const r = el.getBoundingClientRect(), s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity || 1) > 0; };
+      const signature = element => `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${[...element.classList].slice(0, 3).map(name => `.${name}`).join('')}`;
+      const hasHorizontalScrollAncestor = element => {
+        let ancestor = element.parentElement;
+        while (ancestor && ancestor !== document.body) {
+          const style = getComputedStyle(ancestor);
+          if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && ancestor.scrollWidth > ancestor.clientWidth + 2) return true;
+          ancestor = ancestor.parentElement;
+        }
+        return false;
+      };
       const minFont = viewportName === 'mobile' ? 11.5 : viewportName === 'tablet' ? 10.5 : 9.5;
       const textEls = [...document.querySelectorAll('body *')].filter(el => visible(el) && !el.children.length && (el.textContent || '').trim());
       const smallText = textEls.filter(el => Number.parseFloat(getComputedStyle(el).fontSize || '0') < minFont).slice(0, 40);
       const clickables = [...document.querySelectorAll('a,button,[role="button"],input,select,textarea')].filter(visible);
       const smallTargets = clickables.filter(el => { const r = el.getBoundingClientRect(); return r.width < 36 || r.height < 36; }).slice(0, 40);
+      const mainElements = [...document.querySelectorAll('main *')].filter(visible).filter(element => !element.closest('.sr-only'));
+      const rawUncontained = mainElements.filter(element => {
+        const bounds = element.getBoundingClientRect();
+        return (bounds.left < -2 || bounds.right > window.innerWidth + 2) && !hasHorizontalScrollAncestor(element);
+      });
+      const uncontainedElements = rawUncontained.filter(element => !rawUncontained.some(parent => parent !== element && parent.contains(element))).slice(0, 20).map(element => {
+        const bounds = element.getBoundingClientRect();
+        return { element: signature(element), left: Math.round(bounds.left), right: Math.round(bounds.right) };
+      });
+      const clippedContainers = mainElements.filter(element => {
+        const style = getComputedStyle(element);
+        const clippedX = element.scrollWidth > element.clientWidth + 2 && (style.overflowX === 'hidden' || style.overflowX === 'clip');
+        const clippedY = element.scrollHeight > element.clientHeight + 2 && (style.overflowY === 'hidden' || style.overflowY === 'clip');
+        return (clippedX || clippedY) && (element.innerText || element.textContent || '').trim();
+      }).slice(0, 20).map(element => ({ element: signature(element), deltaX: element.scrollWidth - element.clientWidth, deltaY: element.scrollHeight - element.clientHeight }));
       const doc = document.documentElement, body = document.body, scrollWidth = Math.max(doc.scrollWidth, body.scrollWidth);
-      return { title: document.title, bodyTextLength: (body.innerText || '').length, activeTab: document.querySelector('.tabs button.active,.view-tabs button.active,.analysis-modes button.active')?.textContent?.trim() || null, scrollWidth, scrollHeight: Math.max(doc.scrollHeight, body.scrollHeight), horizontalOverflowPx: Math.max(0, scrollWidth - doc.clientWidth), smallTextCount: smallText.length, smallTapTargetCount: smallTargets.length };
+      return { title: document.title, bodyTextLength: (body.innerText || '').length, activeTab: document.querySelector('.tabs button.active,.view-tabs button.active,.analysis-modes button.active')?.textContent?.trim() || null, scrollWidth, scrollHeight: Math.max(doc.scrollHeight, body.scrollHeight), horizontalOverflowPx: Math.max(0, scrollWidth - doc.clientWidth), uncontainedElements, clippedContainers, smallTextCount: smallText.length, smallTapTargetCount: smallTargets.length };
     }, { viewportName });
+    if (viewportName === 'mobile' && result.metrics.uncontainedElements.length) errors.push(`mobile component overflow: ${JSON.stringify(result.metrics.uncontainedElements)}`);
+    if (viewportName === 'mobile' && result.metrics.clippedContainers.length) errors.push(`mobile clipped content: ${JSON.stringify(result.metrics.clippedContainers)}`);
     const fileName = `${safeName(scenario.name)}-${viewportName}.png`;
     await page.screenshot({ path: path.join(outDir, fileName), fullPage: true });
     result.screenshot = fileName;

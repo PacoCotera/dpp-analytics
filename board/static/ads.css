@@ -595,4 +595,24 @@ body.ads-page .data-table th {
     min-height: 220px;
     padding: 22px 16px;
   }
+
+  body.ads-page main > .subnav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    overflow: visible;
+  }
+
+  body.ads-page main > .subnav .subnav__item {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    padding-inline: 6px;
+    text-align: center;
+    white-space: normal;
+  }
+
+  body.ads-page main > .subnav .subnav__item:disabled {
+    display: none;
+  }
 }
