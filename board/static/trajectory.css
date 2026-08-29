@@ -310,15 +310,15 @@
     font-size: 30px;
   }
 
-  .paid-context--empty {
-    display: none;
-  }
-
   .paid-context {
     align-items: flex-start;
     flex-direction: column;
     gap: 10px;
     padding: 13px 4px;
+  }
+
+  .paid-context.paid-context--empty {
+    display: none;
   }
   .paid-context__metrics {
     grid-template-columns: repeat(4, minmax(0, 1fr));
