@@ -25,7 +25,7 @@
 .catalog-health-summary span {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 760;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -69,20 +69,22 @@
 }
 
 .catalog-health-item__identity strong {
-  font-size: 13px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 .catalog-health-item__identity span,
 .catalog-health-item__state span,
 .catalog-health-item__timing span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 14px;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .catalog-health-item__state strong {
   margin-bottom: 3px;
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.02em;
 }
 
@@ -99,7 +101,7 @@
 .catalog-health-contract {
   margin: 10px 2px 0;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 14px;
   line-height: 1.4;
 }
 

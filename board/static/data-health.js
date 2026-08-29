@@ -224,23 +224,23 @@ function renderJobs() {
 
   byId('jobs').innerHTML = rows
     .map(
-      (item) => `<div class="health-job">
-      <div class="health-job__identity">
+      (item) => `<div class="health-job" role="row">
+      <div class="health-job__identity" role="cell">
         <div class="health-job__name">${escapeHtml(item.label || item.job_name || '')}</div>
         <div class="health-job__source">${escapeHtml(item.operation || item.source || '')}</div>
         <div class="health-job__purpose">${escapeHtml(item.purpose || '')}</div>
         <button class="btn sync-now" type="button" data-job="${escapeHtml(item.job_name || '')}">Sync now</button>
       </div>
-      <div class="health-job__status"><span class="health-status ${jobState(item)}">${stateLabel(jobState(item))}</span></div>
-      <div class="health-job__age health-job__metric">
+      <div class="health-job__status" role="cell"><span class="health-status ${jobState(item)}">${stateLabel(jobState(item))}</span></div>
+      <div class="health-job__age health-job__metric" role="cell">
         <span class="health-job__metric-label">Last successful run</span>
         <strong>${duration(item.age_seconds)} old</strong><small>Last success ${timestamp(item.last_success_at)}</small>
       </div>
-      <div class="health-job__cadence health-job__metric">
+      <div class="health-job__cadence health-job__metric" role="cell">
         <span class="health-job__metric-label">Frequency</span>
         <strong>Every ${duration(item.expected_interval_seconds)}</strong><small>${scheduleCopy(item)}</small>
       </div>
-      <div class="health-job__rows health-job__metric">
+      <div class="health-job__rows health-job__metric" role="cell">
         <span class="health-job__metric-label">Rows read / stored</span>
         <strong>${item.records_read == null ? '—' : integer(item.records_read)} read · ${item.records_written == null ? '—' : integer(item.records_written)} stored</strong>
         <small>Attempt ${timestamp(item.last_started_at)}</small>
@@ -270,13 +270,13 @@ function render(payload) {
     byId('summaryEyebrow').textContent =
       `${totalAttention} condition${totalAttention === 1 ? '' : 's'} outside contract`;
     byId('healthTitle').textContent =
-      `${totalAttention} data condition${totalAttention === 1 ? ' needs' : 's need'} attention.`;
+      `${totalAttention} active data condition${totalAttention === 1 ? '' : 's'}`;
     byId('healthCopy').textContent = caution.length
       ? `${caution.map((domain) => domain.label).join(', ')} ${caution.length === 1 ? 'is' : 'are'} affected. Pipeline and catalog lifecycle detail are below.`
       : 'The affected condition is not currently blocking a decision-critical business surface.';
   } else {
     byId('summaryEyebrow').textContent = 'All decision health inside contract';
-    byId('healthTitle').textContent = 'Decision-critical data is current.';
+    byId('healthTitle').textContent = '0 active data conditions';
     byId('healthCopy').textContent = Number(catalogSummary.onboarding || 0)
       ? `All ${critical.length} decision surfaces are supported. ${catalogSummary.onboarding} new catalog item${Number(catalogSummary.onboarding) === 1 ? ' is' : 's are'} still inside normal Amazon propagation.`
       : `All ${critical.length} decision surfaces are supported within each source’s own cadence and grace period.`;
@@ -302,7 +302,7 @@ function bindInteractions() {
   byId('toggle').addEventListener('click', () => {
     expanded = !expanded;
     byId('toggle').textContent = expanded ? 'Show problems only' : 'Show all jobs';
-    byId('toggle').setAttribute('aria-pressed', String(expanded));
+    byId('toggle').setAttribute('aria-expanded', String(expanded));
     renderJobs();
   });
   byId('jobs').addEventListener('click', async (event) => {

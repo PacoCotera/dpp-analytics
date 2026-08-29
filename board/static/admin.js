@@ -4,6 +4,7 @@ const state = {
   csrf: null,
   revision: null,
   catalog: null,
+  dirtySkus: new Set(),
 };
 
 function text(value) {
@@ -36,6 +37,7 @@ async function request(path, options = {}) {
   if (!response.ok) {
     const error = new Error(payload.error || `Request failed (${response.status})`);
     error.status = response.status;
+    error.payload = payload;
     throw error;
   }
   return payload;
@@ -78,7 +80,11 @@ function taxonomyRow(name = '', value = '') {
   const remove = element('button', 'taxonomy-remove', '×');
   remove.type = 'button';
   remove.setAttribute('aria-label', `Remove ${name || 'taxonomy'} field`);
-  remove.addEventListener('click', () => row.remove());
+  remove.addEventListener('click', () => {
+    const editor = row.closest('.product-editor');
+    row.remove();
+    editor?.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   row.append(key, mapped, remove);
   return row;
 }
@@ -115,6 +121,8 @@ function editorFor(product) {
   const form = element('form', 'product-editor');
   form.dataset.sku = product.sku;
   form.dataset.search = `${product.sku} ${product.asin || ''} ${product.source_title || ''}`.toLowerCase();
+  const identityId = `admin-product-${encodeURIComponent(product.sku)}`;
+  form.setAttribute('aria-labelledby', identityId);
 
   const head = element('div', 'product-editor-head');
   if (product.image_url) {
@@ -127,7 +135,9 @@ function editorFor(product) {
     head.append(element('div', 'product-image-placeholder', 'No image'));
   }
   const identity = element('div', 'product-identity');
-  identity.append(element('strong', '', product.sku));
+  const skuHeading = element('strong', '', product.sku);
+  skuHeading.id = identityId;
+  identity.append(skuHeading);
   identity.append(element('span', '', product.source_title));
   identity.append(
     element(
@@ -178,13 +188,17 @@ function editorFor(product) {
   if (!rows.children.length) rows.append(taxonomyRow());
   const add = element('button', 'taxonomy-add', '+ Add taxonomy field');
   add.type = 'button';
-  add.addEventListener('click', () => rows.append(taxonomyRow()));
+  add.addEventListener('click', () => {
+    rows.append(taxonomyRow());
+    form.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   taxonomy.append(rows, add);
   fields.append(taxonomy);
 
   const actions = element('div', 'product-actions');
   const save = element('button', 'admin-save', 'Save');
   save.type = 'submit';
+  save.setAttribute('aria-label', `Save configuration for ${product.sku}`);
   const status = element('span', 'product-save-status');
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
@@ -193,6 +207,43 @@ function editorFor(product) {
   form.append(fields);
   form.addEventListener('submit', (event) => saveProduct(event, product));
   return form;
+}
+
+function draftFor(form) {
+  return {
+    fields: Object.fromEntries(
+      ['name', 'unit_cogs', 'family_name', 'image_url', 'amazon_url'].map((name) => [
+        name,
+        form.elements[name]?.value ?? '',
+      ]),
+    ),
+    taxonomy: [...form.querySelectorAll('.taxonomy-row')].map((row) => ({
+      key: row.querySelector('.taxonomy-key').value,
+      value: row.querySelector('.taxonomy-value').value,
+    })),
+  };
+}
+
+function captureDrafts({ excludeSku = null } = {}) {
+  const drafts = {};
+  for (const form of document.querySelectorAll('.product-editor')) {
+    if (form.dataset.sku === excludeSku || !state.dirtySkus.has(form.dataset.sku)) continue;
+    drafts[form.dataset.sku] = draftFor(form);
+  }
+  return drafts;
+}
+
+function applyDraft(form, draft) {
+  if (!draft) return;
+  for (const [name, value] of Object.entries(draft.fields || {})) {
+    if (form.elements[name]) form.elements[name].value = value;
+  }
+  const rows = form.querySelector('.taxonomy-rows');
+  rows.replaceChildren(
+    ...(draft.taxonomy?.length
+      ? draft.taxonomy.map((item) => taxonomyRow(item.key, item.value))
+      : [taxonomyRow()]),
+  );
 }
 
 function mappedAttributes(form) {
@@ -214,11 +265,13 @@ function mappedAttributes(form) {
 async function saveProduct(event, product) {
   event.preventDefault();
   const form = event.currentTarget;
+  const submittedDraft = draftFor(form);
   const button = form.querySelector('.admin-save');
   const status = form.querySelector('.product-save-status');
   button.disabled = true;
   status.textContent = 'Saving…';
   status.classList.remove('is-error');
+  status.setAttribute('role', 'status');
   try {
     const costText = form.elements.unit_cogs.value.trim();
     const payload = {
@@ -241,13 +294,33 @@ async function saveProduct(event, product) {
       body: JSON.stringify(payload),
     });
     state.revision = result.revision;
-    status.textContent = result.changed ? 'Saved' : 'No changes';
-    await loadCatalog({ preserveStatusFor: product.sku, statusText: status.textContent });
+    const savedStatus = result.changed ? 'Saved' : 'No changes';
+    const changedWhileSaving = JSON.stringify(draftFor(form)) !== JSON.stringify(submittedDraft);
+    status.textContent = changedWhileSaving ? `${savedStatus}; newer draft remains unsaved` : savedStatus;
+    if (!changedWhileSaving) state.dirtySkus.delete(product.sku);
+    await loadCatalog({
+      drafts: captureDrafts({ excludeSku: changedWhileSaving ? null : product.sku }),
+      preserveStatusFor: product.sku,
+      statusText: status.textContent,
+    });
   } catch (error) {
     status.textContent = error.message;
     status.classList.add('is-error');
+    status.setAttribute('role', 'alert');
     if (error.status === 401) showAuthenticated(false);
-    if (error.status === 409) await loadCatalog();
+    if (error.status === 409) {
+      const drafts = captureDrafts();
+      try {
+        await loadCatalog({
+          drafts,
+          preserveStatusFor: product.sku,
+          statusText: `${error.message}. The latest revision is loaded; your draft is preserved for review.`,
+          statusError: true,
+        });
+      } catch (refreshError) {
+        status.textContent = `${error.message}. Your draft remains in this page; the latest revision could not be loaded: ${refreshError.message}`;
+      }
+    }
   } finally {
     button.disabled = false;
   }
@@ -285,11 +358,16 @@ function renderCatalog(payload, preserved = {}) {
   editors.replaceChildren();
   for (const product of payload.current_products) {
     const editor = editorFor(product);
+    applyDraft(editor, preserved.drafts?.[product.sku]);
     if (product.sku === preserved.preserveStatusFor) {
-      editor.querySelector('.product-save-status').textContent = preserved.statusText || '';
+      const status = editor.querySelector('.product-save-status');
+      status.textContent = preserved.statusText || '';
+      status.classList.toggle('is-error', Boolean(preserved.statusError));
+      if (preserved.statusError) status.setAttribute('role', 'alert');
     }
     editors.append(editor);
   }
+  state.dirtySkus = new Set(Object.keys(preserved.drafts || {}));
   if (!payload.current_products.length) editors.append(element('p', '', 'No current sellable offers.'));
   renderDeleted(payload.deleted_products);
   applySearch();
@@ -302,9 +380,15 @@ async function loadCatalog(preserved = {}) {
 
 function applySearch() {
   const query = byId('adminSearch').value.trim().toLowerCase();
-  for (const editor of document.querySelectorAll('.product-editor')) {
-    editor.classList.toggle('is-filtered', Boolean(query) && !editor.dataset.search.includes(query));
+  let visible = 0;
+  const editors = [...document.querySelectorAll('.product-editor')];
+  for (const editor of editors) {
+    const filtered = Boolean(query) && !editor.dataset.search.includes(query);
+    editor.classList.toggle('is-filtered', filtered);
+    if (!filtered) visible += 1;
   }
+  byId('adminSearchResult').textContent = `${visible} of ${editors.length} current offers`;
+  byId('adminSearchEmpty').hidden = !query || visible > 0;
 }
 
 byId('loginForm').addEventListener('submit', async (event) => {
@@ -319,10 +403,11 @@ byId('loginForm').addEventListener('submit', async (event) => {
       method: 'POST',
       body: JSON.stringify({ password: byId('password').value }),
     });
+    const drafts = captureDrafts();
     state.csrf = session.csrf_token;
     byId('password').value = '';
     showAuthenticated(true);
-    await loadCatalog();
+    await loadCatalog({ drafts });
   } catch (error) {
     status.textContent = error.message;
     status.classList.add('is-error');
@@ -341,11 +426,22 @@ byId('logout').addEventListener('click', async () => {
   } finally {
     state.csrf = null;
     state.catalog = null;
+    state.revision = null;
+    state.dirtySkus.clear();
     showAuthenticated(false);
   }
 });
 
 byId('adminSearch').addEventListener('input', applySearch);
+byId('productEditors').addEventListener('input', (event) => {
+  const editor = event.target.closest('.product-editor');
+  if (editor?.dataset.sku) state.dirtySkus.add(editor.dataset.sku);
+});
+window.addEventListener('beforeunload', (event) => {
+  if (!state.dirtySkus.size) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
 
 async function initialize() {
   try {

@@ -32,7 +32,7 @@
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
-      <main data-dpp-qa="data-health-workspace">
+      <main>
         <header class="page-header">
           <div>
             <h1 class="page-header__title">Data Health</h1>
@@ -42,13 +42,13 @@
           </div>
         </header>
 
-        <section class="page-section trust-overview" data-dpp-qa="data-health-summary">
+        <section class="page-section trust-overview" data-dpp-qa="data-health-overview">
           <div class="panel health-summary">
             <div class="panel__body health-summary__body">
               <div class="health-summary__count" id="summaryCount">—</div>
               <div class="health-summary__copy">
                 <div class="health-eyebrow" id="summaryEyebrow">Checking streams</div>
-                <h2 class="health-title" id="healthTitle">Checking source freshness…</h2>
+                <h2 class="health-title" id="healthTitle">Decision data status</h2>
                 <p class="health-copy" id="healthCopy">
                   Comparing every source with its own collection schedule and grace period.
                 </p>
@@ -70,7 +70,12 @@
           <div class="attention-list" id="attention" aria-live="polite"></div>
         </section>
 
-        <section class="page-section catalog-onboarding-section" id="catalogOnboardingSection" hidden>
+        <section
+          class="page-section catalog-onboarding-section"
+          id="catalogOnboardingSection"
+          data-dpp-qa="catalog-onboarding"
+          hidden
+        >
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Catalog onboarding</h2>
@@ -104,23 +109,25 @@
                 Exceptions first. Expand the complete source list only for technical investigation.
               </div>
             </div>
-            <button class="btn" id="toggle" type="button" aria-pressed="false">Show all jobs</button>
+            <button class="btn" id="toggle" type="button" aria-expanded="false" aria-controls="jobs">
+              Show all jobs
+            </button>
           </div>
           <div class="panel pipeline-panel">
-            <div class="panel__body">
-              <div class="health-job health-job--header" aria-hidden="true">
-                <div>Job</div>
-                <div>Status</div>
-                <div>Freshness</div>
-                <div>Cadence</div>
-                <div>Rows read / stored</div>
+            <div class="panel__body" role="table" aria-label="Pipeline health">
+              <div class="health-job health-job--header" role="row">
+                <div role="columnheader">Job</div>
+                <div role="columnheader">Status</div>
+                <div role="columnheader">Freshness</div>
+                <div role="columnheader">Cadence</div>
+                <div role="columnheader">Rows read / stored</div>
               </div>
-              <div id="jobs"></div>
+              <div id="jobs" role="rowgroup"></div>
             </div>
           </div>
         </section>
 
-        <section class="page-section coverage-section" data-dpp-qa="data-health-pipeline">
+        <section class="page-section coverage-section">
           <details class="warehouse-reference">
             <summary>
               <span>

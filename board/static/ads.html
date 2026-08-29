@@ -31,18 +31,18 @@
       </header>
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
-      <main data-dpp-qa="ads-workspace">
-        <section class="page-header">
+      <main>
+        <section class="page-header" data-dpp-qa="ads-workspace-header">
           <div>
             <div class="kicker">Advertising manager</div>
-            <h1 class="page-header__title">Are ads helping us grow efficiently?</h1>
+            <h1 class="page-header__title">Advertising</h1>
             <p class="page-header__description">
-              Spend matters only in context. Start with total-sales efficiency, then inspect campaigns,
-              products, targets and shopper queries that are buying or destroying growth.
+              Amazon-attributed performance, independent seller-sales context, report quality and
+              server-ranked review evidence.
             </p>
           </div>
         </section>
-        <nav class="subnav" aria-label="Advertising views">
+        <nav class="subnav" aria-label="Advertising views" data-horizontal-scroll>
           <button class="subnav__item active" type="button" data-ads-view="overview" aria-selected="true">
             Overview</button
           ><button class="subnav__item" type="button" data-ads-view="campaigns">Campaigns</button
@@ -50,19 +50,21 @@
           ><button class="subnav__item" type="button" data-ads-view="targets">Targets</button
           ><button class="subnav__item" type="button" data-ads-view="searchTerms">Search terms</button>
         </nav>
-        <section id="overview" class="ads-view active" data-dpp-qa="ads-overview">
+        <p id="adsViewAvailability" class="ads-tab-note" role="status">
+          Additional views stay unavailable until the API confirms reporting readiness.
+        </p>
+        <section id="overview" class="ads-view active">
           <div id="emptyState" class="panel ads-empty" hidden>
             <div class="kicker">Advertising connection</div>
             <h2>Checking Amazon Ads connection.</h2>
             <p>Reading the current connection and reporting lifecycle.</p>
           </div>
           <div id="readyState" hidden>
-            <section class="ads-hero-read">
+            <section class="ads-hero-read" data-dpp-qa="ads-operating-evidence">
               <div class="kicker">28-day read</div>
-              <h2 id="storyTitle">Reading paid demand…</h2>
+              <h2 id="storyTitle">28-day operating evidence</h2>
               <p id="storyCopy">
-                Comparing spend, attributed performance and total business sales on the same reportable
-                window.
+                Loading spend, attributed performance and independent seller sales for the reportable window.
               </p>
             </section>
             <section id="qualityBand" class="ads-quality" aria-live="polite">
@@ -209,6 +211,9 @@
             <div class="data-table-shell">
               <div class="data-table-scroll">
                 <table class="data-table">
+                  <caption class="sr-only">
+                    Advertising campaign performance
+                  </caption>
                   <thead>
                     <tr>
                       <th>Campaign</th>
@@ -230,13 +235,16 @@
               <div>
                 <h2 class="section-header__title">Advertised products</h2>
                 <div class="section-header__description">
-                  Which products are consuming paid support, and what is Amazon attributing back?
+                  Spend and Amazon-attributed performance by advertised product.
                 </div>
               </div>
             </div>
             <div class="data-table-shell">
               <div class="data-table-scroll">
                 <table class="data-table">
+                  <caption class="sr-only">
+                    Advertised product performance
+                  </caption>
                   <thead>
                     <tr>
                       <th>Product</th>
@@ -257,19 +265,22 @@
             <div class="kicker">What we bid on</div>
             <h2>Target efficiency</h2>
             <p>
-              Targets are the keywords, products, categories or automatic matches we tell Amazon to pursue.
-              Start with the highest spend and inspect whether Amazon is attributing purchases back.
+              Targets are the keywords, products, categories or automatic matches sent to Amazon. Rows are
+              ordered by spend and retain the reported purchases and efficiency evidence.
             </p>
           </section>
           <section class="page-section">
             <div class="data-table-shell">
               <div class="data-table-scroll">
                 <table class="data-table">
+                  <caption class="sr-only">
+                    Advertising target performance
+                  </caption>
                   <thead>
                     <tr>
                       <th>Target</th>
                       <th>Campaign</th>
-                      <th>Action</th>
+                      <th class="ads-num">Purchases</th>
                       <th class="ads-num">Spend</th>
                       <th class="ads-num">Attributed sales</th>
                       <th class="ads-num">ACOS</th>
@@ -292,20 +303,23 @@
             <div class="kicker">What shoppers matched</div>
             <h2>Search-term discovery</h2>
             <p>
-              Search terms are the shopper queries or matched products Amazon reports after ad clicks. This is
-              the discovery layer for harvesting useful queries and spotting paid traffic that is not
-              converting.
+              Search terms are the shopper queries or matched products Amazon reports after ad clicks. Rows
+              retain reported purchases and efficiency evidence; review prompts remain in the API-ranked
+              operating queue.
             </p>
           </section>
           <section class="page-section">
             <div class="data-table-shell">
               <div class="data-table-scroll">
                 <table class="data-table">
+                  <caption class="sr-only">
+                    Advertising search-term performance
+                  </caption>
                   <thead>
                     <tr>
                       <th>Search term</th>
                       <th>Campaign</th>
-                      <th>Action</th>
+                      <th class="ads-num">Purchases</th>
                       <th class="ads-num">Spend</th>
                       <th class="ads-num">Attributed sales</th>
                       <th class="ads-num">ACOS</th>
@@ -318,8 +332,8 @@
               </div>
             </div>
             <div class="ads-guide">
-              <strong>Discovery, not “organic” attribution.</strong> A harvest candidate is a prompt to review
-              for dedicated targeting, never proof of incrementality.
+              <strong>Attribution is not incrementality.</strong> Review prompts come from API-owned action
+              and reason evidence; none proves exact organic sales.
             </div>
           </section>
         </section>

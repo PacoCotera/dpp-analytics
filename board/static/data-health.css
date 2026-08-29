@@ -2,6 +2,17 @@
   margin-top: 18px;
 }
 
+.data-health-page .btn {
+  min-height: var(--control-height);
+  font-size: 14px;
+}
+
+.data-health-page .page-header__description,
+.data-health-page .section-header__description,
+.data-health-page .kicker {
+  font-size: 14px;
+}
+
 .health-summary {
   overflow: hidden;
 }
@@ -20,7 +31,7 @@
   place-items: center;
   border-radius: 22px;
   background: var(--good-soft);
-  color: var(--good);
+  color: var(--good-ink);
   font-size: 34px;
   font-weight: 860;
   letter-spacing: -0.05em;
@@ -28,18 +39,18 @@
 
 .health-summary__count[data-state='degraded'] {
   background: var(--warn-soft);
-  color: var(--warn);
+  color: var(--warn-ink);
 }
 
 .health-summary__count[data-state='failed'] {
   background: var(--bad-soft);
-  color: var(--bad);
+  color: var(--bad-ink);
 }
 
 .health-eyebrow {
   margin-bottom: 5px;
   color: var(--accent-ink);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 850;
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -63,7 +74,7 @@
 .health-updated {
   margin: 8px 0 0;
   color: var(--faint);
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 650;
 }
 
@@ -97,7 +108,7 @@
   display: block;
   margin-bottom: 4px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 820;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -113,14 +124,14 @@
   max-width: 760px;
   margin: 8px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
 .incident__impact {
   margin-top: 12px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -150,7 +161,7 @@
 
 .incident__metrics dt {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 14px;
   font-weight: 830;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -168,7 +179,7 @@
   display: block;
   overflow: hidden;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 14px;
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -189,20 +200,22 @@
 
 .incident__diagnostic span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 14px;
   font-weight: 830;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .incident__diagnostic strong {
-  font-size: 11px;
+  min-width: 0;
+  font-size: 14px;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .incident__diagnostic small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 14px;
   line-height: 1.35;
 }
 
@@ -229,7 +242,7 @@
 
 .domain-group__label {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 830;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -253,27 +266,27 @@
 
 .domain-chip--healthy {
   background: var(--good-soft);
-  color: var(--good);
+  color: var(--good-ink);
 }
 
 .domain-chip--stale,
 .domain-chip--degraded {
   background: var(--warn-soft);
-  color: var(--warn);
+  color: var(--warn-ink);
 }
 
 .domain-chip--failed {
   background: var(--bad-soft);
-  color: var(--bad);
+  color: var(--bad-ink);
 }
 
 .domain-chip strong {
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .domain-chip small {
   color: currentcolor;
-  font-size: 8px;
+  font-size: 14px;
   font-weight: 760;
   opacity: 0.78;
   text-transform: uppercase;
@@ -299,7 +312,7 @@
 
 .source span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .warehouse-reference {
@@ -311,7 +324,7 @@
 
 .warehouse-reference summary {
   display: flex;
-  min-height: 44px;
+  min-height: var(--control-height);
   align-items: center;
   justify-content: space-between;
   gap: 14px;
@@ -329,25 +342,25 @@
 }
 
 .warehouse-reference summary strong {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .warehouse-reference summary small {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .warehouse-reference__action {
   color: var(--accent-ink);
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 820;
   text-transform: uppercase;
 }
 
 .warehouse-reference[open] .warehouse-reference__action::before {
   content: 'Hide';
-  font-size: 9px;
+  font-size: 14px;
 }
 
 .warehouse-reference[open] .warehouse-reference__action {
@@ -371,21 +384,22 @@
   padding: 0 0 9px;
   border-top: 0;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 820;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .health-job__name {
-  font-size: 13px;
+  overflow-wrap: anywhere;
+  font-size: 14px;
   font-weight: 760;
 }
 
 .health-job__source {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 14px;
   line-height: 1.3;
 }
 
@@ -399,7 +413,7 @@
   align-items: center;
   padding: 0 8px;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 850;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -407,23 +421,23 @@
 
 .health-status.healthy {
   background: var(--good-soft);
-  color: var(--good);
+  color: var(--good-ink);
 }
 
 .health-status.stale,
 .health-status.degraded {
   background: var(--warn-soft);
-  color: var(--warn);
+  color: var(--warn-ink);
 }
 
 .health-status.failed {
   background: var(--bad-soft);
-  color: var(--bad);
+  color: var(--bad-ink);
 }
 
 .health-job__age,
 .health-job__cadence {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 760;
 }
 
@@ -440,13 +454,13 @@
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 14px;
   font-weight: 500;
 }
 
 .health-job__rows {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .health-job__rows small {
@@ -471,7 +485,12 @@
   }
 
   .health-job--header {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 
   .health-job {
@@ -489,7 +508,7 @@
     display: block;
     margin-top: 6px;
     color: var(--muted);
-    font-size: 10px;
+    font-size: 14px;
     line-height: 1.35;
   }
 
@@ -503,7 +522,7 @@
     display: block;
     margin-bottom: 4px;
     color: var(--muted);
-    font-size: 8px;
+    font-size: 14px;
     font-weight: 820;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -512,20 +531,20 @@
   .health-job__age,
   .health-job__cadence {
     display: block;
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .health-job__rows {
     display: block;
     color: var(--ink);
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .health-job__rows small {
     display: block;
     margin-top: 2px;
     color: var(--muted);
-    font-size: 8px;
+    font-size: 14px;
     font-weight: 500;
   }
 }
@@ -549,7 +568,7 @@
   }
 
   .health-copy {
-    font-size: 11px;
+    font-size: 14px;
     line-height: 1.4;
   }
 
@@ -562,7 +581,7 @@
   }
 
   .incident__purpose {
-    font-size: 11.5px;
+    font-size: 14px;
   }
 
   .incident__metrics {
@@ -574,7 +593,7 @@
   }
 
   .incident__metrics dd {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .incident__metrics small {
