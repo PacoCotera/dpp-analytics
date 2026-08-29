@@ -171,12 +171,12 @@ try {
   }));
   const defaultProductValues = defaultProductControl.values.filter(value => value !== 'all').sort();
   if (JSON.stringify(defaultProductValues) !== JSON.stringify(expectedPrimary90)) {
-    throw new Error(`Default 90D products do not equal current offers with evidence: ${JSON.stringify({ expectedPrimary90, defaultProductControl })}`);
+    throw new Error(`Default 90D products do not equal current offers with activity: ${JSON.stringify({ expectedPrimary90, defaultProductControl })}`);
   }
-  if (defaultProductControl.groups.length !== 1 || !defaultProductControl.groups[0].includes('Current offers with Last 90 days evidence')) {
+  if (defaultProductControl.groups.length !== 1 || !defaultProductControl.groups[0].includes('Current offers with Last 90 days activity')) {
     throw new Error(`Default product grouping is not explicit: ${JSON.stringify(defaultProductControl)}`);
   }
-  if (!defaultProductControl.scope.includes(`${expectedPrimary90.length} current products with Last 90 days evidence`) || defaultProductControl.secondaryExpanded !== 'false') {
+  if (!defaultProductControl.scope.includes(`${expectedPrimary90.length} current products with Last 90 days activity`) || defaultProductControl.secondaryExpanded !== 'false') {
     throw new Error(`Default product scope disclosure is incomplete: ${JSON.stringify(defaultProductControl)}`);
   }
 

@@ -216,7 +216,7 @@ try {
 
   const surfaceChecks = [
     {
-      route: "/",
+      route: "/business",
       selector: "#homeBusinessWindow",
       patterns: [/Sales & Traffic/i, /source updated/i, /28 included days/i],
     },
