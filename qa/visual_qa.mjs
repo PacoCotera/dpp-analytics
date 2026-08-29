@@ -19,6 +19,8 @@ async function assertWorkspaceLandmarks(page, names) {
     return expected.filter(name => !available.has(name));
   }, names);
   if (missing.length) throw new Error(`Missing workspace landmarks: ${missing.join(', ')}`);
+}
+
 async function verifyControlTrustAppearance(page, expectedProfile) {
   await wait(page, 'main');
   await page.waitForFunction(() => {
