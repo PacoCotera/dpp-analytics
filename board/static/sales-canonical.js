@@ -36,7 +36,6 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
   const SALES_VIEWS = new Set(['overview', 'products', 'geography']);
   const SALES_RANGES = new Set(['full', '12m', '90d', '28d']);
   const GEOGRAPHY_PARAMS = ['geo_range', 'metric', 'sku', 'state'];
-  const mobileHierarchy = window.matchMedia('(max-width: 720px)');
   let DATA = null,
     VIEW = 'overview',
     RANGE = '12m',
@@ -968,13 +967,9 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
       set('salesReferenceToggle', reference?.open ? 'Hide ↑' : 'View ↓');
     };
     if (reference) {
-      reference.open = !mobileHierarchy.matches;
       reference.addEventListener('toggle', updateReferenceToggle);
       updateReferenceToggle();
     }
-    mobileHierarchy.addEventListener('change', (event) => {
-      if (reference) reference.open = !event.matches;
-    });
     const host = document.querySelector('.sales-chart-card');
     if ('ResizeObserver' in window && host) {
       new ResizeObserver(() => {

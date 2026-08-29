@@ -202,8 +202,8 @@ async function verifySalesOverview(page) {
   ) {
     throw new Error(`Sales Overview mobile hierarchy mismatch: ${JSON.stringify(state)}`);
   }
-  if (!state.mobile && !state.referenceOpen)
-    throw new Error('Sales Overview desktop reference context is collapsed');
+  if (!state.mobile && state.referenceOpen)
+    throw new Error('Sales Overview desktop reference context should remain secondary');
 }
 
 async function verifySalesProducts(page) {
@@ -280,11 +280,13 @@ async function verifyToday(page) {
   await wait(page, '#products .ops-owned');
   const state = await page.evaluate(() => {
     const mobile = window.innerWidth <= 640;
-    const hero = document.querySelector('.today-hero');
-    const business = document.querySelector('.today-read-panel');
+    const main = document.querySelector('.today-main');
+    const overview = document.querySelector('[data-dpp-qa="today-overview"]');
     const queue = document.querySelector('.order-flow-panel');
     const drivers = document.querySelector('.today-drivers-panel');
     const rhythm = document.querySelector('[data-dpp-qa="today-rhythm"]');
+    const operations = document.querySelector('.today-operations');
+    const evidenceSection = document.querySelector('.today-evidence');
     const evidence = document.getElementById('todayBusinessEvidence');
     const reference = document.getElementById('todayProductsReference');
     const priority = [...document.querySelectorAll('.today-products-priority .today-product')];
@@ -292,8 +294,15 @@ async function verifyToday(page) {
     const tops = rhythmKpis.map(item => Math.round(item.getBoundingClientRect().top));
     return {
       mobile,
-      order: [hero, business, rhythm, queue, drivers].map(item =>
-        Math.round(item?.getBoundingClientRect().top || 0)
+      recipeMatch: Boolean(
+        main &&
+          [...main.children].filter(item => item.matches('section')).every(
+            (section, index) => section === [overview, rhythm, operations, evidenceSection][index]
+          ) &&
+          [...main.children].filter(item => item.matches('section')).length === 4
+      ),
+      queueBeforeDrivers: Boolean(
+        queue && drivers && queue.getBoundingClientRect().top <= drivers.getBoundingClientRect().top
       ),
       evidenceOpen: Boolean(evidence?.hasAttribute('open')),
       referencePresent: Boolean(reference),
@@ -306,7 +315,8 @@ async function verifyToday(page) {
   });
   if (
     state.mobile &&
-    (state.order.some((top, index) => index && top <= state.order[index - 1]) ||
+    (!state.recipeMatch ||
+      !state.queueBeforeDrivers ||
       state.evidenceOpen ||
       (state.referencePresent && state.referenceOpen) ||
       state.priorityCards > 3 ||
@@ -857,8 +867,8 @@ async function verifyTrajectory(page) {
   ) {
     throw new Error(`Trajectory mobile hierarchy mismatch: ${JSON.stringify(state)}`);
   }
-  if (!state.mobile && (!state.guideOpen || !state.referenceOpen))
-    throw new Error(`Trajectory desktop evidence is collapsed: ${JSON.stringify(state)}`);
+  if (!state.mobile && (state.guideOpen || state.referenceOpen))
+    throw new Error(`Trajectory secondary evidence is expanded: ${JSON.stringify(state)}`);
 }
 async function verifyInventory(page) {
   await assertWorkspaceLandmarks(page, [
