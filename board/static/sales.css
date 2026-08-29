@@ -1389,7 +1389,8 @@
 }
 
 @media (max-width: 720px) {
-  .sales-operating-grid {
+  .sales-page .sales-operating-grid {
+    grid-template-columns: minmax(0, 1fr);
     overflow: visible;
     border: 0;
     background: transparent;
@@ -1403,6 +1404,7 @@
   }
 
   .sales-state-rail {
+    order: -1;
     border-left: var(--border-width) solid var(--dpp-border);
   }
 
