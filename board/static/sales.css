@@ -1648,6 +1648,10 @@ body.sales-page .product-contribution-header {
 
   .sales-chart-kpi-label {
     font-size: var(--dpp-metadata-size, 14px);
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .sales-chart-kpi-value {

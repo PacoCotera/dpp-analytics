@@ -1151,6 +1151,10 @@ body.finance-page .history thead {
     padding-top: 12px;
   }
 
+  body.finance-page .history thead {
+    display: none;
+  }
+
   body.finance-page .finance-head > div:first-child,
   body.finance-page .period-meta,
   body.finance-page .report,
