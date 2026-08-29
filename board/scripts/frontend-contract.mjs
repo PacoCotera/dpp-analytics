@@ -74,6 +74,16 @@ const presentationCss = readFileSync(join(staticRoot, 'presentation-profiles.css
 const presentationRegistry = JSON.parse(readFileSync(join(root, 'presentation', 'profiles.json'), 'utf8'));
 const todayHtml = readFileSync(join(staticRoot, 'today.html'), 'utf8');
 const todayScript = readFileSync(join(staticRoot, 'today.js'), 'utf8');
+const homeHtml = readFileSync(join(staticRoot, 'home.html'), 'utf8');
+const homeScript = readFileSync(join(staticRoot, 'home.js'), 'utf8');
+const trajectoryHtml = readFileSync(join(staticRoot, 'trajectory.html'), 'utf8');
+const trajectoryScript = readFileSync(join(staticRoot, 'trajectory.js'), 'utf8');
+const trajectoryCss = readFileSync(join(staticRoot, 'trajectory.css'), 'utf8');
+const productHtml = readFileSync(join(staticRoot, 'product.html'), 'utf8');
+const salesHtml = readFileSync(join(staticRoot, 'sales.html'), 'utf8');
+const financeHtml = readFileSync(join(staticRoot, 'finance.html'), 'utf8');
+const dataHealthScript = readFileSync(join(staticRoot, 'data-health.js'), 'utf8');
+const chartSystem = readFileSync(join(staticRoot, 'chart-system.js'), 'utf8');
 const salesGeographyScript = readFileSync(join(staticRoot, 'sales-geography-v2.js'), 'utf8');
 const shellSelector =
   /\.(?:app|topbar|brand|brand-copy|brand-title|brand-sub|mark|top-meta|primary-nav|nav-more|footer)\b/;
@@ -316,6 +326,68 @@ check(
   'today.js',
   'Today must not use post-render correction observers',
 );
+for (const [page, html] of [
+  ['home.html', homeHtml],
+  ['today.html', todayHtml],
+  ['trajectory.html', trajectoryHtml],
+  ['sales.html', salesHtml],
+  ['product.html', productHtml],
+  ['finance.html', financeHtml],
+]) {
+  const controls = [...html.matchAll(/<div\b[^>]*\btime-window-control\b[^>]*>[\s\S]*?<\/div>/gi)];
+  check(controls.length > 0, page, 'chart time windows must use the shared time-window control');
+  check(
+    controls.every(([markup]) => />\s*YTD\s*</i.test(markup)),
+    page,
+    'every chart time-window control must offer YTD',
+  );
+}
+check(
+  /DPPCharts\.demandRhythm/.test(homeScript) && /DPPCharts\.demandRhythm/.test(todayScript),
+  'chart-system.js',
+  'Business and Today demand must share one chart renderer',
+);
+check(
+  !/scaleBand|append\(['"]rect['"]\)/.test(todayScript),
+  'today.js',
+  'Today must not own a second bar-chart implementation',
+);
+check(
+  !/<progress\b/i.test(trajectoryHtml) && !/trajectory-chart-scroll/.test(trajectoryHtml),
+  'trajectory.html',
+  'Trajectory must use the wide chart for evidence instead of progress bars or an internal scroller',
+);
+check(
+  !/\.trajectory-chart\s*\{[^}]*\b(?:min-)?width:\s*\d+px/s.test(trajectoryCss),
+  'trajectory.css',
+  'Trajectory chart must not force a fixed pixel width',
+);
+check(
+  /aggregateSeriesByWeek/.test(chartSystem) && />\s*120/.test(chartSystem),
+  'chart-system.js',
+  'long trajectory windows must aggregate daily bars for readable density',
+);
+check(
+  /let expanded\s*=\s*true/.test(dataHealthScript),
+  'data-health.js',
+  'healthy state must keep pipeline jobs and their actions visible by default',
+);
+for (const pageStyle of Object.values(pageStyles)) {
+  const pageCss = readFileSync(join(staticRoot, pageStyle), 'utf8');
+  for (const primitive of [
+    'workspace',
+    'panel--chart',
+    'chart-host',
+    'segmented-control',
+    'segmented-control__item',
+  ]) {
+    check(
+      !new RegExp(`(?:^|\\n)\\.${primitive.replaceAll('-', '\\-')}(?![\\w-])\\s*\\{`, 'm').test(pageCss),
+      pageStyle,
+      `shared primitive .${primitive} must be owned by layout-system.css`,
+    );
+  }
+}
 check(
   /@media \(prefers-reduced-motion: reduce\)/.test(theme) &&
     /transition:\s*none !important/.test(theme) &&

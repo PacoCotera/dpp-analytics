@@ -13,7 +13,7 @@ import {
 
 const sku = new URLSearchParams(window.location.search).get('sku') || '';
 let data = null;
-let days = 28;
+let days = '28';
 let metric = 'sales';
 let ordersExpanded = false;
 const ORDER_PREVIEW_LIMIT = 6;
@@ -80,12 +80,14 @@ function decimal(value, digits = 2) {
 
 function draw() {
   if (!data || !window.DPPCharts) return;
-  const rows = (data.series || []).slice(-days);
+  const series = data.series || [];
+  const rows = days === 'ytd' ? series : series.slice(-Number(days));
   window.DPPCharts.productDemand('#chart', rows, { metric });
+  const windowLabel = days === 'ytd' ? 'year to date' : `last ${days} days`;
   byId('chartSub').textContent =
     metric === 'units'
-      ? `Units ordered · reconciled Amazon Sales & Traffic · last ${days} days`
-      : `Shopper spend incl. IVA · reconciled Amazon Sales & Traffic · last ${days} days`;
+      ? `Units ordered · reconciled Amazon Sales & Traffic · ${windowLabel}`
+      : `Shopper spend incl. IVA · reconciled Amazon Sales & Traffic · ${windowLabel}`;
 }
 
 function renderHealth(payload) {
@@ -444,7 +446,7 @@ function bindInteractions() {
       });
       button.classList.add('active');
       button.setAttribute('aria-pressed', 'true');
-      days = Number(button.dataset.days);
+      days = button.dataset.days || '28';
       draw();
     });
   });

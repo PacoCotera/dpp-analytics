@@ -283,7 +283,8 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
 
     with connect() as conn, conn.cursor() as cur:
         basis = _basis(cur, marketplace)
-        daily = _gross_daily(cur, marketplace, target, 61)
+        year_days = (target - target.replace(month=1, day=1)).days + 1
+        daily = _gross_daily(cur, marketplace, target, max(61, year_days))
         target_row = next((r for r in daily if r.get("business_date") == target), {})
 
         # Correct the headline on both live and selected closed days.
@@ -327,6 +328,7 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
         row["selected"] = row["business_date"] == target
         row["sales_basis"] = "GROSS_CUSTOMER_SPEND"
     payload["recent_daily"] = last30
+    payload["daily_history"] = daily
 
     local_time = (payload.get("context") or {}).get("local_time") or ""
     context = _context_from_gross(daily, target, local_time)

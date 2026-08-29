@@ -51,6 +51,32 @@
   min-width: 0;
 }
 
+/* Analytics workspaces share one responsive composition contract. Page files
+   supply domain-specific content, not alternate page widths or panel systems. */
+.workspace {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+}
+
+.workspace-grid {
+  display: grid;
+  min-width: 0;
+  gap: var(--panel-gap);
+  align-items: start;
+}
+
+.workspace-grid > * {
+  min-width: 0;
+}
+
+.workspace-grid--business-secondary,
+.workspace-grid--today-primary,
+.workspace-grid--trajectory-primary {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* KPI rails are a single reusable object, never a collection of free-floating
    numbers. The rail owns its surface, separators and responsive geometry. */
 .kpi-rail {
@@ -367,6 +393,23 @@
   line-height: 1.35;
 }
 
+.panel--chart .panel__header {
+  align-items: center;
+  padding: 15px 18px 0;
+}
+
+.panel--chart .panel__body {
+  min-width: 0;
+  padding: 8px 12px 14px;
+}
+
+.chart-host {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .action-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -384,15 +427,30 @@
   background: var(--dpp-surface-subtle, var(--surface));
 }
 .segmented-control__item {
-  min-height: 34px;
+  min-height: var(--control-height);
   padding: 0 12px;
   border: 0;
   border-radius: var(--pill-radius);
   background: transparent;
   color: var(--muted);
-  font-size: 11px;
+  font-family: var(--dpp-font-detail, inherit);
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 760;
   cursor: pointer;
+}
+
+.segmented-control--fill {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+
+.time-window-control {
+  flex: 0 0 auto;
+}
+
+.time-window-control .segmented-control__item {
+  min-width: 52px;
 }
 .segmented-control__item[aria-selected='true'],
 .segmented-control__item.active {
@@ -489,6 +547,25 @@
     gap: 10px;
     padding: 9px 0 11px;
   }
+
+  .panel--chart .panel__header {
+    display: grid;
+    gap: 10px;
+    padding: 13px 14px 0;
+  }
+
+  .panel--chart .panel__body {
+    padding: 6px 8px 12px;
+  }
+
+  .time-window-control {
+    width: 100%;
+  }
+
+  .time-window-control .segmented-control__item {
+    min-width: 0;
+    padding-inline: 7px;
+  }
   .page-header__title {
     font-size: 27px;
   }
@@ -536,5 +613,19 @@
   }
   .data-table-shell--cards-on-mobile .data-table-scroll {
     display: none;
+  }
+}
+
+@media (min-width: 1800px) {
+  .workspace-grid--business-secondary {
+    grid-template-columns: minmax(520px, 0.85fr) minmax(0, 1.15fr);
+  }
+
+  .workspace-grid--today-primary {
+    grid-template-columns: minmax(0, 1.55fr) minmax(460px, 0.75fr);
+  }
+
+  .workspace-grid--trajectory-primary {
+    grid-template-columns: minmax(0, 1.65fr) minmax(480px, 0.75fr);
   }
 }

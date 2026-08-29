@@ -266,13 +266,6 @@
   gap: 8px;
 }
 
-.product-range .segmented-control__item,
-.product-metric .segmented-control__item {
-  min-height: var(--control-height);
-  padding: 0 13px;
-  font-size: 14px;
-}
-
 .decision-rail {
   display: grid;
   grid-template-columns: 1fr;
@@ -856,9 +849,14 @@
     margin-top: 12px;
   }
 
-  .product-chart-controls .segmented-control {
+  .product-metric {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .product-range {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .product-chart {
@@ -1030,12 +1028,6 @@ body.product-page .product-chart-panel .panel__description {
 
 body.product-page .product-chart {
   height: clamp(330px, 31vw, 440px);
-}
-
-body.product-page .product-range .segmented-control__item,
-body.product-page .product-metric .segmented-control__item {
-  min-height: 38px;
-  font-size: 12px;
 }
 
 body.product-page .decision-rail {

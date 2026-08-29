@@ -25,33 +25,6 @@
   min-width: 0;
 }
 
-.geo-range {
-  display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border: var(--border-width) solid var(--line);
-  border-radius: var(--pill-radius);
-  background: var(--dpp-surface-subtle);
-}
-
-.geo-range button {
-  height: 30px;
-  min-width: 44px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: var(--pill-radius);
-  background: transparent;
-  color: var(--muted);
-  font-size: var(--dpp-metadata-size, 14px);
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.geo-range button.active {
-  background: var(--ink);
-  color: var(--dpp-interaction-text);
-}
-
 .geo-control {
   display: grid;
   min-width: 0;

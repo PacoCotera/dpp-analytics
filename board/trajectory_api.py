@@ -44,9 +44,9 @@ def trajectory_payload(connect, marketplace: str) -> dict:
               avg(sales) OVER (PARTITION BY marketplace_id ORDER BY business_date ROWS BETWEEN 27 PRECEDING AND CURRENT ROW)::numeric(14,2) avg28
             FROM mart.business_daily
             WHERE marketplace_id=%s AND reconciled_daily_report
-              AND business_date BETWEEN %s::date-179 AND %s::date
+              AND business_date BETWEEN least(date_trunc('year',%s::date)::date,%s::date-179) AND %s::date
             ORDER BY business_date
-        """,(marketplace,cutoff,cutoff))
+        """,(marketplace,cutoff,cutoff,cutoff))
         weekly=_all(cur,"""
             WITH c AS (SELECT %s::date cutoff,date_trunc('week',%s::date)::date current_week_start), d AS (
               SELECT business_date,sales FROM mart.business_daily,c WHERE marketplace_id=%s AND business_date BETWEEN c.cutoff-104 AND c.cutoff AND reconciled_daily_report), w AS (

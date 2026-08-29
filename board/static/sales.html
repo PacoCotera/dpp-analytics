@@ -98,11 +98,36 @@
                     12 months · incl. IVA · Amazon Sales &amp; Traffic · current month actual + run rate
                   </div>
                 </div>
-                <div class="sales-range" role="group" aria-label="Sales chart time window">
-                  <button type="button" data-range="full" aria-pressed="false">FULL</button>
-                  <button class="active" type="button" data-range="12m" aria-pressed="true">12M</button>
-                  <button type="button" data-range="90d" aria-pressed="false">90D</button>
-                  <button type="button" data-range="28d" aria-pressed="false">28D</button>
+                <div
+                  class="segmented-control time-window-control sales-range"
+                  role="group"
+                  aria-label="Sales chart time window"
+                >
+                  <button
+                    class="segmented-control__item"
+                    type="button"
+                    data-range="full"
+                    aria-pressed="false"
+                  >
+                    FULL
+                  </button>
+                  <button
+                    class="segmented-control__item active"
+                    type="button"
+                    data-range="12m"
+                    aria-pressed="true"
+                  >
+                    12M
+                  </button>
+                  <button class="segmented-control__item" type="button" data-range="ytd" aria-pressed="false">
+                    YTD
+                  </button>
+                  <button class="segmented-control__item" type="button" data-range="90d" aria-pressed="false">
+                    90D
+                  </button>
+                  <button class="segmented-control__item" type="button" data-range="28d" aria-pressed="false">
+                    28D
+                  </button>
                 </div>
               </div>
               <svg
@@ -319,11 +344,44 @@
               <div class="geo-coverage" id="geoCoverage">Checking geography coverage…</div>
             </div>
             <div class="geo-controls" aria-label="Geography filters">
-              <div class="geo-range" id="geoRange" role="group" aria-label="Geography time window">
-                <button type="button" data-geo-range="30d" aria-pressed="false">30D</button>
-                <button class="active" type="button" data-geo-range="90d" aria-pressed="true">90D</button>
-                <button type="button" data-geo-range="ytd" aria-pressed="false">YTD</button>
-                <button type="button" data-geo-range="all" aria-pressed="false">ALL</button>
+              <div
+                class="segmented-control time-window-control geo-range"
+                id="geoRange"
+                role="group"
+                aria-label="Geography time window"
+              >
+                <button
+                  class="segmented-control__item"
+                  type="button"
+                  data-geo-range="30d"
+                  aria-pressed="false"
+                >
+                  30D
+                </button>
+                <button
+                  class="segmented-control__item active"
+                  type="button"
+                  data-geo-range="90d"
+                  aria-pressed="true"
+                >
+                  90D
+                </button>
+                <button
+                  class="segmented-control__item"
+                  type="button"
+                  data-geo-range="ytd"
+                  aria-pressed="false"
+                >
+                  YTD
+                </button>
+                <button
+                  class="segmented-control__item"
+                  type="button"
+                  data-geo-range="all"
+                  aria-pressed="false"
+                >
+                  ALL
+                </button>
               </div>
               <label class="geo-control">
                 <span>Metric</span>

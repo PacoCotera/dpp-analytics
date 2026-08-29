@@ -145,12 +145,19 @@
 
 .home-main .section-header__action {
   display: inline-flex;
-  min-height: 32px;
   align-items: center;
+  gap: 12px;
   color: var(--dpp-interaction);
   font-size: 13px;
   font-weight: 780;
   text-decoration: none;
+  white-space: nowrap;
+}
+
+.home-main .section-header__action > a {
+  display: inline-flex;
+  min-height: var(--control-height);
+  align-items: center;
   white-space: nowrap;
 }
 
@@ -163,7 +170,11 @@
 .spark {
   display: block;
   width: 100%;
-  height: clamp(260px, 24vw, 340px);
+  height: clamp(270px, 24vw, 360px);
+}
+
+.workspace-grid--business-secondary .home-surface {
+  height: 100%;
 }
 
 .decisions-header {
@@ -560,6 +571,18 @@
 
   .spark {
     height: 260px;
+  }
+
+  .home-main .section-header__action {
+    display: grid;
+    width: 100%;
+    gap: 4px;
+    white-space: normal;
+  }
+
+  .home-main .section-header__action > a {
+    min-height: var(--control-height);
+    justify-self: end;
   }
 }
 

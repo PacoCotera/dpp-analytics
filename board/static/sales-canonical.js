@@ -34,7 +34,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
   const ORDER_MOBILE_LIMIT = 10;
   const PRODUCT_MOBILE_LIMIT = 6;
   const SALES_VIEWS = new Set(['overview', 'products', 'geography']);
-  const SALES_RANGES = new Set(['full', '12m', '90d', '28d']);
+  const SALES_RANGES = new Set(['full', '12m', 'ytd', '90d', '28d']);
   const GEOGRAPHY_PARAMS = ['geo_range', 'metric', 'sku', 'state'];
   let DATA = null,
     VIEW = 'overview',
@@ -435,20 +435,29 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
       .filter((r) => r.key && r.date)
       .sort((a, b) => d3.ascending(a.key, b.key));
   }
-  function drawMonthly(rows, isFull = false) {
+  function drawMonthly(rows, isFull = false, mode = '12m') {
     const data = monthData(rows);
     if (!data.length) return;
     const h = DATA.headline || {};
+    const isYtd = mode === 'ytd';
     copy(
-      isFull ? 'Full sales history' : 'Monthly sales',
+      isFull
+        ? 'Full sales history'
+        : isYtd
+          ? `${String(h.business_date || '').slice(0, 4)} year to date`
+          : 'Monthly sales',
       isFull
         ? `Monthly sales · ${data.length} months · year boundaries${data.at(-1)?.partial ? ' · current month partial' : ''}`
-        : '12 months · current month actual + run rate',
+        : isYtd
+          ? `${data.length} calendar months · current month actual + run rate`
+          : '12 months · current month actual + run rate',
     );
     const c = shell(
       isFull
         ? 'Full monthly sales history with year boundaries'
-        : 'Twelve months of monthly sales with current-month run rate',
+        : isYtd
+          ? 'Year-to-date monthly sales with current-month run rate'
+          : 'Twelve months of monthly sales with current-month run rate',
     );
     const x = d3
         .scaleBand()
@@ -461,7 +470,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
         .nice(4)
         .range([c.ih, 0]);
     grid(c, y);
-    const pid = isFull ? 'sales-full-runrate' : 'sales-month-runrate';
+    const pid = isFull ? 'sales-full-runrate' : isYtd ? 'sales-ytd-runrate' : 'sales-month-runrate';
     makePattern(c.svg, pid);
     const bars = c.plot
       .selectAll('.sales-month')
@@ -583,6 +592,16 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
           n: 'average / month',
         },
         { l: 'Benchmark', v: pct(delta), n: 'last 12M vs prior 12M', tone: cls(delta) },
+      ]);
+    } else if (isYtd) {
+      const total = sum(data, 'value');
+      const orders = sum(data, 'orders');
+      const units = sum(data, 'units');
+      renderKpis([
+        { l: 'YTD shopper spend', v: money(total), n: `${data.length} calendar months` },
+        { l: 'Orders · units', v: `${nf.format(orders)} · ${nf.format(units)}`, n: 'year to date' },
+        { l: 'Monthly pace', v: data.length ? money(total / data.length) : '—', n: 'average / month' },
+        { l: `${monthName(h.business_date)} MTD`, v: money(h.sales_mtd), n: 'current open month' },
       ]);
     } else
       renderKpis([
@@ -902,6 +921,15 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
     if (!DATA) return;
     if (RANGE === 'full') {
       drawMonthly(DATA.months_full || DATA.months || [], true);
+      return;
+    }
+    if (RANGE === 'ytd') {
+      const year = String(DATA.headline?.business_date || '').slice(0, 4);
+      drawMonthly(
+        (DATA.months_full || DATA.months || []).filter((row) => String(row.month || '').startsWith(year)),
+        false,
+        'ytd',
+      );
       return;
     }
     if (RANGE === '90d') {

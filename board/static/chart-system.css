@@ -105,85 +105,92 @@
   stroke-linejoin: round;
 }
 
-#spark .dpp-grid line {
-  stroke: var(--dpp-data-grid, var(--line));
-}
-
-#spark .dpp-axis text {
-  fill: var(--dpp-text-muted, var(--muted));
-}
-
-#spark .home-rhythm__current-week {
-  fill: var(--dpp-data-incomplete);
-  opacity: 0.1;
-}
-
-#spark .home-rhythm__week-line {
-  stroke: var(--dpp-border-strong, var(--line));
-  stroke-width: var(--border-width, 1px);
-  stroke-dasharray: 2 5;
-  opacity: 0.26;
-}
-
-#spark .home-rhythm__bar {
+.demand-rhythm__bar {
   --dpp-mark-color: var(--dpp-data1);
 
   fill: var(--dpp-mark-color);
   opacity: 0.76;
 }
 
-#spark .home-rhythm__bar--weekend {
+.demand-rhythm__bar--weekend {
   --dpp-mark-color: var(--dpp-data6);
 
   opacity: 0.62;
 }
 
-#spark .home-rhythm__bar--exceptional {
+.demand-rhythm__bar--exceptional,
+.demand-rhythm__bar--live {
   --dpp-mark-color: var(--dpp-data2);
 
-  opacity: 0.92;
+  opacity: 0.94;
 }
 
-#spark .home-rhythm__area {
+.demand-rhythm__bar--selected:not(.demand-rhythm__bar--live) {
+  --dpp-mark-color: var(--dpp-data6);
+
+  opacity: 1;
+}
+
+.demand-rhythm__current-period {
+  fill: var(--dpp-data-incomplete);
+  opacity: 0.1;
+}
+
+.demand-rhythm__week-line {
+  stroke: var(--dpp-border-strong, var(--line));
+  stroke-width: var(--border-width, 1px);
+  stroke-dasharray: 2 5;
+  opacity: 0.26;
+}
+
+.demand-rhythm__area {
   pointer-events: none;
 }
 
-#spark .home-rhythm__line-halo {
+.demand-rhythm__line-halo {
   stroke: var(--dpp-surface, var(--surface));
   stroke-width: 6;
 }
 
-#spark .home-rhythm__line {
+.demand-rhythm__line {
   stroke: var(--dpp-data1);
   stroke-width: 2.8;
 }
 
-#spark .home-rhythm__latest-dot {
+.demand-rhythm__latest-dot {
   fill: var(--dpp-data2);
   stroke: var(--dpp-surface, var(--surface));
   stroke-width: 2.5;
   pointer-events: none;
 }
 
-#spark .home-rhythm__latest-label {
+.demand-rhythm__latest-label {
   fill: var(--dpp-text, var(--ink));
   stroke: var(--dpp-surface, var(--surface));
   stroke-width: 4px;
   stroke-linejoin: round;
   paint-order: stroke;
   font-family: var(--dpp-font-display, inherit);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: var(--dpp-kpi-weight, 800);
   pointer-events: none;
 }
 
-#spark .home-rhythm__current-label {
+.demand-rhythm__current-label {
   fill: var(--dpp-data-incomplete);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 7px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.08em;
   pointer-events: none;
+}
+
+#spark .dpp-grid line {
+  stroke: var(--dpp-data-grid, var(--line));
+}
+
+#spark .dpp-axis text {
+  fill: var(--dpp-text-muted, var(--muted));
 }
 
 .dpp-chart .dpp-dot {

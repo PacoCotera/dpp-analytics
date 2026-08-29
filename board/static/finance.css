@@ -7,19 +7,15 @@
   border-bottom: 1px solid var(--line);
 }
 
-.finance-page .segmented-control__item,
 .finance-page #monthPicker {
   min-height: var(--control-height);
-  font-size: 14px;
-}
-
-.finance-page #monthPicker {
   margin-inline-start: 6px;
   padding: 0 10px;
   border: var(--border-width) solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--dpp-surface-raised, var(--surface));
   color: var(--ink);
+  font-size: 14px;
 }
 
 .finance-page .dpp-chart-scroll {
@@ -1191,7 +1187,6 @@ body.finance-page .history thead {
     display: grid;
     width: 100%;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    border-radius: var(--radius-sm);
   }
 
   body.finance-page .finance-read > .subnav .segmented-control__item {
