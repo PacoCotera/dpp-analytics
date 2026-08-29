@@ -47,16 +47,8 @@
 }
 
 .how-btn {
-  min-height: var(--control-height);
-  padding: 0 15px;
-  border: var(--border-width) solid var(--line);
-  border-radius: var(--pill-radius);
-  background: var(--dpp-surface-raised, var(--surface));
-  color: var(--ink);
-  font-size: 14px;
   font-weight: 780;
   white-space: nowrap;
-  cursor: pointer;
 }
 
 .how-btn[aria-expanded='true'] {
@@ -330,36 +322,6 @@
   font-size: 14px;
 }
 
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.filter {
-  min-height: var(--control-height);
-  padding: 0 13px;
-  border: var(--border-width) solid var(--line);
-  border-radius: var(--pill-radius);
-  background: var(--dpp-surface-raised, var(--surface));
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 800;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.filter:hover {
-  border-color: var(--dpp-border-strong, var(--line));
-  color: var(--ink);
-}
-
-.filter.active {
-  border-color: var(--dpp-interaction, var(--ink));
-  background: var(--dpp-interaction, var(--ink));
-  color: var(--dpp-interaction-text);
-}
-
 .export-link {
   min-height: var(--control-height);
   align-content: center;
@@ -614,21 +576,18 @@ body.inventory-page .inventory-header-actions .kpi__value {
 body.inventory-page .inventory-header-actions .kpi__label,
 body.inventory-page .inventory-header-actions .kpi__note {
   margin-top: 3px;
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 body.inventory-page .how-btn {
-  min-height: 36px;
   justify-self: end;
   margin: 0 12px 10px;
-  padding: 0 11px;
-  font-size: 12px;
 }
 
 body.inventory-page .notice.how {
   margin: 8px 0 0;
   padding: 10px 14px;
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 
@@ -650,7 +609,7 @@ body.inventory-page .section-header__title {
 
 body.inventory-page .section-header__description,
 body.inventory-page .section-header__action {
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 body.inventory-page .inventory-decision-grid {
@@ -673,7 +632,7 @@ body.inventory-page .coverage h3 {
 
 body.inventory-page .coverage p,
 body.inventory-page .bands {
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 body.inventory-page .inventory-records {
@@ -698,12 +657,7 @@ body.inventory-page .inventory-field > span,
 body.inventory-page .inventory-tools input,
 body.inventory-page .filter,
 body.inventory-page .export-link {
-  font-size: 12px;
-}
-
-body.inventory-page .inventory-tools input,
-body.inventory-page .filter {
-  min-height: 38px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 body.inventory-page .inventory-shell {
@@ -720,20 +674,20 @@ body.inventory-page .inventory-table thead {
 
 body.inventory-page .inventory-table th {
   padding: 9px 10px;
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 body.inventory-page .inventory-table td,
 body.inventory-page .inventory-table tbody th {
   padding: 10px;
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 body.inventory-page .inventory-foot {
   gap: 12px;
   padding-top: 9px;
   padding-bottom: 10px;
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 

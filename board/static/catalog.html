@@ -90,14 +90,17 @@
               <p class="section-header__description" id="modeSource">Family = child roll-up</p>
             </div>
             <div
-              class="analysis-modes"
+              class="analysis-modes choice-group"
               id="analysisModes"
               role="group"
               aria-label="Catalog analysis dimension"
               data-no-swipe
             >
-              <button class="mode active" type="button" data-mode="family" aria-pressed="true">Family</button
-              ><button class="mode" type="button" data-mode="sku" aria-pressed="false">SKU</button>
+              <button class="mode choice-control active" type="button" data-mode="family" aria-pressed="true">
+                Family</button
+              ><button class="mode choice-control" type="button" data-mode="sku" aria-pressed="false">
+                SKU
+              </button>
             </div>
           </div>
           <div class="catalog-tools">
@@ -114,20 +117,48 @@
             <div class="catalog-field catalog-filter-field">
               <span>Filter families</span>
               <div
-                class="filters"
+                class="filters choice-group"
                 id="filters"
                 role="group"
                 aria-label="Catalog product filter"
                 data-no-swipe
               >
-                <button class="filter active" type="button" data-filter="all" aria-pressed="true">All</button
-                ><button class="filter" type="button" data-filter="attention" aria-pressed="false">
+                <button
+                  class="filter choice-control active"
+                  type="button"
+                  data-filter="all"
+                  aria-pressed="true"
+                >
+                  All</button
+                ><button
+                  class="filter choice-control"
+                  type="button"
+                  data-filter="attention"
+                  aria-pressed="false"
+                >
                   Attention</button
-                ><button class="filter" type="button" data-filter="funnel" aria-pressed="false">Funnel</button
-                ><button class="filter" type="button" data-filter="stock" aria-pressed="false">Stock</button
-                ><button class="filter" type="button" data-filter="dormant" aria-pressed="false">
+                ><button
+                  class="filter choice-control"
+                  type="button"
+                  data-filter="funnel"
+                  aria-pressed="false"
+                >
+                  Funnel</button
+                ><button class="filter choice-control" type="button" data-filter="stock" aria-pressed="false">
+                  Stock</button
+                ><button
+                  class="filter choice-control"
+                  type="button"
+                  data-filter="dormant"
+                  aria-pressed="false"
+                >
                   Dormant</button
-                ><button class="filter" type="button" data-filter="inactive" aria-pressed="false">
+                ><button
+                  class="filter choice-control"
+                  type="button"
+                  data-filter="inactive"
+                  aria-pressed="false"
+                >
                   Inactive
                 </button>
               </div>

@@ -111,7 +111,7 @@ button {
 .kicker {
   color: var(--accent-ink);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -138,7 +138,7 @@ h1 {
   color: var(--ink);
   box-shadow: var(--dpp-shadow-low, none);
   gap: 7px;
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 720;
   cursor: pointer;
   transition:
@@ -189,14 +189,14 @@ h1 {
 .chip {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
+  min-height: 32px;
   padding: 0 9px;
   border: var(--border-width) solid var(--line);
   border-radius: var(--pill-radius);
   background: var(--dpp-surface-subtle, var(--paper-2));
   color: var(--muted);
   font-family: var(--dpp-font-detail, inherit);
-  font-size: 10px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;

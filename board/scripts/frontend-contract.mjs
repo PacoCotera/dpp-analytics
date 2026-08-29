@@ -80,6 +80,9 @@ const trajectoryHtml = readFileSync(join(staticRoot, 'trajectory.html'), 'utf8')
 const trajectoryScript = readFileSync(join(staticRoot, 'trajectory.js'), 'utf8');
 const trajectoryCss = readFileSync(join(staticRoot, 'trajectory.css'), 'utf8');
 const productHtml = readFileSync(join(staticRoot, 'product.html'), 'utf8');
+const catalogHtml = readFileSync(join(staticRoot, 'catalog.html'), 'utf8');
+const catalogScript = readFileSync(join(staticRoot, 'catalog.js'), 'utf8');
+const inventoryHtml = readFileSync(join(staticRoot, 'inventory.html'), 'utf8');
 const salesHtml = readFileSync(join(staticRoot, 'sales.html'), 'utf8');
 const financeHtml = readFileSync(join(staticRoot, 'finance.html'), 'utf8');
 const dataHealthScript = readFileSync(join(staticRoot, 'data-health.js'), 'utf8');
@@ -380,12 +383,61 @@ for (const pageStyle of Object.values(pageStyles)) {
     'chart-host',
     'segmented-control',
     'segmented-control__item',
+    'choice-group',
+    'choice-control',
   ]) {
     check(
       !new RegExp(`(?:^|\\n)\\.${primitive.replaceAll('-', '\\-')}(?![\\w-])\\s*\\{`, 'm').test(pageCss),
       pageStyle,
       `shared primitive .${primitive} must be owned by layout-system.css`,
     );
+  }
+}
+check(
+  /class=["'][^"']*analysis-modes[^"']*choice-group/.test(catalogHtml) &&
+    /class=["'][^"']*filters[^"']*choice-group/.test(catalogHtml) &&
+    /class=["'][^"']*mode[^"']*choice-control/.test(catalogHtml) &&
+    /class=["'][^"']*filter[^"']*choice-control/.test(catalogHtml) &&
+    /class=\"mode choice-control/.test(catalogScript),
+  'catalog.html',
+  'Products analysis modes and filters must use the shared choice-control primitive',
+);
+check(
+  /class=["'][^"']*filters[^"']*choice-group/.test(inventoryHtml) &&
+    /class=["'][^"']*filter[^"']*choice-control/.test(inventoryHtml) &&
+    /class=["'][^"']*btn[^"']*how-btn/.test(inventoryHtml),
+  'inventory.html',
+  'Inventory filters and explanation action must use shared control primitives',
+);
+
+const contractedControlFontSelector =
+  /\.(?:btn|subnav__item|segmented-control__item|choice-control|mode|filter|how-btn|rule-trigger)(?![\w-])/;
+const contractedControlHeightSelector =
+  /\.(?:btn|subnav__item|segmented-control__item|choice-control|mode|filter|how-btn)(?![\w-])/;
+for (const stylesheet of ['theme.css', 'layout-system.css', ...Object.values(pageStyles)]) {
+  const css = readFileSync(join(staticRoot, stylesheet), 'utf8');
+  for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = match[1].trim();
+    const contractedSelector = selector.replaceAll(/:not\([^)]*\)/g, '');
+    const declarations = match[2];
+    if (contractedControlFontSelector.test(contractedSelector)) {
+      for (const fontSize of declarations.matchAll(/font-size:\s*([\d.]+)px/g)) {
+        check(
+          Number(fontSize[1]) >= 14,
+          stylesheet,
+          `${selector} hard-codes interactive text below the 14px rendered contract`,
+        );
+      }
+    }
+    if (contractedControlHeightSelector.test(contractedSelector)) {
+      for (const minHeight of declarations.matchAll(/min-height:\s*([\d.]+)px/g)) {
+        check(
+          Number(minHeight[1]) >= 40,
+          stylesheet,
+          `${selector} hard-codes a control below the 40px rendered contract`,
+        );
+      }
+    }
   }
 }
 check(
