@@ -118,19 +118,17 @@ try {
   const auditedIdentity = auditedProductResponse.body.commercial?.identity || {};
   await page.goto(`${baseUrl}/product?sku=PNC-001L`, { waitUntil: 'networkidle', timeout: 20000 });
   await page.locator('#productReference summary').click();
-  await page.locator('.product-health__facts').waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('#productReference #familyRead').waitFor({ state: 'visible', timeout: 15000 });
   const renderedFamilyIdentity = await page.evaluate(() => {
-    const facts = [...document.querySelectorAll('.product-health__fact')];
-    const family = facts.find(fact => fact.querySelector('.label')?.textContent?.trim() === 'Family');
     return {
-      label: family?.querySelector('strong')?.textContent?.trim() || '',
-      role: family?.querySelector('small')?.textContent?.trim() || '',
+      label: document.querySelector('#productReference #familyRead')?.textContent?.trim() || '',
+      role: document.querySelector('#productReference #variationNote')?.textContent?.trim() || '',
     };
   });
   if (
     auditedIdentity.kind !== 'CHILD_VARIATION' ||
     renderedFamilyIdentity.label !== auditedIdentity.family_label ||
-    renderedFamilyIdentity.role !== 'SELLABLE_VARIATION' ||
+    renderedFamilyIdentity.role !== 'child variation' ||
     /standalone/i.test(renderedFamilyIdentity.label)
   ) {
     throw new Error(
