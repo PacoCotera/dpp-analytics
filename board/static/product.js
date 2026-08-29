@@ -478,16 +478,9 @@ function bindInteractions() {
 
   const reference = byId('productReference');
   const referenceToggle = byId('productReferenceToggle');
-  const mobile = window.matchMedia('(max-width: 640px)');
-  const syncReference = () => {
-    reference.open = !mobile.matches;
-    referenceToggle.textContent = reference.open ? 'Hide ↑' : 'View ↓';
-  };
   reference.addEventListener('toggle', () => {
     referenceToggle.textContent = reference.open ? 'Hide ↑' : 'View ↓';
   });
-  mobile.addEventListener('change', syncReference);
-  syncReference();
 }
 
 async function start() {

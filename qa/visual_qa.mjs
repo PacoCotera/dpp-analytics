@@ -742,8 +742,8 @@ async function verifyProductWorkspace(page) {
   ) {
     throw new Error(`Product mobile hierarchy mismatch: ${JSON.stringify(mobileHierarchy)}`);
   }
-  if (!mobileHierarchy.mobile && !mobileHierarchy.referenceOpen)
-    throw new Error('Product desktop secondary context is collapsed');
+  if (!mobileHierarchy.mobile && mobileHierarchy.referenceOpen)
+    throw new Error('Product desktop secondary context should remain subordinate');
 
   await page.locator('[data-metric="units"]').click();
   const unitsChartLabel = await page.locator('#chart').getAttribute('aria-label');
