@@ -11,9 +11,12 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
 const errors = [];
+let expectedConflictResponse = false;
 page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
 page.on('console', message => {
-  if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+  if (message.type() !== 'error') return;
+  if (expectedConflictResponse && /status of 409 \(Conflict\)/.test(message.text())) return;
+  errors.push(`console: ${message.text()}`);
 });
 
 try {
@@ -158,6 +161,7 @@ try {
       body: JSON.stringify({ error: 'Configuration changed; reload before saving' }),
     });
   });
+  expectedConflictResponse = true;
   await conflictEditor.locator('.admin-save').click();
   await page.waitForFunction(expected => {
     const editor = document.querySelector('.product-editor');
@@ -172,6 +176,7 @@ try {
   if (conflictState.draft !== draftName || conflictState.role !== 'alert' || !conflictState.message?.includes('latest revision is loaded')) {
     throw new Error(`Admin conflict did not preserve and explain the draft: ${JSON.stringify(conflictState)}`);
   }
+  expectedConflictResponse = false;
   await page.unroute('**/api/admin/product');
 
   await page.locator('#logout').click();

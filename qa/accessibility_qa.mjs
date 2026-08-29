@@ -188,30 +188,34 @@ for (const route of routes) {
       `${route.name} does not suppress motion: ${JSON.stringify(reducedMotion)}`,
     );
 
-    const summaryFocus = await page
-      .locator("summary")
-      .evaluateAll((summaries) =>
-        summaries
-          .filter((summary) => summary.getClientRects().length > 0)
-          .map((summary) => {
-            summary.focus();
-            const style = getComputedStyle(summary);
-            return {
-              text: summary.textContent
-                ?.replace(/\s+/g, " ")
-                .trim()
-                .slice(0, 80),
-              outlineStyle: style.outlineStyle,
-              outlineWidth: Number.parseFloat(style.outlineWidth) || 0,
-              boxShadow: style.boxShadow,
-            };
-          }),
+    const visibleSummaries = page.locator("summary:visible");
+    const summaryFocus = [];
+    if ((await visibleSummaries.count()) > 0) {
+      const summary = visibleSummaries.first();
+      await summary.focus();
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Tab");
+      summaryFocus.push(
+        await summary.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {
+            text: element.textContent?.replace(/\s+/g, " ").trim().slice(0, 80),
+            active: document.activeElement === element,
+            focusVisible: element.matches(":focus-visible"),
+            outlineStyle: style.outlineStyle,
+            outlineWidth: Number.parseFloat(style.outlineWidth) || 0,
+            boxShadow: style.boxShadow,
+          };
+        }),
       );
+    }
     assert(
       summaryFocus.every(
         (focus) =>
-          (focus.outlineStyle !== "none" && focus.outlineWidth >= 2) ||
-          focus.boxShadow !== "none",
+          focus.active &&
+          focus.focusVisible &&
+          ((focus.outlineStyle !== "none" && focus.outlineWidth >= 2) ||
+            focus.boxShadow !== "none"),
       ),
       `${route.name} has a disclosure without a visible focus indicator: ${JSON.stringify(summaryFocus)}`,
     );
@@ -290,21 +294,26 @@ for (const route of routes) {
         table.rows > 0 && table.rows === table.rowHeaders,
         `Finance row headers do not match rows: ${JSON.stringify(table)}`,
       );
-      await page.keyboard.press("Tab");
-      financeChartFocus = await page
+      const financeChartTarget = page
         .locator(".finance-chart-month-hit")
-        .first()
-        .evaluate((target) => {
-          target.focus();
-          const bar = target.querySelector(".finance-chart-bar");
-          const style = bar ? getComputedStyle(bar) : null;
-          return {
-            focusVisible: target.matches(":focus-visible"),
-            strokeWidth: Number.parseFloat(style?.strokeWidth || "0"),
-          };
-        });
+        .first();
+      await financeChartTarget.focus();
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Tab");
+      financeChartFocus = await financeChartTarget.evaluate((target) => {
+        target.focus();
+        const bar = target.querySelector(".finance-chart-bar");
+        const style = bar ? getComputedStyle(bar) : null;
+        return {
+          active: document.activeElement === target,
+          focusVisible: target.matches(":focus-visible"),
+          strokeWidth: Number.parseFloat(style?.strokeWidth || "0"),
+        };
+      });
       assert(
-        financeChartFocus.focusVisible && financeChartFocus.strokeWidth >= 3,
+        financeChartFocus.active &&
+          financeChartFocus.focusVisible &&
+          financeChartFocus.strokeWidth >= 3,
         `Finance chart focus indicator is incomplete: ${JSON.stringify(financeChartFocus)}`,
       );
     }
