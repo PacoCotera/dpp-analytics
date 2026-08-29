@@ -1111,6 +1111,12 @@ body.catalog-shell .portfolio-foot {
   }
 }
 
+@media (min-width: 901px) and (max-width: 1200px) {
+  body.catalog-shell .catalog-tools {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 900px) {
   body.catalog-shell .catalog-page-header,
   body.catalog-shell .catalog-state {
