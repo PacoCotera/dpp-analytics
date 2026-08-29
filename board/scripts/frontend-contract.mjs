@@ -318,10 +318,11 @@ check(
 );
 check(
   /@media \(prefers-reduced-motion: reduce\)/.test(theme) &&
-    /transition-duration:\s*0\.01ms !important/.test(theme) &&
-    /animation-duration:\s*0\.01ms !important/.test(theme),
+    /transition:\s*none !important/.test(theme) &&
+    /animation:\s*none !important/.test(theme) &&
+    !/transition-duration:\s*0\.01ms !important/.test(theme),
   'theme.css',
-  'shared presentation layer must suppress CSS motion for reduced-motion preferences',
+  'shared presentation layer must disable CSS motion without creating transitions for reduced-motion preferences',
 );
 check(
   /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/.test(salesGeographyScript),
