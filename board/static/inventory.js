@@ -123,7 +123,7 @@ function renderRows() {
         .map((row) => {
           const [status, kind] = statusInfo(row.action);
           return `<tr>
-            <td><a class="stock-product" href="/product?sku=${encodeURIComponent(row.sku)}">${productMarkup(row)}</a></td>
+            <th scope="row"><a class="stock-product" href="/product?sku=${encodeURIComponent(row.sku)}">${productMarkup(row)}</a></th>
             <td>${escapeHtml(LIFECYCLE_LABELS[row.inventory_lifecycle] || row.inventory_lifecycle)}</td>
             <td><span class="product-sku">${escapeHtml(row.canonical_sku || '—')}</span></td>
             <td><span class="${actionClass(row.action)}">${normalizeAction(row.action)}</span></td>
@@ -208,7 +208,10 @@ function render(data) {
 }
 
 function bindInteractions() {
-  byId('howBtn').addEventListener('click', () => byId('how').classList.toggle('show'));
+  byId('howBtn').addEventListener('click', () => {
+    const expanded = byId('how').classList.toggle('show');
+    byId('howBtn').setAttribute('aria-expanded', String(expanded));
+  });
   byId('search').addEventListener('input', renderRows);
 
   document.querySelectorAll('.filter').forEach((button) => {

@@ -8,6 +8,7 @@ import {
   formatMetricWindow,
   integer,
   money,
+  percent,
   ruleTrigger,
 } from './ui-utils.js';
 
@@ -93,7 +94,31 @@ function restoreCatalogUrlState() {
 }
 
 function pct(value) {
-  return value === null || value === undefined ? '—' : `${Number(value).toFixed(1)}%`;
+  return percent(value, { sign: false });
+}
+
+function ratioPercent(value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return '—';
+  return percent(100 * Number(value), { sign: false });
+}
+
+function decimal(value, digits = 2) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed.toFixed(digits) : '—';
+}
+
+function familyPaidRead(family) {
+  const spend = Number(family.ad_spend_t28 || 0);
+  if (!spend) return '';
+  const maturity = String(family.ad_attribution_state || 'UNAVAILABLE').toLowerCase();
+  return ` · Paid ${money(spend)} · ${ratioPercent(family.ad_tacos_t28)} TACOS · ${decimal(family.ad_roas_t28)}× ROAS · ${maturity}`;
+}
+
+function productPaidRead(product) {
+  const spend = Number(product.ad_spend_t28 || 0);
+  if (!spend) return '';
+  const maturity = String(product.ad_attribution_state || 'UNAVAILABLE').toLowerCase();
+  return ` · Paid ${money(spend)} · ${ratioPercent(product.ad_tacos_t28)} TACOS · ${decimal(product.ad_roas_t28)}× ROAS · ${maturity}`;
 }
 
 function title(value) {
@@ -243,14 +268,16 @@ function childRow(product) {
   const sourceStatus = String(product.status || '').trim();
   const listingLabel = sourceStatus.toLowerCase() === 'active' ? 'sellable' : sourceStatus.toLowerCase();
 
-  return `<a class="child" href="/product?sku=${encodeURIComponent(product.sku || '')}">
-    <div class="child-identity">
+  const productName = product.product || product.sku || product.asin;
+
+  return `<div class="child">
+    <a class="child-identity" href="/product?sku=${encodeURIComponent(product.sku || '')}">
       ${image(product.image_url, 'child-img')}
       <div>
-        <div class="child-name">${esc(product.product || product.sku || product.asin)}</div>
-        <div class="child-meta">${esc(product.sku || '')} · ${esc(product.asin || '')}${attributes ? ` · ${esc(attributes)}` : ''} · ${esc(listingLabel || 'status unavailable')}</div>
+        <div class="child-name">${esc(productName)}</div>
+        <div class="child-meta">${esc(product.sku || '')} · ${esc(product.asin || '')}${attributes ? ` · ${esc(attributes)}` : ''} · ${esc(listingLabel || 'status unavailable')}${esc(productPaidRead(product))}</div>
       </div>
-    </div>
+    </a>
     <div class="signal ${stateClass(product.commercial_state)}">
       <strong>${esc(labels[product.commercial_state] || product.commercial_state || 'Product')}</strong>${ruleTrigger(product.commercial_evaluation, DATA.interpretation_rules)}
       <span>${esc(product.commercial_explanation || '')}</span>
@@ -259,7 +286,7 @@ function childRow(product) {
     <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(product.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(product.conversion_t28_pct)}</b> CVR${product.sessions_delta28_pct === null || product.sessions_delta28_pct === undefined ? '' : ` · traffic ${Number(product.sessions_delta28_pct) >= 0 ? '+' : ''}${Number(product.sessions_delta28_pct).toFixed(0)}%`}</span></div>
     <div class="cell metric-stock" data-mobile-title="Available"><strong>${formatCount(product.units_t28, 'unit')}</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock${cover === null || cover === undefined ? '' : ` · ${Number(cover).toFixed(0)}d cover`}</span></div>
     <div class="cell economics">${economicsChild(product)}</div>
-  </a>`;
+  </div>`;
 }
 
 function familyRow(family) {
@@ -272,6 +299,7 @@ function familyRow(family) {
   const stock = stockTotal(family);
   const state = family.primary_state || 'HEALTHY';
   const children = familyMembers.map(childRow).join('');
+  const familyRule = ruleTrigger(family.commercial_evaluation, DATA.interpretation_rules);
   const aliases = (family.aliases || []).length;
   const exceptions = Number(family.child_exception_count || 0);
   const lifecycle =
@@ -287,18 +315,19 @@ function familyRow(family) {
         ${image(family.image_url, 'family-img')}
         <div>
           <div class="family-name">${esc(name)}</div>
-          <div class="family-meta">${familyMembers.length} sellable ${familyMembers.length === 1 ? 'offer' : 'variations'} · ${family.active_sellable_count || 0} active${lifecycle}${family.parent ? ' · variation family' : ''}${exceptions ? ` · ${exceptions} child exception${exceptions === 1 ? '' : 's'}` : ''}${esc(dimensionSummary(family))}</div>
+          <div class="family-meta">${familyMembers.length} sellable ${familyMembers.length === 1 ? 'offer' : 'variations'} · ${family.active_sellable_count || 0} active${lifecycle}${family.parent ? ' · variation family' : ''}${exceptions ? ` · ${exceptions} child exception${exceptions === 1 ? '' : 's'}` : ''}${esc(dimensionSummary(family))}${esc(familyPaidRead(family))}</div>
         </div>
       </div>
-      <div class="signal ${stateClass(state)}"><strong>${esc(labels[state] || state)}</strong>${ruleTrigger(family.commercial_evaluation, DATA.interpretation_rules)}<span>${esc(explanation(family))}</span></div>
+      <div class="signal ${stateClass(state)}"><strong>${esc(labels[state] || state)}</strong><span>${esc(explanation(family))}</span></div>
       <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(family.sales_t28)}</strong><span data-mobile-label="28D">${formatCount(family.units_t28, 'unit')}</span></div>
       <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(family.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(family.conversion_t28_pct)}</b> CVR</span></div>
       <div class="cell metric-stock" data-mobile-title="Available"><strong>${formatCount(family.units_t28, 'unit')}</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock${cover === null ? ' · no velocity' : ` · ${cover.toFixed(0)}d pooled cover`}</span></div>
       <div class="cell economics">${economicsFamily(family)}</div>
       <span class="chev">›</span>
     </summary>
+    ${familyRule ? `<div class="family-rule-row"><span>Commercial interpretation</span>${familyRule}</div>` : ''}
     <div class="children">
-      <div class="child-head"><span>Variation</span><span>Commercial read</span><span>28D</span><span>Traffic → CVR</span><span>Units → stock</span><span class="economics">Economics</span></div>
+      <div class="child-head"><span>Variation</span><span>Commercial read</span><span>28D shopper spend incl. IVA</span><span>Traffic → CVR</span><span>Units → stock</span><span class="economics">Economics</span></div>
       ${children || '<div class="empty">No sellable child offers in this family.</div>'}
       ${aliases ? `<div class="alias-note">${aliases} operational seller-SKU ${aliases === 1 ? 'alias is' : 'aliases are'} hidden from demand totals to avoid double counting.</div>` : ''}
     </div>
@@ -358,15 +387,17 @@ function skuAnalysisRow(product) {
     .map(([key, value]) => `${title(key)}: ${value}`)
     .join(' · ');
 
-  return `<a class="analysis-row analysis-link" href="/product?sku=${encodeURIComponent(product.sku || '')}">
-    <div class="analysis-identity"><strong>${esc(product.product || product.sku || product.asin)}</strong><span>${esc(product.sku || '')} · ${esc(attributes || 'standalone')}</span></div>
+  const productName = product.product || product.sku || product.asin;
+
+  return `<div class="analysis-row">
+    <a class="analysis-identity analysis-link" href="/product?sku=${encodeURIComponent(product.sku || '')}"><strong>${esc(productName)}</strong><span>${esc(product.sku || '')} · ${esc(attributes || 'standalone')}${esc(productPaidRead(product))}</span></a>
     <div class="signal ${stateClass(product.commercial_state)}"><strong>${esc(labels[product.commercial_state] || product.commercial_state || 'Product')}</strong>${ruleTrigger(product.commercial_evaluation, DATA.interpretation_rules)}<span>${esc(product.commercial_explanation || '')}</span></div>
     <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(product.sales_t28)}</strong><span data-mobile-label="28D">${formatCount(product.units_t28, 'unit')}</span></div>
     <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(product.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(product.conversion_t28_pct)}</b> CVR</span></div>
     <div class="cell metric-stock" data-mobile-title="Available"><strong>${formatCount(product.units_t28, 'unit')}</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock</span></div>
     <div class="cell economics">${economicsChild(product)}</div>
-    <span class="analysis-open">›</span>
-  </a>`;
+    <a class="analysis-open" href="/product?sku=${encodeURIComponent(product.sku || '')}" aria-label="Open ${esc(productName)} product workspace">›</a>
+  </div>`;
 }
 
 function deletedAnalysisRow(product) {
@@ -426,7 +457,7 @@ function renderModes() {
 
 function setHead(first = 'Family / product') {
   $('portfolioHead').innerHTML =
-    `<span>${esc(first)}</span><span>Commercial read</span><span>28D</span><span>Traffic → CVR</span><span>Units → stock</span><span>Economics</span><span></span>`;
+    `<span>${esc(first)}</span><span>Commercial read</span><span>28D shopper spend incl. IVA</span><span>Traffic → CVR</span><span>Units → stock</span><span>Economics</span><span></span>`;
 }
 
 function sortAnalysisRows(rows) {
@@ -457,9 +488,11 @@ function analysisRows(rows, renderRow, label) {
 
 function renderPortfolio() {
   const query = $('search').value.trim().toLowerCase();
-  $('filters').classList.toggle('hidden', mode !== 'family');
+  const familyMode = mode === 'family';
+  $('filters').classList.toggle('hidden', !familyMode);
+  $('filters').closest('.catalog-filter-field').hidden = !familyMode;
 
-  if (mode === 'family') {
+  if (familyMode) {
     setHead();
     $('modeSource').textContent = 'Family = child roll-up';
     $('portfolioFootMain').innerHTML =
@@ -556,11 +589,11 @@ function render(data) {
   $('portfolioRead').textContent =
     `${money(summary.sales_t28)} from ${formatCount(summary.units_t28, 'unit')} on ${formatCount(summary.sessions_t28, 'session')} · ${pct(summary.conversion_t28_pct)} conversion`;
   $('portfolioBasis').textContent =
-    `28D through ${summary.traffic_through_date || 'latest completed day'} · ${summary.sellable_offers || 0} current Amazon offers across ${summary.families || 0} families · ${summary.amazon_dimension_coverage || 0} offers with Amazon variation metadata`;
+    `28D through ${summary.traffic_through_date || 'latest completed day'} · ${summary.sellable_offers || 0} current Amazon offers across ${summary.families || 0} families · ${summary.amazon_dimension_coverage || 0} offers with Amazon variation metadata${Number(summary.ad_spend_t28 || 0) > 0 ? ` · Paid support ${money(summary.ad_spend_t28)} · ${ratioPercent(summary.ad_tacos_t28)} TACOS · ${decimal(summary.ad_roas_t28)}× attributed ROAS` : ' · Paid support awaiting Amazon Ads data'}`;
   $('catalogDemandWindow').textContent = formatMetricWindow(data.metric_windows?.RECONCILED_PRODUCT_T28);
   $('asof').textContent = `Demand through ${summary.traffic_through_date || '—'}`;
   $('freshness').textContent =
-    `Data Kiosk through ${summary.traffic_through_date || '—'} · listings ${String(summary.listings_fetched_at || '').slice(0, 10) || '—'} · FBA current`;
+    `Data Kiosk through ${summary.traffic_through_date || '—'} · listings ${String(summary.listings_fetched_at || '').slice(0, 10) || '—'} · FBA current${Number(summary.ad_spend_t28 || 0) > 0 ? ` · Ads through ${summary.ads_through_date || 'latest available day'}` : ''}`;
 
   renderAttention();
   syncFilterButtons();
