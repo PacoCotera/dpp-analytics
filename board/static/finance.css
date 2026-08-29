@@ -1077,7 +1077,44 @@ body.finance-page .bridge-step {
 }
 
 body.finance-page .finance-mobile-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   min-height: 48px;
+  cursor: pointer;
+  list-style: none;
+}
+
+body.finance-page .finance-mobile-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+body.finance-page .finance-mobile-disclosure > summary::before {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 22px;
+  content: '›';
+  transform: rotate(0deg);
+  transition: transform 120ms ease;
+}
+
+body.finance-page .finance-mobile-disclosure[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+body.finance-page .finance-mobile-disclosure > summary span {
+  flex: 1 1 auto;
+}
+
+body.finance-page .finance-mobile-disclosure > summary strong {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+body.finance-page .finance-mobile-disclosure__body {
+  padding-top: 10px;
+  border-top: var(--border-width) solid var(--line);
 }
 
 body.finance-page .progress-svg {
