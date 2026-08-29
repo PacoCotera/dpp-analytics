@@ -793,7 +793,7 @@
 }
 
 @media (max-width: 980px) {
-  .sales-operating-grid {
+  .sales-page .sales-operating-grid {
     grid-template-columns: minmax(0, 1fr) 275px;
     gap: 14px;
   }
@@ -817,7 +817,7 @@
 }
 
 @media (max-width: 720px) {
-  .sales-operating-grid {
+  .sales-page .sales-operating-grid {
     grid-template-columns: 1fr;
     gap: 10px;
   }
