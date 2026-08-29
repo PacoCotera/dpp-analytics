@@ -21,6 +21,76 @@ async function assertWorkspaceLandmarks(page, names) {
   if (missing.length) throw new Error(`Missing workspace landmarks: ${missing.join(', ')}`);
 }
 
+async function verifyControlTrustAppearance(page, expectedProfile) {
+  await wait(page, 'main');
+  await page.waitForFunction(() => {
+    if (document.body.classList.contains('finance-page')) return Boolean(document.querySelector('#currentLines .finance-line'));
+    if (document.body.classList.contains('ads-page')) return !document.getElementById('readyState')?.hidden || !document.getElementById('emptyState')?.hidden;
+    if (document.body.classList.contains('data-health-page')) return document.getElementById('summaryCount')?.textContent?.trim() !== '—';
+    if (document.body.classList.contains('admin-shell')) return Boolean(document.getElementById('loginPanel'));
+    return false;
+  }, null, { timeout: 10000 });
+  const state = await page.evaluate(profileId => {
+    const root = document.documentElement;
+    const css = getComputedStyle(root);
+    const visible = node => node.getClientRects().length > 0;
+    const surfaces = [...document.querySelectorAll(
+      '.admin-login,.product-editor,.ads-quality,.ads-action-card,.health-summary,.incident,.domain-summary,.source,.bridge-step,.pending-row,.history-row'
+    )].filter(visible);
+    const channelMax = color => {
+      const channels = String(color).match(/[\d.]+/g)?.slice(0, 3).map(Number) || [];
+      return channels.length ? Math.max(...channels) : 0;
+    };
+    const controls = [...document.querySelectorAll('main button,main input,main select,main summary')].filter(visible);
+    return {
+      theme: root.getAttribute('data-dpp-theme'),
+      profile: root.getAttribute('data-dpp-profile'),
+      colorScheme: css.colorScheme,
+      expectedColorScheme: ['midnight-dark', 'aubergine-dark', 'weyland'].includes(profileId) ? 'dark' : 'light',
+      semanticTokens: [
+        '--dpp-surface','--dpp-surface-subtle','--dpp-text','--dpp-text-muted','--dpp-border','--dpp-interaction','--dpp-focus-ring','--dpp-data1','--dpp-data2','--dpp-data-incomplete','--dpp-healthy-surface','--dpp-warning-surface','--dpp-critical-surface'
+      ].every(token => css.getPropertyValue(token).trim()),
+      darkSurfaces:
+        !['midnight-dark', 'aubergine-dark', 'weyland'].includes(profileId) ||
+        surfaces.every(node => channelMax(getComputedStyle(node).backgroundColor) < 180),
+      controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
+      metadataFloor: Number.parseFloat(css.getPropertyValue('--dpp-metadata-size')) >= 14,
+      weylandType:
+        profileId !== 'weyland' || /mono|courier/i.test(getComputedStyle(document.body).fontFamily),
+      contained: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
+    };
+  }, expectedProfile);
+  if (
+    state.theme !== expectedProfile ||
+    state.colorScheme !== state.expectedColorScheme ||
+    !state.semanticTokens ||
+    !state.darkSurfaces ||
+    !state.controlFloor ||
+    !state.metadataFloor ||
+    !state.weylandType ||
+    !state.contained ||
+    (expectedProfile === 'weyland' && state.profile !== 'weyland')
+  ) {
+    throw new Error(`Control/trust ${expectedProfile} appearance mismatch: ${JSON.stringify(state)}`);
+  }
+}
+
+async function verifyAdmin(page) {
+  await wait(page, '#loginPanel');
+  const state = await page.evaluate(() => {
+    const visible = node => node.getClientRects().length > 0;
+    const evidence = [...document.querySelectorAll('.admin-shell .kicker,.admin-shell .page-header__description,.admin-eyebrow,.admin-login p,.admin-status')].filter(visible);
+    const controls = [...document.querySelectorAll('#loginPanel input,#loginPanel button')].filter(visible);
+    return {
+      evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
+      controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
+    };
+  });
+  if (!state.evidenceFloor || !state.controlFloor) {
+    throw new Error(`Admin login presentation mismatch: ${JSON.stringify(state)}`);
+  }
+}
+
 async function verifyAds(page, view = 'overview') {
   await assertWorkspaceLandmarks(page, ['ads-workspace', 'ads-overview']);
   const navigation = await page.evaluate(() => {
@@ -39,12 +109,52 @@ async function verifyAds(page, view = 'overview') {
     throw new Error(`Ads mobile navigation mismatch: ${JSON.stringify(navigation)}`);
   }
   const payload = await page.evaluate(async () => (await (await fetch('/api/ads', { cache: 'no-store' })).json()));
-  if (payload.connection?.state !== 'READY' || payload.status !== 'ready') return wait(page, '#emptyState');
-  if (view === 'campaigns') {
-    await page.locator('button[data-view="campaigns"]').click();
-    return wait(page, '#campaignQuadrant .dpp-bubble');
+  if (payload.connection?.state !== 'READY' || payload.status !== 'ready') {
+    await wait(page, '#emptyState');
+    const disconnected = await page.evaluate(connectionDetail => {
+      const tabs = [...document.querySelectorAll('[data-ads-view]')];
+      const note = document.getElementById('adsViewAvailability');
+      return {
+        overviewEnabled: tabs[0]?.dataset.adsView === 'overview' && !tabs[0].disabled,
+        drillsDisabled: tabs.slice(1).every(tab => tab.disabled && tab.getAttribute('aria-disabled') === 'true'),
+        explained: Boolean(note && !note.hidden && note.textContent.includes(connectionDetail || '')),
+        contained: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
+      };
+    }, payload.connection?.detail || '');
+    if (!disconnected.overviewEnabled || !disconnected.drillsDisabled || !disconnected.explained || !disconnected.contained) {
+      throw new Error(`Ads disconnected-state presentation mismatch: ${JSON.stringify(disconnected)}`);
+    }
+    return;
   }
-  return wait(page, '#chart .dpp-bar');
+  if (view === 'campaigns') {
+    await page.locator('button[data-ads-view="campaigns"]').click();
+    await wait(page, '#campaignQuadrant .dpp-bubble');
+  } else {
+    await wait(page, '#chart .dpp-bar');
+  }
+  const state = await page.evaluate(apiActions => {
+    const visible = element => element && element.getClientRects().length > 0;
+    const tabs = document.querySelector('.ads-page .subnav');
+    const tabsRect = tabs?.getBoundingClientRect();
+    const evidence = [...document.querySelectorAll(
+      '.ads-page .kicker,.ads-page .page-header__description,.ads-page .section-header__description,.ads-page .kpi__label,.ads-page .kpi__note,.ads-page .data-table th,.ads-page .data-table td,.ads-quality p,.ads-action-body p'
+    )].filter(visible);
+    const controls = [...document.querySelectorAll('.ads-page .subnav__item,.ads-action-open')].filter(visible);
+    const reasons = [...document.querySelectorAll('#actionQueue .ads-action-body p')].map(node => node.textContent.trim());
+    return {
+      tabsEnabled: [...document.querySelectorAll('[data-ads-view]')].every(tab => !tab.disabled && tab.getAttribute('aria-disabled') === 'false'),
+      tabsContained:
+        Boolean(tabsRect && tabsRect.left >= -2 && tabsRect.right <= window.innerWidth + 2) &&
+        document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
+      evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
+      controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
+      apiReasons: JSON.stringify(reasons) === JSON.stringify(apiActions.map(action => String(action.reason || ''))),
+      browserActionCells: document.querySelectorAll('#targetRows .ads-action,#searchTermRows .ads-action').length,
+    };
+  }, payload.actions || []);
+  if (!state.tabsEnabled || !state.tabsContained || !state.evidenceFloor || !state.controlFloor || !state.apiReasons || state.browserActionCells) {
+    throw new Error(`Ads evidence/control presentation mismatch: ${JSON.stringify(state)}`);
+  }
 }
 
 async function verifySalesOverview(page) {
@@ -391,6 +501,20 @@ async function verifyDataHealth(page) {
               row.querySelector('.health-job__purpose'),
             ].every(metric => metric && window.getComputedStyle(metric).display !== 'none')
           )),
+      pipelineTable:
+        document.querySelector('.pipeline-panel [role="table"]')?.getAttribute('aria-label') === 'Pipeline health' &&
+        document.querySelectorAll('.health-job--header [role="columnheader"]').length === 5 &&
+        [...document.querySelectorAll('#jobs .health-job')].every(row => row.getAttribute('role') === 'row' && row.querySelectorAll('[role="cell"]').length === 5),
+      mobileHeaderAvailable:
+        window.innerWidth > 900 || window.getComputedStyle(document.querySelector('.health-job--header')).display !== 'none',
+      evidenceFloor: [...document.querySelectorAll(
+        '.health-copy,.health-updated,.incident__purpose,.incident__metrics dt,.incident__metrics small,.domain-chip strong,.domain-chip small,.health-job__name,.health-job__source,.health-job__metric,.catalog-health-item__identity,.catalog-health-item__state,.catalog-health-item__timing'
+      )]
+        .filter(node => node.getClientRects().length > 0)
+        .every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
+      controlFloor: [...document.querySelectorAll('.data-health-page button,.warehouse-reference summary')]
+        .filter(node => node.getClientRects().length > 0)
+        .every(node => node.getBoundingClientRect().height >= 40),
     };
   });
   if (
@@ -409,6 +533,10 @@ async function verifyDataHealth(page) {
     state.warehouseSummaryHeight < 44 ||
     !state.genericRingRemoved ||
     !state.mobilePipelineMetrics ||
+    !state.pipelineTable ||
+    !state.mobileHeaderAvailable ||
+    !state.evidenceFloor ||
+    !state.controlFloor ||
     !state.refreshCopy.includes('refreshes every 60s') ||
     state.attentionVisible !== Boolean(state.problems) ||
     state.incidents !== state.problems ||
@@ -788,10 +916,32 @@ async function verifyFinanceReport(page) {
   await wait(page, '#ytdBridge .bridge-step');
   await assertFinanceChartMarks(page, 'progression');
   await verifyFinanceWindows(page);
-  // Desktop/tablet expose a table header, while mobile intentionally hides it
-  // and presents the data rows as cards. Wait for canonical history data, not
-  // the responsive header implementation.
+  // Mobile presents rows as cards while retaining the native table header for
+  // assistive-technology relationships.
   await wait(page, '#history .history-row:not(.head)');
+  const state = await page.evaluate(() => {
+    const visible = node => node.getClientRects().length > 0;
+    const evidence = [...document.querySelectorAll(
+      '.finance-head .kicker,.finance-head p,.period-meta,.section-label,.eyebrow,.cell-note,.finance-line__note,.rail-row span,.state-pill,.state-row p,.finance-read__sub,.finance-read__state,.bridge-step span,.finance-chart-axis,.finance-chart-month,.chart-legend,.pending-row small,.pending-badge,.pending-metric span,.history-row,.history-row small,.history-state,.event-row small'
+    )].filter(visible);
+    const controls = [...document.querySelectorAll(
+      '.finance-page .segmented-control__item,.finance-page #monthPicker,.state-explainer summary,.finance-mobile-disclosure > summary,.history-toggle,.finance-evidence summary'
+    )].filter(visible);
+    const mobile = window.innerWidth <= 640;
+    const tableHead = document.querySelector('#history thead');
+    return {
+      evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
+      controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
+      mobileHeaderAvailable: !mobile || (tableHead && getComputedStyle(tableHead).display !== 'none'),
+      tableRelationships:
+        document.querySelectorAll('#history thead th[scope="col"]').length === 8 &&
+        document.querySelectorAll('#history tbody tr').length === document.querySelectorAll('#history tbody th[scope="row"]').length,
+      anchoredSections: document.querySelectorAll('.finance-page h2').length >= 7,
+    };
+  });
+  if (!state.evidenceFloor || !state.controlFloor || !state.mobileHeaderAvailable || !state.tableRelationships || !state.anchoredSections) {
+    throw new Error(`Finance hierarchy/accessibility presentation mismatch: ${JSON.stringify(state)}`);
+  }
 }
 
 async function verifyFinanceClosed(page) {
@@ -969,7 +1119,37 @@ const scenarios = [
   ['finance-ledger', '/finance', ['mobile', 'desktop'], verifyFinanceEvidence],
   ['trajectory', '/trajectory', ['mobile', 'desktop'], verifyTrajectory],
   ['data-health', '/data-health', ['mobile', 'desktop'], verifyDataHealth],
+  ['admin', '/admin', ['mobile', 'desktop'], verifyAdmin],
 ].map(([name, url, views, action]) => ({ name, url, views, action }));
+
+const financeProfiles = [
+  'warm-studio',
+  'midnight-saffron',
+  'aubergine-aqua',
+  'midnight-dark',
+  'aubergine-dark',
+  'weyland',
+];
+for (const profile of financeProfiles) {
+  scenarios.push({
+    name: `finance-${profile}`,
+    url: '/finance',
+    views: ['mobile', 'desktop'],
+    profile,
+    action: page => verifyControlTrustAppearance(page, profile),
+  });
+}
+for (const [name, url] of [['ads', '/ads'], ['data-health', '/data-health'], ['admin', '/admin']]) {
+  for (const profile of ['midnight-dark', 'weyland']) {
+    scenarios.push({
+      name: `${name}-${profile}`,
+      url,
+      views: ['mobile', 'desktop'],
+      profile,
+      action: page => verifyControlTrustAppearance(page, profile),
+    });
+  }
+}
 
 await fs.mkdir(outDir, { recursive: true });
 for (const entry of await fs.readdir(outDir)) await fs.rm(path.join(outDir, entry), { recursive: true, force: true });
@@ -980,12 +1160,20 @@ const safeName = value => value.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-|-$/g,
 for (const scenario of scenarios) for (const viewportName of scenario.views) {
   const viewport = viewports[viewportName];
   const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, isMobile: viewport.isMobile, hasTouch: viewport.hasTouch, deviceScaleFactor: 1 });
+  if (scenario.profile) {
+    await context.addInitScript(profileId => {
+      window.localStorage.setItem(
+        'dpp.presentation.v1',
+        JSON.stringify({ schemaVersion: 1, profileId })
+      );
+    }, scenario.profile);
+  }
   const page = await context.newPage();
   const errors = [], warnings = [], failedResponses = [];
   page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
   page.on('console', msg => { if (msg.type() === 'error') errors.push(`console: ${msg.text()}`); if (msg.type() === 'warning') warnings.push(`console: ${msg.text()}`); });
   page.on('response', async response => { if (response.status() >= 400 && response.url().startsWith(baseUrl)) failedResponses.push(`${response.status()} ${response.request().method()} ${response.url()}`); });
-  const result = { scenario: scenario.name, viewport: viewportName, width: viewport.width, height: viewport.height, url: `${baseUrl}${scenario.url}`, screenshot: null, metrics: null, errors, warnings, failedResponses, ok: false };
+  const result = { scenario: scenario.name, viewport: viewportName, profile: scenario.profile || 'warm-studio', width: viewport.width, height: viewport.height, url: `${baseUrl}${scenario.url}`, screenshot: null, metrics: null, errors, warnings, failedResponses, ok: false };
   try {
     const response = await page.goto(result.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
     if (!response?.ok()) throw new Error(`navigation returned ${response?.status() || 'no response'}`);

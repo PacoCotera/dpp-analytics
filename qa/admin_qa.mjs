@@ -59,6 +59,16 @@ try {
   }
   if (!Array.isArray(loaded.payload.deleted_products)) throw new Error('Deleted SKU history is not explicit');
 
+  await page.locator('#adminSearch').fill('__no_matching_sku__');
+  const searchState = {
+    status: (await page.locator('#adminSearchResult').textContent())?.trim(),
+    emptyVisible: await page.locator('#adminSearchEmpty').isVisible(),
+  };
+  if (searchState.status !== `0 of ${loaded.payload.current_products.length} current offers` || !searchState.emptyVisible) {
+    throw new Error(`Admin search state is not explicit: ${JSON.stringify(searchState)}`);
+  }
+  await page.locator('#adminSearch').fill('');
+
   const editor = page.locator('.product-editor').first();
   await editor.locator('.admin-save').click();
   await page.waitForFunction(() => {
@@ -107,6 +117,63 @@ try {
     }
   }
 
+  const conflictEditor = page.locator('.product-editor').first();
+  const nameInput = conflictEditor.locator('input[name="name"]');
+  const originalName = await nameInput.inputValue();
+  const draftName = `${originalName || product.sku} conflict draft`;
+  let releaseSave;
+  let markRequestHeld;
+  const saveRelease = new Promise(resolve => { releaseSave = resolve; });
+  const requestHeld = new Promise(resolve => { markRequestHeld = resolve; });
+  const delayedSave = async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    markRequestHeld();
+    await saveRelease;
+    await route.continue();
+  };
+  await page.route('**/api/admin/product', delayedSave);
+  await conflictEditor.locator('.admin-save').click();
+  await requestHeld;
+  await nameInput.fill(draftName);
+  releaseSave();
+  await page.waitForFunction(expected => {
+    const editor = document.querySelector('.product-editor');
+    const status = editor?.querySelector('.product-save-status');
+    return editor?.querySelector('input[name="name"]')?.value === expected && status?.textContent?.includes('newer draft remains unsaved');
+  }, draftName, { timeout: 30000 });
+  const inFlightState = await page.locator('.product-editor').first().evaluate(editor => ({
+    draft: editor.querySelector('input[name="name"]')?.value,
+    message: editor.querySelector('.product-save-status')?.textContent?.trim(),
+  }));
+  if (inFlightState.draft !== draftName || !inFlightState.message?.includes('newer draft remains unsaved')) {
+    throw new Error(`Admin in-flight edit was not preserved: ${JSON.stringify(inFlightState)}`);
+  }
+  await page.unroute('**/api/admin/product', delayedSave);
+
+  await page.route('**/api/admin/product', async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    await route.fulfill({
+      status: 409,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Configuration changed; reload before saving' }),
+    });
+  });
+  await conflictEditor.locator('.admin-save').click();
+  await page.waitForFunction(expected => {
+    const editor = document.querySelector('.product-editor');
+    const status = editor?.querySelector('.product-save-status');
+    return editor?.querySelector('input[name="name"]')?.value === expected && status?.textContent?.includes('draft is preserved');
+  }, draftName, { timeout: 30000 });
+  const conflictState = await page.locator('.product-editor').first().evaluate(editor => ({
+    draft: editor.querySelector('input[name="name"]')?.value,
+    message: editor.querySelector('.product-save-status')?.textContent?.trim(),
+    role: editor.querySelector('.product-save-status')?.getAttribute('role'),
+  }));
+  if (conflictState.draft !== draftName || conflictState.role !== 'alert' || !conflictState.message?.includes('latest revision is loaded')) {
+    throw new Error(`Admin conflict did not preserve and explain the draft: ${JSON.stringify(conflictState)}`);
+  }
+  await page.unroute('**/api/admin/product');
+
   await page.locator('#logout').click();
   await page.locator('#loginPanel').waitFor({ state: 'visible', timeout: 5000 });
   const deniedAfterLogout = (await context.request.get(`${baseUrl}/api/admin/catalog`)).status();
@@ -123,6 +190,8 @@ try {
     sourceEvidencePresent: true,
     noOpSave: saveStatus.trim(),
     reloadAndCatalogConsumption: true,
+    inFlightDraftPreserved: true,
+    conflictDraftPreserved: true,
     logoutDenial: deniedAfterLogout,
   };
   await fs.writeFile(path.join(outDir, 'admin-summary.json'), JSON.stringify(summary, null, 2));

@@ -103,6 +103,8 @@ Treat each completed merchant-listings report as the canonical current snapshot,
 
 Use `/admin` for seller-owned short names, taxonomy and current unit COGS. `board/admin_config.py` owns validation, optimistic revisions, unknown-field preservation, atomic replacement, backups and audit metadata; `board/admin_auth.py` owns the host-password session and CSRF contract. `board/server_canonical.py` is the only HTTP route owner. Do not add a second browser-only write path or edit the host JSON as the normal operating workflow.
 
+The Admin browser keeps unsaved drafts keyed by SKU when another editor advances the optimistic revision. On HTTP 409 it reloads the latest catalog once, reapplies the local draft for review, announces the conflict as an alert and never retries the write automatically. Edits made after a save request starts are also retained as a newer unsaved draft when that request completes. Sign-out intentionally discards local drafts. These are presentation safeguards around the existing authenticated, CSRF-protected `expected_revision` contract; they do not change the server write contract.
+
 New SKUs and deletions require no code list. The latest completed Seller Listings snapshot adds every current sellable offer to Admin and moves absent records to read-only deleted history. Catalog Items supplies identity/parent-child evidence after Amazon propagation. A new SKU with blank COGS is expected seller configuration, not an ingestion/software defect. Blank seller taxonomy is likewise a mapping task when source evidence is ready; unresolved Amazon source evidence beyond the documented grace is the separate source-completeness incident.
 
 ### Inventory
@@ -121,6 +123,8 @@ status; that loader then requests shared chart CSS, D3 and `chart-system.js` wit
 Disconnected, authorization-pending, backfill and failure states must render without downloading or parsing
 chart dependencies they cannot use.
 
+Only Overview remains enabled before that ready state; Campaigns, Products, Targets and Search terms are disabled with an adjacent API-derived explanation. Once ready, those drill-downs render reported purchases, spend and attribution evidence without browser-owned action thresholds. Operating prompts come only from `actions[]` returned by `ads_api.py`, including the API-owned label and reason.
+
 ### Finance
 
 Finance intentionally separates three concepts:
@@ -132,6 +136,8 @@ Finance intentionally separates three concepts:
 The current month is OPEN and provisional. Closed management months come from immutable Finance close snapshots; later edits to standard product cost must not silently rewrite closed history. A correction to a closed period is an explicit restatement/version.
 
 Cash transferred by Amazon is not the same as economic contribution. Keep cash timing and contribution reporting separate.
+
+Finance presentation uses the shared semantic profile and data-palette tokens in all six appearances. Responsive month-history cards retain the native caption, column headers and row-header relationships for assistive technology; CSS may change the visual layout but not the table semantics or immutable-close evidence.
 
 `board/finance_settlement.py` owns the latest-settlement display contract used by the canonical Finance adapter. It preserves settlement/report identifiers and exposes `KNOWN`, `PARTIAL`, or `UNKNOWN` date availability with explicit fragments for missing start, end, or deposit dates. The browser renders these API fragments and must not substitute punctuation placeholders for absent dates.
 
@@ -245,6 +251,7 @@ When changing `compose.yml` or `.env.example`, validate them together. The templ
 
 Production browser QA records page/viewport captures plus browser console errors, failed responses and horizontal-overflow checks. Treat it as a deployment requirement, not decorative screenshots.
 `qa/admin_qa.mjs` proves the published Admin entrypoint, unauthenticated API denial, authenticated current/deleted pre-population, a non-mutating save/reload, ordinary Catalog consumption of the persisted values, and logout denial. The QA container uses the host network and published port so it exercises the same remote-access policy as the public route. Deployment passes only the Admin password through a temporary mode-0600 env file and deletes it during cleanup; the password is never written to QA output.
+It also intercepts one save with an artificial revision conflict and delays one non-mutating save so the browser must preserve both conflict drafts and edits made while a request is in flight without changing production configuration.
 Its Product scenarios cover both a populated demand chart and the all-zero PNC-001L sales/units states. An
 all-zero selected metric must render the explicit range-empty message with no bars or numeric axis ticks.
 `qa/ui_format_qa.mjs` verifies the deployed shared count/currency/month-year helpers plus the Business, Finance,
@@ -252,6 +259,7 @@ and Data Health labels that depend on them.
 The same suite runs `qa/accessibility_qa.mjs` across every primary workspace. It rejects missing/duplicate level-one
 headings, unnamed visible links, missing toggle-button state, broken native keyboard activation, and loss of the
 Finance monthly report's table relationships.
+`qa/visual_qa.mjs` additionally checks the 14px evidence floor, 40px control floor, mobile Finance/Data Health table semantics, contained Ads tabs and the complete Finance six-profile matrix plus dark/Weyland smoke coverage for Ads, Data Health and Admin. `qa/ads_surface_qa.mjs` deterministically covers ready and disconnected Ads states, API-owned action reasons and chart-free disconnected loading.
 `qa/analysis_state_qa.mjs` exercises Sales and Catalog direct links, refresh, Back, and Forward. When adding a
 persistent view choice, document its URL key in `frontend-architecture.md` and extend this browser gate.
 `qa/presentation_profiles_qa.mjs` checks the six-profile registry and apply/persistence contract on the Business

@@ -32,8 +32,8 @@
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
-      <main data-dpp-qa="finance-workspace">
-        <header class="page-header finance-head">
+      <main>
+        <header class="page-header finance-head" data-dpp-qa="finance-accounting-header">
           <div>
             <div class="kicker">Management finance</div>
             <h1 class="page-header__title">Finance</h1>
@@ -49,9 +49,9 @@
           </div>
         </header>
 
-        <div class="report-grid" data-dpp-qa="finance-current-period">
+        <div class="report-grid" data-dpp-qa="finance-accounting-overview">
           <section class="report">
-            <div class="section-label">Customer money</div>
+            <h2 class="section-label">Customer money</h2>
             <div class="money-strip">
               <div class="money-cell">
                 <div class="eyebrow">Net sales ex IVA</div>
@@ -73,7 +73,7 @@
               </div>
             </div>
 
-            <div class="section-label">Current month bridge</div>
+            <h2 class="section-label">Current month bridge</h2>
             <div id="currentLines"></div>
           </section>
 
@@ -125,11 +125,11 @@
           </aside>
         </div>
 
-        <section class="finance-reads" data-dpp-qa="finance-analysis">
+        <section class="finance-reads">
           <article class="finance-read finance-read--current-summary">
             <div class="finance-read__head">
               <div>
-                <div class="finance-read__title">Current month contribution</div>
+                <h2 class="finance-read__title">Current month contribution</h2>
                 <div class="finance-read__sub">
                   Live OPEN-month estimate. Standard product costs can still change this period.
                 </div>
@@ -142,7 +142,7 @@
           <article class="finance-read">
             <div class="finance-read__head">
               <div>
-                <div class="finance-read__title">Closed YTD contribution</div>
+                <h2 class="finance-read__title">Closed YTD contribution</h2>
                 <div id="ytdSub" class="finance-read__sub">Immutable closed-month economics.</div>
               </div>
               <div class="finance-read__state">MANAGEMENT CLOSED</div>
@@ -158,7 +158,7 @@
               <div class="finance-mobile-disclosure__body">
                 <div class="finance-read__head">
                   <div>
-                    <div class="finance-read__title">Latest Amazon settlement → payout</div>
+                    <h2 class="finance-read__title">Latest Amazon settlement → payout</h2>
                     <div id="cashBridgeSub" class="finance-read__sub">
                       Cash settlement evidence, not sales-period P&amp;L. Loading latest reconciled
                       settlement.
@@ -180,7 +180,7 @@
           <article class="finance-read wide">
             <div class="finance-read__head">
               <div>
-                <div id="progressionTitle" class="finance-read__title">Contribution trajectory</div>
+                <h2 id="progressionTitle" class="finance-read__title">Contribution trajectory</h2>
                 <div id="progressionSub" class="finance-read__sub">
                   Choose an accounting window to inspect cumulative contribution or drill into one month.
                 </div>
@@ -279,7 +279,7 @@
         <section class="finance-read wide" id="pendingSection">
           <div class="finance-read__head">
             <div>
-              <div class="finance-read__title">Months awaiting management close</div>
+              <h2 class="finance-read__title">Months awaiting management close</h2>
               <div class="finance-read__sub">
                 Amazon-side finalization and seller-owned COGS are separate. Missing product cost never makes
                 Amazon accounting look open.
@@ -290,10 +290,10 @@
           <div id="pendingMonths" class="pending-months"></div>
         </section>
 
-        <section class="finance-read wide">
+        <section class="finance-read wide" data-dpp-qa="finance-immutable-history">
           <div class="finance-read__head">
             <div>
-              <div class="finance-read__title">Immutable month report</div>
+              <h2 class="finance-read__title">Immutable month report</h2>
               <div class="finance-read__sub">
                 Current OPEN month appears first as provisional. Closed rows below are the latest immutable
                 close version; RESTATED is always explicit. Amounts are shown to cents so each row reconciles
@@ -307,7 +307,7 @@
           </button>
         </section>
 
-        <section class="finance-evidence" data-dpp-qa="finance-evidence">
+        <section class="finance-evidence">
           <details>
             <summary>Amazon accounting evidence</summary>
             <div id="events"></div>

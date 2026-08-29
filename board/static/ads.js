@@ -1,48 +1,23 @@
 import { byId, escapeHtml, fetchJson, formatBusinessClock, formatCount, integer, money } from './ui-utils.js';
 import { loadAdsChartDependencies } from './ads-chart-loader.js';
-let operatingTrusted = false;
 const ratioPercent = (v) => (v == null ? '—' : `${(Number(v) * 100).toFixed(1)}%`);
 const deltaPercent = (v) => (v == null ? '—' : `${Number(v) > 0 ? '+' : ''}${Number(v).toFixed(1)}%`);
 const deltaPoints = (v) => (v == null ? '—' : `${Number(v) > 0 ? '+' : ''}${Number(v).toFixed(1)} pts`);
 const multiple = (v) => (v == null ? '—' : `${Number(v).toFixed(2)}×`);
-function setMetric(id, value, tone = '') {
+function setMetric(id, value) {
   const e = byId(id);
   if (!e) return;
   e.textContent = value;
-  e.classList.remove('good', 'bad', 'warn');
-  if (tone) e.classList.add(tone);
 }
-const inverseTone = (v) => (v == null ? '' : Number(v) < 0 ? 'good' : Number(v) > 0 ? 'bad' : '');
-const normalTone = (v) => (v == null ? '' : Number(v) > 0 ? 'good' : Number(v) < 0 ? 'bad' : '');
-function renderStory(s) {
-  const spend = Number(s.spend_delta_pct || 0),
-    acos = s.acos_delta_points,
-    tacos = s.tacos_delta_points;
-  let title = 'Paid support is stable.',
-    copy = 'Spend is close to the prior 28-day window.';
-  if (spend >= 10) {
-    title = 'We are leaning harder on advertising.';
-    copy = `Ad spend is ${deltaPercent(spend)} versus the prior 28 days.`;
-  } else if (spend <= -10) {
-    title = 'Paid support has eased.';
-    copy = `Ad spend is ${deltaPercent(spend)} versus the prior 28 days.`;
-  }
-  if (tacos != null)
-    copy +=
-      Number(tacos) <= -1
-        ? ` TACOS improved by ${Math.abs(Number(tacos)).toFixed(1)} points, so ads are consuming less of total sales.`
-        : Number(tacos) >= 1
-          ? ` TACOS worsened by ${Number(tacos).toFixed(1)} points, so ads are consuming more of total sales.`
-          : ' TACOS is broadly stable.';
-  if (acos != null && Math.abs(Number(acos)) >= 2)
-    copy += Number(acos) < 0 ? ' ACOS also improved.' : ' ACOS also deteriorated.';
-  if (!operatingTrusted) {
-    title = 'Paid demand is visible, but not decision-grade yet.';
-    copy =
-      'Amazon Ads metrics are shown for observability while report-grain reconciliation or period coverage is incomplete. Review the data-quality state before acting on efficiency changes.';
-  }
-  byId('storyTitle').textContent = title;
-  byId('storyCopy').textContent = copy;
+function renderEvidenceWindow(summary) {
+  byId('storyTitle').textContent = '28-day operating evidence';
+  const range =
+    summary.period_start && summary.period_end
+      ? `${summary.period_start} through ${summary.period_end}`
+      : 'the current reportable window';
+  byId('storyCopy').textContent =
+    `Amazon Ads spend and attributed performance for ${range}. ` +
+    'TACOS uses independently reconciled seller sales; attribution is not incrementality.';
 }
 function issueLabel(s) {
   return (
@@ -64,7 +39,7 @@ function issueLabel(s) {
 function renderQuality(p) {
   const q = p.quality || {},
     f = p.freshness || {};
-  operatingTrusted = Boolean(q.trusted_for_operating_decisions);
+  const operatingTrusted = Boolean(q.trusted_for_operating_decisions);
   const badge = byId('qualityBadge'),
     title = byId('qualityTitle'),
     copy = byId('qualityCopy'),
@@ -112,7 +87,7 @@ function renderQuality(p) {
 function renderActions(rows = []) {
   const section = byId('actionSection'),
     host = byId('actionQueue');
-  if (!operatingTrusted || !rows.length) {
+  if (!rows.length) {
     section.hidden = true;
     host.innerHTML = '';
     return;
@@ -138,7 +113,8 @@ function renderActions(rows = []) {
       const tab = document.querySelector(`[data-ads-view="${b.dataset.openAdsView}"]`);
       if (tab) {
         activateView(tab);
-        tab.scrollIntoView({ block: 'nearest' });
+        tab.focus({ preventScroll: true });
+        tab.scrollIntoView({ block: 'nearest', inline: 'center' });
       }
     }),
   );
@@ -151,7 +127,7 @@ function renderCampaigns(rows = []) {
             `<tr><td class="product-cell"><strong>${escapeHtml(r.campaign_name || r.campaign_id)}</strong><div class="ads-subtle">${escapeHtml(r.ad_product || '')}</div></td><td data-label="Spend" class="ads-num">${money(r.spend)}</td><td data-label="Attributed" class="ads-num">${money(r.attributed_sales)}</td><td data-label="ACOS" class="ads-num ads-efficiency">${ratioPercent(r.acos)}</td><td data-label="Clicks" class="ads-num">${integer(r.clicks)}</td></tr>`,
         )
         .join('')
-    : '<tr><td>No campaign data yet.</td></tr>';
+    : '<tr><td colspan="5">No campaign data yet.</td></tr>';
 }
 function renderProducts(rows = []) {
   byId('productRows').innerHTML = rows.length
@@ -164,81 +140,75 @@ function renderProducts(rows = []) {
           return `<tr><td class="product-cell">${r.sku ? `<a class="product-line" href="/product?sku=${encodeURIComponent(r.sku)}">${body}</a>` : `<div class="product-line">${body}</div>`}</td><td data-label="Spend" class="ads-num">${money(r.spend)}</td><td data-label="Attributed" class="ads-num">${money(r.attributed_sales)}</td><td data-label="ACOS" class="ads-num">${ratioPercent(r.acos)}</td><td data-label="Clicks" class="ads-num">${integer(r.clicks)}</td></tr>`;
         })
         .join('')
-    : '<tr><td>No advertised-product data yet.</td></tr>';
-}
-function signal(r) {
-  if (Number(r.purchases || 0) > 0) return '<span class="ads-signal converting">Attributed purchase</span>';
-  if (Number(r.spend || 0) > 0) return '<span class="ads-signal spend">Spend, no attributed purchase</span>';
-  return '<span class="ads-signal">No spend</span>';
-}
-function action(r, kind) {
-  if (!operatingTrusted) return '<span class="ads-action verify">Verify data</span>';
-  const p = Number(r.purchases || 0),
-    c = Number(r.clicks || 0),
-    s = Number(r.spend || 0),
-    roas = Number(r.roas || 0);
-  if (kind === 'search' && p >= 2 && roas >= 2)
-    return '<span class="ads-action harvest">Harvest candidate</span>';
-  if (s > 0 && p === 0 && c >= 8) return '<span class="ads-action inspect">Inspect spend</span>';
-  return '<span class="ads-action learn">Learning</span>';
+    : '<tr><td colspan="5">No advertised-product data yet.</td></tr>';
 }
 function renderTargets(rows = []) {
   byId('targetRows').innerHTML = rows.length
     ? rows
         .map(
           (r) =>
-            `<tr><td class="product-cell"><div class="ads-query">${escapeHtml(r.target_expression || r.target_id || 'Unnamed target')}</div><div class="ads-context">${escapeHtml([r.target_type, r.match_type].filter(Boolean).join(' · '))}</div>${signal(r)}</td><td data-label="Campaign"><strong>${escapeHtml(r.campaign_name || r.campaign_id || '—')}</strong></td><td data-label="Action">${action(r, 'target')}</td><td data-label="Spend" class="ads-num">${money(r.spend)}</td><td data-label="Attributed" class="ads-num">${money(r.attributed_sales)}</td><td data-label="ACOS" class="ads-num">${ratioPercent(r.acos)}</td><td data-label="ROAS" class="ads-num">${multiple(r.roas)}</td><td data-label="Clicks" class="ads-num">${integer(r.clicks)}</td></tr>`,
+            `<tr><td class="product-cell"><div class="ads-query">${escapeHtml(r.target_expression || r.target_id || 'Unnamed target')}</div><div class="ads-context">${escapeHtml([r.target_type, r.match_type].filter(Boolean).join(' · '))}</div></td><td data-label="Campaign"><strong>${escapeHtml(r.campaign_name || r.campaign_id || '—')}</strong></td><td data-label="Purchases" class="ads-num">${integer(r.purchases)}</td><td data-label="Spend" class="ads-num">${money(r.spend)}</td><td data-label="Attributed" class="ads-num">${money(r.attributed_sales)}</td><td data-label="ACOS" class="ads-num">${ratioPercent(r.acos)}</td><td data-label="ROAS" class="ads-num">${multiple(r.roas)}</td><td data-label="Clicks" class="ads-num">${integer(r.clicks)}</td></tr>`,
         )
         .join('')
-    : '<tr><td class="ads-empty-drill">No target-grain rows yet.</td></tr>';
+    : '<tr><td class="ads-empty-drill" colspan="8">No target-grain rows yet.</td></tr>';
 }
 function renderSearchTerms(rows = []) {
   byId('searchTermRows').innerHTML = rows.length
     ? rows
         .map(
           (r) =>
-            `<tr><td class="product-cell"><div class="ads-query">${escapeHtml(r.search_term || 'Unspecified query')}</div><div class="ads-context">${escapeHtml([r.match_type, r.target_id ? `target ${r.target_id}` : ''].filter(Boolean).join(' · '))}</div>${signal(r)}</td><td data-label="Campaign"><strong>${escapeHtml(r.campaign_name || r.campaign_id || '—')}</strong></td><td data-label="Action">${action(r, 'search')}</td><td data-label="Spend" class="ads-num">${money(r.spend)}</td><td data-label="Attributed" class="ads-num">${money(r.attributed_sales)}</td><td data-label="ACOS" class="ads-num">${ratioPercent(r.acos)}</td><td data-label="ROAS" class="ads-num">${multiple(r.roas)}</td><td data-label="Clicks" class="ads-num">${integer(r.clicks)}</td></tr>`,
+            `<tr><td class="product-cell"><div class="ads-query">${escapeHtml(r.search_term || 'Unspecified query')}</div><div class="ads-context">${escapeHtml([r.match_type, r.target_id ? `target ${r.target_id}` : ''].filter(Boolean).join(' · '))}</div></td><td data-label="Campaign"><strong>${escapeHtml(r.campaign_name || r.campaign_id || '—')}</strong></td><td data-label="Purchases" class="ads-num">${integer(r.purchases)}</td><td data-label="Spend" class="ads-num">${money(r.spend)}</td><td data-label="Attributed" class="ads-num">${money(r.attributed_sales)}</td><td data-label="ACOS" class="ads-num">${ratioPercent(r.acos)}</td><td data-label="ROAS" class="ads-num">${multiple(r.roas)}</td><td data-label="Clicks" class="ads-num">${integer(r.clicks)}</td></tr>`,
         )
         .join('')
-    : '<tr><td class="ads-empty-drill">No shopper-query rows yet.</td></tr>';
+    : '<tr><td class="ads-empty-drill" colspan="8">No shopper-query rows yet.</td></tr>';
 }
 function activateView(button) {
+  if (!button || button.disabled) return;
   document.querySelectorAll('[data-ads-view]').forEach((i) => {
     const a = i === button;
     i.classList.toggle('active', a);
     i.setAttribute('aria-selected', String(a));
   });
-  document
-    .querySelectorAll('.ads-view')
-    .forEach((v) => v.classList.toggle('active', v.id === button.dataset.adsView));
+  document.querySelectorAll('.ads-view').forEach((v) => {
+    const active = v.id === button.dataset.adsView;
+    v.classList.toggle('active', active);
+    v.hidden = !active;
+  });
+}
+function setViewAvailability(available) {
+  const tabs = [...document.querySelectorAll('[data-ads-view]')];
+  for (const tab of tabs) {
+    const enabled = available || tab.dataset.adsView === 'overview';
+    tab.disabled = !enabled;
+    tab.setAttribute('aria-disabled', String(!enabled));
+  }
+  const active = tabs.find((tab) => tab.classList.contains('active') && !tab.disabled);
+  activateView(active || tabs[0]);
 }
 function renderReady(p) {
   byId('readyState').hidden = false;
   byId('emptyState').hidden = true;
+  byId('adsViewAvailability').hidden = true;
   const s = p.summary || {},
     f = p.freshness || {};
   byId('asof').textContent =
     `${p.connection?.badge || 'Ads ready'} · through ${String(f.through_date || '').slice(5)}`;
   renderQuality(p);
   setMetric('spend', money(s.spend));
-  setMetric('spendDelta', deltaPercent(s.spend_delta_pct), normalTone(s.spend_delta_pct));
+  setMetric('spendDelta', deltaPercent(s.spend_delta_pct));
   setMetric('attributed', money(s.attributed_sales));
-  setMetric(
-    'salesDelta',
-    deltaPercent(s.attributed_sales_delta_pct),
-    normalTone(s.attributed_sales_delta_pct),
-  );
+  setMetric('salesDelta', deltaPercent(s.attributed_sales_delta_pct));
   setMetric('acos', ratioPercent(s.acos));
-  setMetric('acosDelta', deltaPoints(s.acos_delta_points), inverseTone(s.acos_delta_points));
+  setMetric('acosDelta', deltaPoints(s.acos_delta_points));
   setMetric('tacos', ratioPercent(s.tacos));
-  setMetric('tacosDelta', deltaPoints(s.tacos_delta_points), inverseTone(s.tacos_delta_points));
+  setMetric('tacosDelta', deltaPoints(s.tacos_delta_points));
   setMetric('roas', multiple(s.roas));
   setMetric('ctr', ratioPercent(s.ctr));
   setMetric('cpc', money(s.cpc));
   setMetric('totalSales', money(s.total_business_sales));
   byId('chartSub').textContent =
     `Daily spend and attributed sales · ${s.period_start || ''} → ${s.period_end || ''}`;
-  renderStory(s);
+  renderEvidenceWindow(s);
   renderActions(p.actions || []);
   if (window.DPPCharts) {
     window.DPPCharts.ads('#chart', p.daily || []);
@@ -248,9 +218,9 @@ function renderReady(p) {
   renderProducts(p.products);
   renderTargets(p.targets);
   renderSearchTerms(p.search_terms);
+  setViewAvailability(true);
 }
 function renderUnavailable(p) {
-  operatingTrusted = false;
   byId('emptyState').hidden = false;
   byId('readyState').hidden = true;
   const connection = p.connection || {};
@@ -258,7 +228,11 @@ function renderUnavailable(p) {
     connection.headline || 'Amazon Ads state is unavailable.';
   byId('emptyState').querySelector('p').textContent =
     connection.detail || 'The current Amazon Ads connection state could not be read.';
+  byId('adsViewAvailability').hidden = false;
+  byId('adsViewAvailability').textContent =
+    `Additional views are unavailable. ${connection.detail || 'Reporting readiness has not been confirmed.'}`;
   byId('asof').textContent = connection.badge || 'Ads state unavailable';
+  setViewAvailability(false);
   renderTargets([]);
   renderSearchTerms([]);
 }
@@ -269,6 +243,7 @@ function bindInteractions() {
 }
 async function start() {
   bindInteractions();
+  setViewAvailability(false);
   byId('clock').textContent = formatBusinessClock();
   try {
     const p = await fetchJson('/api/ads');
@@ -278,11 +253,14 @@ async function start() {
       renderReady(p);
     } else renderUnavailable(p);
   } catch (e) {
-    operatingTrusted = false;
     byId('emptyState').hidden = false;
     byId('emptyState').querySelector('h2').textContent = 'Advertising data is temporarily unavailable.';
     byId('emptyState').querySelector('p').textContent = e.message;
     byId('asof').textContent = 'Ads unavailable';
+    byId('adsViewAvailability').hidden = false;
+    byId('adsViewAvailability').textContent =
+      'Additional views are unavailable while the Ads API cannot be reached.';
+    setViewAvailability(false);
   }
 }
 start();

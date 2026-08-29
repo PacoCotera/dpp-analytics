@@ -72,14 +72,23 @@ try{
     if(adsConnection.state!=='READY'||adsPayload.status!=='ready'){
       const adsHeadline=((await page.locator('#emptyState h2').textContent())||'').trim();
       const adsDetail=((await page.locator('#emptyState p').textContent())||'').trim();
+      const unavailableTabs=await page.locator('[data-ads-view]:not([data-ads-view="overview"])').evaluateAll(tabs=>tabs.map(tab=>({disabled:tab.disabled,ariaDisabled:tab.getAttribute('aria-disabled')})));
+      const availability=((await page.locator('#adsViewAvailability').textContent())||'').trim();
       check('Ads empty headline derives from connection state',adsHeadline===adsConnection.headline,adsHeadline);
       check('Ads empty detail derives from connection state',adsDetail===adsConnection.detail,adsDetail);
+      check('Ads unavailable drill-down tabs are disabled',unavailableTabs.every(tab=>tab.disabled&&tab.ariaDisabled==='true'),JSON.stringify(unavailableTabs));
+      check('Ads unavailable drill-down state is explained',availability.includes(adsConnection.detail),availability);
       check('Ads empty state skips every chart dependency',chartState.paths.length===0,chartState.paths.join(', '));
       check('Ads empty state does not initialize chart runtime',!chartState.runtime,String(chartState.runtime));
     }else{
+      const actionReasons=await page.locator('#actionQueue .ads-action-body p').allTextContents();
+      const apiReasons=(adsPayload.actions||[]).map(action=>String(action.reason||''));
+      const enabledTabs=await page.locator('[data-ads-view]').evaluateAll(tabs=>tabs.every(tab=>!tab.disabled&&tab.getAttribute('aria-disabled')==='false'));
       check('Ads ready state loads every chart dependency',new Set(chartState.paths).size===3,chartState.paths.join(', '));
       check('Ads ready chart dependencies retain the page revision',chartState.revisions.every(revision=>revision===chartState.pageRevision),chartState.revisions.join(', '));
       check('Ads ready state initializes chart runtime',chartState.runtime,String(chartState.runtime));
+      check('Ads ready drill-down tabs are enabled',enabledTabs,String(enabledTabs));
+      check('Ads operating queue renders only API reasons',JSON.stringify(actionReasons)===JSON.stringify(apiReasons),JSON.stringify({actionReasons,apiReasons}));
     }
   }else{
     check('Catalog supplies a sellable SKU for Product Ads QA',false,'no sellable SKU');
@@ -96,7 +105,10 @@ try{
       summary:{spend:30,attributed_sales:90,total_business_sales:300,acos:1/3,tacos:.1,roas:3,ctr:.02,cpc:2,period_start:'2026-08-26',period_end:'2026-08-27'},
       daily:[{business_date:'2026-08-26',spend:10,attributed_sales:30},{business_date:'2026-08-27',spend:20,attributed_sales:60}],
       campaigns:[{campaign_id:'one',campaign_name:'One',spend:10,attributed_sales:20,clicks:5},{campaign_id:'two',campaign_name:'Two',spend:20,attributed_sales:70,clicks:10}],
-      products:[],targets:[],search_terms:[],actions:[],
+      products:[],
+      targets:[{target_id:'target-1',target_expression:'notebook',campaign_id:'one',campaign_name:'One',purchases:0,spend:12,attributed_sales:0,acos:null,roas:0,clicks:9}],
+      search_terms:[{search_term:'lined journal',campaign_id:'one',campaign_name:'One',purchases:2,spend:10,attributed_sales:30,acos:1/3,roas:3,clicks:5}],
+      actions:[{kind:'INSPECT_TARGET_SPEND',priority:2,label:'Review target',title:'notebook',context:'One',spend:12,roas:0,reason:'API-owned review reason.'}],
     })}));
     await readyPage.goto(`${baseUrl}/ads`,{waitUntil:'domcontentloaded',timeout:20000});
     await readyPage.waitForFunction(()=>Boolean(window.DPPCharts)&&document.querySelectorAll('#chart .dpp-bar').length===4,null,{timeout:10000});
@@ -105,8 +117,34 @@ try{
     check('Chart-bearing state retains one asset revision',readyChartState.revisions.every(revision=>revision===readyChartState.pageRevision),readyChartState.revisions.join(', '));
     check('Chart-bearing state marks three dynamic dependency nodes',readyChartState.dependencyNodes===3,String(readyChartState.dependencyNodes));
     check('Chart-bearing state renders after dependency load',await readyPage.locator('#readyState').isVisible(),String(await readyPage.locator('#readyState').isVisible()));
+    check('Ready tabs expose all report grains',await readyPage.locator('[data-ads-view]').evaluateAll(tabs=>tabs.every(tab=>!tab.disabled&&tab.getAttribute('aria-disabled')==='false')));
+    check('Ready operating queue uses the API reason',((await readyPage.locator('#actionQueue .ads-action-body p').textContent())||'').trim()==='API-owned review reason.');
+    await readyPage.locator('[data-ads-view="targets"]').click();
+    check('Target evidence reports purchases without a browser action label',(await readyPage.locator('#targetRows').textContent()).includes('0')&&await readyPage.locator('#targetRows .ads-action').count()===0);
+    await readyPage.locator('[data-ads-view="searchTerms"]').click();
+    check('Search-term evidence reports purchases without a browser action label',(await readyPage.locator('#searchTermRows').textContent()).includes('2')&&await readyPage.locator('#searchTermRows .ads-action').count()===0);
   }finally{
     await readyContext.close();
+  }
+
+  const disconnectedContext=await browser.newContext({viewport:{width:412,height:915},isMobile:true,hasTouch:true});
+  const disconnectedPage=await disconnectedContext.newPage();
+  try{
+    await disconnectedPage.route('**/api/ads',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
+      status:'not_initialized',local_time:'2026-08-28T08:00:00-06:00',
+      connection:{state:'NOT_CONNECTED',badge:'Ads not connected',headline:'Amazon Ads is not connected.',detail:'Connect Amazon Ads before paid-support reporting can start.'},
+      freshness:null,quality:{state:'NO_DATA',trusted_for_operating_decisions:false,issues:[]},summary:{},daily:[],campaigns:[],products:[],targets:[],search_terms:[],actions:[],
+    })}));
+    await disconnectedPage.goto(`${baseUrl}/ads`,{waitUntil:'networkidle',timeout:20000});
+    const tabs=await disconnectedPage.locator('[data-ads-view]').evaluateAll(items=>items.map(item=>({view:item.dataset.adsView,disabled:item.disabled,ariaDisabled:item.getAttribute('aria-disabled')})));
+    const disconnectedChartState=await chartAssetState(disconnectedPage);
+    check('Deterministic disconnected Ads keeps Overview enabled',tabs[0]?.view==='overview'&&!tabs[0].disabled&&tabs[0].ariaDisabled==='false',JSON.stringify(tabs));
+    check('Deterministic disconnected Ads disables every drill-down',tabs.slice(1).every(tab=>tab.disabled&&tab.ariaDisabled==='true'),JSON.stringify(tabs));
+    check('Deterministic disconnected Ads explains disabled views',((await disconnectedPage.locator('#adsViewAvailability').textContent())||'').includes('Connect Amazon Ads'),await disconnectedPage.locator('#adsViewAvailability').textContent());
+    check('Deterministic disconnected Ads contains mobile tabs',await disconnectedPage.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
+    check('Deterministic disconnected Ads remains chart-free',disconnectedChartState.paths.length===0&&disconnectedChartState.dependencyNodes===0,JSON.stringify(disconnectedChartState));
+  }finally{
+    await disconnectedContext.close();
   }
 }catch(error){failures.push(`Ads surface QA: ${error.message}`);}finally{await context.close();await browser.close();}
 const summary={generatedAt:new Date().toISOString(),baseUrl,status:failures.length?'FAIL':'PASS',checks,failures};

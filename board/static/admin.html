@@ -29,23 +29,18 @@
       </header>
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
-      <header class="page-header">
-        <div>
-          <h1 class="page-header__title">Product configuration</h1>
-          <p class="page-header__description">
-            Short UI names, seller taxonomy, and current unit COGS for canonical catalog offers.
-          </p>
-        </div>
-        <button id="logout" class="admin-secondary is-hidden" type="button">Sign out</button>
-      </header>
-
-      <main data-dpp-qa="admin-workspace">
-        <section
-          id="loginPanel"
-          class="admin-login"
-          aria-labelledby="loginTitle"
-          data-dpp-qa="admin-authentication"
-        >
+      <main>
+        <header class="page-header" data-dpp-qa="admin-workspace-header">
+          <div>
+            <div class="kicker">Seller-owned catalog values</div>
+            <h1 class="page-header__title">Product configuration</h1>
+            <p class="page-header__description">
+              Short UI names, seller taxonomy and current unit COGS for canonical catalog offers.
+            </p>
+          </div>
+          <button id="logout" class="admin-secondary is-hidden" type="button">Sign out</button>
+        </header>
+        <section id="loginPanel" class="admin-login" aria-labelledby="loginTitle">
           <div>
             <p class="admin-eyebrow">Protected workspace</p>
             <h2 id="loginTitle">Sign in to edit product configuration</h2>
@@ -66,7 +61,7 @@
           id="adminPanel"
           class="is-hidden"
           aria-labelledby="catalogAdminTitle"
-          data-dpp-qa="admin-catalog-editor"
+          data-dpp-qa="admin-product-editors"
         >
           <div class="admin-summary-head">
             <div>
@@ -76,7 +71,13 @@
             </div>
             <label class="admin-search" for="adminSearch">
               <span>Find a SKU</span>
-              <input id="adminSearch" type="search" placeholder="SKU, ASIN, or source title" />
+              <input
+                id="adminSearch"
+                type="search"
+                placeholder="SKU, ASIN, or source title"
+                aria-describedby="adminSearchResult"
+              />
+              <small id="adminSearchResult" role="status" aria-live="polite"></small>
             </label>
           </div>
           <div class="admin-summary" aria-label="Catalog configuration summary">
@@ -88,7 +89,8 @@
             Blank fields are never guessed. Saving an empty field clears only that seller-owned value;
             effective-dated COGS history and closed Finance snapshots are preserved.
           </div>
-          <div id="productEditors" class="admin-products" aria-live="polite"></div>
+          <div id="productEditors" class="admin-products"></div>
+          <p id="adminSearchEmpty" class="admin-search-empty" hidden>No current offers match this search.</p>
 
           <details class="admin-history">
             <summary>Deleted SKU history <span id="deletedDisclosure"></span></summary>
