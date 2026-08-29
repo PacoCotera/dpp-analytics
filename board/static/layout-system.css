@@ -24,7 +24,7 @@
   margin: 6px 0 0;
   max-width: var(--reading-max);
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.4;
 }
 
@@ -32,7 +32,7 @@
   margin: 7px 0 0;
   font-family: var(--dpp-font-detail, inherit);
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
 }
@@ -111,7 +111,7 @@
 .kpi__label {
   display: block;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.2;
   font-weight: 760;
 }
@@ -120,7 +120,7 @@
   font-family: var(--dpp-font-detail, inherit);
   margin-top: 2px;
   color: var(--muted);
-  font-size: 9.5px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.25;
 }
 
@@ -135,7 +135,7 @@
 .state-read__eyebrow {
   font-family: var(--dpp-font-detail, inherit);
   color: var(--accent-ink);
-  font-size: 9px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: var(--dpp-heading-weight, 760);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -219,7 +219,7 @@
 }
 .rule-dialog__head small {
   color: var(--accent-ink);
-  font-size: 10px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -250,14 +250,14 @@
 .rule-dialog__result small,
 .rule-dialog dt {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 .rule-dialog dl {
   display: grid;
   grid-template-columns: 88px 1fr;
   gap: 8px 12px;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.45;
 }
 .rule-dialog dd {
@@ -265,7 +265,7 @@
 }
 .rule-dialog h3 {
   margin: 16px 0 6px;
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 .rule-dialog ul {
   display: grid;
@@ -273,7 +273,7 @@
   margin: 0;
   padding-left: 18px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.4;
 }
 .rule-dialog__inputs {
@@ -340,13 +340,13 @@
   margin-top: 2px;
   max-width: var(--reading-max);
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 .section-header__action {
   flex: 0 0 auto;
   color: var(--accent-ink);
-  font-size: 11px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 760;
   white-space: nowrap;
 }
@@ -397,7 +397,7 @@
 .panel__description {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
 }
 
@@ -525,7 +525,7 @@
   padding: 9px 10px;
   border-bottom: var(--border-width) solid var(--line);
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--dpp-metadata-size, 14px);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-align: left;
@@ -535,7 +535,7 @@
 .data-table td {
   padding: 9px 10px;
   border-bottom: var(--border-width) solid var(--line);
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
   vertical-align: middle;
 }
 .data-table tbody tr:last-child td {
@@ -616,7 +616,7 @@
     font-size: 27px;
   }
   .page-header__description {
-    font-size: 12px;
+    font-size: var(--dpp-metadata-size, 14px);
   }
   .kpi-rail {
     grid-auto-flow: row;

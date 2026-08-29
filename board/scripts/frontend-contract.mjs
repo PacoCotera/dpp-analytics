@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import postcss from 'postcss';
+
 import { EXPECTED_PROFILE_IDS } from './presentation-contract.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -22,6 +24,18 @@ const pageStyles = {
   'sales.html': 'sales.css',
   'today.html': 'today.css',
   'trajectory.html': 'trajectory.css',
+};
+const routeStyleRoots = {
+  'admin.css': 'admin-shell',
+  'ads.css': 'ads-page',
+  'catalog.css': 'catalog-shell',
+  'data-health.css': 'data-health-page',
+  'finance.css': 'finance-page',
+  'inventory.css': 'inventory-page',
+  'product.css': 'product-page',
+  'sales.css': 'sales-page',
+  'today.css': 'today-app',
+  'trajectory.css': 'trajectory-page',
 };
 const requiredQaMarkers = {
   'admin.html': [
@@ -377,6 +391,48 @@ check(
 );
 for (const pageStyle of Object.values(pageStyles)) {
   const pageCss = readFileSync(join(staticRoot, pageStyle), 'utf8');
+  check(
+    !/\/\*\s*(?:Corrected .* recipe|Connected .* workspace)/i.test(pageCss),
+    pageStyle,
+    'route CSS must contain one canonical composition, not an appended correction layer',
+  );
+  const routeRoot = routeStyleRoots[pageStyle];
+  if (routeRoot) {
+    const selectorOwners = new Map();
+    const routeRootSelector = new RegExp(`^(?:body)?\\.${routeRoot}(?![\\w-])\\s+`);
+    const routeAst = postcss.parse(pageCss, { from: pageStyle });
+    let responsiveLayersStarted = false;
+    check(
+      !new RegExp(`(?:^|,|\\n)\\s*(?:body)?\\.${routeRoot}(?![\\w-])\\s+`, 'm').test(pageCss),
+      pageStyle,
+      `route stylesheet must rely on its owned load position instead of .${routeRoot} specificity`,
+    );
+    routeAst.each((node) => {
+      if (node.type === 'atrule' && node.name === 'media') responsiveLayersStarted = true;
+      check(
+        !responsiveLayersStarted || node.type !== 'rule',
+        pageStyle,
+        'base component rules must stay before responsive media blocks',
+      );
+    });
+    routeAst.walkRules((rule) => {
+      const context = [];
+      for (let parent = rule.parent; parent && parent.type !== 'root'; parent = parent.parent) {
+        if (parent.type === 'atrule') context.unshift(`@${parent.name} ${parent.params}`);
+      }
+      const selector = rule.selector
+        .split(',')
+        .map((part) => part.trim().replace(routeRootSelector, '').replaceAll(/\s+/g, ' '))
+        .join(',');
+      const owner = `${context.join(' > ')} :: ${selector}`;
+      check(
+        !selectorOwners.has(owner),
+        pageStyle,
+        `${selector} has more than one owner in the same responsive context`,
+      );
+      selectorOwners.set(owner, rule.source.start.line);
+    });
+  }
   for (const primitive of [
     'workspace',
     'panel--chart',
@@ -410,8 +466,6 @@ check(
   'Inventory filters and explanation action must use shared control primitives',
 );
 
-const contractedControlFontSelector =
-  /\.(?:btn|subnav__item|segmented-control__item|choice-control|mode|filter|how-btn|rule-trigger)(?![\w-])/;
 const contractedControlHeightSelector =
   /\.(?:btn|subnav__item|segmented-control__item|choice-control|mode|filter|how-btn)(?![\w-])/;
 for (const stylesheet of ['theme.css', 'layout-system.css', ...Object.values(pageStyles)]) {
@@ -420,14 +474,12 @@ for (const stylesheet of ['theme.css', 'layout-system.css', ...Object.values(pag
     const selector = match[1].trim();
     const contractedSelector = selector.replaceAll(/:not\([^)]*\)/g, '');
     const declarations = match[2];
-    if (contractedControlFontSelector.test(contractedSelector)) {
-      for (const fontSize of declarations.matchAll(/font-size:\s*([\d.]+)px/g)) {
-        check(
-          Number(fontSize[1]) >= 14,
-          stylesheet,
-          `${selector} hard-codes interactive text below the 14px rendered contract`,
-        );
-      }
+    for (const fontSize of declarations.matchAll(/font-size:\s*([\d.]+)px/g)) {
+      check(
+        Number(fontSize[1]) >= 14,
+        stylesheet,
+        `${selector} hard-codes text below the 14px rendered contract`,
+      );
     }
     if (contractedControlHeightSelector.test(contractedSelector)) {
       for (const minHeight of declarations.matchAll(/min-height:\s*([\d.]+)px/g)) {

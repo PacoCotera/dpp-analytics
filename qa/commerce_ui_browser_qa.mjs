@@ -666,7 +666,7 @@ try {
               rows: element.querySelectorAll('tbody th[scope="row"]').length,
             }));
           assert(
-            table.caption === "Inventory records and action evidence" &&
+            table.caption === "Inventory records and actions" &&
               table.columns === 10 &&
               table.rows === 1,
             `Inventory table semantics failed: ${JSON.stringify(table)}`,
