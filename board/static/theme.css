@@ -92,7 +92,7 @@ button {
   color: inherit;
 }
 
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+:where(a, button, input, select, summary, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--dpp-focus-ring, var(--info));
   outline-offset: 2px;
 }
@@ -442,6 +442,16 @@ h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
   .btn,
   .skeleton {
     transition: none;

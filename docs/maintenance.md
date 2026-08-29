@@ -50,8 +50,6 @@ Before adding page-specific code, check whether the behavior belongs in one of t
 | `chart-system.css` / `chart-system.js` | reusable chart grammar, axes, tooltips, legends, period treatment and shared chart forms |
 | `data-cache.js` | session-scoped GET JSON cache, browser in-flight dedupe and endpoint freshness policy |
 | `ui-utils.js` | escaping, number/money formatting, DOM helpers, shared interpretation-rule disclosure and JSON-fetch facade used by ES-module pages |
-| `mobile-ux.css` | shared mobile compatibility behavior retained from earlier iterations |
-| `design-refine.css` | retained global design refinements; treat as legacy/shared foundation, not a place for new page-specific overrides |
 | `vendor/d3.v7.min.js` | vendored D3 runtime |
 
 A page should not add a second nav, duplicate generic panel geometry, inject CSS from JavaScript, or create a post-render “enhancer” layer.
@@ -296,6 +294,5 @@ These are not reasons to recreate the old layering model:
 - `sales-canonical.js` retains a historical filename although it is the live Overview/Drivers renderer.
 - `sales-geography.js` remains a compatibility entrypoint for the current v2/fixes map renderer; consolidate that split separately rather than layering another geography runtime.
 - Finance has historical `finance_api.py` / `finance_safe.py` filenames while production currently packages `finance_emergency.py` as `finance_api.py`; normalize separately with Finance smoke coverage.
-- `mobile-ux.css` and `design-refine.css` remain shared global styles. Gradually move genuinely page-specific rules out when those files are touched, but do not create replacement override sheets.
 
 When one of these debts is removed, delete its note here in the same PR.

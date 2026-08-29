@@ -156,6 +156,10 @@
 .rule-trigger:hover,
 .rule-trigger:focus-visible {
   border-color: var(--accent);
+}
+
+.rule-trigger:focus-visible {
+  box-shadow: 0 0 0 2px var(--dpp-focus-ring, var(--info));
   outline: none;
 }
 .rule-dialog {

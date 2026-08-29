@@ -166,18 +166,11 @@ At server startup, the complete static tree is hashed into one release manifest.
 
 This makes local/source behavior and deployed behavior materially easier to compare: what is reviewed in Git is what the browser loads in production, and one page cannot silently combine assets from different releases.
 
-## Retained global styles
+## Stylesheet ownership
 
-`mobile-ux.css` and `design-refine.css` remain shared compatibility/foundation sheets from earlier iterations. They are not page-specific extension points.
+The legacy `mobile-ux.css` and `design-refine.css` layers have been removed. Shared presentation behavior belongs only to `theme.css`, `nav-shell.css`, `layout-system.css`, `chart-system.css`, and the generated `presentation-profiles.css`. Each workspace then owns one page stylesheet; Sales additionally owns `sales-geography.css` for its lazy analytical view.
 
-When touching these files:
-
-- keep only genuinely cross-page behavior there;
-- move page-specific selectors to the owning page stylesheet;
-- do not create another global “refine”, “override”, “v2” or “enhance” layer;
-- delete superseded rules once ownership has moved.
-
-The target is fewer owners, not more layers with clearer names.
+`scripts/frontend-contract.mjs` rejects undeclared stylesheet files as well as missing or misordered layers. Do not create another global “refine”, “override”, “v2”, “enhance”, or route-fragment stylesheet. Move a genuinely shared primitive to its existing shared owner; keep route-specific behavior in the owning page stylesheet.
 
 ## Lint and formatting policy
 
@@ -185,7 +178,7 @@ Lint and formatting serve different purposes and run separately.
 
 `npm run lint` is the blocking code-quality gate. ESLint scans the complete application JavaScript tree and Stylelint scans the complete CSS tree. Stylelint intentionally does not enforce cosmetic conventions that conflict with the existing DOM/CSS vocabulary, such as camelCase legacy IDs, one-line declaration formatting, color-function spelling or media-range spelling. Those are formatting/migration concerns, not runtime defects.
 
-`npm run format:check` reports Prettier drift. It remains available as the mechanical formatting audit while the shared legacy foundation sheets are progressively normalized. Once those remaining global sheets are formatted deliberately, formatting can become a required deployment gate without a large whitespace-only churn commit.
+`npm run format:check` is the blocking mechanical formatting audit for the consolidated frontend source tree.
 
 New and migrated files should be readable and formatted when touched even before the repository-wide formatting gate becomes mandatory.
 
@@ -203,9 +196,10 @@ New and migrated files should be readable and formatted when touched even before
 10. Shared shell owns navigation, tab accessibility and mobile swipe behavior: **done**.
 11. Superseded Finance frontend layers, Sales overrides, Home, Today, Ads and generic refinement layers: **removed**.
 12. Legacy unused `index.html`: **removed**; `/`, `/home` and `/index.html` are served by canonical `home.html`.
-13. Full frontend lint on the consolidated source tree: **required and green before review/deploy**.
-14. Production visual regression review at desktop/mobile widths: **required before accepting the refactor**.
-15. Optional analytical/product redesigns such as chart-form changes: **separate from this structural refactor**.
+13. Orphan Today layout/operations styles and the separate Data Health catalog-onboarding stylesheet: **removed/consolidated**.
+14. Full frontend lint on the consolidated source tree: **required and green before review/deploy**.
+15. Production visual regression review at desktop/mobile widths: **required before accepting the refactor**.
+16. Optional analytical/product redesigns such as chart-form changes: **separate from this structural refactor**.
 
 ## Documentation boundary
 

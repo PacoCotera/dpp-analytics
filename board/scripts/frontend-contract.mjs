@@ -33,6 +33,13 @@ const presentationAssets = [
   'presentation-profiles.css',
   'ui-shell.js',
 ];
+const ownedStyles = new Set([
+  ...Object.values(pageStyles),
+  ...sharedStyles,
+  'chart-system.css',
+  'presentation-profiles.css',
+  'sales-geography.css',
+]);
 const failures = [];
 const theme = readFileSync(join(staticRoot, 'theme.css'), 'utf8');
 const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
@@ -43,6 +50,7 @@ const presentationRegistry = JSON.parse(
 );
 const todayHtml = readFileSync(join(staticRoot, 'today.html'), 'utf8');
 const todayScript = readFileSync(join(staticRoot, 'today.js'), 'utf8');
+const salesGeographyScript = readFileSync(join(staticRoot, 'sales-geography-v2.js'), 'utf8');
 const shellSelector =
   /\.(?:app|topbar|brand|brand-copy|brand-title|brand-sub|mark|top-meta|primary-nav|nav-more|footer)\b/;
 const retiredComponentNames = new Set([
@@ -77,6 +85,15 @@ const pageOwnedOrRetiredThemeSelector =
 function check(condition, page, message) {
   if (!condition) failures.push(`${page}: ${message}`);
 }
+
+const actualStyles = readdirSync(staticRoot)
+  .filter((name) => name.endsWith('.css'))
+  .sort();
+check(
+  JSON.stringify(actualStyles) === JSON.stringify([...ownedStyles].sort()),
+  'static',
+  `stylesheet ownership differs from the declared presentation layers: ${actualStyles.join(', ')}`,
+);
 
 for (const page of pages) {
   const html = readFileSync(join(staticRoot, page), 'utf8');
@@ -249,6 +266,11 @@ check(
   'deprecated refinement layer still exists',
 );
 check(
+  !readdirSync(staticRoot).includes('mobile-ux.css'),
+  'static',
+  'deprecated mobile compatibility layer still exists',
+);
+check(
   !readdirSync(staticRoot).includes('today-operations.js'),
   'today.html',
   'Today must have one renderer and data owner',
@@ -269,6 +291,18 @@ check(
   'Today must have exactly one live refresh loop',
 );
 check(!/MutationObserver/.test(todayScript), 'today.js', 'Today must not use post-render correction observers');
+check(
+  /@media \(prefers-reduced-motion: reduce\)/.test(theme) &&
+    /transition-duration:\s*0\.01ms !important/.test(theme) &&
+    /animation-duration:\s*0\.01ms !important/.test(theme),
+  'theme.css',
+  'shared presentation layer must suppress CSS motion for reduced-motion preferences',
+);
+check(
+  /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/.test(salesGeographyScript),
+  'sales-geography-v2.js',
+  'scripted map zoom must respect reduced-motion preferences',
+);
 check(!shellSelector.test(theme), 'theme.css', 'application-shell rules belong to nav-shell.css');
 check(!shellSelector.test(layout), 'layout-system.css', 'application-shell rules belong to nav-shell.css');
 check(!retiredComponentSelector.test(theme), 'theme.css', 'retired component rules remain in the theme');
