@@ -453,3 +453,131 @@
     gap: 3px;
   }
 }
+
+/* Corrected Admin recipe: focused authentication or dense configuration workspace. */
+body.admin-shell main {
+  max-width: none;
+  padding-top: 16px;
+}
+
+body.admin-shell main > .page-header {
+  min-height: 0;
+  padding: 16px 20px 13px;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--surface);
+}
+
+body.admin-shell main > .page-header .page-header__title {
+  margin-top: 3px;
+  font-size: clamp(30px, 3vw, 40px);
+}
+
+body.admin-shell main > .page-header .page-header__description {
+  max-width: 760px;
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+body.admin-shell .admin-login {
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  min-height: 260px;
+  max-width: 980px;
+  align-items: center;
+  margin: 10px auto 0;
+  padding: 28px clamp(22px, 4vw, 48px);
+  border-radius: var(--panel-radius);
+}
+
+body.admin-shell .admin-login h2 {
+  max-width: 580px;
+  margin-top: 4px;
+  font-size: clamp(24px, 2.5vw, 34px);
+}
+
+body.admin-shell .admin-login-form {
+  padding-left: 24px;
+  border-left: var(--border-width) solid var(--line);
+}
+
+body.admin-shell #adminPanel {
+  margin-top: 10px;
+}
+
+body.admin-shell .admin-summary-head {
+  margin: 0;
+  padding: 14px 16px 12px;
+  border: var(--border-width) solid var(--line);
+  border-bottom: 0;
+  border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+  background: var(--surface);
+}
+
+body.admin-shell .admin-summary-head h2 {
+  font-size: 22px;
+}
+
+body.admin-shell .admin-summary {
+  gap: 0;
+  margin: 0;
+  border-right: var(--border-width) solid var(--line);
+  border-left: var(--border-width) solid var(--line);
+  background: var(--surface);
+}
+
+body.admin-shell .admin-summary div {
+  min-height: 76px;
+  padding: 11px 16px;
+  border: 0;
+  border-right: var(--border-width) solid var(--line);
+  border-radius: 0;
+}
+
+body.admin-shell .admin-summary div:last-child {
+  border-right: 0;
+}
+
+body.admin-shell .admin-notice {
+  margin: 0 0 10px;
+  border-radius: 0 0 var(--panel-radius) var(--panel-radius);
+}
+
+body.admin-shell .admin-products {
+  gap: 10px;
+}
+
+body.admin-shell .admin-history {
+  margin-top: 10px;
+}
+
+@media (max-width: 720px) {
+  body.admin-shell main {
+    padding-top: 12px;
+  }
+
+  body.admin-shell main > .page-header {
+    padding: 14px 15px 11px;
+  }
+
+  body.admin-shell .admin-login {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding: 22px 18px;
+  }
+
+  body.admin-shell .admin-login-form {
+    padding-top: 18px;
+    padding-left: 0;
+    border-top: var(--border-width) solid var(--line);
+    border-left: 0;
+  }
+
+  body.admin-shell .admin-summary div {
+    border-right: 0;
+    border-bottom: var(--border-width) solid var(--line);
+  }
+
+  body.admin-shell .admin-summary div:last-child {
+    border-bottom: 0;
+  }
+}

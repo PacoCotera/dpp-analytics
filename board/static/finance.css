@@ -978,3 +978,147 @@
     cursor: pointer;
   }
 }
+
+/* Corrected Finance recipe: compact close lead, management report, then immutable history. */
+body.finance-page main {
+  max-width: none;
+  padding-top: 16px;
+}
+
+body.finance-page .finance-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--surface);
+}
+
+body.finance-page .finance-head > div:first-child {
+  padding: 18px 22px 15px;
+}
+
+body.finance-page .finance-head .page-header__title {
+  margin-top: 3px;
+  font-size: clamp(30px, 3vw, 40px);
+}
+
+body.finance-page .finance-head .page-header__description {
+  max-width: 780px;
+  margin-top: 5px;
+  line-height: 1.35;
+}
+
+body.finance-page .period-meta {
+  min-width: 250px;
+  justify-content: center;
+  padding: 14px 20px;
+  border-left: var(--border-width) solid var(--line);
+  background: var(--dpp-surface-subtle);
+}
+
+body.finance-page .report-grid {
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.45fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+body.finance-page .report,
+body.finance-page .status-rail,
+body.finance-page .finance-read {
+  padding: 14px 16px;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--surface);
+}
+
+body.finance-page .money-strip {
+  margin: 8px 0 14px;
+}
+
+body.finance-page .money-cell {
+  min-height: 100px;
+  padding: 12px 14px;
+}
+
+body.finance-page .big-money {
+  font-size: clamp(25px, 2.6vw, 36px);
+}
+
+body.finance-page .status-rail h2,
+body.finance-page .finance-read__title {
+  font-size: 18px;
+}
+
+body.finance-page .rail-row {
+  min-height: 38px;
+  padding: 7px 0;
+}
+
+body.finance-page .finance-reads {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+body.finance-page .finance-read.wide {
+  grid-column: 1 / -1;
+}
+
+body.finance-page .finance-read__head {
+  margin-bottom: 8px;
+}
+
+body.finance-page .bridge-step {
+  min-height: 78px;
+  padding: 10px 12px;
+}
+
+body.finance-page .finance-mobile-disclosure > summary {
+  min-height: 48px;
+}
+
+body.finance-page .progress-svg {
+  height: 330px;
+}
+
+body.finance-page #pendingSection,
+body.finance-page [data-dpp-qa='finance-immutable-history'],
+body.finance-page .finance-evidence {
+  margin-top: 10px;
+}
+
+body.finance-page .history thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+@media (max-width: 900px) {
+  body.finance-page .finance-head,
+  body.finance-page .report-grid,
+  body.finance-page .finance-reads {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.finance-page .period-meta {
+    border-top: var(--border-width) solid var(--line);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  body.finance-page main {
+    padding-top: 12px;
+  }
+
+  body.finance-page .finance-head > div:first-child,
+  body.finance-page .period-meta,
+  body.finance-page .report,
+  body.finance-page .status-rail,
+  body.finance-page .finance-read {
+    padding: 13px;
+  }
+}
