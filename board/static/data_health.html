@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="/assets/presentation-profiles.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
-  <body>
+  <body class="data-health-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="app">
       <header class="topbar">
@@ -32,7 +32,7 @@
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
-      <main>
+      <main data-dpp-qa="data-health-workspace">
         <header class="page-header">
           <div>
             <h1 class="page-header__title">Data Health</h1>
@@ -42,7 +42,7 @@
           </div>
         </header>
 
-        <section class="page-section trust-overview">
+        <section class="page-section trust-overview" data-dpp-qa="data-health-summary">
           <div class="panel health-summary">
             <div class="panel__body health-summary__body">
               <div class="health-summary__count" id="summaryCount">—</div>
@@ -120,7 +120,7 @@
           </div>
         </section>
 
-        <section class="page-section coverage-section">
+        <section class="page-section coverage-section" data-dpp-qa="data-health-pipeline">
           <details class="warehouse-reference">
             <summary>
               <span>

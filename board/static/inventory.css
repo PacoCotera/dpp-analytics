@@ -17,7 +17,7 @@
   padding: 0 13px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgb(255 253 249 / 72%);
+  background: var(--dpp-surface-raised, var(--surface));
   font-size: 11px;
   font-weight: 780;
   white-space: nowrap;
@@ -45,17 +45,17 @@
   padding: 14px 15px;
   border: 1px solid var(--line);
   border-radius: var(--panel-radius);
-  background: rgb(255 253 249 / 70%);
+  background: var(--surface);
 }
 
 .action-card.urgent {
-  border-color: #e3a69f;
-  background: #fff7f5;
+  border-color: var(--bad);
+  background: var(--bad-soft);
 }
 
 .action-card.plan {
-  border-color: #e1c68a;
-  background: #fffaf0;
+  border-color: var(--warn);
+  background: var(--warn-soft);
 }
 
 .action-top,
@@ -132,7 +132,7 @@
 }
 
 .action.HOLD {
-  background: #eee8df;
+  background: var(--dpp-surface-subtle, var(--paper-2));
   color: var(--muted);
 }
 
@@ -164,7 +164,7 @@
 .band {
   padding: 10px 11px;
   border-radius: 12px;
-  background: #f5f0e8;
+  background: var(--dpp-surface-subtle, var(--paper-2));
 }
 
 .band strong {
@@ -192,9 +192,10 @@
   min-width: 0;
   height: 40px;
   padding: 0 14px;
-  border: 1px solid #d4ccc0;
+  border: var(--border-width) solid var(--line);
   border-radius: 999px;
-  background: #fffdf9;
+  background: var(--dpp-surface-raised, var(--surface));
+  color: var(--ink);
   font-size: 14px;
 }
 
@@ -207,9 +208,10 @@
 .filter {
   height: 38px;
   padding: 0 12px;
-  border: 1px solid #d5cdc1;
+  border: var(--border-width) solid var(--line);
   border-radius: 999px;
-  background: #f8f4ed;
+  background: var(--dpp-surface-subtle, var(--paper-2));
+  color: var(--ink);
   font-size: 10.5px;
   font-weight: 800;
   white-space: nowrap;
@@ -293,7 +295,7 @@
 }
 
 .cover.attn {
-  color: #a85e00;
+  color: var(--warn);
 }
 
 .cover.good {
@@ -313,16 +315,16 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #8b857d;
+  background: var(--muted);
   content: '';
 }
 
 .status-dot.attn {
-  color: #9a5b00;
+  color: var(--warn);
 }
 
 .status-dot.attn::before {
-  background: #c57900;
+  background: var(--warn);
 }
 
 .status-dot.good {
@@ -473,7 +475,7 @@
     padding: 10px 11px;
     border: 1px solid var(--line);
     border-radius: 14px;
-    background: rgb(255 253 249 / 70%);
+    background: var(--surface);
   }
 
   .inv-card__top {
@@ -537,7 +539,7 @@
 
   .inv-card--reference {
     border-radius: 12px;
-    background: rgb(255 253 249 / 46%);
+    background: var(--dpp-surface-subtle, var(--paper-2));
   }
 
   .inv-reference-note {
@@ -551,7 +553,7 @@
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 14px;
-    background: rgb(255 253 249 / 58%);
+    background: var(--surface);
   }
 
   .inventory-reference summary {
@@ -583,7 +585,7 @@
   }
 
   .inventory-reference__list .inv-card {
-    border-color: rgb(214 205 193 / 72%);
+    border-color: var(--line);
   }
 
   .inventory-foot {

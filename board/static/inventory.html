@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="/assets/presentation-profiles.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
-  <body>
+  <body class="inventory-page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <div class="app">
       <header class="topbar">
@@ -31,7 +31,7 @@
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
-      <main>
+      <main data-dpp-qa="inventory-workspace">
         <section class="page-header inventory-page-header">
           <div>
             <div class="kicker">Inventory manager</div>
@@ -72,7 +72,7 @@
           recent selling velocity, so producing more needs judgment rather than an automatic signal.
         </div>
 
-        <section class="page-section">
+        <section class="page-section" data-dpp-qa="inventory-actions">
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Action queue</h2>
@@ -94,7 +94,7 @@
           </div>
         </section>
 
-        <section class="page-section" id="all">
+        <section class="page-section" id="all" data-dpp-qa="inventory-records">
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Inventory records</h2>

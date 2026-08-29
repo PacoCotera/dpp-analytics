@@ -55,7 +55,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #d99a28;
+  background: var(--warn);
   content: '';
 }
 
@@ -65,11 +65,11 @@
 }
 
 .finance-status.pending::before {
-  background: #c97927;
+  background: var(--warn);
 }
 
 .finance-status.closing::before {
-  background: #b58b52;
+  background: var(--dpp-data2, var(--accent));
 }
 
 .report-grid {
@@ -328,7 +328,7 @@
   min-width: 0;
   padding: 10px 9px;
   border-radius: 11px;
-  background: #f0ebe2;
+  background: var(--dpp-surface-subtle, var(--paper-2));
 }
 
 .bridge-step span {
@@ -350,11 +350,11 @@
 }
 
 .bridge-step.final {
-  background: #e6ede4;
+  background: var(--good-soft);
 }
 
 .bridge-step.warn {
-  background: #f3e8d4;
+  background: var(--warn-soft);
 }
 
 .chart-wrap {
@@ -369,33 +369,33 @@
 }
 
 .finance-chart-grid {
-  stroke: #ded6ca;
+  stroke: var(--dpp-data-grid, var(--line));
 }
 
 .finance-chart-axis {
-  fill: #746c62;
+  fill: var(--muted);
   font-size: 11px;
 }
 
 .finance-chart-month {
-  fill: #665f57;
+  fill: var(--muted);
   font-size: 11px;
   font-weight: 700;
 }
 
 .finance-chart-bar--sales {
-  fill: #b58b52;
-  stroke: #b58b52;
+  fill: var(--dpp-data2, var(--accent));
+  stroke: var(--dpp-data2, var(--accent));
 }
 
 .finance-chart-bar--contribution {
-  fill: #6f8269;
-  stroke: #6f8269;
+  fill: var(--dpp-data4, var(--good));
+  stroke: var(--dpp-data4, var(--good));
 }
 
 .finance-chart-bar--contribution.is-negative {
-  fill: #9c665f;
-  stroke: #9c665f;
+  fill: var(--bad);
+  stroke: var(--bad);
 }
 
 .finance-chart-bar.is-open {
@@ -422,15 +422,15 @@
   width: 10px;
   height: 10px;
   border-radius: 3px;
-  background: #b58b52;
+  background: var(--dpp-data2, var(--accent));
 }
 
 .legend-swatch.contrib {
-  background: #6f8269;
+  background: var(--dpp-data4, var(--good));
 }
 
 .legend-swatch.open {
-  border: 1px dashed #6f8269;
+  border: 1px dashed var(--dpp-data4, var(--good));
   background: transparent;
 }
 
@@ -464,8 +464,8 @@
   display: inline-flex;
   padding: 5px 7px;
   border-radius: 999px;
-  background: #f3e8d4;
-  color: #73501d;
+  background: var(--warn-soft);
+  color: var(--warn-ink);
   font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.05em;
@@ -473,8 +473,8 @@
 }
 
 .pending-badge.ready {
-  background: #e6ede4;
-  color: #405a43;
+  background: var(--good-soft);
+  color: var(--good-ink);
 }
 
 .pending-metric {
@@ -728,7 +728,7 @@
     padding: 10px 11px;
     border: 1px solid var(--line);
     border-radius: 12px;
-    background: rgb(255 253 249 / 70%);
+    background: var(--surface);
   }
 
   .status-rail .rail-row span {
@@ -861,7 +861,7 @@
     padding: 12px 13px;
     border: 1px solid var(--line);
     border-radius: 14px;
-    background: rgb(255 253 249 / 70%);
+    background: var(--surface);
   }
 
   .pending-row > div:nth-child(1),
@@ -895,7 +895,7 @@
     padding: 12px 13px;
     border: 1px solid var(--line);
     border-radius: 14px;
-    background: rgb(255 253 249 / 70%);
+    background: var(--surface);
   }
 
   .history-row > :not(:first-child) {
@@ -934,7 +934,7 @@
     margin-top: 9px;
     border: 1px solid var(--line);
     border-radius: 12px;
-    background: rgb(255 253 249 / 70%);
+    background: var(--surface);
     color: var(--ink);
     font: inherit;
     font-size: 13px;

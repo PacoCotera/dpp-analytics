@@ -1,7 +1,3 @@
-.product-page {
-  --surface: #fffdf9;
-}
-
 .product-page .app {
   max-width: 1680px;
 }
@@ -13,16 +9,20 @@
   align-items: center;
   margin-top: 14px;
   padding: 15px;
-  background: radial-gradient(circle at 92% 0%, rgb(229 139 31 / 14%), transparent 33%),
-    rgb(255 253 249 / 82%);
+  background: radial-gradient(
+      circle at 92% 0%,
+      color-mix(in srgb, var(--accent) 14%, transparent),
+      transparent 33%
+    ),
+    var(--surface);
 }
 
 .hero-img {
   width: 102px;
   height: 122px;
-  border: 1px solid #e7dfd4;
+  border: var(--border-width) solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--media-canvas);
   object-fit: contain;
 }
 
@@ -64,10 +64,10 @@
   min-height: 24px;
   align-items: center;
   padding: 0 8px;
-  border: 1px solid #ddd4c8;
+  border: var(--border-width) solid var(--line);
   border-radius: 999px;
-  background: rgb(255 255 255 / 62%);
-  color: #514a42;
+  background: var(--dpp-surface-subtle, var(--paper-2));
+  color: var(--muted);
   font-size: 9px;
   font-weight: 720;
 }
@@ -134,7 +134,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: rgb(247 243 236 / 68%);
+  background: var(--dpp-surface-subtle, var(--paper-2));
 }
 
 .product-health__fact {
@@ -184,7 +184,7 @@
   padding: 12px 14px;
   border: 1px solid var(--line) !important;
   border-radius: 13px;
-  background: rgb(255 253 249 / 76%);
+  background: var(--surface);
 }
 
 .product-kpi::before {
@@ -193,7 +193,7 @@
   right: 0;
   left: 0;
   height: 3px;
-  background: #d9cdbf;
+  background: var(--dpp-border-strong, var(--line));
   content: '';
 }
 
@@ -202,7 +202,7 @@
 }
 
 .product-kpi:nth-child(2)::before {
-  background: #8a7660;
+  background: var(--dpp-data2, var(--accent));
 }
 
 .product-kpi:nth-child(3)::before {
@@ -210,12 +210,12 @@
 }
 
 .product-kpi:nth-child(4)::before {
-  background: #6e6256;
+  background: var(--dpp-data4, var(--info));
 }
 
 .product-kpi .kpi__label {
   margin: 0;
-  color: #5c554c;
+  color: var(--muted);
   font-size: 9px;
   letter-spacing: 0.055em;
   text-transform: uppercase;
@@ -309,7 +309,7 @@
 .decision-block {
   min-width: 0;
   padding: 13px;
-  background: rgb(255 253 249 / 70%);
+  background: var(--surface);
 }
 
 .decision-block strong {
@@ -332,7 +332,7 @@
 
 .decision-block--economics,
 .decision-block--ads {
-  border-top: 3px solid #8a7660;
+  border-top: 3px solid var(--dpp-data2, var(--accent));
 }
 
 .decision-block--listing {
@@ -349,7 +349,7 @@
 .inventory-line div {
   padding: 8px 7px;
   border-radius: 9px;
-  background: #f7f3ec;
+  background: var(--dpp-surface-subtle, var(--paper-2));
 }
 
 .inventory-line b {
@@ -372,7 +372,7 @@
 .commercial-status-line span {
   padding: 5px 7px;
   border-radius: 999px;
-  background: #f3eee6;
+  background: var(--dpp-surface-subtle, var(--paper-2));
   color: var(--muted);
   font-size: 8.5px;
 }
@@ -387,7 +387,7 @@
 .product-reference {
   overflow: hidden;
   margin-top: 10px;
-  background: rgb(255 253 249 / 68%);
+  background: var(--surface);
 }
 
 .product-reference > summary {
@@ -455,7 +455,7 @@
 .variation-chip {
   padding: 5px 7px;
   border-radius: 999px;
-  background: #eee8df;
+  background: var(--dpp-surface-subtle, var(--paper-2));
   font-size: 8.5px;
   font-weight: 760;
 }
@@ -481,9 +481,9 @@
   grid-template-columns: 36px minmax(0, 1fr);
   gap: 7px;
   padding: 8px;
-  border: 1px solid #e5ddd1;
+  border: var(--border-width) solid var(--line);
   border-radius: 11px;
-  background: #f9f5ee;
+  background: var(--dpp-surface-subtle, var(--paper-2));
 }
 
 .sibling img,
@@ -491,7 +491,7 @@
   width: 36px;
   height: 44px;
   border-radius: 6px;
-  background: #fff;
+  background: var(--media-canvas);
   object-fit: contain;
 }
 
@@ -529,7 +529,7 @@
   margin-top: 10px;
   border: 1px solid var(--line);
   border-radius: var(--panel-radius);
-  background: rgb(255 253 249 / 62%);
+  background: var(--surface);
 }
 
 .evidence summary {
@@ -570,9 +570,9 @@
 
 .product-order {
   padding: 11px;
-  border: 1px solid #e4dcd0;
+  border: var(--border-width) solid var(--line);
   border-radius: 12px;
-  background: #fbf8f2;
+  background: var(--dpp-surface-subtle, var(--paper-2));
 }
 
 .product-order.reference-order {
@@ -607,10 +607,10 @@
   width: fit-content;
   max-width: 100%;
   padding: 0 7px;
-  border: 1px solid #d8cec0;
+  border: var(--border-width) solid var(--line);
   border-radius: 999px;
-  background: #f2ece3;
-  color: #5f574d;
+  background: var(--dpp-surface-subtle, var(--paper-2));
+  color: var(--muted);
   font-size: 8.5px;
   font-weight: 800;
   letter-spacing: 0.035em;
@@ -619,26 +619,26 @@
 }
 
 .order-status-pill.waiting {
-  border-color: #e3c688;
-  background: #fff4d7;
-  color: #7c560a;
+  border-color: var(--warn);
+  background: var(--warn-soft);
+  color: var(--warn-ink);
 }
 
 .order-status-pill.active {
-  border-color: #bcd3c4;
-  background: #edf7f0;
-  color: #286342;
+  border-color: var(--good);
+  background: var(--good-soft);
+  color: var(--good-ink);
 }
 
 .order-status-pill.problem {
-  border-color: #e0b6b0;
-  background: #fbefed;
-  color: #8b3d34;
+  border-color: var(--bad);
+  background: var(--bad-soft);
+  color: var(--bad-ink);
 }
 
 .order-badge.fulfillment {
-  background: #f5f1ea;
-  color: #38332d;
+  background: var(--dpp-surface-raised, var(--surface));
+  color: var(--ink);
 }
 
 .product-order__top > strong {
@@ -655,7 +655,7 @@
 
 .product-order__meta code {
   overflow: hidden;
-  color: #4f463d;
+  color: var(--ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 9.5px;
   font-weight: 700;
@@ -678,7 +678,7 @@
   width: 40px;
   height: 48px;
   border-radius: 7px;
-  background: #fff;
+  background: var(--media-canvas);
   object-fit: contain;
 }
 
@@ -698,7 +698,7 @@
 }
 
 .product-order__qty {
-  color: #554c42;
+  color: var(--ink);
   font-size: 11px;
   font-weight: 800;
 }
@@ -719,10 +719,10 @@
   justify-content: space-between;
   margin-top: 8px;
   padding: 0 11px;
-  border: 1px solid #ded5c9;
+  border: var(--border-width) solid var(--line);
   border-radius: 10px;
-  background: #f5efe6;
-  color: #5f574d;
+  background: var(--dpp-surface-subtle, var(--paper-2));
+  color: var(--muted);
   font-size: 9.5px;
   font-weight: 760;
   cursor: pointer;

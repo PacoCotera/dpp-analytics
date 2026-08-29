@@ -21,6 +21,10 @@ try {
   const response = await page.goto(`${baseUrl}/admin`, { waitUntil: 'domcontentloaded', timeout: 20000 });
   if (!response?.ok()) throw new Error(`Admin navigation returned ${response?.status() || 'no response'}`);
   await page.locator('#loginPanel').waitFor({ state: 'visible', timeout: 5000 });
+  const landmarks = await page.locator('[data-dpp-qa]').evaluateAll(elements => elements.map(element => element.getAttribute('data-dpp-qa')));
+  for (const expected of ['admin-workspace', 'admin-authentication', 'admin-catalog-editor']) {
+    if (!landmarks.includes(expected)) throw new Error(`Admin workspace landmark is missing: ${expected}`);
+  }
 
   const sessionResponse = await context.request.get(`${baseUrl}/api/admin/session`);
   const protectedResponse = await context.request.get(`${baseUrl}/api/admin/catalog`);
