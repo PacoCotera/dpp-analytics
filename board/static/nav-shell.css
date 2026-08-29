@@ -73,10 +73,12 @@ body.shell-drawer-open {
   min-height: var(--dpp-shell-header-height);
   align-items: center;
   gap: 18px;
-  margin: 0 calc(-1 * var(--dpp-shell-gutter));
-  padding: 10px var(--dpp-shell-gutter);
+  margin: 0;
+  padding: 10px 0;
   border-bottom: var(--dpp-border-width) solid var(--dpp-header-border);
   background: var(--dpp-header);
+  box-shadow: 0 0 0 100vmax var(--dpp-header);
+  clip-path: inset(0 -100vmax);
   color: var(--dpp-header-text);
 }
 
@@ -531,8 +533,11 @@ body.shell-drawer-open {
   .shell-global-header.topbar {
     min-height: var(--dpp-shell-header-height);
     gap: 9px;
+    margin: 0 calc(-1 * var(--dpp-shell-gutter));
     padding: 7px var(--dpp-shell-gutter);
     border-bottom: var(--dpp-border-width) solid var(--dpp-header-border);
+    box-shadow: none;
+    clip-path: none;
   }
 
   .shell-menu-button,

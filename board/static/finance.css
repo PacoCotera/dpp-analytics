@@ -1152,7 +1152,8 @@ body.finance-page .history thead {
   }
 
   body.finance-page .history thead {
-    display: none;
+    display: block;
+    visibility: hidden;
   }
 
   body.finance-page .finance-head > div:first-child,

@@ -875,12 +875,12 @@ body.trajectory-page .structure-reference {
   }
 
   body.trajectory-page .trajectory-chart-scroll {
-    overflow: hidden;
+    overflow-x: auto;
   }
 
   body.trajectory-page .trajectory-chart {
-    width: 100%;
-    min-width: 0;
+    width: 560px;
+    min-width: 560px;
     height: 280px;
   }
 
