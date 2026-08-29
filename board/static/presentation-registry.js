@@ -6,13 +6,13 @@
   "schemaVersion": 1,
   "defaultProfileId": "warm-studio",
   "storageKey": "dpp.presentation.v1",
-  "paletteRevision": "theme-aligned-2026-08-29",
+  "paletteRevision": "profile-balanced-2026-08-29",
   "paletteNote": "Theme-native implementation values selected for legibility and contrast; they are not source-extracted swatches.",
   "profiles": [
     {
       "id": "warm-studio",
       "displayName": "Warm Studio",
-      "description": "Low-glare warm neutrals, restrained copper brand accents, and deep teal interaction cues.",
+      "description": "Low-glare warm neutrals, restrained copper brand accents, and softened blue-green interaction cues.",
       "paletteProvenance": "implementation-defined",
       "colorScheme": "light",
       "themeColor": "#F7F3EC",
