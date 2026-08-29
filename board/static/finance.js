@@ -239,9 +239,13 @@ function trajectoryContribution(row, includeCogs) {
 
 function renderProgressionChart(svg, rows, includeCogs = true) {
   const height = 300;
-  const margin = { left: 72, right: 20, top: 26, bottom: 62 };
+  const compact = window.innerWidth <= 640;
+  const margin = { left: compact ? 54 : 72, right: compact ? 12 : 20, top: 26, bottom: 62 };
   const usableRows = rows.filter((row) => row.month && trajectoryContribution(row, includeCogs) !== null);
-  const width = Math.max(900, margin.left + margin.right + (usableRows.length + 1) * 72);
+  const hostWidth = Math.round(svg.parentElement?.getBoundingClientRect().width || 0);
+  const width = compact
+    ? Math.max(300, hostWidth)
+    : Math.max(900, margin.left + margin.right + (usableRows.length + 1) * 72);
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
   setChartGeometry(svg, width, height);
@@ -335,9 +339,12 @@ function renderProgressionChart(svg, rows, includeCogs = true) {
 }
 
 function renderMonthWaterfall(svg, row) {
-  const width = 900;
+  const compact = window.innerWidth <= 640;
+  const width = compact
+    ? Math.max(300, Math.round(svg.parentElement?.getBoundingClientRect().width || 0))
+    : 900;
   const height = 300;
-  const margin = { left: 72, right: 20, top: 26, bottom: 62 };
+  const margin = { left: compact ? 54 : 72, right: compact ? 12 : 20, top: 26, bottom: 62 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
   setChartGeometry(svg, width, height);

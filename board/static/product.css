@@ -1171,4 +1171,23 @@ body.product-page .evidence summary b {
     border-top: var(--border-width) solid var(--line);
     border-right: 0;
   }
+
+  body.product-page .sibling-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.product-page .sibling strong,
+  body.product-page .sibling span,
+  body.product-page .sibling b {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  body.product-page .hero-catalog-title {
+    display: block;
+    overflow: visible;
+    -webkit-box-orient: initial;
+    -webkit-line-clamp: initial;
+  }
 }

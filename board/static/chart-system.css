@@ -377,7 +377,8 @@
   }
 
   .dpp-chart-scroll .dpp-chart--wide {
-    min-width: 720px;
+    width: 100%;
+    min-width: 0;
   }
 
   .dpp-chart-tooltip {

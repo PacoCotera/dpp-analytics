@@ -1737,12 +1737,44 @@ body.sales-page .product-contribution-header {
     border-radius: var(--panel-radius);
   }
 
-  .sales-state-rail {
+  body.sales-page .sales-state-rail {
+    display: grid;
     order: -1;
+    grid-template-columns: minmax(0, 1fr);
     border-left: var(--border-width) solid var(--dpp-border);
   }
 
-  .sales-reference {
+  body.sales-page .sales-state-rail > .sales-signal.primary,
+  body.sales-page .sales-state-rail > .sales-utility-today,
+  body.sales-page .sales-reference {
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 0;
+    border-top: var(--border-width) solid var(--dpp-border);
+    border-left: 0;
+  }
+
+  body.sales-page .sales-state-rail > .sales-signal.primary {
+    border-top: 0;
+  }
+
+  body.sales-page .sales-reference {
+    grid-column: 1;
     border-radius: 0;
+  }
+
+  body.sales-page .sales-reference > summary {
+    width: 100%;
+    min-width: 0;
+  }
+
+  body.sales-page .sales-reference > summary span {
+    min-width: 0;
+  }
+
+  body.sales-page .sales-reference > summary small {
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 }

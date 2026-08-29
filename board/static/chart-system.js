@@ -607,12 +607,16 @@
       .sort((a, b) => d3.ascending(a.date, b.date));
     if (data.length < 2) return empty(selector, 'Not enough trajectory history yet.');
     const compact = window.innerWidth <= 640;
+    const hostWidth = Math.max(
+      300,
+      Math.round(document.querySelector(selector)?.parentElement?.getBoundingClientRect().width || 0),
+    );
     const ctx = shell(
       selector,
       340,
       'Daily sales and 28-day moving average',
       { top: 20, bottom: 44, left: compact ? 52 : 62 },
-      compact ? 520 : 960,
+      compact ? hostWidth : 960,
     );
     const x = d3
       .scaleUtc()
