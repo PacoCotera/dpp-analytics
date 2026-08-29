@@ -978,16 +978,20 @@ import { formatCount, money } from './format-core.js';
     }
   }
 
+  function zoomDuration(milliseconds) {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : milliseconds;
+  }
+
   function zoomBy(factor) {
     if (!ACTIVE_MAP_ZOOM) return;
     const { svg, behavior } = ACTIVE_MAP_ZOOM;
-    svg.interrupt().transition().duration(170).call(behavior.scaleBy, factor);
+    svg.interrupt().transition().duration(zoomDuration(170)).call(behavior.scaleBy, factor);
   }
 
   function resetZoom() {
     if (!ACTIVE_MAP_ZOOM) return;
     const { svg, behavior } = ACTIVE_MAP_ZOOM;
-    svg.interrupt().transition().duration(190).call(behavior.transform, d3.zoomIdentity);
+    svg.interrupt().transition().duration(zoomDuration(190)).call(behavior.transform, d3.zoomIdentity);
   }
 
   function installZoomLayer() {

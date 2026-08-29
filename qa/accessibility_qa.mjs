@@ -59,6 +59,7 @@ const results = [];
 for (const route of routes) {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
+    reducedMotion: "reduce",
   });
   const page = await context.newPage();
   const browserErrors = [];
@@ -68,6 +69,7 @@ for (const route of routes) {
   });
 
   try {
+    let financeChartFocus = null;
     const response = await page.goto(`${baseUrl}${route.url}`, {
       waitUntil: "networkidle",
       timeout: 20000,
@@ -157,6 +159,63 @@ for (const route of routes) {
       `${route.name} first keyboard target has no accessible name`,
     );
 
+    const reducedMotion = await page
+      .locator(".primary-nav a")
+      .first()
+      .evaluate((element) => {
+        const style = getComputedStyle(element);
+        const seconds = (value) =>
+          value
+            .split(",")
+            .map((part) => Number.parseFloat(part) || 0)
+            .map((duration, index) =>
+              value.split(",")[index]?.trim().endsWith("ms")
+                ? duration / 1000
+                : duration,
+            );
+        return {
+          transitionDuration: style.transitionDuration,
+          animationDuration: style.animationDuration,
+          transitionSeconds: seconds(style.transitionDuration),
+          animationSeconds: seconds(style.animationDuration),
+        };
+      });
+    assert(
+      [
+        ...reducedMotion.transitionSeconds,
+        ...reducedMotion.animationSeconds,
+      ].every((duration) => duration <= 0.001),
+      `${route.name} does not suppress motion: ${JSON.stringify(reducedMotion)}`,
+    );
+
+    const summaryFocus = await page
+      .locator("summary")
+      .evaluateAll((summaries) =>
+        summaries
+          .filter((summary) => summary.getClientRects().length > 0)
+          .map((summary) => {
+            summary.focus();
+            const style = getComputedStyle(summary);
+            return {
+              text: summary.textContent
+                ?.replace(/\s+/g, " ")
+                .trim()
+                .slice(0, 80),
+              outlineStyle: style.outlineStyle,
+              outlineWidth: Number.parseFloat(style.outlineWidth) || 0,
+              boxShadow: style.boxShadow,
+            };
+          }),
+      );
+    assert(
+      summaryFocus.every(
+        (focus) =>
+          (focus.outlineStyle !== "none" && focus.outlineWidth >= 2) ||
+          focus.boxShadow !== "none",
+      ),
+      `${route.name} has a disclosure without a visible focus indicator: ${JSON.stringify(summaryFocus)}`,
+    );
+
     if (route.name === "today") {
       await assertPressedGroup(page, "[data-period]");
       await activateAndAssertPressed(page, '[data-period="7"]', "Enter");
@@ -231,6 +290,23 @@ for (const route of routes) {
         table.rows > 0 && table.rows === table.rowHeaders,
         `Finance row headers do not match rows: ${JSON.stringify(table)}`,
       );
+      await page.keyboard.press("Tab");
+      financeChartFocus = await page
+        .locator(".finance-chart-month-hit")
+        .first()
+        .evaluate((target) => {
+          target.focus();
+          const bar = target.querySelector(".finance-chart-bar");
+          const style = bar ? getComputedStyle(bar) : null;
+          return {
+            focusVisible: target.matches(":focus-visible"),
+            strokeWidth: Number.parseFloat(style?.strokeWidth || "0"),
+          };
+        });
+      assert(
+        financeChartFocus.focusVisible && financeChartFocus.strokeWidth >= 3,
+        `Finance chart focus indicator is incomplete: ${JSON.stringify(financeChartFocus)}`,
+      );
     }
 
     assert(
@@ -242,6 +318,9 @@ for (const route of routes) {
       ok: true,
       h1: headings[0].trim(),
       keyboardTarget,
+      reducedMotion,
+      summaryFocus,
+      financeChartFocus,
     });
   } catch (error) {
     results.push({

@@ -427,6 +427,11 @@
   stroke-dasharray: 5 4;
 }
 
+.finance-chart-month-hit:focus-visible .finance-chart-bar {
+  stroke: var(--dpp-focus-ring, var(--info));
+  stroke-width: 3;
+}
+
 .chart-legend {
   display: flex;
   align-items: center;

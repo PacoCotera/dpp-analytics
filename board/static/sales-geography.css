@@ -435,6 +435,7 @@
 .geo-table tbody tr[data-state]:hover,
 .geo-table tbody tr[data-state]:focus-visible {
   background: var(--dpp-brand-soft);
+  box-shadow: inset 0 0 0 2px var(--dpp-focus-ring);
   outline: none;
 }
 
@@ -779,6 +780,7 @@
 .sales-page .geo-map-zoom button:hover:not(:disabled),
 .sales-page .geo-map-zoom button:focus-visible {
   background: var(--dpp-brand-soft);
+  box-shadow: inset 0 0 0 2px var(--dpp-focus-ring);
   outline: none;
 }
 .sales-page .geo-map-zoom button:disabled {
