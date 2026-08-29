@@ -193,8 +193,8 @@ for (const route of routes) {
     if ((await visibleSummaries.count()) > 0) {
       const summary = visibleSummaries.first();
       await summary.focus();
-      await page.keyboard.press("Shift+Tab");
-      await page.keyboard.press("Tab");
+      // Establish keyboard modality without depending on neighboring tab order.
+      await page.keyboard.press("ArrowDown");
       summaryFocus.push(
         await summary.evaluate((element) => {
           const style = getComputedStyle(element);
@@ -298,10 +298,9 @@ for (const route of routes) {
         .locator(".finance-chart-month-hit")
         .first();
       await financeChartTarget.focus();
-      await page.keyboard.press("Shift+Tab");
-      await page.keyboard.press("Tab");
+      // SVG focus visibility uses the same keyboard-modality contract.
+      await page.keyboard.press("ArrowDown");
       financeChartFocus = await financeChartTarget.evaluate((target) => {
-        target.focus();
         const bar = target.querySelector(".finance-chart-bar");
         const style = bar ? getComputedStyle(bar) : null;
         return {
