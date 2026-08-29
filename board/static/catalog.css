@@ -992,7 +992,33 @@
     padding-top: 12px;
   }
 
+  .catalog-page-header > div:first-child {
+    padding: 12px;
+  }
+
+  .catalog-page-header .page-header__title {
+    font-size: 27px;
+  }
+
+  .catalog-page-header .page-header__description {
+    display: none;
+  }
+
   .portfolio-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portfolio-summary .kpi {
+    min-height: 64px;
+    padding: 8px 10px;
+  }
+
+  .portfolio-summary .kpi__value {
+    font-size: 22px;
+  }
+
+  .catalog-state {
+    margin-top: 8px;
+    padding: 10px 12px;
   }
 }

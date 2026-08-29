@@ -674,7 +674,6 @@ main {
 }
 
 .finance-mobile-disclosure > summary {
-  display: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -719,7 +718,6 @@ main {
   display: block;
   width: 100%;
   min-height: 250px;
-  height: auto;
   height: 330px;
 }
 
@@ -1096,7 +1094,6 @@ main {
   }
 
   .money-strip {
-    grid-template-columns: 1fr 1fr;
     grid-template-columns: minmax(0, 1fr);
   }
 

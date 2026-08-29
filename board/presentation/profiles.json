@@ -484,7 +484,7 @@
         "info": "#8FBF7D",
         "infoSurface": "#1A3220",
         "infoText": "#C0E7B5",
-        "fontBody": "ui-monospace, 'Cascadia Mono', 'Roboto Mono', 'Courier New', monospace",
+        "fontBody": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
         "fontDisplay": "ui-monospace, 'Cascadia Mono', 'Roboto Mono', 'Courier New', monospace",
         "fontDetail": "ui-monospace, 'Cascadia Mono', 'Roboto Mono', 'Courier New', monospace",
         "headingWeight": "850",

@@ -182,6 +182,8 @@ The legacy `mobile-ux.css` and `design-refine.css` layers have been removed. Sha
 
 `scripts/frontend-contract.mjs` rejects undeclared stylesheet files as well as missing or misordered layers. Do not create another global “refine”, “override”, “v2”, “enhance”, or route-fragment stylesheet. Move a genuinely shared primitive to its existing shared owner; keep route-specific behavior in the owning page stylesheet.
 
+The same contract rejects a property declared more than once inside one CSS rule. A component state must have one effective declaration per property instead of relying on source-order replacement inside the block. Responsive changes remain in the component's explicit media-query owner.
+
 ## Lint and formatting policy
 
 Lint and formatting serve different purposes and run separately.

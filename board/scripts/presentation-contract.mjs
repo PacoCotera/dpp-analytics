@@ -295,6 +295,7 @@ export function validateRegistry(registry) {
   assert(weyland.chartStyle === 'outlined-vector', 'Weyland must use vector chart styling');
   assert(weyland.effects === 'instrument', 'Weyland must use restrained instrument effects');
   assert(weyland.surfaceEmphasis === 'expressive', 'Weyland must retain expressive surface emphasis');
+  assert(!/monospace/.test(weyland.tokens.fontBody), 'Weyland body copy must retain the readable UI sans stack');
   assert(/monospace/.test(weyland.tokens.fontDisplay), 'Weyland display type must be monospaced');
   assert(Number.parseInt(weyland.tokens.headingWeight, 10) >= 800, 'Weyland headings must be blocky and bold');
   assert(Number.parseInt(weyland.tokens.kpiWeight, 10) >= 800, 'Weyland KPI values must be blocky and bold');
