@@ -915,3 +915,260 @@
     gap: 10px;
   }
 }
+
+/* Corrected Product recipe: compact identity, dominant demand chart, horizontal decision rail. */
+body.product-page main {
+  max-width: none;
+  padding-top: 16px;
+}
+
+body.product-page .product-hero {
+  grid-template-columns: 74px minmax(0, 1fr) auto;
+  gap: 10px 16px;
+  margin-top: 0;
+  padding: 14px 16px;
+  background-image: var(--dpp-panel-texture, none);
+}
+
+body.product-page .hero-img {
+  width: 74px;
+  height: 88px;
+}
+
+body.product-page .hero-name {
+  margin: 3px 0 5px;
+  font-size: clamp(27px, 2.6vw, 38px);
+}
+
+body.product-page .hero-sku,
+body.product-page .hero-catalog-title,
+body.product-page .hero-meta,
+body.product-page .hero-price span {
+  font-size: 12px;
+}
+
+body.product-page .hero-details {
+  margin-top: 7px;
+}
+
+body.product-page .hero-price strong {
+  font-size: 28px;
+}
+
+body.product-page .hero-command {
+  grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
+  gap: 14px;
+  padding-top: 10px;
+}
+
+body.product-page .hero-signal > strong {
+  margin-top: 3px;
+  font-size: 17px;
+}
+
+body.product-page .hero-signal p {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+body.product-page .product-health__facts {
+  display: none;
+}
+
+body.product-page .product-kpi-rail {
+  margin-top: 8px;
+}
+
+body.product-page .product-kpi {
+  min-height: 88px;
+  padding: 12px 15px;
+}
+
+body.product-page .product-kpi .kpi__label,
+body.product-page .product-kpi .kpi__note {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+body.product-page .product-kpi .kpi__value {
+  margin-top: 5px;
+  font-size: 25px;
+}
+
+body.product-page .metric-window-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 6px;
+}
+
+body.product-page .metric-window-stack .metric-window-note {
+  margin: 0;
+  font-size: 12px;
+}
+
+body.product-page .product-workspace {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+body.product-page .product-chart-panel .panel__header {
+  padding: 13px 16px 0;
+}
+
+body.product-page .product-chart-panel .panel__title {
+  font-size: 19px;
+}
+
+body.product-page .product-chart-panel .panel__description {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+body.product-page .product-chart {
+  height: clamp(330px, 31vw, 440px);
+}
+
+body.product-page .product-range .segmented-control__item,
+body.product-page .product-metric .segmented-control__item {
+  min-height: 38px;
+  font-size: 12px;
+}
+
+body.product-page .decision-rail {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+body.product-page .decision-rail__header {
+  display: flex;
+  grid-column: 1 / -1;
+  min-height: 48px;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 14px;
+}
+
+body.product-page .decision-rail__header h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+body.product-page .decision-block {
+  min-height: 150px;
+  padding: 12px 14px;
+  border-right: var(--border-width) solid var(--line);
+  border-bottom: 0;
+}
+
+body.product-page .decision-block:last-child {
+  border-right: 0;
+}
+
+body.product-page .decision-block strong {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+body.product-page .decision-block p,
+body.product-page .decision-label,
+body.product-page .commercial-status-line,
+body.product-page .inventory-line span {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+body.product-page .inventory-line {
+  margin-top: 8px;
+}
+
+body.product-page .inventory-line div {
+  padding: 7px;
+}
+
+body.product-page .evidence,
+body.product-page .product-reference {
+  margin-top: 10px;
+}
+
+body.product-page .product-reference > summary,
+body.product-page .evidence summary {
+  min-height: 50px;
+  padding: 8px 14px;
+}
+
+body.product-page .product-reference > summary strong,
+body.product-page .evidence summary strong {
+  font-size: 13px;
+}
+
+body.product-page .product-reference > summary small,
+body.product-page .evidence summary small,
+body.product-page .product-reference > summary b,
+body.product-page .evidence summary b {
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  body.product-page .hero-command {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.product-page .decision-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.product-page .decision-block:nth-child(even) {
+    border-right: 0;
+  }
+
+  body.product-page .decision-block:nth-child(n + 4) {
+    border-top: var(--border-width) solid var(--line);
+  }
+}
+
+@media (max-width: 640px) {
+  body.product-page main {
+    padding-top: 12px;
+  }
+
+  body.product-page .product-hero {
+    grid-template-columns: 68px minmax(0, 1fr);
+    padding: 12px;
+  }
+
+  body.product-page .hero-img {
+    width: 68px;
+    height: 82px;
+  }
+
+  body.product-page .hero-price {
+    grid-column: 1 / -1;
+  }
+
+  body.product-page .product-kpi-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.product-page .product-chart-panel .panel__header {
+    display: grid;
+  }
+
+  body.product-page .product-chart {
+    height: 280px;
+  }
+
+  body.product-page .decision-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.product-page .decision-block,
+  body.product-page .decision-block:nth-child(even) {
+    min-height: 0;
+    border-top: var(--border-width) solid var(--line);
+    border-right: 0;
+  }
+}

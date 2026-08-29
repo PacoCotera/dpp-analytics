@@ -37,10 +37,13 @@
             <div class="kicker">Inventory manager</div>
             <h1 class="page-header__title">Inventory</h1>
             <p class="page-header__description">
-              Velocity turns stock counts into decisions. Start with the action queue, then use coverage and
-              SKU detail when you need to understand why.
+              Production and replenishment decisions from current stock and 28-day order velocity.
             </p>
             <p class="metric-window-note" id="inventoryVelocityWindow">Loading velocity basis</p>
+            <p class="inventory-thresholds">
+              STOCKOUT = 0 available · PRODUCE &lt; 14 days cover · PLAN 14–27 · OK ≥ 28 · HOLD = no recent
+              velocity
+            </p>
           </div>
           <div class="page-header__aside inventory-header-actions">
             <div class="kpi-rail" aria-label="Inventory key metrics">
