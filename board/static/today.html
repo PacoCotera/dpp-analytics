@@ -13,8 +13,6 @@
     <link rel="stylesheet" href="/assets/layout-system.css" />
     <link rel="stylesheet" href="/assets/chart-system.css" />
     <link rel="stylesheet" href="/assets/today.css" />
-    <link rel="stylesheet" href="/assets/today-layout.css" />
-    <link rel="stylesheet" href="/assets/today-operations.css" />
     <link rel="stylesheet" href="/assets/presentation-profiles.css" />
     <script src="/assets/ui-shell.js" defer></script>
   </head>
@@ -31,71 +29,60 @@
         </div>
         <div class="top-meta"><strong id="clock">--:--</strong><span id="modeStatus">Loading</span></div>
       </header>
-
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
-      <main>
-        <h1 class="sr-only">Today</h1>
-        <section class="today-workspace">
-          <div class="today-left-column">
+      <main class="today-main">
+        <header class="page-header today-page-header">
+          <div>
+            <div class="today-section-label">Operating day</div>
+            <h1 class="page-header__title">Today</h1>
+            <p class="page-header__description">
+              Live shopper demand, current Amazon order state and the evidence behind today’s operating read.
+            </p>
+          </div>
+          <div class="day-picker" id="dayPicker" role="group" aria-label="Operating day" data-no-swipe></div>
+        </header>
+
+        <section class="today-section today-overview" aria-labelledby="todayOverviewTitle">
+          <div class="today-section-header">
+            <div>
+              <div class="today-section-label">Overview</div>
+              <h2 id="todayOverviewTitle">Selected-day position</h2>
+              <p>
+                Shopper-facing spend including IVA from Amazon Orders; fees and settlement proceeds are
+                excluded.
+              </p>
+            </div>
+          </div>
+          <div class="today-overview-grid">
             <section
-              class="today-card today-hero"
+              class="today-hero"
               title="Shopper-facing product spend including IVA. Amazon ITEM + TAX is used when complete; provisional tax-exclusive item values are normalized to the marketplace IVA basis. Settlement proceeds and Amazon fees are excluded."
             >
-              <div class="today-hero__top">
-                <div class="today-eyebrow" id="salesLabel">Shopper spend today · incl. IVA</div>
-                <div
-                  class="day-picker"
-                  id="dayPicker"
-                  role="group"
-                  aria-label="Operating day"
-                  data-no-swipe
-                ></div>
-              </div>
+              <div class="today-eyebrow" id="salesLabel">Shopper spend today · incl. IVA</div>
               <div class="today-hero__value"><span class="currency">$</span><span id="sales">—</span></div>
-              <div class="today-hero__read">
+              <div class="today-hero__metrics" aria-label="Today operating KPIs">
+                <div class="today-hero__metric"><strong id="orders">—</strong><span>Orders</span></div>
+                <div class="today-hero__metric"><strong id="units">—</strong><span>Units</span></div>
+                <div class="today-hero__metric">
+                  <strong id="pendingOrdersKpi">—</strong><span>Amazon processing</span
+                  ><small id="pendingOrdersKpiNote">Current Amazon state</small>
+                </div>
+              </div>
+              <div class="today-hero__read" aria-live="polite">
                 <div class="today-hero__copy">
+                  <span class="today-read-label">Selected-day comparison</span>
                   <strong id="dayHeadline">Reading today…</strong>
                   <p id="dayExplanation">Comparing the selected day with recent shopper-spend context.</p>
                 </div>
               </div>
-              <div class="today-hero__metrics" aria-label="Today operating KPIs">
-                <div class="today-hero__metric"><strong id="orders">—</strong><span>orders</span></div>
-                <div class="today-hero__metric"><strong id="units">—</strong><span>units</span></div>
-                <div class="today-hero__metric">
-                  <strong id="pendingOrdersKpi">—</strong><span>Amazon processing</span
-                  ><small id="pendingOrdersKpiNote">current Amazon state</small>
-                </div>
-              </div>
             </section>
 
-            <section class="today-card today-panel today-rhythm-panel">
-              <div class="today-panel__head">
-                <div>
-                  <div class="today-panel__title">Recent rhythm</div>
-                  <div class="today-panel__sub" id="rhythmSub">
-                    Same shopper-spend incl.-IVA basis across the selected window
-                  </div>
-                </div>
-                <div class="periods" role="group" aria-label="Sales rhythm window" data-no-swipe>
-                  <button class="period" type="button" data-period="7" aria-pressed="false">7D</button>
-                  <button class="period" type="button" data-period="mtd" aria-pressed="false">MTD</button>
-                  <button class="period active" type="button" data-period="30" aria-pressed="true">
-                    30D
-                  </button>
-                </div>
-              </div>
-              <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
-              <div class="rhythm-host"><svg id="rhythm" class="rhythm" viewBox="0 0 900 190"></svg></div>
-              <div class="rhythm-rail" id="rhythmRail"></div>
-            </section>
-          </div>
-
-          <aside class="today-right-column">
-            <section class="today-card today-read-panel">
-              <div class="today-eyebrow">Business read</div>
-              <h2 id="pulseHeadline">Reading the business…</h2>
+            <section class="today-read-panel" aria-labelledby="todayBusinessReadTitle">
+              <div class="today-eyebrow">Business context</div>
+              <h2 id="todayBusinessReadTitle" class="sr-only">Business context</h2>
+              <strong class="today-read-result" id="pulseHeadline">Reading the business…</strong>
               <p id="pulseExplanation">Separating today’s signal from the broader trend.</p>
               <details class="today-business-evidence" id="todayBusinessEvidence" open>
                 <summary>
@@ -110,8 +97,41 @@
                 </section>
               </details>
             </section>
+          </div>
+        </section>
 
-            <section class="today-card today-panel order-flow-panel" id="orderFlowPanel">
+        <section class="today-section today-demand" aria-labelledby="todayDemandTitle">
+          <div class="today-section-header today-panel__head">
+            <div>
+              <div class="today-section-label">Demand</div>
+              <h2 id="todayDemandTitle" class="today-panel__title">Recent rhythm</h2>
+              <p class="today-panel__sub" id="rhythmSub">
+                Same shopper-spend incl.-IVA basis across the selected window
+              </p>
+            </div>
+            <div class="periods" role="group" aria-label="Sales rhythm window" data-no-swipe>
+              <button class="period" type="button" data-period="7" aria-pressed="false">7D</button>
+              <button class="period" type="button" data-period="mtd" aria-pressed="false">MTD</button>
+              <button class="period active" type="button" data-period="30" aria-pressed="true">30D</button>
+            </div>
+          </div>
+          <div class="rhythm-insight" id="rhythmInsight">Reading recent demand…</div>
+          <div class="rhythm-host"><svg id="rhythm" class="rhythm" viewBox="0 0 900 190"></svg></div>
+          <div class="rhythm-rail" id="rhythmRail"></div>
+        </section>
+
+        <section class="today-section today-operations" aria-labelledby="todayOperationsTitle">
+          <div class="today-section-header">
+            <div>
+              <div class="today-section-label">Operations</div>
+              <h2 id="todayOperationsTitle">Queue and product drivers</h2>
+              <p>
+                Current fulfillment state first, followed by the products contributing to the selected day.
+              </p>
+            </div>
+          </div>
+          <div class="today-operations-grid">
+            <section class="today-panel order-flow-panel" id="orderFlowPanel">
               <div class="today-panel__head">
                 <div>
                   <div class="today-panel__title">Order queue</div>
@@ -123,8 +143,7 @@
               </div>
               <div class="order-flow-foot" id="orderFlowFoot"></div>
             </section>
-
-            <section class="today-card today-panel today-drivers-panel">
+            <section class="today-panel today-drivers-panel">
               <div class="today-panel__head">
                 <div>
                   <div class="today-panel__title" id="productsTitle">What is driving today</div>
@@ -135,32 +154,40 @@
                 <div class="empty">Products will appear as orders arrive.</div>
               </div>
             </section>
-          </aside>
+          </div>
         </section>
 
-        <details class="today-card today-orders today-open-orders" id="openOrdersPanel">
-          <summary>
-            <span
-              ><strong>Open orders</strong
-              ><small id="openOrderSummary"
-                >Current Amazon-processing, unshipped and partial orders · no customer PII</small
-              ></span
-            ><b id="openOrderToggle">View ↓</b>
-          </summary>
-          <div class="order-grid operational-order-grid" id="openOrderGrid"></div>
-        </details>
-
-        <details class="today-card today-orders" id="ordersPanel">
-          <summary>
-            <span
-              ><strong>Order evidence</strong
-              ><small id="orderSummary"
-                >Shopper spend incl. IVA for the selected day · no customer PII</small
-              ></span
-            ><b id="orderToggle">View ↓</b>
-          </summary>
-          <div class="order-grid operational-order-grid" id="orderGrid"></div>
-        </details>
+        <section class="today-section today-evidence" aria-labelledby="todayEvidenceTitle">
+          <div class="today-section-header">
+            <div>
+              <div class="today-section-label">Evidence</div>
+              <h2 id="todayEvidenceTitle">Order detail</h2>
+              <p>Operational records without customer personally identifiable information.</p>
+            </div>
+          </div>
+          <details class="today-orders today-open-orders" id="openOrdersPanel">
+            <summary>
+              <span
+                ><strong>Open orders</strong
+                ><small id="openOrderSummary"
+                  >Current Amazon-processing, unshipped and partial orders · no customer PII</small
+                ></span
+              ><b id="openOrderToggle">View ↓</b>
+            </summary>
+            <div class="order-grid operational-order-grid" id="openOrderGrid"></div>
+          </details>
+          <details class="today-orders" id="ordersPanel">
+            <summary>
+              <span
+                ><strong>Order evidence</strong
+                ><small id="orderSummary"
+                  >Shopper spend incl. IVA for the selected day · no customer PII</small
+                ></span
+              ><b id="orderToggle">View ↓</b>
+            </summary>
+            <div class="order-grid operational-order-grid" id="orderGrid"></div>
+          </details>
+        </section>
       </main>
 
       <footer class="footer">
@@ -172,7 +199,6 @@
         <span class="footer-build">main __DPP_BUILD_SHA__</span>
       </footer>
     </div>
-
     <script src="/assets/vendor/d3.v7.min.js"></script>
     <script src="/assets/chart-system.js"></script>
     <script type="module" src="/assets/today.js"></script>

@@ -35,29 +35,58 @@
 
       <header class="page-header">
         <div>
-          <h1 class="page-header__title">Sales</h1>
-          <p class="page-header__description">Revenue, momentum, product drivers and demand geography.</p>
+          <div class="kicker">Commercial evidence</div>
+          <h1 class="page-header__title" id="salesTitle">Sales</h1>
+          <p class="page-header__description">
+            Shopper spend across time windows, product contribution, and order geography.
+          </p>
         </div>
       </header>
 
-      <nav class="subnav tabs" aria-label="Sales views">
-        <button class="subnav__item active" type="button" data-view="overview" aria-selected="true">
+      <nav class="subnav tabs" aria-label="Sales views" role="tablist">
+        <button
+          class="subnav__item active"
+          id="salesOverviewTab"
+          type="button"
+          role="tab"
+          data-view="overview"
+          aria-controls="overview"
+          aria-selected="true"
+        >
           Overview
         </button>
-        <button class="subnav__item" type="button" data-view="products" aria-selected="false">Drivers</button>
-        <button class="subnav__item" type="button" data-view="geography" aria-selected="false">
+        <button
+          class="subnav__item"
+          id="salesProductsTab"
+          type="button"
+          role="tab"
+          data-view="products"
+          aria-controls="products"
+          aria-selected="false"
+        >
+          Drivers
+        </button>
+        <button
+          class="subnav__item"
+          id="salesGeographyTab"
+          type="button"
+          role="tab"
+          data-view="geography"
+          aria-controls="geography"
+          aria-selected="false"
+        >
           Geography
         </button>
       </nav>
 
-      <div class="notice" role="note" aria-label="Sales monetary basis">
+      <div class="notice sales-basis-note" role="note" aria-label="Sales monetary basis">
         <strong>Sales page basis:</strong> every sales amount is <strong>shopper spend incl. IVA</strong>.
         Historical periods use reconciled Amazon Sales &amp; Traffic; Today and order evidence use Amazon
         Orders. <strong>Net sales ex IVA live in Finance.</strong>
       </div>
       <p class="metric-window-note" id="salesBusinessWindow">Loading seller-performance window</p>
 
-      <main id="overview" class="view active">
+      <main id="overview" class="view active" role="tabpanel" tabindex="0" aria-labelledby="salesOverviewTab">
         <section class="dashboard-grid sales-operating-grid">
           <div class="sales-main">
             <div class="panel sales-chart-card">
@@ -161,11 +190,11 @@
         </section>
       </main>
 
-      <main id="products" class="view">
+      <main id="products" class="view" role="tabpanel" tabindex="0" aria-labelledby="salesProductsTab" hidden>
         <section class="page-section">
           <div class="section-header">
             <div>
-              <h2 class="section-header__title">What is driving the change</h2>
+              <h2 class="section-header__title">Product movement</h2>
               <div class="section-header__description">
                 Last 28 days vs prior 28 · reconciled Amazon Sales &amp; Traffic · shopper spend incl. IVA.
               </div>
@@ -200,7 +229,7 @@
           </div>
           <div class="section-header product-contribution-header">
             <div>
-              <h3 class="section-header__title">Product contribution</h3>
+              <h3 class="section-header__title">Contribution detail</h3>
               <div class="section-header__description">
                 Leaders, growers and decliners · movement share uses absolute product-level change.
               </div>
@@ -237,7 +266,7 @@
         <details class="order-evidence" id="orderEvidence">
           <summary>
             <span>
-              <strong>Investigate the underlying orders</strong>
+              <strong>Underlying order evidence</strong>
               <small>Recent order evidence · no customer PII</small>
             </span>
             <b id="orderEvidenceCount">— orders</b>
@@ -271,7 +300,14 @@
         </details>
       </main>
 
-      <main id="geography" class="view">
+      <main
+        id="geography"
+        class="view"
+        role="tabpanel"
+        tabindex="0"
+        aria-labelledby="salesGeographyTab"
+        hidden
+      >
         <section class="page-section geography-workspace">
           <div class="section-header geo-section-header">
             <div>

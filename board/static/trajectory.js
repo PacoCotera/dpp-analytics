@@ -5,7 +5,6 @@ import {
   formatBusinessClock,
   formatCount,
   formatMetricWindow,
-  integer,
   money,
   mountRuleTrigger,
   percent,
@@ -147,7 +146,14 @@ function render(payload) {
   syncMobileHierarchy();
 }
 function bindInteractions() {
-  byId('helpBtn').addEventListener('click', () => byId('help').classList.toggle('show'));
+  byId('helpBtn').addEventListener('click', () => {
+    const button = byId('helpBtn');
+    const help = byId('help');
+    const expanded = button.getAttribute('aria-expanded') !== 'true';
+    button.setAttribute('aria-expanded', String(expanded));
+    help.hidden = !expanded;
+    help.classList.toggle('show', expanded);
+  });
   mobile.addEventListener('change', syncMobileHierarchy);
   syncMobileHierarchy();
 }

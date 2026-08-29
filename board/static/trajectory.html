@@ -30,21 +30,21 @@
       </header>
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
-      <main>
+      <main class="trajectory-main" aria-labelledby="trajectoryTitle">
         <section class="page-header">
           <div>
-            <div class="kicker">Momentum</div>
-            <h1 class="page-header__title">Is the business getting stronger?</h1>
+            <div class="kicker">Commercial trend</div>
+            <h1 class="page-header__title" id="trajectoryTitle">Trajectory</h1>
             <p class="page-header__description">
-              Different horizons answer different questions. Short windows react quickly; longer windows tell
-              you whether a change is becoming structural.
+              Comparable shopper-spend windows, moving averages, and portfolio breadth across short and
+              structural horizons.
             </p>
             <p class="metric-window-note" id="trajectoryBusinessWindow">Loading seller-performance window</p>
           </div>
         </section>
         <section class="state-read">
           <div>
-            <div class="state-read__eyebrow">Trajectory read</div>
+            <div class="state-read__eyebrow">Current comparison</div>
             <h2 class="state-read__title" id="storyTitle">Reading momentum…</h2>
             <p class="state-read__copy" id="storyCopy">
               Comparing short, medium and longer shopper-spend horizons.
@@ -71,17 +71,19 @@
             <div class="panel">
               <div class="panel__header">
                 <div>
-                  <h2 class="panel__title">Structural signal</h2>
+                  <h2 class="panel__title">Horizon comparison</h2>
                   <div class="panel__description">
                     Shopper spend incl. IVA · reconciled Amazon Sales &amp; Traffic. Read 28D and longer
                     first; 7D is acceleration/noise context.
                   </div>
                 </div>
-                <button class="btn" id="helpBtn" type="button">Why these windows?</button>
+                <button class="btn" id="helpBtn" type="button" aria-controls="help" aria-expanded="false">
+                  Why these windows?
+                </button>
               </div>
               <div class="panel__body">
                 <div id="horizons"></div>
-                <div class="notice trajectory-help" id="help">
+                <div class="notice trajectory-help" id="help" hidden>
                   <strong>7D</strong> reacts quickly but is noisy. <strong>28D</strong> preserves weekday mix
                   and is our main operating signal. <strong>56D</strong> tests persistence.
                   <strong>90D</strong> separates a durable step-change from a short burst.
@@ -90,11 +92,11 @@
             </div>
             <details class="panel trajectory-why" id="trajectoryGuide" open>
               <summary>
-                <span><strong>Signal grammar</strong><small>How to read mixed horizons</small></span>
+                <span><strong>Horizon guide</strong><small>How to read mixed horizons</small></span>
               </summary>
               <div class="panel__header trajectory-why__desktop-header">
                 <div>
-                  <h2 class="panel__title">Signal grammar</h2>
+                  <h2 class="panel__title">Horizon guide</h2>
                   <div class="panel__description">Use the shape, not one percentage.</div>
                 </div>
               </div>
@@ -138,7 +140,12 @@
               </div>
             </div>
             <div class="panel__body">
-              <div class="trajectory-chart-scroll">
+              <div
+                class="trajectory-chart-scroll"
+                role="region"
+                aria-label="Trajectory chart; scroll horizontally on smaller screens"
+                tabindex="0"
+              >
                 <svg
                   id="chart"
                   class="trajectory-chart"
@@ -153,7 +160,7 @@
           <div class="panel">
             <div class="panel__header">
               <div>
-                <h2 class="panel__title">Portfolio strength</h2>
+                <h2 class="panel__title">Portfolio breadth</h2>
                 <div class="panel__description">
                   Is growth broadening across the sellable catalog, or concentrating in a few offers? Product
                   sales use the same shopper-spend-incl.-IVA basis.

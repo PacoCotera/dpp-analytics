@@ -133,7 +133,7 @@ async function verifyToday(page) {
     const business = document.querySelector('.today-read-panel');
     const queue = document.querySelector('.order-flow-panel');
     const drivers = document.querySelector('.today-drivers-panel');
-    const rhythm = document.querySelector('.today-rhythm-panel');
+    const rhythm = document.querySelector('[data-dpp-qa="today-rhythm"]');
     const evidence = document.getElementById('todayBusinessEvidence');
     const reference = document.getElementById('todayProductsReference');
     const priority = [...document.querySelectorAll('.today-products-priority .today-product')];
@@ -141,7 +141,7 @@ async function verifyToday(page) {
     const tops = rhythmKpis.map(item => Math.round(item.getBoundingClientRect().top));
     return {
       mobile,
-      order: [hero, business, queue, drivers, rhythm].map(item =>
+      order: [hero, business, rhythm, queue, drivers].map(item =>
         Math.round(item?.getBoundingClientRect().top || 0)
       ),
       evidenceOpen: Boolean(evidence?.hasAttribute('open')),
