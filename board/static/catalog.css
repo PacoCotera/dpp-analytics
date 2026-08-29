@@ -162,40 +162,6 @@
   font-size: 14px;
 }
 
-.analysis-modes,
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.mode,
-.filter {
-  min-height: var(--control-height);
-  padding: 0 14px;
-  border: var(--border-width) solid var(--line);
-  border-radius: var(--pill-radius);
-  background: var(--dpp-surface-raised, var(--surface));
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 760;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.mode:hover,
-.filter:hover {
-  border-color: var(--dpp-border-strong, var(--line));
-  color: var(--ink);
-}
-
-.mode.active,
-.filter.active {
-  border-color: var(--dpp-interaction, var(--ink));
-  background: var(--dpp-interaction, var(--ink));
-  color: var(--dpp-interaction-text);
-}
-
 .catalog-tools {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) minmax(420px, auto) minmax(160px, auto);
@@ -1019,20 +985,12 @@ body.catalog-shell .catalog-analysis-header .section-header__title {
 
 body.catalog-shell .catalog-analysis-header .section-header__description,
 body.catalog-shell .catalog-field > span {
-  font-size: 12px;
+  font-size: var(--dpp-metadata-size, 14px);
 }
 
 body.catalog-shell .catalog-tools {
   grid-template-columns: minmax(220px, 0.8fr) minmax(460px, 1.5fr) minmax(150px, 0.4fr);
   gap: 10px;
-}
-
-body.catalog-shell .mode,
-body.catalog-shell .filter,
-body.catalog-shell .search,
-body.catalog-shell .select {
-  min-height: 38px;
-  font-size: 12px;
 }
 
 body.catalog-shell .catalog-evidence {

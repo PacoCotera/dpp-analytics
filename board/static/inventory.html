@@ -65,7 +65,7 @@
                 ><small class="kpi__note">units</small>
               </div>
             </div>
-            <button class="how-btn" id="howBtn" type="button" aria-expanded="false" aria-controls="how">
+            <button class="btn how-btn" id="howBtn" type="button" aria-expanded="false" aria-controls="how">
               How actions work
             </button>
           </div>
@@ -117,25 +117,54 @@
             </label>
             <div class="inventory-field inventory-filter-field">
               <span>Record scope</span>
-              <div class="filters" role="group" aria-label="Inventory status filter">
-                <button class="filter active" type="button" data-filter="current" aria-pressed="true">
+              <div class="filters choice-group" role="group" aria-label="Inventory status filter">
+                <button
+                  class="filter choice-control active"
+                  type="button"
+                  data-filter="current"
+                  aria-pressed="true"
+                >
                   Current stock
                 </button>
-                <button class="filter" type="button" data-filter="attention" aria-pressed="false">
+                <button
+                  class="filter choice-control"
+                  type="button"
+                  data-filter="attention"
+                  aria-pressed="false"
+                >
                   Needs action
                 </button>
-                <button class="filter" type="button" data-filter="ok" aria-pressed="false">Healthy</button>
-                <button class="filter" type="button" data-filter="no_velocity" aria-pressed="false">
+                <button class="filter choice-control" type="button" data-filter="ok" aria-pressed="false">
+                  Healthy
+                </button>
+                <button
+                  class="filter choice-control"
+                  type="button"
+                  data-filter="no_velocity"
+                  aria-pressed="false"
+                >
                   No velocity
                 </button>
-                <button class="filter" type="button" data-filter="alias" aria-pressed="false">Aliases</button>
-                <button class="filter" type="button" data-filter="retired" aria-pressed="false">
+                <button class="filter choice-control" type="button" data-filter="alias" aria-pressed="false">
+                  Aliases
+                </button>
+                <button
+                  class="filter choice-control"
+                  type="button"
+                  data-filter="retired"
+                  aria-pressed="false"
+                >
                   Retired
                 </button>
-                <button class="filter" type="button" data-filter="archived" aria-pressed="false">
+                <button
+                  class="filter choice-control"
+                  type="button"
+                  data-filter="archived"
+                  aria-pressed="false"
+                >
                   Archived
                 </button>
-                <button class="filter" type="button" data-filter="all" aria-pressed="false">
+                <button class="filter choice-control" type="button" data-filter="all" aria-pressed="false">
                   All records
                 </button>
               </div>

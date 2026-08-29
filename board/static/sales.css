@@ -323,10 +323,10 @@ body.sales-page .sales-operating-grid {
 
 .sales-utility-today .btn {
   grid-area: link;
-  min-height: 24px;
+  min-height: var(--control-height);
   height: auto;
   justify-content: flex-end;
-  padding: 4px 0;
+  padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;

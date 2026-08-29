@@ -436,7 +436,7 @@ function renderModes() {
   $('analysisModes').innerHTML = buttons
     .map(
       ([key, label]) =>
-        `<button class="mode ${key === mode ? 'active' : ''}" type="button" data-mode="${esc(key)}" aria-pressed="${key === mode}">${esc(label)}</button>`,
+        `<button class="mode choice-control ${key === mode ? 'active' : ''}" type="button" data-mode="${esc(key)}" aria-pressed="${key === mode}">${esc(label)}</button>`,
     )
     .join('');
 
