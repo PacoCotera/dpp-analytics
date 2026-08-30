@@ -387,7 +387,7 @@ function renderMonthWaterfall(svg, row) {
     },
     {
       label: 'COGS',
-      compactLabel: 'COGS',
+      compactLabel: 'Cost',
       detail: 'Product COGS',
       axisDetail: 'product cost',
       delta: -Math.abs(Number(row.product_cogs || 0)),
@@ -436,7 +436,9 @@ function renderMonthWaterfall(svg, row) {
 
     if (point.pending) {
       output += `<line class="dpp-connector" x1="${center - barWidth / 2}" x2="${center + barWidth / 2}" y1="${startY}" y2="${startY}"></line>`;
-      output += `<text class="dpp-muted" x="${center}" y="${Math.max(margin.top + 11, startY - 8)}" text-anchor="middle">PENDING</text>`;
+      if (!compact) {
+        output += `<text class="dpp-muted" x="${center}" y="${Math.max(margin.top + 11, startY - 8)}" text-anchor="middle">PENDING</text>`;
+      }
     } else {
       output += `<g><rect class="finance-chart-bar dpp-bar${barClass}" x="${center - barWidth / 2}" y="${topY}" width="${barWidth}" height="${barHeight}" rx="4"></rect><title>${escapeHtml(point.detail)}: ${escapeHtml(compactSignedMoney(point.delta))}</title></g>`;
       const compactNudge = compact ? (index % 2 ? 10 : -10) : 0;
@@ -461,7 +463,8 @@ function renderMonthWaterfall(svg, row) {
   const totalTop = Math.min(zeroY, contributionY);
   const totalHeight = Math.max(2, Math.abs(contributionY - zeroY));
   output += `<g><rect class="finance-chart-bar finance-chart-bar--sales" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>${row._adsPending ? 'Contribution before current-month advertising' : 'Contribution'}: ${escapeHtml(financeMoney(contribution))}</title></g>`;
-  const rawTotalValueY = contribution >= 0 ? totalTop - 7 : totalTop + totalHeight + 13;
+  const rawTotalValueY =
+    contribution >= 0 ? totalTop - (compact ? 18 : 7) : totalTop + totalHeight + (compact ? 20 : 13);
   const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
   output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(contribution)}</text>`;
   if (open && !compact) {
