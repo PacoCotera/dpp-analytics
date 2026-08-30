@@ -149,12 +149,12 @@
 
 .demand-rhythm__line-halo {
   stroke: var(--dpp-surface, var(--surface));
-  stroke-width: 6;
+  stroke-width: 7.5;
 }
 
 .demand-rhythm__line {
-  stroke: var(--dpp-data1);
-  stroke-width: 2.8;
+  stroke: var(--dpp-data3);
+  stroke-width: 3.4;
 }
 
 .demand-rhythm__latest-dot {
@@ -365,6 +365,16 @@
 :root[data-dpp-chart-style='outlined-vector'] .dpp-chart .dpp-line-halo {
   stroke-width: 5;
   opacity: 0.7;
+}
+
+:root[data-dpp-chart-style='outlined-vector'] .dpp-chart .demand-rhythm__line {
+  stroke: var(--dpp-data3);
+  stroke-width: 3.2;
+}
+
+:root[data-dpp-chart-style='outlined-vector'] .dpp-chart .demand-rhythm__line-halo {
+  stroke-width: 7;
+  opacity: 0.9;
 }
 
 :root[data-dpp-chart-style='outlined-vector'] .dpp-chart .dpp-axis text,
