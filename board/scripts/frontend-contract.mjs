@@ -413,7 +413,11 @@ check(
       financeScript,
     ) &&
     /const compactNudge\s*=\s*compact\s*\?/.test(financeScript) &&
-    /point\.compactLabel\s*\|\|\s*point\.label/.test(financeScript),
+    /point\.compactLabel\s*\|\|\s*point\.label/.test(financeScript) &&
+    /if\s*\(!compact\)\s*\{\s*output\s*\+=\s*`<text class="dpp-muted"[^`]+PENDING<\/text>`/s.test(
+      financeScript,
+    ) &&
+    /totalTop\s*-\s*\(compact\s*\?\s*18\s*:\s*7\)/.test(financeScript),
   'finance.js',
   'Finance mobile windows must keep a stable card and collision-safe chart labels',
 );
