@@ -8,7 +8,7 @@ import {
 } from './ui-utils.js';
 
 let jobs = [];
-let expanded = true;
+let expanded = false;
 let catalogHealth = {};
 
 function duration(seconds, compact = false) {
