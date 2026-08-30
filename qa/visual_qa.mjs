@@ -347,6 +347,38 @@ async function verifyToday(page) {
   await wait(page, '#rhythm .dpp-bar');
   await wait(page, '#dayPicker .day-choice');
   await wait(page, '#products .ops-owned');
+  const payload = await page.evaluate(async () => (await (await fetch('/api/today', { cache: 'no-store' })).json()));
+  const expectedRows = {
+    '7': (payload.recent_daily || []).slice(-7),
+    mtd: (payload.recent_daily || []).filter(row =>
+      String(row.business_date).slice(0, 7) === String(payload.selected_date).slice(0, 7)
+    ),
+    '30': (payload.recent_daily || []).slice(-30),
+    ytd: payload.daily_history || [],
+  };
+  for (const period of ['7', 'mtd', '30', 'ytd']) {
+    const rows = expectedRows[period];
+    if (!rows.length) throw new Error(`Today ${period} API window is empty`);
+    await page.locator(`button[data-period="${period}"]`).click();
+    await page.locator(`button[data-period="${period}"][aria-pressed="true"]`).waitFor({ state: 'visible', timeout: 5000 });
+    const signature = await page.evaluate(() => {
+      const bars = [...document.querySelectorAll('#rhythm .dpp-bar')];
+      return {
+        count: bars.length,
+        first: bars[0]?.__data__?.business_date || null,
+        last: bars.at(-1)?.__data__?.business_date || null,
+      };
+    });
+    const expected = {
+      count: rows.length,
+      first: rows[0]?.business_date || null,
+      last: rows.at(-1)?.business_date || null,
+    };
+    if (JSON.stringify(signature) !== JSON.stringify(expected)) {
+      throw new Error(`Today ${period} selected state does not match rendered data: ${JSON.stringify({ signature, expected })}`);
+    }
+  }
+  await page.locator('button[data-period="30"]').click();
   const state = await page.evaluate(() => {
     const mobile = window.innerWidth <= 640;
     const main = document.querySelector('.today-main');
@@ -404,6 +436,59 @@ async function verifyToday(page) {
   }
   if (!state.mobile && (!state.evidenceOpen || (state.referencePresent && !state.referenceOpen)))
     throw new Error(`Today desktop evidence is collapsed: ${JSON.stringify(state)}`);
+}
+
+async function verifySalesGeography(page) {
+  await wait(page, '#geoRankedRows tr');
+  await wait(page, '#geoMap .geo-shape');
+  const signatures = [];
+  for (const range of ['30d', '90d', 'ytd', 'all']) {
+    await page.locator(`button[data-geo-range="${range}"]`).click();
+    await page.locator(`button[data-geo-range="${range}"][aria-pressed="true"]`).waitFor({ state: 'visible', timeout: 5000 });
+    signatures.push(await page.evaluate(key => ({
+      key,
+      kpis: document.getElementById('geoKpis')?.innerText.trim() || '',
+      rows: document.querySelectorAll('#geoRankedRows tr').length,
+    }), range));
+  }
+  if (new Set(signatures.map(item => item.kpis)).size !== signatures.length) {
+    throw new Error(`Sales Geography ranges do not update every KPI state: ${JSON.stringify(signatures)}`);
+  }
+
+  const layout = await page.evaluate(() => {
+    const mobile = window.innerWidth <= 720;
+    const workspace = document.querySelector('.geography-workspace');
+    const grid = document.querySelector('#geography .geo-grid');
+    const map = document.querySelector('.geo-map-panel');
+    const ranked = document.querySelector('.geo-ranked-panel');
+    const scroll = ranked?.querySelector('.data-table-scroll');
+    const workspaceRect = workspace?.getBoundingClientRect();
+    const rankedRect = ranked?.getBoundingClientRect();
+    return {
+      mobile,
+      pageOverflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+      columns: getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length,
+      stacked: Boolean(map && ranked && ranked.getBoundingClientRect().top >= map.getBoundingClientRect().bottom - 2),
+      rankedContained: Boolean(
+        workspaceRect && rankedRect &&
+        rankedRect.left >= workspaceRect.left - 2 &&
+        rankedRect.right <= workspaceRect.right + 2
+      ),
+      explicitScroller: Boolean(
+        scroll &&
+        ['auto', 'scroll'].includes(getComputedStyle(scroll).overflowX) &&
+        scroll.scrollWidth > scroll.clientWidth + 2 &&
+        scroll.tabIndex === 0 &&
+        scroll.getAttribute('role') === 'region'
+      ),
+    };
+  });
+  if (layout.pageOverflow > 2 || !layout.rankedContained) {
+    throw new Error(`Sales Geography containment mismatch: ${JSON.stringify(layout)}`);
+  }
+  if (layout.mobile && (layout.columns !== 1 || !layout.stacked || !layout.explicitScroller)) {
+    throw new Error(`Sales Geography mobile reflow mismatch: ${JSON.stringify(layout)}`);
+  }
 }
 
 async function verifyBusiness(page) {
@@ -1345,6 +1430,7 @@ const scenarios = [
   ['sales-overview', '/sales', ['mobile', 'tablet', 'desktop'], verifySalesOverview],
   ['sales-products', '/sales', ['mobile', 'desktop'], verifySalesProducts],
   ['sales-orders', '/sales', ['mobile', 'desktop'], verifySalesOrders],
+  ['sales-geography', '/sales?view=geography', ['mobile', 'desktop'], verifySalesGeography],
   ['catalog', '/catalog', ['mobile', 'tablet', 'desktop'], verifyCatalog],
   ['catalog-design', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'dimension:design')],
   ['catalog-ruling', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'dimension:ruling')],

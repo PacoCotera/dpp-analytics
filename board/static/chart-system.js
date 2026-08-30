@@ -701,9 +701,12 @@
     ctx.plot.append('path').datum(marks).attr('class', 'dpp-line-halo').attr('d', line);
     ctx.plot.append('path').datum(marks).attr('class', 'dpp-line').attr('d', line);
     if (weekly) {
-      const tickStep = Math.max(1, Math.ceil(marks.length / 8));
+      const maxTicks = Math.max(2, Math.min(8, Math.floor(ctx.innerW / (compact ? 64 : 76))));
+      const tickStep = Math.max(1, Math.ceil(marks.length / maxTicks));
       bottomAxis(ctx, x, (value, index) =>
-        index % tickStep === 0 ? d3.utcFormat('%b %-d')(new Date(Number(value))) : '',
+        index === 0 || index === marks.length - 1 || index % tickStep === 0
+          ? d3.utcFormat('%b %-d')(new Date(Number(value)))
+          : '',
       );
     } else {
       bottomAxis(ctx, x, d3.utcFormat('%b'), d3.utcMonth.every(1));

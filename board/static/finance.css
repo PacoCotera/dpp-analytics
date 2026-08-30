@@ -302,6 +302,19 @@
   margin-top: 10px;
 }
 
+#monthPickerWrap {
+  margin: 0;
+}
+
+#monthPickerWrap label {
+  display: grid;
+  gap: 3px;
+}
+
+#monthPickerWrap select {
+  min-height: var(--control-height);
+}
+
 .finance-chart-grid {
   stroke: var(--dpp-data-grid, var(--line));
 }
@@ -1128,7 +1141,9 @@ main {
   }
 
   #cogsToggleWrap,
-  #cogsToggle {
+  #cogsToggle,
+  #monthPickerWrap,
+  #monthPickerWrap select {
     width: 100%;
   }
 
@@ -1146,6 +1161,11 @@ main {
   .chart-legend {
     flex-wrap: wrap;
     gap: 7px 12px;
+    min-height: 64px;
+  }
+
+  .finance-progression .finance-read__head {
+    min-height: 82px;
   }
 
   .legend-key {

@@ -207,11 +207,11 @@ def _closed_day_payload(cur, decorate_products, marketplace: str, target: date, 
         (marketplace, target),
     )
 
-    recent_daily = _all(
+    daily_history = _all(
         cur,
         """
         WITH t AS (SELECT %s::date AS d), days AS (
-          SELECT generate_series(t.d-29,t.d,interval '1 day')::date AS business_date FROM t
+          SELECT generate_series(date_trunc('year',t.d)::date,t.d,interval '1 day')::date AS business_date FROM t
         ), item_rollup AS (
           SELECT i.amazon_order_id,
                  COALESCE(sum(i.quantity_ordered),0)::bigint AS units,
@@ -226,7 +226,7 @@ def _closed_day_payload(cur, decorate_products, marketplace: str, target: date, 
           JOIN core.marketplace mp USING (marketplace_id)
           LEFT JOIN item_rollup i USING (amazon_order_id), t
           WHERE o.marketplace_id=%s
-            AND (o.created_time AT TIME ZONE mp.timezone)::date BETWEEN t.d-29 AND t.d
+            AND (o.created_time AT TIME ZONE mp.timezone)::date BETWEEN date_trunc('year',t.d)::date AND t.d
             AND o.fulfillment_status IS DISTINCT FROM 'CANCELLED'
           GROUP BY 1
         )
@@ -243,6 +243,7 @@ def _closed_day_payload(cur, decorate_products, marketplace: str, target: date, 
         """,
         (target, marketplace, target, marketplace),
     )
+    recent_daily = daily_history[-30:]
 
     recent_orders = decorate_products(recent_orders)
     sku_day = decorate_products(sku_day)
@@ -256,6 +257,7 @@ def _closed_day_payload(cur, decorate_products, marketplace: str, target: date, 
         "latest_order": recent_orders[0] if recent_orders else None,
         "recent_orders": recent_orders,
         "sku_today": sku_day,
+        "daily_history": daily_history,
         "recent_daily": recent_daily,
     }
 
@@ -382,14 +384,14 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
             (marketplace,),
         )
 
-        recent_daily = _all(
+        daily_history = _all(
             cur,
             """
             WITH clock AS (
               SELECT m.marketplace_id,m.timezone,CURRENT_TIMESTAMP AT TIME ZONE m.timezone AS local_now
               FROM core.marketplace m WHERE m.marketplace_id=%s
             ), days AS (
-              SELECT generate_series(c.local_now::date-29,c.local_now::date,interval '1 day')::date AS business_date FROM clock c
+              SELECT generate_series(date_trunc('year',c.local_now)::date,c.local_now::date,interval '1 day')::date AS business_date FROM clock c
             ), live AS (
               SELECT COALESCE(sales_today,0)::numeric(14,2) AS sales,COALESCE(orders_today,0)::bigint AS orders,COALESCE(units_today,0)::bigint AS units
               FROM mart.today_operating WHERE marketplace_id=%s
@@ -406,6 +408,7 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
             """,
             (marketplace, marketplace),
         )
+        recent_daily = daily_history[-30:]
 
     recent_orders = decorate_products(recent_orders)
     sku_today = decorate_products(sku_today)
@@ -419,5 +422,6 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
         "latest_order": recent_orders[0] if recent_orders else None,
         "recent_orders": recent_orders,
         "sku_today": sku_today,
+        "daily_history": daily_history,
         "recent_daily": recent_daily,
     }

@@ -276,6 +276,9 @@ function renderProgressionChart(svg, rows, includeCogs = true) {
   const slotCount = points.length + 1;
   const slotWidth = innerWidth / slotCount;
   const barWidth = Math.min(44, Math.max(24, slotWidth * 0.55));
+  const dense = compact && slotWidth < 52;
+  const labelBudget = Math.max(2, Math.floor(innerWidth / 64));
+  const labelStep = Math.max(1, Math.ceil(points.length / labelBudget));
   const hasOpen = points.some((point) => point._current);
   const hasAdsPending = points.some((point) => point._current && point._adsPending);
   let output = '';
@@ -307,7 +310,9 @@ function renderProgressionChart(svg, rows, includeCogs = true) {
 
     const rawDeltaY = positive ? topY - 7 : topY + barHeight + 13;
     const deltaY = Math.max(margin.top + 10, Math.min(height - 66, rawDeltaY));
-    output += `<text class="finance-chart-month" x="${center}" y="${deltaY}" text-anchor="middle">${compactSignedMoney(point.delta)}</text>`;
+    if (!dense) {
+      output += `<text class="finance-chart-month" x="${center}" y="${deltaY}" text-anchor="middle">${compactSignedMoney(point.delta)}</text>`;
+    }
 
     const nextCenter =
       index < points.length - 1
@@ -315,10 +320,12 @@ function renderProgressionChart(svg, rows, includeCogs = true) {
         : margin.left + slotWidth * (points.length + 0.5);
     output += `<line class="dpp-connector" x1="${center + barWidth / 2}" x2="${nextCenter - barWidth / 2}" y1="${endY}" y2="${endY}"></line>`;
 
-    if (point._current) {
+    if (point._current && !dense) {
       output += `<text class="dpp-muted" x="${center}" y="${height - 48}" text-anchor="middle">OPEN</text>`;
     }
-    output += `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(month.month)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(month.year)}</tspan></text>`;
+    if (!dense || index === 0 || index === points.length - 1 || index % labelStep === 0) {
+      output += `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(month.month)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(month.year)}</tspan></text>`;
+    }
   });
 
   const totalCenter = margin.left + slotWidth * (points.length + 0.5);
@@ -330,10 +337,12 @@ function renderProgressionChart(svg, rows, includeCogs = true) {
   const rawTotalValueY = cumulative < 0 ? cumulativeY - 8 : cumulativeY + 14;
   const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
   output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(cumulative)}</text>`;
-  if (hasOpen) {
+  if (hasOpen && !dense) {
     output += `<text class="dpp-muted" x="${totalCenter}" y="${height - 48}" text-anchor="middle">PROVISIONAL</text>`;
   }
-  output += `<text class="finance-chart-month" x="${totalCenter}" y="${height - 29}" text-anchor="middle"><tspan x="${totalCenter}">Window</tspan><tspan class="dpp-muted" x="${totalCenter}" dy="13">total</tspan></text>`;
+  output += dense
+    ? `<text class="finance-chart-month" x="${totalCenter}" y="${height - 22}" text-anchor="middle">Total</text>`
+    : `<text class="finance-chart-month" x="${totalCenter}" y="${height - 29}" text-anchor="middle"><tspan x="${totalCenter}">Window</tspan><tspan class="dpp-muted" x="${totalCenter}" dy="13">total</tspan></text>`;
 
   svg.innerHTML = output;
 }

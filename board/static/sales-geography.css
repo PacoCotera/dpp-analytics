@@ -127,10 +127,10 @@
   font-size: var(--dpp-metadata-size, 14px);
 }
 
-#geography .geo-grid {
+.geo-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(390px, 0.65fr);
-  gap: 14px;
+  gap: 0;
   align-items: start;
   min-width: 0;
 }
@@ -563,6 +563,11 @@
   .geo-table {
     min-width: 640px;
   }
+
+  .geo-ranked-panel .data-table-scroll {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
 }
 
 /* Geography controls, evidence and ranking share one workspace boundary. */
@@ -581,10 +586,6 @@
 
 .geo-kpi-rail {
   border-bottom: var(--border-width) solid var(--dpp-border);
-}
-
-.geo-grid {
-  gap: 0;
 }
 
 .geo-grid > .panel {
