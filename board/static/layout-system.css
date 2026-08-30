@@ -176,11 +176,11 @@
   padding: 0 10px;
   border: var(--border-width) solid var(--line);
   border-radius: var(--pill-radius);
-  background: var(--dpp-surface-raised, var(--surface));
-  color: var(--accent-ink);
+  background: transparent;
+  color: var(--muted);
   font-size: var(--dpp-metadata-size, 14px);
-  font-weight: 800;
-  letter-spacing: 0.03em;
+  font-weight: 700;
+  letter-spacing: 0;
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
@@ -188,6 +188,8 @@
 .rule-trigger:hover,
 .rule-trigger:focus-visible {
   border-color: var(--accent);
+  background: var(--dpp-surface-raised, var(--surface));
+  color: var(--accent-ink);
 }
 
 .rule-trigger:focus-visible {
