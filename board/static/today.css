@@ -579,6 +579,8 @@
 }
 
 .today-product .value {
+  display: grid;
+  gap: 3px;
   text-align: right;
 }
 
@@ -586,6 +588,10 @@
   display: block;
   font-family: var(--dpp-font-display, inherit);
   font-size: 18px;
+}
+
+.today-product .value .share {
+  margin-top: 0;
 }
 
 .share-track {
@@ -973,7 +979,6 @@ html.wall-mode body.shell-drawer-open {
 }
 
 .today-kpi__value .currency {
-  margin-right: 2px;
   color: var(--muted);
   font-size: 0.5em;
   vertical-align: top;
