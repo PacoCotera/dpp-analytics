@@ -392,7 +392,8 @@ function drawChart() {
     .filter((row) => row.date);
   if (!rows.length || !window.DPPCharts?.demandRhythm) return;
   renderRhythmInsight();
-  const stats = window.DPPCharts.demandRhythm('#rhythm', rows, { showCurrentWeek: false }) || {};
+  const stats =
+    window.DPPCharts.demandRhythm('#rhythm', rows, { showCurrentWeek: false, window: period }) || {};
   const totalSales = stats.total ?? d3.sum(rows, (row) => row.sales);
   const closed = rows.filter((row) => !(data.is_live && row.business_date === data.local_today));
   const average = stats.average ?? d3.mean(closed, (row) => row.sales) ?? 0;
@@ -403,7 +404,7 @@ function drawChart() {
     period === 'mtd'
       ? `Daily shopper spend · month through ${data.is_live ? 'today' : d3.utcFormat('%b %-d')(parseDate(data.selected_date))}`
       : period === 'ytd'
-        ? `Daily shopper spend · ${String(data.selected_date || data.local_today).slice(0, 4)} year to date`
+        ? `Daily shopper spend · ${String(data.selected_date || data.local_today).slice(0, 4)} year to date${rows[0]?.business_date > `${String(data.selected_date || data.local_today).slice(0, 4)}-01-01` ? ` · available history begins ${d3.utcFormat('%B %Y')(rows[0].date)}` : ''}`
         : `Daily shopper spend · ${rows.length} days`;
 }
 
