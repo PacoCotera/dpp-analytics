@@ -355,20 +355,38 @@ function renderMonthWaterfall(svg, row) {
 
   const open = Boolean(row._current);
   const steps = [
-    { label: 'Sales', detail: 'Sales ex IVA', delta: Number(row.net_sales_ex_vat || 0), kind: 'sales' },
-    { label: 'Amazon', detail: 'Amazon effect', delta: Number(row.amazon_order_effect || 0) },
+    {
+      label: 'Sales',
+      detail: 'Sales ex IVA',
+      axisDetail: 'ex IVA',
+      delta: Number(row.net_sales_ex_vat || 0),
+      kind: 'sales',
+    },
+    {
+      label: 'Amazon',
+      detail: 'Amazon effect',
+      axisDetail: 'order effect',
+      delta: Number(row.amazon_order_effect || 0),
+    },
     {
       label: 'Other',
       detail: open ? 'Other postings / timing' : 'Other finance postings',
+      axisDetail: open ? 'postings / timing' : 'finance postings',
       delta: Number(row.other_amazon_postings || 0),
     },
     {
       label: 'Ads',
       detail: row._adsPending ? 'Advertising pending' : 'Advertising',
+      axisDetail: row._adsPending ? 'pending' : 'advertising',
       delta: row._adsPending ? 0 : Number(row.advertising || 0),
       pending: row._adsPending,
     },
-    { label: 'COGS', detail: 'Product COGS', delta: -Math.abs(Number(row.product_cogs || 0)) },
+    {
+      label: 'COGS',
+      detail: 'Product COGS',
+      axisDetail: 'product cost',
+      delta: -Math.abs(Number(row.product_cogs || 0)),
+    },
   ];
 
   let running = 0;
@@ -428,7 +446,7 @@ function renderMonthWaterfall(svg, row) {
     output += `<line class="dpp-connector" x1="${center + barWidth / 2}" x2="${nextCenter - barWidth / 2}" y1="${endY}" y2="${endY}"></line>`;
     output += compact
       ? `<text class="finance-chart-month" x="${center}" y="${height - 22}" text-anchor="middle">${escapeHtml(point.label)}</text>`
-      : `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(point.label)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(point.detail === point.label ? '' : point.detail)}</tspan></text>`;
+      : `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(point.label)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(point.axisDetail || '')}</tspan></text>`;
   });
 
   const totalCenter = margin.left + slotWidth * (points.length + 0.5);
