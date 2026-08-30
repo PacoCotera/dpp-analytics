@@ -35,10 +35,12 @@
       <main class="workspace today-main">
         <section class="panel today-lead" aria-labelledby="todayTitle" data-dpp-qa="today-overview">
           <div class="today-lead__head">
-            <div>
-              <div class="today-section-label">Live operating day</div>
+            <div class="today-lead__copy">
+              <div class="today-section-label" id="todayDayState">Live operating day</div>
               <h1 id="todayTitle">Today</h1>
-              <strong class="today-lead__read" id="dayHeadline">Reading today…</strong>
+              <div class="today-lead__status">
+                <strong class="today-lead__read" id="dayHeadline">Reading today…</strong>
+              </div>
               <p id="dayExplanation">Comparing the selected day with recent shopper-spend context.</p>
             </div>
             <div
@@ -50,7 +52,7 @@
             ></div>
           </div>
 
-          <div class="today-kpis" aria-label="Today operating KPIs">
+          <div class="today-kpis" id="todayKpis" aria-label="Today operating KPIs">
             <div
               class="today-kpi today-kpi--sales"
               title="Shopper-facing product spend including IVA. Amazon ITEM + TAX is used when complete; provisional tax-exclusive item values are normalized to the marketplace IVA basis. Settlement proceeds and Amazon fees are excluded."

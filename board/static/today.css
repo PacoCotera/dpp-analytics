@@ -922,6 +922,16 @@ html.wall-mode body.shell-drawer-open {
   padding: 22px 24px 18px;
 }
 
+.today-lead__copy {
+  min-width: 0;
+}
+
+.today-lead__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .today-lead h1 {
   margin: 4px 0 8px;
   font-family: var(--dpp-font-display, inherit);
@@ -944,8 +954,9 @@ html.wall-mode body.shell-drawer-open {
   line-height: 1.4;
 }
 
-.today-lead__head .rule-trigger {
-  margin-left: 8px;
+.today-lead__status .rule-trigger {
+  flex: 0 0 auto;
+  margin: 0;
 }
 
 .today-kpis {
@@ -1291,6 +1302,8 @@ html.wall-mode .today-section {
 @media (max-width: 900px) {
   .today-lead__head {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
   }
 
   .day-picker {
@@ -1339,6 +1352,13 @@ html.wall-mode .today-section {
     font-size: 16px;
   }
 
+  .today-lead__status {
+    display: grid;
+    min-height: var(--control-height);
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: start;
+  }
+
   .today-lead__head p {
     display: none;
   }
@@ -1385,14 +1405,16 @@ html.wall-mode .today-section {
   }
 
   .day-picker {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: minmax(48px, 1.5fr) repeat(7, minmax(0, 1fr));
+    gap: 2px;
+    padding: 3px;
     border-radius: var(--radius-sm);
   }
 
   .day-choice {
     min-width: 0;
     width: 100%;
-    padding-inline: 5px;
+    padding-inline: 2px;
   }
 
   .rhythm-host {

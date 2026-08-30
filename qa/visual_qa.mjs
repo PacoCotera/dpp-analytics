@@ -379,6 +379,70 @@ async function verifyToday(page) {
     }
   }
   await page.locator('button[data-period="30"]').click();
+  const dayDates = await page.locator('#dayPicker .day-choice').evaluateAll(buttons =>
+    buttons.map(button => button.dataset.date)
+  );
+  const dayStates = [];
+  for (const date of dayDates) {
+    await page.locator(`#dayPicker .day-choice[data-date="${date}"]`).click();
+    await page.locator(`#dayPicker .day-choice[data-date="${date}"][aria-pressed="true"]`).waitFor({
+      state: 'visible',
+      timeout: 5000,
+    });
+    dayStates.push(await page.evaluate(() => {
+      const picker = document.getElementById('dayPicker');
+      const lead = document.querySelector('.today-lead');
+      const head = document.querySelector('.today-lead__head');
+      const choices = [...picker.querySelectorAll('.day-choice')];
+      const active = picker.querySelector('.day-choice.active');
+      const pickerRect = picker.getBoundingClientRect();
+      const leadRect = lead.getBoundingClientRect();
+      const headStyle = getComputedStyle(head);
+      const availableWidth =
+        head.clientWidth - Number.parseFloat(headStyle.paddingLeft) - Number.parseFloat(headStyle.paddingRight);
+      const tops = choices.map(choice => Math.round(choice.getBoundingClientRect().top));
+      const widths = choices.map(choice => choice.getBoundingClientRect().width);
+      const heights = choices.map(choice => choice.getBoundingClientRect().height);
+      return {
+        date: active?.dataset.date || null,
+        live: Boolean(active?.classList.contains('live')),
+        pickerWidth: pickerRect.width,
+        pickerHeight: pickerRect.height,
+        leadHeight: leadRect.height,
+        availableWidth,
+        rowSpread: Math.max(...tops) - Math.min(...tops),
+        minChoiceWidth: Math.min(...widths),
+        minChoiceHeight: Math.min(...heights),
+        stateLabel: document.getElementById('todayDayState')?.textContent.trim() || '',
+        title: document.getElementById('todayTitle')?.textContent.trim() || '',
+      };
+    }));
+  }
+  const todayDate = dayDates[0];
+  await page.locator(`#dayPicker .day-choice[data-date="${todayDate}"]`).click();
+  await page.locator(`#dayPicker .day-choice[data-date="${todayDate}"][aria-pressed="true"]`).waitFor({
+    state: 'visible',
+    timeout: 5000,
+  });
+  const pickerWidths = dayStates.map(item => item.pickerWidth);
+  const pickerHeights = dayStates.map(item => item.pickerHeight);
+  const leadHeights = dayStates.map(item => item.leadHeight);
+  const unstableDayState =
+    Math.max(...pickerWidths) - Math.min(...pickerWidths) > 2 ||
+    Math.max(...pickerHeights) - Math.min(...pickerHeights) > 2 ||
+    Math.max(...leadHeights) - Math.min(...leadHeights) > 2 ||
+    dayStates.some(item =>
+      Math.abs(item.pickerWidth - item.availableWidth) > 2 ||
+      item.rowSpread > 2 ||
+      item.minChoiceWidth < 24 ||
+      item.minChoiceHeight < 40 ||
+      (item.live
+        ? item.stateLabel !== 'Live operating day' || item.title !== 'Today'
+        : item.stateLabel !== 'Closed operating day' || item.title === 'Today')
+    );
+  if (unstableDayState) {
+    throw new Error(`Today operating-day selector is unstable: ${JSON.stringify(dayStates)}`);
+  }
   const state = await page.evaluate(() => {
     const mobile = window.innerWidth <= 640;
     const main = document.querySelector('.today-main');
