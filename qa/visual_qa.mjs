@@ -462,6 +462,23 @@ async function verifySalesGeography(page) {
     const map = document.querySelector('.geo-map-panel');
     const ranked = document.querySelector('.geo-ranked-panel');
     const scroll = ranked?.querySelector('.data-table-scroll');
+    const headerLabels = [...(ranked?.querySelectorAll('.geo-table thead button') || [])]
+      .filter((button) => button.getClientRects().length > 0)
+      .map((button) => ({ text: button.textContent.trim(), rect: button.getBoundingClientRect() }));
+    const headerOverlaps = [];
+    for (let index = 0; index < headerLabels.length; index += 1) {
+      for (let next = index + 1; next < headerLabels.length; next += 1) {
+        const left = headerLabels[index];
+        const right = headerLabels[next];
+        const overlapX = Math.min(left.rect.right, right.rect.right) - Math.max(left.rect.left, right.rect.left);
+        const overlapY = Math.min(left.rect.bottom, right.rect.bottom) - Math.max(left.rect.top, right.rect.top);
+        if (overlapX > 1 && overlapY > 1) headerOverlaps.push([left.text, right.text]);
+      }
+    }
+    const clippedKpis = [...document.querySelectorAll('.geo-kpi span, .geo-kpi small')]
+      .filter((node) => node.getClientRects().length > 0 && node.scrollWidth > node.clientWidth + 2)
+      .map((node) => node.textContent.trim());
+    const scrollHint = document.querySelector('.geo-scroll-hint');
     const workspaceRect = workspace?.getBoundingClientRect();
     const rankedRect = ranked?.getBoundingClientRect();
     return {
@@ -481,12 +498,22 @@ async function verifySalesGeography(page) {
         scroll.tabIndex === 0 &&
         scroll.getAttribute('role') === 'region'
       ),
+      headerOverlaps,
+      clippedKpis,
+      scrollHintVisible: Boolean(scrollHint && scrollHint.getClientRects().length > 0),
     };
   });
-  if (layout.pageOverflow > 2 || !layout.rankedContained) {
+  if (layout.pageOverflow > 2 || !layout.rankedContained || layout.headerOverlaps.length) {
     throw new Error(`Sales Geography containment mismatch: ${JSON.stringify(layout)}`);
   }
-  if (layout.mobile && (layout.columns !== 1 || !layout.stacked || !layout.explicitScroller)) {
+  if (
+    layout.mobile &&
+    (layout.columns !== 1 ||
+      !layout.stacked ||
+      !layout.explicitScroller ||
+      layout.clippedKpis.length ||
+      !layout.scrollHintVisible)
+  ) {
     throw new Error(`Sales Geography mobile reflow mismatch: ${JSON.stringify(layout)}`);
   }
 }
@@ -801,6 +828,9 @@ async function verifyCatalog(page) {
         ? [...summary.querySelectorAll(':scope > .metric-sales, :scope > .metric-funnel, :scope > .metric-stock')]
         : [];
       const tops = metrics.map((metric) => Math.round(metric.getBoundingClientRect().top));
+      const clipped = metrics.flatMap((metric) => [metric, ...metric.querySelectorAll('*')]).filter(
+        (node) => node.getClientRects().length > 0 && node.scrollWidth > node.clientWidth + 2,
+      );
       const economics = summary?.querySelector(':scope > .economics');
       return {
         duplicateTitleVisible: Boolean(
@@ -810,13 +840,22 @@ async function verifyCatalog(page) {
         economicsVisible: Boolean(economics && getComputedStyle(economics).display !== 'none'),
         metricCount: metrics.length,
         metricTopSpread: tops.length ? Math.max(...tops) - Math.min(...tops) : null,
+        firstRowSpread: tops.length >= 2 ? Math.abs(tops[0] - tops[1]) : null,
+        stockBelow: tops.length === 3 ? tops[2] > tops[0] + 20 : false,
+        clippedMetrics: clipped.map((node) => node.textContent.trim().slice(0, 80)),
       };
     });
     if (mobile.duplicateTitleVisible) throw new Error('Catalog mobile repeats the portfolio title');
     if (mobile.economicsVisible) throw new Error('Catalog mobile exposes desktop economics in the family summary');
-    if (mobile.metricCount !== 3 || mobile.metricTopSpread > 2)
+    if (
+      mobile.metricCount !== 3 ||
+      mobile.firstRowSpread > 2 ||
+      !mobile.stockBelow ||
+      mobile.metricTopSpread < 20 ||
+      mobile.clippedMetrics.length
+    )
       throw new Error(
-        `Catalog mobile metrics are not a compact three-column strip: ${mobile.metricCount} / ${mobile.metricTopSpread}`,
+        `Catalog mobile metrics are not a readable two-row grid: ${JSON.stringify(mobile)}`,
       );
   }
 }
@@ -899,6 +938,7 @@ async function verifyProductWorkspace(page) {
     const mobile = window.innerWidth <= 640;
     const reference = document.getElementById('productReference');
     const facts = document.querySelector('.product-health__facts');
+    const healthSignal = document.querySelector('.hero-signal');
     const decisions = document.querySelector('.decision-rail');
     const chart = document.querySelector('.product-chart-panel');
     const summary = reference?.querySelector(':scope > summary');
@@ -906,6 +946,12 @@ async function verifyProductWorkspace(page) {
       mobile,
       referenceOpen: Boolean(reference?.hasAttribute('open')),
       factsVisible: Boolean(facts && window.getComputedStyle(facts).display !== 'none'),
+      healthSignalVisible: Boolean(
+        healthSignal &&
+          healthSignal.getBoundingClientRect().height > 0 &&
+          healthSignal.querySelector('#healthHeadline')?.textContent.trim() &&
+          healthSignal.querySelector('#healthRead')?.textContent.trim()
+      ),
       decisionsAfterChart: Boolean(
         decisions && chart && decisions.getBoundingClientRect().top >= chart.getBoundingClientRect().top
       ),
@@ -920,6 +966,7 @@ async function verifyProductWorkspace(page) {
     mobileHierarchy.mobile &&
     (mobileHierarchy.referenceOpen ||
       mobileHierarchy.factsVisible ||
+      !mobileHierarchy.healthSignalVisible ||
       !mobileHierarchy.decisionsAfterChart ||
       !mobileHierarchy.catalogTitleVisible ||
       mobileHierarchy.metricControls !== 2 ||
@@ -1191,14 +1238,46 @@ async function chooseClosedFinanceMonth(page) {
   if (!closedState || closedState.includes('OPEN')) throw new Error(`Finance closed-month drill-down has invalid state: ${closedState || 'blank'}`);
 }
 
+async function financeChartLayout(page) {
+  return page.evaluate(() => {
+    const card = document.querySelector('.finance-progression');
+    const labels = [...document.querySelectorAll('#progression text')]
+      .filter((node) => node.getClientRects().length > 0 && node.textContent.trim())
+      .map((node) => ({ text: node.textContent.trim(), rect: node.getBoundingClientRect() }));
+    const overlaps = [];
+    for (let index = 0; index < labels.length; index += 1) {
+      for (let next = index + 1; next < labels.length; next += 1) {
+        const left = labels[index];
+        const right = labels[next];
+        const overlapX = Math.min(left.rect.right, right.rect.right) - Math.max(left.rect.left, right.rect.left);
+        const overlapY = Math.min(left.rect.bottom, right.rect.bottom) - Math.max(left.rect.top, right.rect.top);
+        if (overlapX > 1 && overlapY > 1) overlaps.push([left.text, right.text]);
+      }
+    }
+    return { height: card?.getBoundingClientRect().height || 0, overlaps };
+  });
+}
+
 async function verifyFinanceWindows(page) {
-  const buttons = ['3m', 'ytd', '12m', 'lastYear', 'all'];
+  const buttons = ['month', '3m', 'ytd', '12m', 'lastYear', 'all'];
+  const mobile = (await page.evaluate(() => window.innerWidth)) <= 640;
+  const layouts = [];
   for (const windowKey of buttons) {
     const button = page.locator(`button[data-finance-window="${windowKey}"]`);
     await button.waitFor({ state: 'visible', timeout: 5000 });
     await button.click();
     await page.locator(`button[data-finance-window="${windowKey}"][aria-selected="true"]`).waitFor({ state: 'visible', timeout: 5000 });
     await assertFinanceChartMarks(page, windowKey);
+    if (mobile) layouts.push({ windowKey, ...(await financeChartLayout(page)) });
+  }
+
+  if (mobile) {
+    const heights = layouts.map((layout) => layout.height);
+    const heightSpread = Math.max(...heights) - Math.min(...heights);
+    const collisions = layouts.filter((layout) => layout.overlaps.length);
+    if (heightSpread > 2 || collisions.length) {
+      throw new Error(`Finance mobile window layout shifts or label collisions: ${JSON.stringify(layouts)}`);
+    }
   }
 
   await chooseClosedFinanceMonth(page);
@@ -1255,6 +1334,8 @@ async function verifyFinanceReport(page) {
     )].filter(visible);
     const mobile = window.innerWidth <= 640;
     const tableHead = document.querySelector('#history thead');
+    const ytdFinal = document.querySelector('#ytdBridge .bridge-step.final');
+    const ytdFinalValue = ytdFinal?.querySelector('strong');
     return {
       evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
       controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
@@ -1263,9 +1344,14 @@ async function verifyFinanceReport(page) {
         document.querySelectorAll('#history thead th[scope="col"]').length === 8 &&
         document.querySelectorAll('#history tbody tr').length === document.querySelectorAll('#history tbody th[scope="row"]').length,
       anchoredSections: document.querySelectorAll('.finance-page h2').length >= 7,
+      ytdResultTone: Boolean(
+        ytdFinal &&
+          ytdFinalValue &&
+          (!ytdFinalValue.classList.contains('neg') || ytdFinal.classList.contains('negative'))
+      ),
     };
   });
-  if (!state.evidenceFloor || !state.controlFloor || !state.mobileHeaderAvailable || !state.tableRelationships || !state.anchoredSections) {
+  if (!state.evidenceFloor || !state.controlFloor || !state.mobileHeaderAvailable || !state.tableRelationships || !state.anchoredSections || !state.ytdResultTone) {
     throw new Error(`Finance hierarchy/accessibility presentation mismatch: ${JSON.stringify(state)}`);
   }
 }

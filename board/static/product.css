@@ -843,7 +843,7 @@ main {
   }
 
   .hero-command {
-    display: none;
+    display: grid;
   }
 
   .hero-signal > strong {
