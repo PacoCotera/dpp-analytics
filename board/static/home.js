@@ -35,8 +35,17 @@ function renderDemandChart() {
   const rows = homeWindowRows(reconciled);
   const description = document.getElementById('homeDemandDescription');
   const label = homeWindow === '28d' ? '28 days' : homeWindow === 'ytd' ? 'Year to date' : '90 days';
-  description.textContent = `${label} · shopper spend incl. IVA · reconciled Sales & Traffic · seven-day signal${homeWindow === '90d' ? ' · current week partial' : ''}`;
-  window.DPPCharts.demandRhythm('#spark', rows, { showCurrentWeek: homeWindow !== '28d' });
+  const firstDate = String(rows[0]?.business_date || '').slice(0, 10);
+  const latestYear = String(rows.at(-1)?.business_date || '').slice(0, 4);
+  const availability =
+    homeWindow === 'ytd' && firstDate && firstDate > `${latestYear}-01-01`
+      ? ` · available history begins ${formatMonthYear(firstDate)}`
+      : '';
+  description.textContent = `${label}${availability} · shopper spend incl. IVA · reconciled Sales & Traffic · seven-day signal${homeWindow === '90d' ? ' · current week partial' : ''}`;
+  window.DPPCharts.demandRhythm('#spark', rows, {
+    showCurrentWeek: homeWindow !== '28d',
+    window: homeWindow,
+  });
 }
 
 function bindDemandWindow() {

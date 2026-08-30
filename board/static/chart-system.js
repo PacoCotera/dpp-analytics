@@ -182,17 +182,20 @@
       { top: 18, right: 18, bottom: 38, left: compact ? 52 : 62 },
       width,
     );
+    const firstDate = data[0].date;
+    const latest = data[data.length - 1];
+    const yearStart = new Date(Date.UTC(latest.date.getUTCFullYear(), 0, 1));
+    const domainStart = options.window === 'ytd' ? yearStart : d3.utcDay.floor(firstDate);
+    const domainEnd = d3.utcDay.offset(d3.utcDay.floor(latest.date), 1);
     const x = d3
       .scaleUtc()
-      .domain(d3.extent(data, (d) => d.date))
+      .domain([domainStart, domainEnd])
       .range([0, ctx.innerW]);
     const y = d3
       .scaleLinear()
       .domain([0, d3.max(data, (d) => Math.max(d.value, d.avg)) || 1])
       .nice(3)
       .range([ctx.innerH, 0]);
-    const firstDate = data[0].date;
-    const latest = data[data.length - 1];
     const currentWeekStart = d3.utcMonday.floor(latest.date);
     const currentWeekX = Math.max(0, x(currentWeekStart));
     const gradientId = `demand-rhythm-area-${String(selector).replace(/[^a-z0-9]/gi, '')}`;
@@ -225,7 +228,8 @@
       .attr('y1', 0)
       .attr('y2', ctx.innerH);
     grid(ctx, y, 3);
-    const daySlot = ctx.innerW / Math.max(1, data.length - 1);
+    const daySlot =
+      data.length > 1 ? Math.abs(x(data[1].date) - x(data[0].date)) : ctx.innerW;
     const barOccupancy = data.length <= 14 ? 0.5 : data.length <= 45 ? 0.52 : 0.72;
     const barW = Math.max(2, Math.min(44, daySlot * barOccupancy));
     const bars = ctx.plot
