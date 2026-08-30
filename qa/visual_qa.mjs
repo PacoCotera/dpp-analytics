@@ -920,6 +920,40 @@ async function verifyCatalog(page) {
   const openCount = await page.locator('.family[open]').count();
   if (openCount) throw new Error(`Catalog default comparison view has ${openCount} family expansions open`);
 
+  const attentionHierarchy = await page.evaluate(() => {
+    const card = document.querySelector('.attention-item');
+    const trigger = card?.querySelector('.rule-trigger');
+    if (!card || !trigger) return null;
+    const resolveColor = token => {
+      const probe = document.createElement('span');
+      probe.style.color = `var(${token})`;
+      document.body.append(probe);
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    };
+    const cardStyle = getComputedStyle(card);
+    const triggerStyle = getComputedStyle(trigger);
+    return {
+      classes: card.className,
+      cardBackground: cardStyle.backgroundColor,
+      surface: resolveColor('--surface'),
+      triggerBackground: triggerStyle.backgroundColor,
+      triggerColor: triggerStyle.color,
+      muted: resolveColor('--muted'),
+      triggerWeight: Number(triggerStyle.fontWeight),
+    };
+  });
+  if (
+    attentionHierarchy &&
+    (attentionHierarchy.cardBackground !== attentionHierarchy.surface ||
+      attentionHierarchy.triggerBackground !== 'rgba(0, 0, 0, 0)' ||
+      attentionHierarchy.triggerColor !== attentionHierarchy.muted ||
+      attentionHierarchy.triggerWeight > 700 ||
+      /(?:^|\s)(?:bad|warn)(?:\s|$)/.test(attentionHierarchy.classes))
+  ) throw new Error(`Catalog attention hierarchy promotes advisory UI over evidence: ${JSON.stringify(attentionHierarchy)}`);
+
+
   if ((await page.evaluate(() => window.innerWidth)) <= 720) {
     const mobile = await page.evaluate(() => {
       const summary = document.querySelector('.family > summary');
