@@ -5,9 +5,17 @@
 Before changing the application:
 
 1. Read `docs/README.md` and `docs/maintenance.md`.
-2. Read the relevant data, metric, cache, frontend, or control-plane document for the affected domain.
-3. For the 2026-08-27 audit backlog, read `docs/audits/dpp-analytics-2026-08-27.md` and master tracker #161.
-4. Reconcile the selected audit ID with its current GitHub issue state. The issue is authoritative for execution status; the audit is authoritative for the original evidence and acceptance criteria.
+2. Read `docs/browser-qa.md` before any browser audit, responsive check, production visual acceptance or Playwright work.
+3. Read the relevant data, metric, cache, frontend, or control-plane document for the affected domain.
+4. For the 2026-08-27 audit backlog, read `docs/audits/dpp-analytics-2026-08-27.md` and master tracker #161.
+5. Reconcile the selected audit ID with its current GitHub issue state. The issue is authoritative for execution status; the audit is authoritative for the original evidence and acceptance criteria.
+
+## Two Playwright systems
+
+- **CI Playwright** lives in this repository under `qa/` and is an automated, code-defined regression/deployment gate.
+- **Standalone DPP Playwright** lives in `PacoCotera/playwright-dpp-config`, is connected to ChatGPT as **DPP Playwright**, and is the interactive multi-engine, multi-device, exact-viewport browser for production audits.
+- The standalone host has public-internet egress, but its MCP ports are loopback-only; ChatGPT connects through the private OpenAI Secure MCP Tunnel.
+- Do not call the CI container “DPP Playwright,” do not call the standalone service “the CI Playwright,” and do not substitute either acceptance role for the other. The full selection and reconnection runbook is `docs/browser-qa.md`.
 
 ## Audit backlog workflow
 
@@ -19,7 +27,7 @@ Before changing the application:
 - Preserve the ownership and architecture contracts in `docs/maintenance.md`.
 - Add automated coverage for the issue acceptance criteria and relevant edge cases.
 - Use a pull request that references the issue.
-- After deployment, verify the exact production SHA with DPP Playwright.
+- After deployment, verify the exact production SHA with standalone DPP Playwright when the change needs interactive visual/interaction acceptance; CI Playwright remains the independent deployment gate.
 - Close the issue only after posting the repeatable production evidence. Update master tracker #161 at the same time.
 
 ## Product standard

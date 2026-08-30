@@ -38,6 +38,10 @@ The board image itself does not inject CSS, JavaScript or page behavior. Its HTM
 
 ## Production browser QA
 
+This section describes the repository/CI Playwright gate only. It is separate from the interactive standalone
+**DPP Playwright** ChatGPT service. The ownership boundary, capability matrix and standalone connection runbook
+are in [`browser-qa.md`](browser-qa.md).
+
 `qa/visual_qa.mjs` is run inside the QA image after deployment through the host network against the published `http://127.0.0.1:8088` port. Under the explicit temporary public-Admin decision in [#204](https://github.com/PacoCotera/dpp-analytics/issues/204), this exercises the same non-loopback access policy as the public route.
 
 The QA output includes browser captures and a structured summary covering, among other checks:

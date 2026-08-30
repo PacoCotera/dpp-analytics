@@ -97,6 +97,8 @@ npm run format:check   # audit; not yet the blocking gate
 
 Production deployment is controlled by `.github/workflows/deploy.yml` and runs on the repository-scoped self-hosted runner. A push to `main` deploys automatically; `workflow_dispatch` is also supported. The deployment applies migrations, refreshes Finance close state, deploys the stack, probes core APIs/services, runs production browser QA and publishes a deployment heartbeat.
 
+There are two independent browser systems. The Playwright code under `qa/` is the automated, predefined CI/deployment regression gate. The separate **DPP Playwright** ChatGPT connection is the interactive standalone service for public-production audits, with persistent handles, Chromium/Firefox/WebKit, native mobile modes and paired exact viewport parameters. Its host has public-internet egress, while its MCP ports remain private behind the OpenAI Secure MCP Tunnel. See [`docs/browser-qa.md`](docs/browser-qa.md) before browser work.
+
 Seller-owned product short names, taxonomy and current COGS are managed through the password-protected `/admin` workspace. The latest complete Seller Listings snapshot supplies current/deleted SKU membership automatically; Amazon Catalog Items supplies identity evidence; the user supplies only the mapped values the application must not guess. Production currently exposes this route through the public direct-HTTP board as the explicit temporary exception in [#204](https://github.com/PacoCotera/dpp-analytics/issues/204); credentials and session cookies do not have transport encryption until HTTPS or the planned SSH/app-wide session replaces it.
 
 **Data-trust acceptance is executable.** Production browser QA verifies rendered monetary values and visible basis labels, including the Finance settlement payout arithmetic. After a successful deployment, `.github/workflows/production-number-audit.yml` independently reconciles production APIs against warehouse/raw evidence, re-proves the Sales & Traffic tax basis, audits immutable Finance closes, and recalculates the latest settlement payout bridge directly from `core.settlement_line`. A monetary-basis or payout-reconciliation failure is a production failure, not a documentation warning.
@@ -113,5 +115,6 @@ Start here instead of reverse-engineering the repository:
 - [`docs/data-model.md`](docs/data-model.md) — source-of-truth layers, current Amazon sources and KPI/reconciliation policy.
 - [`docs/metric-basis.md`](docs/metric-basis.md) — canonical shopper-spend, operating-sales, Finance and Ads monetary definitions.
 - [`docs/control-plane.md`](docs/control-plane.md) — deployment workflow, self-hosted runner and production heartbeat.
+- [`docs/browser-qa.md`](docs/browser-qa.md) — the two Playwright systems, selection rules, standalone capabilities and ChatGPT refresh/reconnection runbook.
 
 When architecture, source ownership, a route, a data definition or deployment behavior changes, update the corresponding documentation in the same PR.
