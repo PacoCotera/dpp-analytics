@@ -204,12 +204,8 @@
       .attr('x2', '0%')
       .attr('y1', '0%')
       .attr('y2', '100%');
-    gradient.append('stop').attr('offset', '0%').attr('stop-color', COLORS.sales).attr('stop-opacity', 0.22);
-    gradient
-      .append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', COLORS.sales)
-      .attr('stop-opacity', 0.02);
+    gradient.append('stop').attr('offset', '0%').attr('stop-color', COLORS.cash).attr('stop-opacity', 0.14);
+    gradient.append('stop').attr('offset', '100%').attr('stop-color', COLORS.cash).attr('stop-opacity', 0.01);
     if (options.showCurrentWeek !== false) {
       ctx.plot
         .append('rect')
@@ -229,7 +225,9 @@
       .attr('y1', 0)
       .attr('y2', ctx.innerH);
     grid(ctx, y, 3);
-    const barW = Math.max(2, Math.min(14, (ctx.innerW / data.length) * 0.6));
+    const daySlot = ctx.innerW / Math.max(1, data.length - 1);
+    const barOccupancy = data.length <= 14 ? 0.5 : data.length <= 45 ? 0.52 : 0.72;
+    const barW = Math.max(2, Math.min(44, daySlot * barOccupancy));
     const bars = ctx.plot
       .selectAll('.dpp-bar')
       .data(data)
@@ -248,13 +246,13 @@
       .line()
       .x((d) => x(d.date))
       .y((d) => y(d.avg))
-      .curve(d3.curveMonotoneX);
+      .curve(d3.curveCatmullRom.alpha(0.5));
     const area = d3
       .area()
       .x((d) => x(d.date))
       .y0(y(0))
       .y1((d) => y(d.avg))
-      .curve(d3.curveMonotoneX);
+      .curve(d3.curveCatmullRom.alpha(0.5));
     ctx.plot
       .append('path')
       .datum(data)
