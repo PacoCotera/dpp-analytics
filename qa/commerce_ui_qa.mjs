@@ -179,6 +179,14 @@ assert(
     catalog.js.includes("Number.isFinite(Number(value))"),
   "Catalog: percent evidence does not preserve the shared malformed-value fallback",
 );
+assert(
+  !catalog.css.includes(".attention-item.bad") &&
+    !catalog.css.includes(".attention-item.warn") &&
+    !catalog.css.includes("color: var(--warn-ink) !important") &&
+    catalog.css.includes(".attention-item--review") &&
+    catalog.js.includes("attention-item--${BAD_STATES.has(state) ? 'critical' : 'review'}"),
+  "Catalog: attention cards still conflate child exceptions with filled warning state",
+);
 
 const product = routes[1];
 assert(
