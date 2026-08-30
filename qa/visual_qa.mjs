@@ -772,6 +772,37 @@ async function verifyBusiness(page) {
   ) {
     throw new Error(`Business decision-board contract mismatch: ${JSON.stringify(state)}`);
   }
+  await page.locator('button[data-home-window="ytd"]').click();
+  await page
+    .locator('button[data-home-window="ytd"][aria-pressed="true"]')
+    .waitFor({ state: 'visible', timeout: 5000 });
+  const ytd = await page.evaluate(() => {
+    const bars = [...document.querySelectorAll('#spark .demand-rhythm__bar')];
+    const first = bars[0]?.__data__?.business_date || '';
+    const last = bars.at(-1)?.__data__?.business_date || '';
+    const year = last.slice(0, 4);
+    const xAxis = [...document.querySelectorAll('#spark .dpp-axis')].at(-1);
+    const labels = [...(xAxis?.querySelectorAll('.tick text') || [])].map((tick) =>
+      tick.textContent.trim(),
+    );
+    const description = document.getElementById('homeDemandDescription')?.textContent.trim() || '';
+    return {
+      first,
+      last,
+      yearStart: `${year}-01-01`,
+      labels,
+      description,
+      availabilityDisclosed:
+        first === `${year}-01-01` || description.includes('available history begins'),
+    };
+  });
+  if (
+    ytd.labels[0] !== 'Jan' ||
+    !ytd.description.startsWith('Year to date') ||
+    !ytd.availabilityDisclosed
+  ) {
+    throw new Error(`Business YTD is not anchored to the calendar year: ${JSON.stringify(ytd)}`);
+  }
 }
 async function verifyDataHealth(page) {
   await assertWorkspaceLandmarks(page, ['data-health-overview', 'catalog-onboarding']);
