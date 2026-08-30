@@ -17,6 +17,7 @@ This directory is the maintainer-facing map of the application. The goal is to m
 | Which confirmed production defects are queued, and how are they closed? | [`audits/dpp-analytics-2026-08-27.md`](audits/dpp-analytics-2026-08-27.md) and [tracker #161](https://github.com/PacoCotera/dpp-analytics/issues/161) |
 | How are new/deleted SKUs and seller mappings/COGS managed? | [`audits/catalog-admin-2026-08-28.md`](audits/catalog-admin-2026-08-28.md) and [`maintenance.md`](maintenance.md) |
 | How does production deploy and where do I inspect its health? | [`control-plane.md`](control-plane.md) |
+| Which Playwright do I use, and how is the standalone ChatGPT connection refreshed? | [`browser-qa.md`](browser-qa.md) |
 
 ## Documentation contract
 
@@ -31,6 +32,7 @@ Documentation is part of the application architecture. Update it in the same PR 
 - shared frontend ownership or framework choice;
 - caching, freshness or KPI-precomputation behavior;
 - deployment, migration, QA or production-health behavior;
+- browser-QA ownership, capabilities or ChatGPT connection behavior;
 - host-side configuration paths that a maintainer must know.
 
 Do not use documentation as a second implementation. Keep it focused on boundaries, invariants, ownership and operational procedures. Detailed SQL and payload fields belong in code/migrations unless a maintainer needs them to make a correct architectural decision.
