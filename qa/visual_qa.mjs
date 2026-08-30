@@ -363,10 +363,26 @@ async function verifyToday(page) {
     await page.locator(`button[data-period="${period}"][aria-pressed="true"]`).waitFor({ state: 'visible', timeout: 5000 });
     const signature = await page.evaluate(() => {
       const bars = [...document.querySelectorAll('#rhythm .dpp-bar')];
+      const line = document.querySelector('#rhythm .demand-rhythm__line');
+      const chart = document.querySelector('#rhythm');
+      const lineStyle = line ? getComputedStyle(line) : null;
+      const normalBar = bars.find(bar =>
+        !bar.classList.contains('demand-rhythm__bar--exceptional') &&
+        !bar.classList.contains('demand-rhythm__bar--weekend')
+      ) || bars[0];
       return {
         count: bars.length,
         first: bars[0]?.__data__?.business_date || null,
         last: bars.at(-1)?.__data__?.business_date || null,
+        barWidth: Number(bars[0]?.getAttribute('width') || 0),
+        slotWidth: bars.length > 1
+          ? Math.abs(Number(bars[1]?.getAttribute('x')) - Number(bars[0]?.getAttribute('x')))
+          : 0,
+        lineStroke: lineStyle?.stroke || '',
+        lineWidth: Number.parseFloat(lineStyle?.strokeWidth || '0'),
+        barFill: normalBar ? getComputedStyle(normalBar).fill : '',
+        viewportWidth: window.innerWidth,
+        chartWidth: chart?.getBoundingClientRect().width || 0,
       };
     });
     const expected = {
@@ -374,8 +390,26 @@ async function verifyToday(page) {
       first: rows[0]?.business_date || null,
       last: rows.at(-1)?.business_date || null,
     };
-    if (JSON.stringify(signature) !== JSON.stringify(expected)) {
+    const renderedWindow = {
+      count: signature.count,
+      first: signature.first,
+      last: signature.last,
+    };
+    if (JSON.stringify(renderedWindow) !== JSON.stringify(expected)) {
       throw new Error(`Today ${period} selected state does not match rendered data: ${JSON.stringify({ signature, expected })}`);
+    }
+    const minimumShortWindowWidth = Math.min(32, signature.slotWidth * 0.35);
+    const underweightedBars = period === '7'
+      ? signature.barWidth < minimumShortWindowWidth
+      : rows.length <= 45
+        ? signature.barWidth / signature.slotWidth < 0.45
+        : signature.barWidth / signature.slotWidth < 0.68;
+    if (
+      underweightedBars ||
+      signature.lineStroke === signature.barFill ||
+      signature.lineWidth < 2.8
+    ) {
+      throw new Error(`Today ${period} chart hierarchy is underweighted: ${JSON.stringify(signature)}`);
     }
   }
   await page.locator('button[data-period="30"]').click();
