@@ -409,7 +409,11 @@ check(
 check(
   /\.finance-progression\s*\{[^}]*min-height:\s*720px/s.test(financeCss) &&
     /point\._current\s*&&\s*!compact\s*&&\s*!dense/.test(financeScript) &&
-    /index\s*===\s*0\s*\|\|\s*index\s*%\s*labelStep\s*===\s*0/.test(financeScript),
+    /index\s*===\s*0\s*\|\|\s*\(index\s*%\s*labelStep\s*===\s*0\s*&&\s*index\s*<\s*points\.length\s*-\s*1\)/.test(
+      financeScript,
+    ) &&
+    /const compactNudge\s*=\s*compact\s*\?/.test(financeScript) &&
+    /point\.compactLabel\s*\|\|\s*point\.label/.test(financeScript),
   'finance.js',
   'Finance mobile windows must keep a stable card and collision-safe chart labels',
 );
