@@ -565,9 +565,14 @@ function renderAttention() {
         .map((family) => {
           const state = family.primary_state || 'WATCH';
           const exceptions = Number(family.child_exception_count || 0);
-          return `<div class="attention-item ${BAD_STATES.has(state) ? 'bad' : 'warn'}">
+          return `<div class="attention-item attention-item--${BAD_STATES.has(state) ? 'critical' : 'review'}">
             <strong>${esc(compactFamilyName(family))}</strong>
-            <span>${esc(labels[state] || state)} ${ruleTrigger(family.commercial_evaluation, DATA.interpretation_rules)} · ${esc(explanation(family))}${exceptions ? ` · ${exceptions} child exception${exceptions === 1 ? '' : 's'}` : ''}</span>
+            <div class="attention-item__summary">
+              <span class="attention-item__state">${esc(labels[state] || state)}</span>
+              ${ruleTrigger(family.commercial_evaluation, DATA.interpretation_rules)}
+              <span class="attention-item__detail">· ${esc(explanation(family))}</span>
+              ${exceptions ? `<span class="attention-item__exception">· ${exceptions} child exception${exceptions === 1 ? '' : 's'}</span>` : ''}
+            </div>
           </div>`;
         })
         .join('')
