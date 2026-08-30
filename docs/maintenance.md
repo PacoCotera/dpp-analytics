@@ -271,10 +271,12 @@ persistent view choice, document its URL key in `frontend-architecture.md` and e
 reference workspace without multiplying every route by every appearance.
 
 After each deployed UI-revamp block, use the standalone, parameterized DPP Playwright runner for acceptance. Do
-not substitute the desktop-only Playwright integration. Run Chromium desktop, Chromium with the Pixel 5 device,
-WebKit desktop, and WebKit with the iPhone 12 device. Each run must record the exact deployed SHA from the footer
-and the active asset revision before navigation and visual evidence are accepted. The repository QA/deployment
-suite remains an independent regression gate.
+not substitute the repository's predefined CI Playwright matrix. Run Chromium desktop, Chromium mobile, WebKit
+desktop and WebKit mobile at the exact dimensions required by the change; include Firefox desktop when engine
+comparison is relevant. Each run must record the exact deployed SHA from the footer and the active asset revision
+before navigation and visual evidence are accepted. The repository QA/deployment suite remains an independent
+regression gate. The capability table, session matrix and ChatGPT reconnection procedure are canonical in
+[`browser-qa.md`](browser-qa.md).
 
 ### Finance validation
 
