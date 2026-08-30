@@ -320,10 +320,10 @@ function renderProgressionChart(svg, rows, includeCogs = true) {
         : margin.left + slotWidth * (points.length + 0.5);
     output += `<line class="dpp-connector" x1="${center + barWidth / 2}" x2="${nextCenter - barWidth / 2}" y1="${endY}" y2="${endY}"></line>`;
 
-    if (point._current && !dense) {
+    if (point._current && !compact && !dense) {
       output += `<text class="dpp-muted" x="${center}" y="${height - 48}" text-anchor="middle">OPEN</text>`;
     }
-    if (!dense || index === 0 || index === points.length - 1 || index % labelStep === 0) {
+    if (!dense || index === 0 || index % labelStep === 0) {
       output += `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(month.month)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(month.year)}</tspan></text>`;
     }
   });
@@ -337,7 +337,7 @@ function renderProgressionChart(svg, rows, includeCogs = true) {
   const rawTotalValueY = cumulative < 0 ? cumulativeY - 8 : cumulativeY + 14;
   const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
   output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(cumulative)}</text>`;
-  if (hasOpen && !dense) {
+  if (hasOpen && !compact && !dense) {
     output += `<text class="dpp-muted" x="${totalCenter}" y="${height - 48}" text-anchor="middle">PROVISIONAL</text>`;
   }
   output += dense
@@ -441,7 +441,9 @@ function renderMonthWaterfall(svg, row) {
         ? margin.left + slotWidth * (index + 1.5)
         : margin.left + slotWidth * (points.length + 0.5);
     output += `<line class="dpp-connector" x1="${center + barWidth / 2}" x2="${nextCenter - barWidth / 2}" y1="${endY}" y2="${endY}"></line>`;
-    output += `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(point.label)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(point.detail === point.label ? '' : point.detail)}</tspan></text>`;
+    output += compact
+      ? `<text class="finance-chart-month" x="${center}" y="${height - 22}" text-anchor="middle">${escapeHtml(point.label)}</text>`
+      : `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(point.label)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(point.detail === point.label ? '' : point.detail)}</tspan></text>`;
   });
 
   const totalCenter = margin.left + slotWidth * (points.length + 0.5);
@@ -453,10 +455,12 @@ function renderMonthWaterfall(svg, row) {
   const rawTotalValueY = contribution < 0 ? contributionY - 8 : contributionY + 14;
   const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
   output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(contribution)}</text>`;
-  if (open) {
+  if (open && !compact) {
     output += `<text class="dpp-muted" x="${totalCenter}" y="${height - 48}" text-anchor="middle">OPEN</text>`;
   }
-  output += `<text class="finance-chart-month" x="${totalCenter}" y="${height - 29}" text-anchor="middle"><tspan x="${totalCenter}">${row._adsPending ? 'Pre-ads' : 'Contribution'}</tspan><tspan class="dpp-muted" x="${totalCenter}" dy="13">${row._adsPending ? 'provisional' : 'result'}</tspan></text>`;
+  output += compact
+    ? `<text class="finance-chart-month" x="${totalCenter}" y="${height - 22}" text-anchor="middle">Result</text>`
+    : `<text class="finance-chart-month" x="${totalCenter}" y="${height - 29}" text-anchor="middle"><tspan x="${totalCenter}">${row._adsPending ? 'Pre-ads' : 'Contribution'}</tspan><tspan class="dpp-muted" x="${totalCenter}" dy="13">${row._adsPending ? 'provisional' : 'result'}</tspan></text>`;
 
   svg.innerHTML = output;
 }
@@ -542,7 +546,11 @@ function renderYtd(ytd) {
     bridgeStepExact('Other Amazon postings', ytd.other_amazon_postings),
     bridgeStepExact('Advertising', ytd.advertising),
     bridgeStepExact('Product COGS', -Math.abs(Number(ytd.product_cogs || 0))),
-    bridgeStepExact('Contribution', ytd.contribution_after_product_cogs, 'final'),
+    bridgeStepExact(
+      'Contribution',
+      ytd.contribution_after_product_cogs,
+      Number(ytd.contribution_after_product_cogs || 0) < 0 ? 'final negative' : 'final positive',
+    ),
   ].join('');
 }
 

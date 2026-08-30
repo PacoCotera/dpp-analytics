@@ -100,6 +100,10 @@ const catalogScript = readFileSync(join(staticRoot, 'catalog.js'), 'utf8');
 const inventoryHtml = readFileSync(join(staticRoot, 'inventory.html'), 'utf8');
 const salesHtml = readFileSync(join(staticRoot, 'sales.html'), 'utf8');
 const financeHtml = readFileSync(join(staticRoot, 'finance.html'), 'utf8');
+const financeScript = readFileSync(join(staticRoot, 'finance.js'), 'utf8');
+const financeCss = readFileSync(join(staticRoot, 'finance.css'), 'utf8');
+const catalogCss = readFileSync(join(staticRoot, 'catalog.css'), 'utf8');
+const productCss = readFileSync(join(staticRoot, 'product.css'), 'utf8');
 const dataHealthScript = readFileSync(join(staticRoot, 'data-health.js'), 'utf8');
 const chartSystem = readFileSync(join(staticRoot, 'chart-system.js'), 'utf8');
 const salesGeographyScript = readFileSync(join(staticRoot, 'sales-geography-v2.js'), 'utf8');
@@ -374,9 +378,9 @@ check(
   'Business Health must inherit the shared home-surface inset',
 );
 check(
-  !/#geography\s+\.geo-grid/.test(salesGeographyCss),
+  !/#geography\s+/.test(salesGeographyCss),
   'sales-geography.css',
-  'Geography grid layout must not use ID specificity that defeats responsive rules',
+  'Geography layout must not use ID specificity that defeats responsive rules',
 );
 check(
   /@media \(max-width: 1180px\)\s*\{[\s\S]*?\.geo-grid\s*\{[\s\S]*?grid-template-columns:\s*1fr/s.test(
@@ -384,6 +388,30 @@ check(
   ),
   'sales-geography.css',
   'Geography must collapse its two-column workspace below 1180px',
+);
+check(
+  /\.geo-kpi-rail\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,/s.test(salesGeographyCss),
+  'sales-geography.css',
+  'Geography KPIs must reflow to two columns on narrow screens',
+);
+check(
+  !/\.hero-command\s*\{[^}]*display:\s*none/s.test(productCss),
+  'product.css',
+  'Product Health must remain visible on mobile',
+);
+check(
+  /@media \(max-width:\s*480px\)[\s\S]*?\.family\s*>\s*summary,[\s\S]*?grid-template-columns:\s*repeat\(2,/s.test(
+    catalogCss,
+  ) && /\.family\s*>\s*summary\s*>\s*\.metric-stock,[\s\S]*?grid-column:\s*1\s*\/\s*3/s.test(catalogCss),
+  'catalog.css',
+  'Catalog mobile metrics must use a readable two-row grid',
+);
+check(
+  /\.finance-progression\s*\{[^}]*min-height:\s*720px/s.test(financeCss) &&
+    /point\._current\s*&&\s*!compact\s*&&\s*!dense/.test(financeScript) &&
+    /index\s*===\s*0\s*\|\|\s*index\s*%\s*labelStep\s*===\s*0/.test(financeScript),
+  'finance.js',
+  'Finance mobile windows must keep a stable card and collision-safe chart labels',
 );
 for (const [page, html] of [
   ['home.html', homeHtml],

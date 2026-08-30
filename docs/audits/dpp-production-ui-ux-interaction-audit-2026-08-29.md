@@ -539,3 +539,27 @@ The batch is not complete when default routes look acceptable. It is complete on
 The prior report's default-route screenshot pass was not deep enough to support its conclusions. It missed interaction states, selector-driven geometry, hidden Sales views, and the cascade failure demonstrated by Business Health and Geography. Its claim that Inventory used separate desktop/mobile renderers is also withdrawn: the current production implementation transforms a single DOM table into the responsive card presentation.
 
 This report supersedes those conclusions and should be used as the scope and acceptance contract for the next corrective batch.
+
+## Post-deployment DPP Playwright verification
+
+Production SHA `7f9c1232` was inspected again after the first corrective batch was deployed. These checks used the live production document in DPP Chromium at 1440 px and the same live document rendered inside a 390 CSS px browsing context. The footer, network assets, API responses, active control state, chart marks, element geometry, and screenshots all came from the deployed application.
+
+The first batch fixed several confirmed failures:
+
+- Today YTD now renders 241 calendar-year bars and changes the selected total from `$18,938` to `$85,579`.
+- Business 28D, 90D, and YTD now keep the Demand Pulse container at `452.67 px` while updating to 28, 91, and 240 bars.
+- Sales Overview ALL, 12M, YTD, 90D, and 28D now keep the overview panel at `732.44 px`.
+- Trajectory 90D, 180D, and YTD now keep the trend container at `553 px` without desktop label intersections.
+- Business Health now has a 15 px page gutter, 14 px section padding, and a 30 px card inset at 390 px.
+- Sales Geography now stacks its map and ranking panels at 390 px without page-level horizontal overflow.
+
+The same production pass found additional failures that the earlier pass missed:
+
+1. **Geography KPI specificity still defeated mobile reflow.** `#geography .geo-kpi-rail` kept four columns at 390 px even though the mobile rule requested two. `SHOPPER SPEND`, `ORDERS`, `Last 90 days`, and `shopper spend / orders` were clipped. This was also the direct cause of the production browser-QA failure.
+2. **Geography ranking headers collide on desktop.** The live 390 px ranking rail attempted to show Area, Spend, Orders, Units, and AOV. `SPENDORDERSUNITS` rendered as one collision. On mobile, the table was technically scrollable but provided no visible scroll instruction and opened with later columns cut off.
+3. **Finance still fails at 390 px.** YTD rendered `Jul 2026`, `Aug 2026`, and `Total` on top of each other. The 3M view overlapped `OPEN` and `PROVISIONAL`. The Month bridge rendered long category descriptions across adjacent columns. The same card changed from `646 px` to `718.31 px` across period controls.
+4. **Finance used a positive surface for a negative closed-YTD result.** `−$17,935.13` inherited the green final-result background, contradicting the value's sign and the product's own negative-color semantics.
+5. **Catalog's mobile metric strip is not readable.** Three metrics were forced into one row. `CONVERSION` rendered as `CONVERSIO`, and availability wrapped into four short lines. Measured metric content exceeded its cell by 22 px.
+6. **Product Health disappears on mobile.** A duplicate `@media (max-width: 640px)` rule set `.hero-command { display: none; }`. The deployed DOM contained the `Accelerating` headline and its explanation, but neither was rendered. This removes the route's primary interpretation exactly where the mobile hierarchy needs it most.
+
+These are independent findings from the rendered production UI. They extend the corrective batch and add regression contracts for responsive cascade specificity, chart-label intersections, selector-state height stability, mobile metric clipping, semantic result color, and preservation of Product Health.

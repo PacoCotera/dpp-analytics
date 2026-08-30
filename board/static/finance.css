@@ -294,6 +294,10 @@
   background: var(--good-soft);
 }
 
+.bridge-step.final.negative {
+  background: var(--bad-soft);
+}
+
 .bridge-step.warn {
   background: var(--warn-soft);
 }
@@ -1166,6 +1170,10 @@ main {
 
   .finance-progression .finance-read__head {
     min-height: 82px;
+  }
+
+  .finance-progression {
+    min-height: 720px;
   }
 
   .legend-key {
