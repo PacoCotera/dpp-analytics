@@ -348,6 +348,7 @@ function periodRows() {
     const selected = data.selected_date || rows.at(-1)?.business_date || '';
     return rows.filter((row) => String(row.business_date).slice(0, 7) === String(selected).slice(0, 7));
   }
+  if (period === 'ytd') return rows;
   return rows.slice(-30);
 }
 

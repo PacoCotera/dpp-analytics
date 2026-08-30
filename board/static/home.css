@@ -370,7 +370,6 @@
 
 .home-health {
   min-width: 0;
-  padding: 24px 2px 0;
 }
 
 .home-health h2 {
@@ -633,6 +632,10 @@
 
   .home-surface {
     padding: 14px;
+  }
+
+  .home-demand .section-header__description {
+    min-height: calc(1.35em * 3);
   }
 
   .home-main .section-header,

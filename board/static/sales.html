@@ -109,7 +109,7 @@
                     data-range="full"
                     aria-pressed="false"
                   >
-                    FULL
+                    ALL
                   </button>
                   <button
                     class="segmented-control__item active"
@@ -457,7 +457,12 @@
                   </button>
                 </div>
               </div>
-              <div class="data-table-scroll">
+              <div
+                class="data-table-scroll"
+                tabindex="0"
+                role="region"
+                aria-label="Geography ranking. Scroll horizontally to view every metric."
+              >
                 <table class="data-table geo-table">
                   <colgroup>
                     <col class="geo-col-area" />

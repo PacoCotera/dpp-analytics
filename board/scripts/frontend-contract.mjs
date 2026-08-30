@@ -90,6 +90,7 @@ const todayHtml = readFileSync(join(staticRoot, 'today.html'), 'utf8');
 const todayScript = readFileSync(join(staticRoot, 'today.js'), 'utf8');
 const homeHtml = readFileSync(join(staticRoot, 'home.html'), 'utf8');
 const homeScript = readFileSync(join(staticRoot, 'home.js'), 'utf8');
+const homeCss = readFileSync(join(staticRoot, 'home.css'), 'utf8');
 const trajectoryHtml = readFileSync(join(staticRoot, 'trajectory.html'), 'utf8');
 const trajectoryScript = readFileSync(join(staticRoot, 'trajectory.js'), 'utf8');
 const trajectoryCss = readFileSync(join(staticRoot, 'trajectory.css'), 'utf8');
@@ -102,6 +103,7 @@ const financeHtml = readFileSync(join(staticRoot, 'finance.html'), 'utf8');
 const dataHealthScript = readFileSync(join(staticRoot, 'data-health.js'), 'utf8');
 const chartSystem = readFileSync(join(staticRoot, 'chart-system.js'), 'utf8');
 const salesGeographyScript = readFileSync(join(staticRoot, 'sales-geography-v2.js'), 'utf8');
+const salesGeographyCss = readFileSync(join(staticRoot, 'sales-geography.css'), 'utf8');
 const shellSelector =
   /\.(?:app|topbar|brand|brand-copy|brand-title|brand-sub|mark|top-meta|primary-nav|nav-more|footer)\b/;
 const retiredComponentNames = new Set([
@@ -360,6 +362,28 @@ check(
   !/MutationObserver/.test(todayScript),
   'today.js',
   'Today must not use post-render correction observers',
+);
+check(
+  /if \(period === 'ytd'\) return rows;/.test(todayScript),
+  'today.js',
+  'Today YTD must return the calendar-year payload instead of falling through to 30D',
+);
+check(
+  !/\.home-health\s*\{[^}]*\bpadding\s*:/s.test(homeCss),
+  'home.css',
+  'Business Health must inherit the shared home-surface inset',
+);
+check(
+  !/#geography\s+\.geo-grid/.test(salesGeographyCss),
+  'sales-geography.css',
+  'Geography grid layout must not use ID specificity that defeats responsive rules',
+);
+check(
+  /@media \(max-width: 1180px\)\s*\{[\s\S]*?\.geo-grid\s*\{[\s\S]*?grid-template-columns:\s*1fr/s.test(
+    salesGeographyCss,
+  ),
+  'sales-geography.css',
+  'Geography must collapse its two-column workspace below 1180px',
 );
 for (const [page, html] of [
   ['home.html', homeHtml],
