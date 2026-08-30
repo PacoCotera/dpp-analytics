@@ -444,14 +444,14 @@ check(
   'Business and Today demand must share one chart renderer',
 );
 check(
-  /const barOccupancy = data\\.length <= 14 \\? 0\\.5 : data\\.length <= 45 \\? 0\\.52 : 0\\.72/.test(
+  /const barOccupancy = data\.length <= 14 \? 0\.5 : data\.length <= 45 \? 0\.52 : 0\.72/.test(
     chartSystem,
-  ) && /curveCatmullRom\\.alpha\\(0\\.5\\)/.test(chartSystem),
+  ) && /curveCatmullRom\.alpha\(0\.5\)/.test(chartSystem),
   'chart-system.js',
   'shared demand rhythm must preserve adaptive bar density and the smooth trend curve',
 );
 check(
-  /\\.demand-rhythm__line\\s*\\{[^}]*stroke:\\s*var\\(--dpp-data3\\)/s.test(chartCss),
+  /\.demand-rhythm__line\s*\{[^}]*stroke:\s*var\(--dpp-data3\)/s.test(chartCss),
   'chart-system.css',
   'shared demand rhythm must keep trend and daily bars visually distinct',
 );
