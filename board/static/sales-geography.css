@@ -588,11 +588,18 @@
 
   .geo-table tbody {
     display: grid;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     gap: 8px;
   }
 
   .geo-table tbody tr {
+    box-sizing: border-box;
     display: grid;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 10px;
     border: var(--border-width) solid var(--line);
