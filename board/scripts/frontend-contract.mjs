@@ -106,6 +106,7 @@ const catalogCss = readFileSync(join(staticRoot, 'catalog.css'), 'utf8');
 const productCss = readFileSync(join(staticRoot, 'product.css'), 'utf8');
 const dataHealthScript = readFileSync(join(staticRoot, 'data-health.js'), 'utf8');
 const chartSystem = readFileSync(join(staticRoot, 'chart-system.js'), 'utf8');
+const chartCss = readFileSync(join(staticRoot, 'chart-system.css'), 'utf8');
 const salesGeographyScript = readFileSync(join(staticRoot, 'sales-geography-v2.js'), 'utf8');
 const salesGeographyCss = readFileSync(join(staticRoot, 'sales-geography.css'), 'utf8');
 const shellSelector =
@@ -441,6 +442,18 @@ check(
   /DPPCharts\.demandRhythm/.test(homeScript) && /DPPCharts\.demandRhythm/.test(todayScript),
   'chart-system.js',
   'Business and Today demand must share one chart renderer',
+);
+check(
+  /const barOccupancy = data\\.length <= 14 \\? 0\\.5 : data\\.length <= 45 \\? 0\\.52 : 0\\.72/.test(
+    chartSystem,
+  ) && /curveCatmullRom\\.alpha\\(0\\.5\\)/.test(chartSystem),
+  'chart-system.js',
+  'shared demand rhythm must preserve adaptive bar density and the smooth trend curve',
+);
+check(
+  /\\.demand-rhythm__line\\s*\\{[^}]*stroke:\\s*var\\(--dpp-data3\\)/s.test(chartCss),
+  'chart-system.css',
+  'shared demand rhythm must keep trend and daily bars visually distinct',
 );
 check(
   !/scaleBand|append\(['"]rect['"]\)/.test(todayScript),
