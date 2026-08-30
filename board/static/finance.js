@@ -308,7 +308,7 @@ function renderProgressionChart(svg, rows, includeCogs = true) {
     if (point._current && !compact && !dense) {
       output += `<text class="dpp-muted" x="${center}" y="${height - 48}" text-anchor="middle">OPEN</text>`;
     }
-    if (!dense || index === 0 || index % labelStep === 0) {
+    if (!dense || index === 0 || (index % labelStep === 0 && index < points.length - 1)) {
       output += `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(month.month)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(month.year)}</tspan></text>`;
     }
   });
@@ -357,6 +357,7 @@ function renderMonthWaterfall(svg, row) {
   const steps = [
     {
       label: 'Sales',
+      compactLabel: 'Sales',
       detail: 'Sales ex IVA',
       axisDetail: 'ex IVA',
       delta: Number(row.net_sales_ex_vat || 0),
@@ -364,18 +365,21 @@ function renderMonthWaterfall(svg, row) {
     },
     {
       label: 'Amazon',
+      compactLabel: 'AMZ',
       detail: 'Amazon effect',
       axisDetail: 'order effect',
       delta: Number(row.amazon_order_effect || 0),
     },
     {
       label: 'Other',
+      compactLabel: 'Other',
       detail: open ? 'Other postings / timing' : 'Other finance postings',
       axisDetail: open ? 'postings / timing' : 'finance postings',
       delta: Number(row.other_amazon_postings || 0),
     },
     {
       label: 'Ads',
+      compactLabel: 'Ads',
       detail: row._adsPending ? 'Advertising pending' : 'Advertising',
       axisDetail: row._adsPending ? 'pending' : 'advertising',
       delta: row._adsPending ? 0 : Number(row.advertising || 0),
@@ -383,6 +387,7 @@ function renderMonthWaterfall(svg, row) {
     },
     {
       label: 'COGS',
+      compactLabel: 'COGS',
       detail: 'Product COGS',
       axisDetail: 'product cost',
       delta: -Math.abs(Number(row.product_cogs || 0)),
@@ -434,7 +439,8 @@ function renderMonthWaterfall(svg, row) {
       output += `<text class="dpp-muted" x="${center}" y="${Math.max(margin.top + 11, startY - 8)}" text-anchor="middle">PENDING</text>`;
     } else {
       output += `<g><rect class="finance-chart-bar dpp-bar${barClass}" x="${center - barWidth / 2}" y="${topY}" width="${barWidth}" height="${barHeight}" rx="4"></rect><title>${escapeHtml(point.detail)}: ${escapeHtml(compactSignedMoney(point.delta))}</title></g>`;
-      const rawValueY = positive ? topY - 7 : topY + barHeight + 13;
+      const compactNudge = compact ? (index % 2 ? 10 : -10) : 0;
+      const rawValueY = (positive ? topY - 7 : topY + barHeight + 13) + compactNudge;
       const valueY = Math.max(margin.top + 10, Math.min(height - 66, rawValueY));
       output += `<text class="finance-chart-month" x="${center}" y="${valueY}" text-anchor="middle">${compactSignedMoney(point.delta)}</text>`;
     }
@@ -445,7 +451,7 @@ function renderMonthWaterfall(svg, row) {
         : margin.left + slotWidth * (points.length + 0.5);
     output += `<line class="dpp-connector" x1="${center + barWidth / 2}" x2="${nextCenter - barWidth / 2}" y1="${endY}" y2="${endY}"></line>`;
     output += compact
-      ? `<text class="finance-chart-month" x="${center}" y="${height - 22}" text-anchor="middle">${escapeHtml(point.label)}</text>`
+      ? `<text class="finance-chart-month" x="${center}" y="${height - 22}" text-anchor="middle">${escapeHtml(point.compactLabel || point.label)}</text>`
       : `<text class="finance-chart-month" x="${center}" y="${height - 29}" text-anchor="middle"><tspan x="${center}">${escapeHtml(point.label)}</tspan><tspan class="dpp-muted" x="${center}" dy="13">${escapeHtml(point.axisDetail || '')}</tspan></text>`;
   });
 
@@ -455,7 +461,7 @@ function renderMonthWaterfall(svg, row) {
   const totalTop = Math.min(zeroY, contributionY);
   const totalHeight = Math.max(2, Math.abs(contributionY - zeroY));
   output += `<g><rect class="finance-chart-bar finance-chart-bar--sales" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>${row._adsPending ? 'Contribution before current-month advertising' : 'Contribution'}: ${escapeHtml(financeMoney(contribution))}</title></g>`;
-  const rawTotalValueY = contribution < 0 ? contributionY - 8 : contributionY + 14;
+  const rawTotalValueY = contribution >= 0 ? totalTop - 7 : totalTop + totalHeight + 13;
   const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
   output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(contribution)}</text>`;
   if (open && !compact) {
