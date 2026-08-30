@@ -16,18 +16,6 @@
   text-transform: uppercase;
 }
 
-.attention-item.bad {
-  border-color: var(--bad);
-  background-color: var(--bad-soft);
-  color: var(--bad-ink) !important;
-}
-
-.attention-item.warn {
-  border-color: var(--warn);
-  background-color: var(--warn-soft);
-  color: var(--warn-ink) !important;
-}
-
 .attention-item strong {
   display: block;
   overflow: hidden;
@@ -37,13 +25,36 @@
   white-space: nowrap;
 }
 
-.attention-item span,
+.attention-item__summary,
 .attention-empty {
-  display: block;
   margin-top: 6px;
-  color: currentcolor;
   font-size: 14px;
   line-height: 1.4;
+}
+
+.attention-item__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 7px;
+  color: var(--muted);
+}
+
+.attention-item__state {
+  color: var(--ink);
+  font-weight: 750;
+}
+
+.attention-item--critical .attention-item__state {
+  color: var(--bad);
+}
+
+.attention-item__exception {
+  font-weight: 700;
+}
+
+.attention-item__summary .rule-trigger {
+  margin: 0;
 }
 
 .rule-trigger {
@@ -508,8 +519,16 @@
   padding: 10px 12px;
 }
 
+.attention-item--critical {
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+
+.attention-item--review {
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+
 .attention-item strong,
-.attention-item span,
+.attention-item__summary,
 .attention-empty {
   font-size: var(--dpp-metadata-size, 14px);
 }
