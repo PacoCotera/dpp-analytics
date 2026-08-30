@@ -6,13 +6,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
   const d3 = window.d3;
   if (!d3) return;
   const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-  const shortMoney = (v) => {
-    const n = Number(v || 0),
-      a = Math.abs(n);
-    if (a >= 1e6) return `${n < 0 ? '−' : ''}$${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}m`;
-    if (a >= 1e3) return `${n < 0 ? '−' : ''}$${(a / 1e3).toFixed(a >= 1e4 ? 0 : 1)}k`;
-    return `${n < 0 ? '−' : ''}$${Math.round(a)}`;
-  };
+  const shortMoney = (value) => money(value, { compact: true });
   const pct = (v) =>
     v == null || !Number.isFinite(Number(v))
       ? '—'

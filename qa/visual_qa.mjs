@@ -395,6 +395,27 @@ async function verifyToday(page) {
     const dayPicker = document.getElementById('dayPicker');
     const rhythmKpis = [...document.querySelectorAll('.rhythm-kpi')];
     const tops = rhythmKpis.map(item => Math.round(item.getBoundingClientRect().top));
+    const productValues = priority.map(card => {
+      const value = card.querySelector('.value');
+      const amount = value?.querySelector(':scope > strong');
+      const share = value?.querySelector(':scope > .share');
+      const amountRect = amount?.getBoundingClientRect();
+      const shareRect = share?.getBoundingClientRect();
+      const overlapX =
+        amountRect && shareRect
+          ? Math.min(amountRect.right, shareRect.right) - Math.max(amountRect.left, shareRect.left)
+          : 0;
+      const overlapY =
+        amountRect && shareRect
+          ? Math.min(amountRect.bottom, shareRect.bottom) - Math.max(amountRect.top, shareRect.top)
+          : 0;
+      return {
+        structured: Boolean(value && amount && share && getComputedStyle(value).display === 'grid'),
+        separated: Boolean(amountRect && shareRect && !(overlapX > 1 && overlapY > 1)),
+        amount: amount?.textContent || '',
+        share: share?.textContent || '',
+      };
+    });
     return {
       mobile,
       recipeMatch: Boolean(
@@ -417,10 +438,22 @@ async function verifyToday(page) {
       rhythmKpis: rhythmKpis.length,
       rhythmTopSpread: tops.length ? Math.max(...tops) - Math.min(...tops) : null,
       dayPickerContained: Boolean(dayPicker && dayPicker.scrollWidth <= dayPicker.clientWidth + 2),
+      productValues,
     };
   });
   if (!state.dayPickerContained)
     throw new Error(`Today day picker overflow: ${JSON.stringify(state)}`);
+  if (
+    state.productValues.some(
+      value =>
+        !value.structured ||
+        !value.separated ||
+        /\$(?=\d)/.test(value.amount) ||
+        !/% of shopper spend$/.test(value.share),
+    )
+  ) {
+    throw new Error(`Today product contribution collision: ${JSON.stringify(state.productValues)}`);
+  }
   if (
     state.mobile &&
     (!state.recipeMatch ||
@@ -1633,6 +1666,10 @@ for (const scenario of plan.scenarios) for (const viewportName of scenario.views
       const minFont = viewportName === 'mobile' ? 11.5 : viewportName === 'tablet' ? 10.5 : 9.5;
       const textEls = [...document.querySelectorAll('body *')].filter(el => visible(el) && !el.children.length && (el.textContent || '').trim());
       const smallText = textEls.filter(el => Number.parseFloat(getComputedStyle(el).fontSize || '0') < minFont).slice(0, 40);
+      const currencyJoinViolations = textEls
+        .filter(el => /\$(?=\d)/.test(el.textContent || ''))
+        .slice(0, 20)
+        .map(el => ({ element: signature(el), text: (el.textContent || '').trim().slice(0, 80) }));
       const clickables = [...document.querySelectorAll('a,button,[role="button"],input,select,textarea')].filter(visible);
       const smallTargets = clickables.filter(el => { const r = el.getBoundingClientRect(); return r.width < 36 || r.height < 36; }).slice(0, 40);
       const mainElements = [...document.querySelectorAll('main *')].filter(visible).filter(element => !element.closest('.sr-only'));
@@ -1656,8 +1693,9 @@ for (const scenario of plan.scenarios) for (const viewportName of scenario.views
       }).slice(0, 20).map(element => ({ element: signature(element), deltaX: element.scrollWidth - element.clientWidth }));
       const doc = document.documentElement, body = document.body, scrollWidth = Math.max(doc.scrollWidth, body.scrollWidth);
       const main = document.querySelector('main');
-      return { title: document.title, bodyTextLength: (body.innerText || '').length, activeTab: document.querySelector('.tabs button.active,.view-tabs button.active,.analysis-modes button.active')?.textContent?.trim() || null, scrollWidth, scrollHeight: Math.max(doc.scrollHeight, body.scrollHeight), horizontalOverflowPx: Math.max(0, scrollWidth - doc.clientWidth), mainViewportUse: Number(((main?.getBoundingClientRect().width || 0) / window.innerWidth).toFixed(3)), internalScrollers, uncontainedElements, clippedContainers, smallTextCount: smallText.length, smallTapTargetCount: smallTargets.length };
+      return { title: document.title, bodyTextLength: (body.innerText || '').length, activeTab: document.querySelector('.tabs button.active,.view-tabs button.active,.analysis-modes button.active')?.textContent?.trim() || null, scrollWidth, scrollHeight: Math.max(doc.scrollHeight, body.scrollHeight), horizontalOverflowPx: Math.max(0, scrollWidth - doc.clientWidth), mainViewportUse: Number(((main?.getBoundingClientRect().width || 0) / window.innerWidth).toFixed(3)), internalScrollers, uncontainedElements, clippedContainers, currencyJoinViolations, smallTextCount: smallText.length, smallTapTargetCount: smallTargets.length };
     }, { viewportName });
+    if (result.metrics.currencyJoinViolations.length) errors.push(`currency symbol joins amount: ${JSON.stringify(result.metrics.currencyJoinViolations)}`);
     if (viewportName === 'mobile' && result.metrics.uncontainedElements.length) errors.push(`mobile component overflow: ${JSON.stringify(result.metrics.uncontainedElements)}`);
     if (viewportName === 'mobile' && result.metrics.clippedContainers.length) errors.push(`mobile clipped content: ${JSON.stringify(result.metrics.clippedContainers)}`);
     if (['mobile', 'wide'].includes(viewportName) && result.metrics.horizontalOverflowPx > 2) errors.push(`${viewportName} document overflow: ${result.metrics.horizontalOverflowPx}px`);

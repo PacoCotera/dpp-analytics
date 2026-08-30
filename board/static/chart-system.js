@@ -27,23 +27,19 @@
     bad: 'var(--dpp-critical)',
   });
 
-  const money = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'MXN',
-    maximumFractionDigits: 0,
-  });
+  const MONEY_PREFIX = '$\u00a0';
+  const money = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   const shortMoney = (value) => {
     const n = Number(value || 0);
     const a = Math.abs(n);
-    if (a >= 1e6) return `${n < 0 ? '−' : ''}$${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}m`;
-    if (a >= 1e3) return `${n < 0 ? '−' : ''}$${(a / 1e3).toFixed(a >= 1e4 ? 0 : 1)}k`;
-    return `${n < 0 ? '−' : ''}$${Math.round(a)}`;
+    if (a >= 1e6) return `${n < 0 ? '−' : ''}${MONEY_PREFIX}${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}m`;
+    if (a >= 1e3) return `${n < 0 ? '−' : ''}${MONEY_PREFIX}${(a / 1e3).toFixed(a >= 1e4 ? 0 : 1)}k`;
+    return `${n < 0 ? '−' : ''}${MONEY_PREFIX}${Math.round(a)}`;
   };
-  const fullMoney = (value) =>
-    money
-      .format(Number(value || 0))
-      .replace('-MX$', '−$')
-      .replace('MX$', '$');
+  const fullMoney = (value) => {
+    const numeric = Number(value || 0);
+    return `${numeric < 0 ? '−' : ''}${MONEY_PREFIX}${money.format(Math.abs(numeric))}`;
+  };
   const parseDate = (value) => (value ? new Date(`${String(value).slice(0, 10)}T12:00:00Z`) : null);
   const monthLabel = (value) => {
     const d = parseDate(`${String(value).slice(0, 7)}-01`);

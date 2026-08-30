@@ -2,6 +2,7 @@ export const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0
 export const number1 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
 
 const moneyFormatters = new Map();
+export const MONEY_PREFIX = '$\u00a0';
 const monthYearShort = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   year: 'numeric',
@@ -41,15 +42,15 @@ export function money(value, { compact = false, digits = 0 } = {}) {
   const absolute = Math.abs(numeric);
   const sign = numeric < 0 ? '−' : '';
   if (!compact || absolute < 1000 || digits) {
-    return `${sign}$${moneyFormatter(digits).format(absolute)}`;
+    return `${sign}${MONEY_PREFIX}${moneyFormatter(digits).format(absolute)}`;
   }
   if (absolute < 1_000_000) {
     const scaled = absolute / 1000;
     const places = scaled >= 10 ? 0 : 1;
-    return `${sign}$${scaled.toFixed(places).replace(/\.0$/, '')}k`;
+    return `${sign}${MONEY_PREFIX}${scaled.toFixed(places).replace(/\.0$/, '')}k`;
   }
   const scaled = absolute / 1_000_000;
-  return `${sign}$${scaled.toFixed(1).replace(/\.0$/, '')}m`;
+  return `${sign}${MONEY_PREFIX}${scaled.toFixed(1).replace(/\.0$/, '')}m`;
 }
 
 export function formatMonthYear(value, { long = false, fallback = '—' } = {}) {
