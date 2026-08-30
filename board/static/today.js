@@ -449,7 +449,7 @@ function renderProducts(payload) {
               <div class="meta">${formatCount(item.units, 'unit')} · ${formatCount(item.orders, 'order')}</div>
               <div class="share-track"><i style="width:${Math.max(2, Math.min(100, contribution))}%"></i></div>
             </div>
-            <div class="value">${money(item.sales || 0)}<span class="share">${contribution.toFixed(0)}% of shopper spend</span></div>
+            <div class="value"><strong>${money(item.sales || 0)}</strong><span class="share">${contribution.toFixed(0)}% of shopper spend</span></div>
           </a>`;
     });
     const secondary = cards.slice(3);
