@@ -948,6 +948,7 @@ html.wall-mode body.shell-drawer-open {
 
 .today-lead__head p {
   max-width: 720px;
+  min-height: 2.8em;
   margin: 5px 0 0;
   color: var(--muted);
   font-size: 14px;
