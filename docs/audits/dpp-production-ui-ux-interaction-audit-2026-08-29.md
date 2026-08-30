@@ -74,7 +74,7 @@ For each route and interactive state, the audit checked:
 - console and network results;
 - the exact production source only after the rendered defect was reproduced.
 
-Desktop routes were captured directly. Responsive captures used the live production document at a 360 CSS-pixel layout viewport in the DPP Chromium browser. The application DOM and CSS inside that viewport were not rewritten. The supplied Android screenshot independently confirms the Business Health spacing failure on a real handset. The currently exposed DPP integration is Chromium-only, so WebKit/iPhone remains a required final acceptance run, not a completed claim in this report.
+Desktop routes were captured directly. Responsive captures used the live production document at a 360 CSS-pixel layout viewport in the DPP Chromium browser. The application DOM and CSS inside that viewport were not rewritten. The supplied Android screenshot independently confirms the Business Health spacing failure on a real handset. **Historical capability note:** at the time of this audit, the exposed DPP integration was Chromium-only, so WebKit/iPhone was a required but incomplete acceptance run. The standalone service was subsequently replaced by the multi-engine, exact-viewport DPP Playwright connection documented in [`../browser-qa.md`](../browser-qa.md); that later capability does not retroactively change this audit's evidence.
 
 ## Production coverage
 
