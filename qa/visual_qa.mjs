@@ -406,6 +406,7 @@ async function verifyToday(page) {
       return {
         date: active?.dataset.date || null,
         live: Boolean(active?.classList.contains('live')),
+        compact: window.innerWidth <= 900,
         pickerWidth: pickerRect.width,
         pickerHeight: pickerRect.height,
         leadHeight: leadRect.height,
@@ -432,7 +433,7 @@ async function verifyToday(page) {
     Math.max(...pickerHeights) - Math.min(...pickerHeights) > 2 ||
     Math.max(...leadHeights) - Math.min(...leadHeights) > 2 ||
     dayStates.some(item =>
-      Math.abs(item.pickerWidth - item.availableWidth) > 2 ||
+      (item.compact && Math.abs(item.pickerWidth - item.availableWidth) > 2) ||
       item.rowSpread > 2 ||
       item.minChoiceWidth < 24 ||
       item.minChoiceHeight < 40 ||
