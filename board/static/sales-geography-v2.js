@@ -599,7 +599,7 @@ import { formatCount, money } from './format-core.js';
         const area = SELECTED_STATE
           ? `<strong>CP ${esc(r.postal_code)} · ${esc(postalLabel(r.postal_code))}</strong><small>${esc(postalDetail(r.postal_code))}</small>`
           : `<strong>${esc(r.label)}</strong>`;
-        return `<tr${click}><td class="geo-area-cell">${area}</td><td class="num" data-value="${Number(r.sales || 0)}">${money(r.sales)}</td><td class="num" data-value="${Number(r.orders || 0)}">${nf.format(r.orders)}</td><td class="num" data-value="${Number(r.units || 0)}">${nf.format(r.units)}</td><td class="num" data-value="${Number(r.aov || 0)}">${money(r.aov)}</td></tr>`;
+        return `<tr${click}><td class="geo-area-cell">${area}</td><td class="num" data-label="Spend" data-value="${Number(r.sales || 0)}">${money(r.sales)}</td><td class="num" data-label="Orders" data-value="${Number(r.orders || 0)}">${nf.format(r.orders)}</td><td class="num" data-label="Units" data-value="${Number(r.units || 0)}">${nf.format(r.units)}</td><td class="num" data-label="AOV" data-value="${Number(r.aov || 0)}">${money(r.aov)}</td></tr>`;
       })
       .join('');
     out.querySelectorAll('[data-state]').forEach((row) => {

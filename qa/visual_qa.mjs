@@ -478,7 +478,7 @@ async function verifySalesGeography(page) {
     const clippedKpis = [...document.querySelectorAll('.geo-kpi span, .geo-kpi small')]
       .filter((node) => node.getClientRects().length > 0 && node.scrollWidth > node.clientWidth + 2)
       .map((node) => node.textContent.trim());
-    const scrollHint = document.querySelector('.geo-scroll-hint');
+    const rankedRows = [...(ranked?.querySelectorAll('#geoRankedRows tr') || [])];
     const workspaceRect = workspace?.getBoundingClientRect();
     const rankedRect = ranked?.getBoundingClientRect();
     return {
@@ -491,16 +491,18 @@ async function verifySalesGeography(page) {
         rankedRect.left >= workspaceRect.left - 2 &&
         rankedRect.right <= workspaceRect.right + 2
       ),
-      explicitScroller: Boolean(
+      mobileCards: Boolean(
         scroll &&
-        ['auto', 'scroll'].includes(getComputedStyle(scroll).overflowX) &&
-        scroll.scrollWidth > scroll.clientWidth + 2 &&
-        scroll.tabIndex === 0 &&
-        scroll.getAttribute('role') === 'region'
+          scroll.scrollWidth <= scroll.clientWidth + 2 &&
+          rankedRows.length &&
+          rankedRows.every(
+            (row) =>
+              getComputedStyle(row).display === 'grid' &&
+              row.querySelectorAll('td.num[data-label]').length === 4,
+          )
       ),
       headerOverlaps,
       clippedKpis,
-      scrollHintVisible: Boolean(scrollHint && scrollHint.getClientRects().length > 0),
     };
   });
   if (layout.pageOverflow > 2 || !layout.rankedContained || layout.headerOverlaps.length) {
@@ -510,9 +512,8 @@ async function verifySalesGeography(page) {
     layout.mobile &&
     (layout.columns !== 1 ||
       !layout.stacked ||
-      !layout.explicitScroller ||
-      layout.clippedKpis.length ||
-      !layout.scrollHintVisible)
+      !layout.mobileCards ||
+      layout.clippedKpis.length)
   ) {
     throw new Error(`Sales Geography mobile reflow mismatch: ${JSON.stringify(layout)}`);
   }
