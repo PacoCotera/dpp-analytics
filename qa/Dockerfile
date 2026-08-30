@@ -6,6 +6,7 @@ COPY visual_qa.mjs ./
 COPY nav_qa.mjs ./
 COPY presentation_profiles_qa.mjs ./
 COPY accessibility_qa.mjs ./
+COPY audit_batch1_qa.mjs ./
 COPY analysis_state_qa.mjs ./
 COPY numeric_ui_qa.mjs ./
 COPY ui_format_qa.mjs ./

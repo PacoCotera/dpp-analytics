@@ -98,11 +98,30 @@ export function setText(id, value) {
 
 let interpretationRules = {};
 let ruleDialogBound = false;
+let ruleDialogTrigger = null;
+
+const ruleDialogFocusableSelector = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
 
 function ruleValue(value) {
   if (value === null || value === undefined) return 'unavailable';
   if (typeof value === 'boolean') return value ? 'yes' : 'no';
   return String(value);
+}
+
+function ruleDialogFocusables(dialog) {
+  return [...dialog.querySelectorAll(ruleDialogFocusableSelector)].filter(
+    (element) =>
+      !element.hasAttribute('hidden') &&
+      element.getAttribute('aria-hidden') !== 'true' &&
+      element.getClientRects().length > 0,
+  );
 }
 
 function ensureRuleDialog() {
@@ -111,7 +130,40 @@ function ensureRuleDialog() {
   dialog = document.createElement('dialog');
   dialog.id = 'interpretationRuleDialog';
   dialog.className = 'rule-dialog';
+  dialog.tabIndex = -1;
   dialog.innerHTML = '<div class="rule-dialog__body"></div>';
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab' || !dialog.open) return;
+    const focusables = ruleDialogFocusables(dialog);
+    const first = focusables[0];
+    const last = focusables.at(-1);
+    const active = document.activeElement;
+
+    if (!focusables.length) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+    if (focusables.length === 1 || !dialog.contains(active)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+      return;
+    }
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+      return;
+    }
+    if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+  dialog.addEventListener('close', () => {
+    const trigger = ruleDialogTrigger;
+    ruleDialogTrigger = null;
+    if (trigger?.isConnected) trigger.focus();
+  });
   document.body.append(dialog);
   return dialog;
 }
@@ -144,8 +196,11 @@ export function bindRuleDisclosure(rules = {}) {
       <dl><dt>Window</dt><dd>${escapeHtml(rule.window || 'Not documented')}</dd><dt>Eligibility</dt><dd>${escapeHtml(rule.eligibility || 'Not documented')}</dd></dl>
       <h3>Current inputs</h3><ul class="rule-dialog__inputs">${inputs || '<li>No inputs available</li>'}</ul>
       <h3>Thresholds</h3><ul>${thresholds || '<li>No thresholds documented</li>'}</ul>`;
-    dialog.querySelector('.rule-dialog__close').addEventListener('click', () => dialog.close());
+    const closeButton = dialog.querySelector('.rule-dialog__close');
+    closeButton.addEventListener('click', () => dialog.close());
+    ruleDialogTrigger = trigger;
     dialog.showModal();
+    closeButton.focus();
   });
 }
 
