@@ -409,12 +409,14 @@ main {
   min-width: 0;
   max-width: none;
   padding-top: 16px;
+  container-name: inventory-main;
+  container-type: inline-size;
 }
 
 .inventory-page-header {
   padding-block: 24px;
   display: grid;
-  grid-template-columns: minmax(300px, 0.72fr) minmax(600px, 1.28fr);
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
   align-items: stretch;
   gap: 0;
   padding: 0;
@@ -455,6 +457,7 @@ main {
 
 .inventory-header-actions {
   align-items: center;
+  min-width: 0;
   gap: var(--space-3);
   display: grid;
   grid-template-rows: 1fr auto;
@@ -462,7 +465,7 @@ main {
 }
 
 .inventory-header-actions .kpi-rail {
-  min-width: 500px;
+  min-width: 0;
   width: 100%;
 }
 
@@ -616,6 +619,12 @@ main {
 }
 
 @media (max-width: 1000px) {
+  .inventory-tools {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container inventory-main (max-width: 900px) {
   .inventory-page-header {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -623,10 +632,6 @@ main {
   .inventory-header-actions {
     border-top: var(--border-width) solid var(--line);
     border-left: 0;
-  }
-
-  .inventory-tools {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -658,15 +663,6 @@ main {
 }
 
 @media (max-width: 1180px) {
-  .inventory-header-actions {
-    width: 100%;
-  }
-
-  .inventory-header-actions .kpi-rail {
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-
   .inventory-decision-grid,
   .inventory-tools {
     grid-template-columns: 1fr;
