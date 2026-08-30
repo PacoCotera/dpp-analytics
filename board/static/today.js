@@ -494,8 +494,21 @@ function render(payload) {
   const today = payload.today || {};
   const context = payload.context || {};
   const live = Boolean(payload.is_live);
+  const selected = payload.selected_date || payload.local_today;
+  const selectedLabel = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(parseDate(selected));
 
   renderDayPicker();
+  byId('todayDayState').textContent = live ? 'Live operating day' : 'Closed operating day';
+  byId('todayTitle').textContent = live ? 'Today' : selectedLabel;
+  byId('todayKpis').setAttribute(
+    'aria-label',
+    live ? 'Today operating KPIs' : `${selectedLabel} operating KPIs`,
+  );
   byId('salesLabel').textContent = live
     ? 'Shopper spend today · incl. IVA'
     : 'Closed-day shopper spend · incl. IVA';
