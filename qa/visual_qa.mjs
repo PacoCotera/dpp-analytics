@@ -1302,15 +1302,19 @@ async function verifyFinanceWindows(page) {
     await button.click();
     await page.locator(`button[data-finance-window="${windowKey}"][aria-selected="true"]`).waitFor({ state: 'visible', timeout: 5000 });
     await assertFinanceChartMarks(page, windowKey);
-    if (mobile) layouts.push({ windowKey, ...(await financeChartLayout(page)) });
+    layouts.push({ windowKey, ...(await financeChartLayout(page)) });
+  }
+
+  const collisions = layouts.filter((layout) => layout.overlaps.length);
+  if (collisions.length) {
+    throw new Error(`Finance window label collisions: ${JSON.stringify(collisions)}`);
   }
 
   if (mobile) {
     const heights = layouts.map((layout) => layout.height);
     const heightSpread = Math.max(...heights) - Math.min(...heights);
-    const collisions = layouts.filter((layout) => layout.overlaps.length);
-    if (heightSpread > 2 || collisions.length) {
-      throw new Error(`Finance mobile window layout shifts or label collisions: ${JSON.stringify(layouts)}`);
+    if (heightSpread > 2) {
+      throw new Error(`Finance mobile window layout shifts: ${JSON.stringify(layouts)}`);
     }
   }
 
