@@ -105,26 +105,11 @@ function chartMonthParts(value) {
 
 function compactSignedMoney(value) {
   const numeric = Number(value || 0);
-  const sign = numeric < 0 ? '−' : numeric > 0 ? '+' : '';
-  const absolute = Math.abs(numeric);
-  if (absolute >= 1000) {
-    const decimals = absolute >= 10000 ? 0 : 1;
-    const formatted = (absolute / 1000).toFixed(decimals).replace(/\.0$/, '');
-    return `${sign}$${formatted}k`;
-  }
-  return `${sign}$${number0.format(Math.round(absolute))}`;
+  return `${numeric > 0 ? '+' : ''}${money(numeric, { compact: true })}`;
 }
 
 function chartAxisMoney(value) {
-  const numeric = Number(value || 0);
-  if (numeric === 0) return '$0';
-  const sign = numeric < 0 ? '−' : '';
-  const absolute = Math.abs(numeric);
-  if (absolute >= 1000) {
-    const formatted = (absolute / 1000).toFixed(absolute % 1000 ? 1 : 0).replace(/\.0$/, '');
-    return `${sign}$${formatted}k`;
-  }
-  return `${sign}$${number0.format(Math.round(absolute))}`;
+  return money(value, { compact: true });
 }
 
 function niceChartStep(range, targetTicks = 5) {
