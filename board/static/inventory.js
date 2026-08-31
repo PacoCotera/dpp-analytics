@@ -99,8 +99,21 @@ function renderRows() {
 function renderQueue() {
   const queue = state.rows.filter((row) => row.is_default_inventory && ATTENTION_ACTIONS.has(row.action));
   const queueElement = byId('queue');
+  const actionSection = document.querySelector('[data-dpp-qa="inventory-actions"]');
+  const coverageMap = byId('coverageMap');
+  const hasExceptions = queue.length > 0;
 
-  queueElement.innerHTML = queue.length
+  actionSection.dataset.queueState = hasExceptions ? 'exceptions' : 'clear';
+  actionSection.dataset.queueCount = String(queue.length);
+  coverageMap.open = hasExceptions;
+  setText(
+    'inventoryActionSummary',
+    hasExceptions
+      ? `${queue.length} current ${queue.length === 1 ? 'SKU deserves' : 'SKUs deserve'} a production or replenishment decision.`
+      : 'No production or replenishment decisions need attention.',
+  );
+
+  queueElement.innerHTML = hasExceptions
     ? queue
         .map(
           (
@@ -120,7 +133,7 @@ function renderQueue() {
           </a>`,
         )
         .join('')
-    : '<div class="empty queue-empty"><strong>Nothing urgent.</strong> No active selling SKU currently needs a stock intervention.</div>';
+    : '<div class="queue-clear"><strong>No inventory action is queued.</strong><span>Current SKUs need no stock decision.</span></div>';
 }
 
 function renderBands(bands) {

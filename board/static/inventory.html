@@ -72,11 +72,15 @@
           recent selling velocity, so producing more needs judgment rather than an automatic signal.
         </div>
 
-        <section class="page-section inventory-actions" data-dpp-qa="inventory-actions">
+        <section
+          class="page-section inventory-actions"
+          data-dpp-qa="inventory-actions"
+          data-queue-state="loading"
+        >
           <div class="section-header">
             <div>
               <h2 class="section-header__title">Action queue</h2>
-              <div class="section-header__description">
+              <div class="section-header__description" id="inventoryActionSummary">
                 Only SKUs that deserve a production or replenishment decision.
               </div>
             </div>
@@ -86,11 +90,13 @@
             <div class="action-list" id="queue" aria-live="polite">
               <div class="empty"><strong>Checking stock</strong></div>
             </div>
-            <aside class="panel coverage">
-              <h3>Coverage map</h3>
-              <p>Active SKUs by days of cover using recent 28-day velocity.</p>
-              <div class="bands" id="bands"></div>
-            </aside>
+            <details class="panel coverage" id="coverageMap">
+              <summary>Coverage map</summary>
+              <div class="coverage-body">
+                <p>Active SKUs by days of cover using recent 28-day velocity.</p>
+                <div class="bands" id="bands"></div>
+              </div>
+            </details>
           </div>
         </section>
 
@@ -167,8 +173,11 @@
             <span class="export-link" aria-hidden="true">Reference view</span>
           </div>
 
+          <p class="inventory-table-hint" id="inventoryTableHint">
+            Swipe horizontally to review every stock field.
+          </p>
           <div class="data-table-shell inventory-shell" data-dpp-qa="inventory-evidence">
-            <div class="data-table-scroll">
+            <div class="data-table-scroll" role="region" aria-label="Inventory records" tabindex="0">
               <table class="data-table inventory-table">
                 <caption>
                   Inventory records and actions
