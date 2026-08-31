@@ -169,7 +169,7 @@ function ensureRuleDialog() {
   dialog.addEventListener('close', () => {
     const trigger = connectedRuleDialogTrigger(ruleDialogTrigger);
     ruleDialogTrigger = null;
-    trigger?.focus();
+    queueMicrotask(() => trigger?.focus());
   });
   document.body.append(dialog);
   return dialog;
