@@ -722,6 +722,11 @@ main {
     width: 100%;
   }
 
+  .inventory-header-actions .how-btn {
+    width: calc(100% - 24px);
+    justify-self: center;
+  }
+
   .inventory-actions,
   .inventory-records {
     padding-block: 14px;
