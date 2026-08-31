@@ -851,7 +851,10 @@ main {
   }
 
   .inventory-table .product-name {
-    max-width: 138px;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .inventory-table-hint {

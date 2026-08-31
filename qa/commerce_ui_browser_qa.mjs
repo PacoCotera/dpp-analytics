@@ -637,6 +637,13 @@ async function inspectInventoryComposition(page) {
         scroll && scroll.scrollWidth > scroll.clientWidth + 2,
       ),
       tableRegionLabel: scroll?.getAttribute("aria-label") || "",
+      recordNamesReadable: [
+        ...document.querySelectorAll(".inventory-table .product-name"),
+      ].every(
+        (name) =>
+          name.scrollWidth <= name.clientWidth + 1 &&
+          name.scrollHeight <= name.clientHeight + 1,
+      ),
       recordParts: [
         records?.querySelector(".section-header"),
         records?.querySelector(".inventory-tools"),
@@ -877,7 +884,8 @@ try {
       );
       assert(
         composition.pageOverflow <= 1 &&
-          composition.tableRegionLabel === "Inventory records",
+          composition.tableRegionLabel === "Inventory records" &&
+          (width > 640 || composition.recordNamesReadable),
         `Inventory ${queueState}/${width}: page containment mismatch ${JSON.stringify(composition)}`,
       );
       if (width <= 640) {
@@ -886,7 +894,7 @@ try {
           `Inventory ${queueState}/${width}: compact evidence table does not expose horizontal review`,
         );
         assert(
-          composition.documentHeight <= 2400,
+          composition.documentHeight <= 2500,
           `Inventory ${queueState}/${width}: document is ${composition.documentHeight}px tall`,
         );
         const finalColumnReachable = await page
