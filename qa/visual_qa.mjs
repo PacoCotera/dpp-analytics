@@ -1346,7 +1346,8 @@ async function verifyInventory(page) {
       }
       return false;
     };
-    const overflowing = scroll && scrollRect ? [...scroll.querySelectorAll('*')]
+    const requiresNoScroll = window.innerWidth >= 1180;
+    const overflowing = scroll && scrollRect && requiresNoScroll ? [...scroll.querySelectorAll('*')]
       .filter(element =>
         !assistiveHidden(element) && element.getBoundingClientRect().right > scrollRect.right + 2
       )
@@ -1357,12 +1358,14 @@ async function verifyInventory(page) {
         text: (element.textContent || '').trim().slice(0, 40),
         right: Math.round(element.getBoundingClientRect().right),
       })) : [];
-    const requiresNoScroll = window.innerWidth >= 1180;
     return {
       contained: Boolean(
         scroll && table &&
-        (!requiresNoScroll || scroll.scrollWidth <= scroll.clientWidth + 2) &&
-        tableRect.right <= scrollRect.right + 2 &&
+        scrollRect.right <= window.innerWidth + 2 &&
+        (!requiresNoScroll || (
+          scroll.scrollWidth <= scroll.clientWidth + 2 &&
+          tableRect.right <= scrollRect.right + 2
+        )) &&
         overflowing.length === 0
       ),
       scrollClientWidth: scroll?.clientWidth || 0,
@@ -1380,7 +1383,15 @@ async function verifyInventory(page) {
   const contract = await page.evaluate(async () => {
     const payload = await (await fetch('/api/inventory', { cache: 'no-store' })).json();
     const expected = (payload.rows || []).filter(row => row.is_default_inventory).length;
+    const expectedExceptions = (payload.rows || []).filter(row =>
+      row.is_default_inventory && ['STOCKOUT', 'PRODUCE', 'PLAN'].includes(row.action)
+    ).length;
     const rows = [...document.querySelectorAll('#rows tr')];
+    const actions = document.querySelector('[data-dpp-qa="inventory-actions"]');
+    const records = document.querySelector('[data-dpp-qa="inventory-records"]');
+    const firstRecord = rows[0];
+    const coverage = document.querySelector('#coverageMap');
+    const scroll = document.querySelector('.inventory-shell .data-table-scroll');
     const requiredLabels = [
       'Lifecycle', 'Canonical SKU', 'Action', 'Available', 'Inbound', 'Reserved',
       '28D order units', 'Days cover', 'Status',
@@ -1396,6 +1407,17 @@ async function verifyInventory(page) {
           requiredLabels.every(label => labels.includes(label));
       }),
       tableVisible: document.querySelector('.inventory-table')?.getBoundingClientRect().height > 0,
+      queueState: actions?.dataset.queueState || '',
+      queueCount: Number(actions?.dataset.queueCount || 0),
+      expectedExceptions,
+      actionHeight: Math.round(actions?.getBoundingClientRect().height || 0),
+      recordsTop: Math.round(records?.getBoundingClientRect().top + window.scrollY),
+      firstRecordTop: Math.round(firstRecord?.getBoundingClientRect().top + window.scrollY),
+      documentHeight: document.documentElement.scrollHeight,
+      coverageOpen: Boolean(coverage?.open),
+      coverageSummaryVisible: Boolean(coverage?.querySelector('summary')?.getClientRects().length),
+      internalTableScroll: Boolean(scroll && scroll.scrollWidth > scroll.clientWidth + 2),
+      pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
     };
   });
   if (
@@ -1403,7 +1425,19 @@ async function verifyInventory(page) {
     contract.visible !== contract.expected ||
     !contract.singleRenderer ||
     !contract.complete ||
-    !contract.tableVisible
+    !contract.tableVisible ||
+    contract.queueCount !== contract.expectedExceptions ||
+    contract.queueState !== (contract.expectedExceptions ? 'exceptions' : 'clear') ||
+    contract.coverageOpen !== Boolean(contract.expectedExceptions) ||
+    !contract.coverageSummaryVisible ||
+    !contract.internalTableScroll ||
+    contract.pageOverflow > 1 ||
+    contract.documentHeight > 3400 ||
+    (!contract.expectedExceptions && (
+      contract.actionHeight > 190 ||
+      contract.recordsTop > 600 ||
+      contract.firstRecordTop > 900
+    ))
   ) throw new Error(`Inventory responsive table mismatch: ${JSON.stringify(contract)}`);
 }
 

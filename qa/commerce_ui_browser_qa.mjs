@@ -288,6 +288,81 @@ const inventoryPayload = {
   ],
 };
 
+const healthyInventoryRows = inventoryRows.map((row, index) =>
+  index === 0
+    ? {
+        ...row,
+        action: "OK",
+        available: 32,
+        inbound: 0,
+        days_cover_with_inbound: 45,
+      }
+    : row,
+);
+const manyInventoryRows = [
+  inventoryRows[0],
+  {
+    ...inventoryRows[0],
+    sku: "DPP-PLAN",
+    canonical_sku: "DPP-PLAN",
+    product:
+      "Very long archival-quality notebook name that must remain readable on narrow inventory screens",
+    action: "PLAN",
+    available: 11,
+    inbound: 2,
+    units_t28: 18,
+    days_cover_with_inbound: 20,
+  },
+  {
+    ...inventoryRows[0],
+    sku: "DPP-PRODUCE",
+    canonical_sku: "DPP-PRODUCE",
+    product: "Pocket notebook refill",
+    action: "PRODUCE",
+    available: 2,
+    inbound: 0,
+    units_t28: 16,
+    days_cover_with_inbound: 4,
+  },
+  inventoryRows[1],
+];
+const inventoryStatePayloads = {
+  zero: {
+    ...inventoryPayload,
+    summary: {
+      ...inventoryPayload.summary,
+      portfolio_days_cover: 45,
+      available: 35,
+      inbound: 0,
+    },
+    record_scope: { default_rows: healthyInventoryRows.length },
+    rows: healthyInventoryRows,
+    bands: [
+      { band: "Stockout", sku_count: 0 },
+      { band: "<14 days", sku_count: 0 },
+      { band: "14–27 days", sku_count: 0 },
+      { band: "28+ days", sku_count: 1 },
+    ],
+  },
+  one: inventoryPayload,
+  many: {
+    ...inventoryPayload,
+    summary: {
+      ...inventoryPayload.summary,
+      available: 16,
+      inbound: 6,
+    },
+    record_scope: { default_rows: manyInventoryRows.length },
+    rows: manyInventoryRows,
+    bands: [
+      { band: "Stockout", sku_count: 1 },
+      { band: "<14 days", sku_count: 1 },
+      { band: "14–27 days", sku_count: 1 },
+      { band: "28+ days", sku_count: 0 },
+    ],
+  },
+};
+
 const htmlRoutes = new Map([
   ["/catalog", "catalog.html"],
   ["/product", "product.html"],
@@ -519,6 +594,63 @@ async function inspectRoute(page, route, expectedProfile) {
   );
 }
 
+async function inspectInventoryComposition(page) {
+  return page.evaluate(() => {
+    const actions = document.querySelector(
+      '[data-dpp-qa="inventory-actions"]',
+    );
+    const records = document.querySelector(
+      '[data-dpp-qa="inventory-records"]',
+    );
+    const firstRecord = document.querySelector("#rows tr");
+    const coverage = document.querySelector("#coverageMap");
+    const scroll = document.querySelector(
+      ".inventory-shell .data-table-scroll",
+    );
+    const viewportWidth = window.innerWidth;
+    const top = (element) =>
+      element
+        ? Math.round(element.getBoundingClientRect().top + window.scrollY)
+        : null;
+
+    return {
+      viewportWidth,
+      queueState: actions?.dataset.queueState || "",
+      queueCount: Number(actions?.dataset.queueCount || 0),
+      actionHeight: Math.round(actions?.getBoundingClientRect().height || 0),
+      recordsTop: top(records),
+      firstRecordTop: top(firstRecord),
+      documentHeight: document.documentElement.scrollHeight,
+      pageOverflow: document.documentElement.scrollWidth - viewportWidth,
+      cards: [...document.querySelectorAll(".action-card")].map((card) => ({
+        text: card.textContent.trim(),
+        height: Math.round(card.getBoundingClientRect().height),
+        contained: card.scrollWidth <= card.clientWidth + 1,
+      })),
+      clearMessage:
+        document.querySelector(".queue-clear")?.textContent.trim() || "",
+      coverageOpen: Boolean(coverage?.open),
+      coverageSummaryVisible: Boolean(
+        coverage?.querySelector("summary")?.getClientRects().length,
+      ),
+      tableInternalOverflow: Boolean(
+        scroll && scroll.scrollWidth > scroll.clientWidth + 2,
+      ),
+      tableRegionLabel: scroll?.getAttribute("aria-label") || "",
+      recordParts: [
+        records?.querySelector(".section-header"),
+        records?.querySelector(".inventory-tools"),
+        records?.querySelector(".inventory-table-hint"),
+        records?.querySelector("thead"),
+      ].map((element) => ({
+        className: element?.className || element?.tagName || "",
+        top: top(element),
+        height: Math.round(element?.getBoundingClientRect().height || 0),
+      })),
+    };
+  });
+}
+
 try {
   for (const testCase of cases) {
     for (const route of routes) {
@@ -701,6 +833,123 @@ try {
       await context.close();
     }
   }
+
+  for (const [queueState, payload] of Object.entries(
+    inventoryStatePayloads,
+  )) {
+    for (const width of [393, 1600]) {
+      const context = await browser.newContext({
+        viewport: { width, height: 900 },
+      });
+      const page = await context.newPage();
+      await page.route("**/api/inventory", (route) =>
+        route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify(payload),
+        }),
+      );
+      await page.goto(`${baseUrl}/inventory`, {
+        waitUntil: "networkidle",
+        timeout: 20_000,
+      });
+      await page.locator("#rows tr").first().waitFor();
+      const composition = await inspectInventoryComposition(page);
+      const expectedCount =
+        queueState === "zero" ? 0 : queueState === "one" ? 1 : 3;
+
+      assert(
+        composition.queueState === (expectedCount ? "exceptions" : "clear") &&
+          composition.queueCount === expectedCount,
+        `Inventory ${queueState}/${width}: queue state mismatch ${JSON.stringify(composition)}`,
+      );
+      assert(
+        composition.cards.length === expectedCount &&
+          composition.cards.every(
+            (card) =>
+              card.text.length > 0 && card.height >= 100 && card.contained,
+          ),
+        `Inventory ${queueState}/${width}: action cards are incomplete ${JSON.stringify(composition.cards)}`,
+      );
+      assert(
+        composition.coverageSummaryVisible &&
+          composition.coverageOpen === Boolean(expectedCount),
+        `Inventory ${queueState}/${width}: coverage reachability mismatch ${JSON.stringify(composition)}`,
+      );
+      assert(
+        composition.pageOverflow <= 1 &&
+          composition.tableRegionLabel === "Inventory records",
+        `Inventory ${queueState}/${width}: page containment mismatch ${JSON.stringify(composition)}`,
+      );
+      if (width <= 640) {
+        assert(
+          composition.tableInternalOverflow,
+          `Inventory ${queueState}/${width}: compact evidence table does not expose horizontal review`,
+        );
+        assert(
+          composition.documentHeight <= 2400,
+          `Inventory ${queueState}/${width}: document is ${composition.documentHeight}px tall`,
+        );
+        const finalColumnReachable = await page
+          .locator(".inventory-shell .data-table-scroll")
+          .evaluate((scroll) => {
+            scroll.scrollLeft = scroll.scrollWidth;
+            const status = scroll.querySelector("thead th:last-child");
+            const bounds = scroll.getBoundingClientRect();
+            const statusBounds = status.getBoundingClientRect();
+            return (
+              statusBounds.left >= bounds.left - 1 &&
+              statusBounds.right <= bounds.right + 1
+            );
+          });
+        assert(
+          finalColumnReachable,
+          `Inventory ${queueState}/${width}: final evidence column is unreachable`,
+        );
+      }
+      if (!expectedCount) {
+        assert(
+          composition.clearMessage.includes("No inventory action is queued") &&
+            composition.actionHeight <= (width <= 640 ? 190 : 170) &&
+            composition.recordsTop <= (width <= 640 ? 600 : 525) &&
+            composition.firstRecordTop <= (width <= 640 ? 900 : 850),
+          `Inventory ${queueState}/${width}: healthy geometry mismatch ${JSON.stringify(composition)}`,
+        );
+      } else {
+        assert(
+          composition.recordsTop > 0 &&
+            composition.firstRecordTop > composition.recordsTop,
+          `Inventory ${queueState}/${width}: records do not follow exceptions ${JSON.stringify(composition)}`,
+        );
+      }
+      if (!expectedCount) {
+        await page.locator("#coverageMap summary").click();
+        assert(
+          (await page.locator("#coverageMap").getAttribute("open")) !== null &&
+            (await page.locator("#bands .band").count()) === 4,
+          `Inventory ${queueState}/${width}: healthy coverage disclosure failed`,
+        );
+        await page.locator('[data-filter="ok"]').click();
+        assert(
+          (await page.locator("#rows tr").count()) === 1,
+          `Inventory ${queueState}/${width}: healthy filter failed`,
+        );
+      } else if (queueState === "many") {
+        await page.locator('[data-filter="attention"]').click();
+        assert(
+          (await page.locator("#rows tr").count()) === expectedCount,
+          `Inventory ${queueState}/${width}: attention filter failed`,
+        );
+      }
+      results.push({
+        route: `inventory-${queueState}`,
+        profile: "warm-studio",
+        width,
+        ...composition,
+        state: "PASS",
+      });
+      await context.close();
+    }
+  }
 } catch (error) {
   failures.push(error.message);
 } finally {
@@ -738,7 +987,21 @@ for (const route of routes) {
 
 console.log(
   JSON.stringify(
-    { status: "PASS", checks: results.length, widths: widthMatrix },
+    {
+      status: "PASS",
+      checks: results.length,
+      widths: widthMatrix,
+      inventoryComposition: results
+        .filter((result) => result.route.startsWith("inventory-"))
+        .map(({ route, width, actionHeight, recordsTop, firstRecordTop, documentHeight }) => ({
+          route,
+          width,
+          actionHeight,
+          recordsTop,
+          firstRecordTop,
+          documentHeight,
+        })),
+    },
     null,
     2,
   ),

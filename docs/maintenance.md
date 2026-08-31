@@ -109,8 +109,12 @@ New SKUs and deletions require no code list. The latest completed Seller Listing
 
 Inventory combines FBA inventory state with seller-SKU velocity from Amazon Orders. `inventory_api.py` joins the current Amazon offer contract for portfolio rollups and owns reference-row lifecycle plus canonical-SKU identity. The browser defaults to current stock-bearing offers and only exposes alias, retired, archived or no-velocity rows through explicit filters. Action semantics such as `STOCKOUT`, `PRODUCE`, `PLAN`, `OK` and `HOLD` belong in the data/API layer. The browser renders those actions; it should not independently invent replenishment thresholds. This order-based velocity is intentionally distinct from reconciled CHILD-ASIN product demand on Sales, Catalog and Product Workspace.
 
-Inventory owns one native evidence table for every viewport. Phone CSS presents those same rows as labeled cards;
-do not add a second mobile renderer or omit lifecycle, canonical identity, stock-state, velocity, or status fields.
+Inventory owns one native evidence table for every viewport. On phones, that table stays inside a labeled,
+horizontally scrollable evidence region so records remain compact without repeating every column heading per row.
+Do not add a second mobile renderer or omit lifecycle, canonical identity, stock-state, velocity, or status fields.
+`inventory.js` distinguishes only composition: zero API-owned exceptions collapse the action queue to a healthy
+confirmation with a closed, reachable coverage disclosure; one or more exceptions keep action cards first and
+open the same coverage disclosure. The browser does not recalculate the API-owned action state.
 Catalog family mode remains a hierarchical disclosure, while its flat dimension, combination, SKU, and deleted
 views expose explicit table, row-group, row-header, column-header, and cell relationships.
 

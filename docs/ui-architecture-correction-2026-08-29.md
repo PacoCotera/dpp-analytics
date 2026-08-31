@@ -88,7 +88,7 @@ All operational tables share one contract:
 | Sales `/sales` | How is demand performing and what explains it? | selected view/range plus comparable KPIs | sales trend or ranked driver view | product and geography detail appropriate to the selected view |
 | Products `/catalog` | Which products need attention or investigation? | portfolio count, window and compact filters | sortable product table | family or status summaries only when they change prioritization |
 | Product `/product` | What is happening for this product? | product identity, current state and key measures | demand/availability trajectory | inventory, contribution and Ads context; one decision rail |
-| Inventory `/inventory` | What should be produced, planned or monitored? | explicit API-owned thresholds and action counts | action-first inventory table | portfolio coverage summary and source/cutoff disclosure |
+| Inventory `/inventory` | What should be produced, planned or monitored? | explicit API-owned thresholds and action counts | exception cards when action exists; compact records when healthy | reachable portfolio coverage and source/cutoff disclosure |
 | Finance `/finance` | What did the business earn and what is closed? | close state, period and contribution KPIs | management P&L table | IVA bridge, settlement timing and COGS readiness |
 | Ads `/ads` | Is Ads connected, decision-grade and effective? | API-owned connection/reporting state | canonical connection state or performance view | actions and drill-down tables only when reporting is ready |
 | Trajectory `/trajectory` | Is performance structurally improving? | signal, eligibility and selected window | trajectory chart | compact history table and definition disclosure |
