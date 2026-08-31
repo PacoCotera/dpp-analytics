@@ -22,6 +22,31 @@ async function assertWorkspaceLandmarks(page, names) {
   if (missing.length) throw new Error(`Missing workspace landmarks: ${missing.join(', ')}`);
 }
 
+async function verifyCompactLead(page, firstSurfaceSelector) {
+  const state = await page.evaluate(selector => {
+    const lead = document.querySelector('.page-lead');
+    const firstSurface = document.querySelector(selector);
+    const leadRect = lead?.getBoundingClientRect();
+    return {
+      mobile: window.innerWidth <= 480,
+      leadCount: document.querySelectorAll('.page-lead').length,
+      titleCount: lead?.querySelectorAll('h1').length || 0,
+      firstSurfaceTop: firstSurface?.getBoundingClientRect().top ?? null,
+      evidenceOpen: lead?.querySelectorAll('.page-lead__evidence[open]').length || 0,
+      contained: Boolean(leadRect && leadRect.left >= -2 && leadRect.right <= window.innerWidth + 2),
+    };
+  }, firstSurfaceSelector);
+  if (
+    state.leadCount !== 1 ||
+    state.titleCount !== 1 ||
+    state.evidenceOpen ||
+    !state.contained ||
+    (state.mobile && (state.firstSurfaceTop === null || state.firstSurfaceTop > 760))
+  ) {
+    throw new Error(`Compact page-lead contract mismatch: ${JSON.stringify(state)}`);
+  }
+}
+
 async function verifyControlTrustAppearance(page, expectedProfile) {
   await wait(page, 'main');
   const state = await page.evaluate(profileId => {
@@ -156,6 +181,7 @@ async function verifyAdmin(page) {
 
 async function verifyAds(page, view = 'overview') {
   await assertWorkspaceLandmarks(page, ['ads-workspace-header', 'ads-operating-evidence']);
+  await verifyCompactLead(page, '[data-dpp-qa="ads-overview"]');
   const navigation = await page.evaluate(() => {
     const tabs = document.querySelector('.ads-page .subnav');
     return {
@@ -228,6 +254,7 @@ async function verifyAds(page, view = 'overview') {
 
 async function verifySalesOverview(page) {
   await wait(page, '#monthChart .dpp-bar');
+  await verifyCompactLead(page, '.sales-chart-card');
   for (const [range, selector] of [['90d', '.sales-week'], ['28d', '.sales-day'], ['full', '.sales-month']]) {
     await page.locator(`button[data-range="${range}"]`).click();
     await wait(page, `#monthChart ${selector}`);
@@ -653,6 +680,7 @@ async function verifySalesGeography(page) {
 
 async function verifyBusiness(page) {
   await wait(page, '#stateHeadline');
+  await verifyCompactLead(page, '[data-dpp-qa="business-demand"]');
   const state = await page.evaluate(async () => {
     const payload = await (await fetch('/api/home', { cache: 'no-store' })).json();
     const exceptions = (payload.inventory || []).filter((item) =>
@@ -692,7 +720,8 @@ async function verifyBusiness(page) {
         main &&
           document.querySelectorAll('main').length === 1 &&
           main.querySelectorAll('h1').length === 1 &&
-          main.querySelector('h1')?.textContent?.trim() === expectedHeadline &&
+          main.querySelector('h1')?.textContent?.trim() === 'Business' &&
+          document.getElementById('stateHeadline')?.textContent?.trim() === expectedHeadline &&
           main.children.length === 3,
       ),
       hierarchy: Boolean(
@@ -973,51 +1002,13 @@ async function catalogSemantic(page) {
 }
 
 async function verifyCatalog(page) {
-  await assertWorkspaceLandmarks(page, [
-    'catalog-overview',
-    'catalog-decisions',
-    'catalog-controls',
-    'catalog-evidence',
-  ]);
+  await assertWorkspaceLandmarks(page, ['catalog-overview', 'catalog-controls', 'catalog-evidence']);
   await page.locator('.family').first().waitFor({ state: 'visible', timeout: 15000 });
+  await verifyCompactLead(page, '[data-dpp-qa="catalog-evidence"]');
   const semantic = await catalogSemantic(page);
   if (semantic.errors?.length) throw new Error(`Catalog semantic QA: ${semantic.errors.join('; ')}`);
   const openCount = await page.locator('.family[open]').count();
   if (openCount) throw new Error(`Catalog default comparison view has ${openCount} family expansions open`);
-
-  const attentionHierarchy = await page.evaluate(() => {
-    const card = document.querySelector('.attention-item');
-    const trigger = card?.querySelector('.rule-trigger');
-    if (!card || !trigger) return null;
-    const resolveColor = token => {
-      const probe = document.createElement('span');
-      probe.style.color = `var(${token})`;
-      document.body.append(probe);
-      const color = getComputedStyle(probe).color;
-      probe.remove();
-      return color;
-    };
-    const cardStyle = getComputedStyle(card);
-    const triggerStyle = getComputedStyle(trigger);
-    return {
-      classes: card.className,
-      cardBackground: cardStyle.backgroundColor,
-      surface: resolveColor('--surface'),
-      triggerBackground: triggerStyle.backgroundColor,
-      triggerColor: triggerStyle.color,
-      muted: resolveColor('--muted'),
-      triggerWeight: Number(triggerStyle.fontWeight),
-    };
-  });
-  if (
-    attentionHierarchy &&
-    (attentionHierarchy.cardBackground !== attentionHierarchy.surface ||
-      attentionHierarchy.triggerBackground !== 'rgba(0, 0, 0, 0)' ||
-      attentionHierarchy.triggerColor !== attentionHierarchy.muted ||
-      attentionHierarchy.triggerWeight > 700 ||
-      /(?:^|\s)(?:bad|warn)(?:\s|$)/.test(attentionHierarchy.classes))
-  ) throw new Error(`Catalog attention hierarchy promotes advisory UI over evidence: ${JSON.stringify(attentionHierarchy)}`);
-
 
   if ((await page.evaluate(() => window.innerWidth)) <= 720) {
     const mobile = await page.evaluate(() => {
@@ -1111,6 +1102,7 @@ async function verifyProductWorkspace(page) {
   ]);
   await wait(page, '.hero-name');
   await wait(page, '#chart .dpp-bar');
+  await verifyCompactLead(page, '[data-dpp-qa="product-analysis"]');
   const payload = await page.evaluate(async () =>
     (await (await fetch('/api/product?sku=PNC-001', { cache: 'no-store' })).json()),
   );
@@ -1135,7 +1127,7 @@ async function verifyProductWorkspace(page) {
   const mobileHierarchy = await page.evaluate(() => {
     const mobile = window.innerWidth <= 640;
     const reference = document.getElementById('productReference');
-    const facts = document.querySelector('.product-health__facts');
+    const listingDetails = document.querySelector('.product-lead-evidence details');
     const healthSignal = document.querySelector('.hero-signal');
     const decisions = document.querySelector('.decision-rail');
     const chart = document.querySelector('.product-chart-panel');
@@ -1143,7 +1135,7 @@ async function verifyProductWorkspace(page) {
     return {
       mobile,
       referenceOpen: Boolean(reference?.hasAttribute('open')),
-      factsVisible: Boolean(facts && window.getComputedStyle(facts).display !== 'none'),
+      listingDetailsOpen: Boolean(listingDetails?.hasAttribute('open')),
       healthSignalVisible: Boolean(
         healthSignal &&
           healthSignal.getBoundingClientRect().height > 0 &&
@@ -1154,19 +1146,17 @@ async function verifyProductWorkspace(page) {
         decisions && chart && decisions.getBoundingClientRect().top >= chart.getBoundingClientRect().top
       ),
       referenceSummaryHeight: summary?.getBoundingClientRect().height || 0,
-      catalogTitleVisible: Boolean(
-        document.querySelector('.hero-catalog-title')?.getBoundingClientRect().height,
-      ),
+      catalogTitlePreserved: Boolean(document.querySelector('.hero-catalog-title')),
       metricControls: document.querySelectorAll('[data-metric]').length,
     };
   });
   if (
     mobileHierarchy.mobile &&
     (mobileHierarchy.referenceOpen ||
-      mobileHierarchy.factsVisible ||
+      mobileHierarchy.listingDetailsOpen ||
       !mobileHierarchy.healthSignalVisible ||
       !mobileHierarchy.decisionsAfterChart ||
-      !mobileHierarchy.catalogTitleVisible ||
+      !mobileHierarchy.catalogTitlePreserved ||
       mobileHierarchy.metricControls !== 2 ||
       mobileHierarchy.referenceSummaryHeight < 44)
   ) {
@@ -1272,6 +1262,7 @@ async function verifyTrajectory(page) {
   await wait(page, '.trajectory-horizon');
   await wait(page, '#chart');
   await wait(page, '.structure-priority .structure-card');
+  await verifyCompactLead(page, '[data-dpp-qa="trajectory-evidence"]');
   const state = await page.evaluate(() => {
     const mobile = window.innerWidth <= 640;
     const paid = document.getElementById('paidContext');
@@ -1337,6 +1328,7 @@ async function verifyInventory(page) {
     'inventory-evidence',
   ]);
   await wait(page, '#rows tr');
+  await verifyCompactLead(page, '[data-dpp-qa="inventory-actions"]');
   const tableContainment = await page.evaluate(() => {
     const scroll = document.querySelector('.inventory-shell .data-table-scroll');
     const table = document.querySelector('.inventory-table');

@@ -33,18 +33,20 @@
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
-      <section class="sales-lead" aria-labelledby="salesTitle">
-        <header class="page-header">
-          <div>
-            <div class="kicker">Commercial performance</div>
-            <h1 class="page-header__title" id="salesTitle">Sales</h1>
-            <p class="page-header__description">
-              Demand performance, product contribution and order geography.
+      <section class="page-lead sales-lead" aria-labelledby="salesTitle">
+        <div class="page-lead__identity">
+          <h1 class="page-lead__title" id="salesTitle">Sales</h1>
+          <details class="page-lead__evidence">
+            <summary>Data basis</summary>
+            <p class="sales-basis-note" role="note" aria-label="Sales monetary basis">
+              Shopper spend incl. IVA · reconciled Sales &amp; Traffic · live Today uses Amazon Orders · net
+              sales ex IVA lives in Finance
             </p>
-          </div>
-        </header>
+            <p class="metric-window-note" id="salesBusinessWindow">Loading seller-performance window</p>
+          </details>
+        </div>
 
-        <nav class="subnav tabs" aria-label="Sales views" role="tablist">
+        <nav class="page-lead__aside subnav tabs" aria-label="Sales views" role="tablist">
           <button
             class="subnav__item active"
             id="salesOverviewTab"
@@ -79,12 +81,6 @@
             Geography
           </button>
         </nav>
-
-        <p class="sales-basis-note" role="note" aria-label="Sales monetary basis">
-          Shopper spend incl. IVA · reconciled Sales &amp; Traffic · live Today uses Amazon Orders · net sales
-          ex IVA lives in Finance
-        </p>
-        <p class="metric-window-note" id="salesBusinessWindow">Loading seller-performance window</p>
       </section>
 
       <main id="overview" class="view active" role="tabpanel" tabindex="0" aria-labelledby="salesOverviewTab">

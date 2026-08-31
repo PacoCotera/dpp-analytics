@@ -125,10 +125,12 @@ function renderHero(profile, commercial) {
     .includes('AMAZON')
     ? 'FBA'
     : profile.fulfillment_channel || 'Fulfillment unavailable';
-  const chips = [
+  const details = [
     action ? `<span class="chip ${actionTone}">${escapeHtml(action)}</span>` : '',
     profile.listing_status ? `<span class="chip">${escapeHtml(profile.listing_status)}</span>` : '',
-    commercial.family_name ? `<span class="hero-meta">${escapeHtml(commercial.family_name)}</span>` : '',
+    identity.family_label || commercial.family_name
+      ? `<span class="hero-meta">${escapeHtml(identity.family_label || commercial.family_name)}</span>`
+      : '',
     attributes.length ? `<span class="hero-meta">${escapeHtml(attributes.join(' · '))}</span>` : '',
     commercial.parent_asin
       ? `<span class="hero-meta">Parent ${escapeHtml(commercial.parent_asin)}</span>`
@@ -143,9 +145,7 @@ function renderHero(profile, commercial) {
   byId('hero').innerHTML = `${image}
     <div>
       <div class="hero-sku">${escapeHtml(profile.sku)} · ${escapeHtml(profile.asin || '')}</div>
-      <h1 class="hero-name">${escapeHtml(profile.product || profile.sku)}</h1>
-      ${profile.catalog_title && profile.catalog_title !== profile.product ? `<div class="hero-catalog-title">${escapeHtml(profile.catalog_title)}</div>` : ''}
-      <div class="hero-details">${chips}</div>
+      <h1 class="page-lead__title hero-name">${escapeHtml(profile.product || profile.sku)}</h1>
     </div>
     <div class="hero-price">
       <strong>${profile.listing_price == null ? '—' : money(profile.listing_price)}</strong>
@@ -154,15 +154,21 @@ function renderHero(profile, commercial) {
     </div>
     <div class="hero-command">
       <div class="hero-signal">
-        <div class="product-health__kicker">Product health</div>
-        <strong id="healthHeadline">Reading the product…</strong>
-        <p id="healthRead">Connecting demand, traffic, availability, listing state and economics.</p>
+        <div class="page-lead__read"><strong id="healthHeadline">Reading the product…</strong></div>
+        <p class="page-lead__description" id="healthRead">Connecting demand, traffic, availability, listing state and economics.</p>
       </div>
-      <div class="product-health__facts">
-        <div class="product-health__fact"><div class="label">Listing</div><strong>${escapeHtml(profile.listing_status || '—')}</strong><small>${profile.listing_status === 'Deleted' ? `Last Amazon status ${escapeHtml(profile.source_listing_status || 'unknown')}` : escapeHtml(fulfillment)}</small></div>
-        <div class="product-health__fact"><div class="label">Family</div><strong>${escapeHtml(identity.family_label || 'Identity unavailable')}</strong><small>${escapeHtml(identity.role || commercial.product_role || 'commercial identity')}</small></div>
-        <div class="product-health__fact"><div class="label">Variation</div><strong>${escapeHtml(attributes.slice(0, 2).join(' · ') || '—')}</strong><small>${escapeHtml(attributes.slice(2).join(' · ') || commercial.amazon_variation_theme || 'catalog attributes')}</small></div>
-        <div class="product-health__fact"><div class="label">Parent ASIN</div><strong>${escapeHtml(commercial.parent_asin || 'None')}</strong><small>${deleted ? (commercial.parent_asin ? 'last known Amazon family' : 'historical relationship unavailable') : commercial.parent_asin ? 'Amazon variation family' : 'standalone offer'}</small></div>
+      <div class="product-lead-evidence">
+        <details class="page-lead__evidence">
+          <summary>Listing details</summary>
+          ${profile.catalog_title && profile.catalog_title !== profile.product ? `<p class="hero-catalog-title">${escapeHtml(profile.catalog_title)}</p>` : ''}
+          <div class="hero-details">${details}</div>
+          <p>${escapeHtml(identity.role || commercial.product_role || 'Commercial identity')}</p>
+        </details>
+        <details class="page-lead__evidence">
+          <summary>Data basis</summary>
+          <p class="metric-window-note" id="productDemandWindow">Loading product-demand window</p>
+          <p class="metric-window-note" id="productVelocityWindow">Loading inventory-velocity window</p>
+        </details>
       </div>
     </div>`;
 }
@@ -417,6 +423,7 @@ function render(payload) {
 
   byId('clock').textContent = formatBusinessClock(payload.local_time);
   byId('asof').textContent = `Historical through ${String(payload.business_date || '').slice(5)}`;
+  renderHero(profile, commercial);
   byId('productDemandWindow').textContent = formatMetricWindow(
     payload.metric_windows?.RECONCILED_PRODUCT_T28,
   );
@@ -424,7 +431,6 @@ function render(payload) {
     payload.metric_windows?.INVENTORY_ORDER_VELOCITY_T28,
   );
 
-  renderHero(profile, commercial);
   renderHealth(payload);
   renderListingAndInventory(profile, commercial, ads);
   renderMetrics(profile, performance, traffic, economics);

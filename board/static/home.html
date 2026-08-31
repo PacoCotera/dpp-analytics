@@ -35,19 +35,26 @@
       </nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
       <main class="workspace home-main">
-        <section class="business-hero" aria-labelledby="stateHeadline" data-dpp-qa="business-overview">
-          <div class="business-hero__lead">
-            <div class="section-label">Business pulse</div>
-            <div class="business-headline">
-              <h1 id="stateHeadline">Reading current performance…</h1>
+        <section
+          class="page-lead business-hero"
+          aria-labelledby="businessTitle"
+          data-dpp-qa="business-overview"
+        >
+          <div class="page-lead__identity business-hero__lead">
+            <h1 class="page-lead__title" id="businessTitle">Business</h1>
+            <div class="page-lead__read business-headline">
+              <strong id="stateHeadline">Reading current performance…</strong>
             </div>
             <p id="stateCopy">
               Comparing the last four weeks with the prior four and checking operating exceptions.
             </p>
-            <p class="metric-window-note" id="homeBusinessWindow">Loading seller-performance window</p>
+            <details class="page-lead__evidence">
+              <summary>Data basis</summary>
+              <p class="metric-window-note" id="homeBusinessWindow">Loading seller-performance window</p>
+            </details>
           </div>
 
-          <div class="kpi-rail home-kpi-rail" aria-label="Business summary">
+          <div class="page-lead__aside kpi-rail home-kpi-rail" aria-label="Business summary">
             <div
               class="kpi"
               title="Reconciled Amazon Sales &amp; Traffic shopper spend including IVA. Net revenue ex IVA is shown in Finance."

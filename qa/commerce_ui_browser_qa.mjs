@@ -357,10 +357,9 @@ const routes = [
     name: "catalog",
     path: "/catalog",
     ready: ".family",
-    firstSurface: '[data-dpp-qa="catalog-decisions"]',
+    firstSurface: '[data-dpp-qa="catalog-evidence"]',
     anchors: [
       "catalog-overview",
-      "catalog-decisions",
       "catalog-controls",
       "catalog-evidence",
     ],
