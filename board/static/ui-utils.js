@@ -221,10 +221,14 @@ export function mountRuleTrigger(target, evaluation, rules = {}) {
   if (!target) return;
   bindRuleDisclosure(rules);
   const selector = `.rule-trigger[data-rule-for="${CSS.escape(target.id)}"]`;
-  target.parentElement?.querySelector(selector)?.remove();
+  const existingTrigger = target.parentElement?.querySelector(selector);
+  const restoreFocus = existingTrigger === document.activeElement;
+  existingTrigger?.remove();
   const html = ruleTrigger(evaluation, rules).replace(
     'class="rule-trigger"',
     `class="rule-trigger" data-rule-for="${escapeHtml(target.id)}"`,
   );
-  if (html) target.insertAdjacentHTML('afterend', html);
+  if (!html) return;
+  target.insertAdjacentHTML('afterend', html);
+  if (restoreFocus) target.parentElement?.querySelector(selector)?.focus();
 }
