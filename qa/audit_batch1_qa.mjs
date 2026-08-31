@@ -209,6 +209,8 @@ async function verifyModal(browser, engine, width, height) {
       throw new Error(`${label} did not reverse-wrap focus to the last control`);
     }
 
+    await trigger.evaluate((element) => element.replaceWith(element.cloneNode(true)));
+
     await page.keyboard.press('Escape');
     await dialog.waitFor({ state: 'hidden', timeout: 5000 });
     if (!(await trigger.evaluate((element) => element === document.activeElement))) {

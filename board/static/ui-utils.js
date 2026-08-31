@@ -124,6 +124,13 @@ function ruleDialogFocusables(dialog) {
   );
 }
 
+function connectedRuleDialogTrigger(trigger) {
+  if (trigger?.isConnected) return trigger;
+  const ruleFor = trigger?.dataset.ruleFor;
+  if (!ruleFor) return null;
+  return document.querySelector(`.rule-trigger[data-rule-for="${CSS.escape(ruleFor)}"]`);
+}
+
 function ensureRuleDialog() {
   let dialog = byId('interpretationRuleDialog');
   if (dialog) return dialog;
@@ -160,9 +167,9 @@ function ensureRuleDialog() {
     }
   });
   dialog.addEventListener('close', () => {
-    const trigger = ruleDialogTrigger;
+    const trigger = connectedRuleDialogTrigger(ruleDialogTrigger);
     ruleDialogTrigger = null;
-    if (trigger?.isConnected) trigger.focus();
+    trigger?.focus();
   });
   document.body.append(dialog);
   return dialog;
