@@ -217,6 +217,24 @@ async function verifyModal(browser, engine, width, height) {
       throw new Error(`${label} Escape did not restore the invoking trigger`);
     }
 
+    await page.evaluate(async () => {
+      const trigger = document.activeElement;
+      const target = document.getElementById(trigger.dataset.ruleFor);
+      const evaluation = JSON.parse(trigger.dataset.ruleEvaluation || '{}');
+      const moduleUrl = performance
+        .getEntriesByType('resource')
+        .map((entry) => entry.name)
+        .find((url) => url.includes('/static/ui-utils.js'));
+      if (!target || !evaluation.rule_id || !moduleUrl) {
+        throw new Error('Rule trigger remount inputs are unavailable');
+      }
+      const { mountRuleTrigger } = await import(moduleUrl);
+      mountRuleTrigger(target, evaluation, { [evaluation.rule_id]: {} });
+    });
+    if (!(await trigger.evaluate((element) => element === document.activeElement))) {
+      throw new Error(`${label} live remount did not preserve focus on the invoking trigger`);
+    }
+
     await page.keyboard.press('Enter');
     await dialog.waitFor({ state: 'visible', timeout: 5000 });
     await page.getByRole('button', { name: 'Close rule detail' }).click();
