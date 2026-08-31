@@ -221,13 +221,13 @@ async function verifyModal(browser, engine, width, height) {
       const trigger = document.activeElement;
       const target = document.getElementById(trigger.dataset.ruleFor);
       const evaluation = JSON.parse(trigger.dataset.ruleEvaluation || '{}');
-      const moduleUrl = performance
-        .getEntriesByType('resource')
-        .map((entry) => entry.name)
-        .find((url) => url.includes('/static/ui-utils.js'));
-      if (!target || !evaluation.rule_id || !moduleUrl) {
+      const pageModuleUrl = [...document.scripts]
+        .map((script) => script.src)
+        .find((url) => url.includes('/today.js'));
+      if (!target || !evaluation.rule_id || !pageModuleUrl) {
         throw new Error('Rule trigger remount inputs are unavailable');
       }
+      const moduleUrl = new URL('./ui-utils.js', pageModuleUrl).href;
       const { mountRuleTrigger } = await import(moduleUrl);
       mountRuleTrigger(target, evaluation, { [evaluation.rule_id]: {} });
     });
