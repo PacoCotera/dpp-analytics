@@ -24,6 +24,8 @@ const inventoryViewports = [
   [412, 915],
 ];
 const geographyViewports = [
+  [390, 664],
+  [393, 727],
   [719, 915],
   [720, 915],
   [721, 915],
@@ -54,7 +56,6 @@ function monitor(page, label) {
   });
   return errors;
 }
-
 function assertClean(errors) {
   if (errors.length) throw new Error(errors.join(' | '));
 }
@@ -136,12 +137,18 @@ async function verifyGeography(browser, engine, width, height) {
         tableWidth: tableRect.width,
         bodyWidth: bodyRect.width,
         rowWidth: rowRect.width,
+        tableDisplay: getComputedStyle(table).display,
         bodyDisplay: getComputedStyle(body).display,
         documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         clippedLabels: labels.filter((item) => item.scrollWidth > item.clientWidth + 1),
       };
     });
     if (!geometry) throw new Error(`${label} table geometry is unavailable`);
+    if (width <= 720 && geometry.tableDisplay !== 'block') {
+      throw new Error(
+        `${label} leaves the mobile table in its shrink-to-fit table formatting context: ${JSON.stringify(geometry)}`,
+      );
+    }
     if (geometry.bodyWidth < geometry.tableWidth * 0.97 || geometry.rowWidth < geometry.tableWidth * 0.97) {
       throw new Error(`${label} result cards do not own the table width: ${JSON.stringify(geometry)}`);
     }
