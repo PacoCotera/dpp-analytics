@@ -16,34 +16,16 @@
 }
 
 .business-hero {
-  display: grid;
-  grid-template-columns: minmax(360px, 0.8fr) minmax(620px, 1.25fr);
-  gap: clamp(28px, 4vw, 70px);
-  align-items: end;
-  padding: 30px 0 20px;
-  border-bottom: var(--border-width) solid var(--line);
+  grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
+  gap: 16px 24px;
 }
 
 .business-hero__lead {
   min-width: 0;
-  padding-bottom: 2px;
 }
 
 .business-headline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
-  margin-top: 6px;
-}
-
-.business-headline h1 {
-  margin: 0;
-  font-family: var(--dpp-font-display, inherit);
-  font-size: clamp(26px, 2.4vw, 34px);
-  font-weight: var(--dpp-heading-weight, 780);
-  letter-spacing: -0.035em;
-  line-height: 1.08;
+  margin-top: 5px;
 }
 
 .business-headline .rule-trigger {
@@ -52,19 +34,16 @@
 
 .business-hero__lead > p {
   max-width: 680px;
-  margin: 7px 0 0;
+  margin: 4px 0 0;
   color: var(--muted);
   font-size: 14px;
   line-height: 1.4;
 }
 
 .business-hero__lead .metric-window-note {
-  overflow: hidden;
   color: var(--dpp-text-subtle);
   font-family: var(--dpp-font-detail, inherit);
   font-size: var(--dpp-metadata-size, 14px);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .home-kpi-rail {
@@ -527,7 +506,7 @@
 }
 
 :root[data-dpp-profile='weyland'] .section-label,
-:root[data-dpp-profile='weyland'] .business-headline h1,
+:root[data-dpp-profile='weyland'] .page-lead__title,
 :root[data-dpp-profile='weyland'] .home-main h2 {
   letter-spacing: 0.045em;
   text-transform: uppercase;
@@ -536,19 +515,10 @@
 @media (max-width: 1100px) {
   .business-hero {
     grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-  }
-
-  .business-hero__lead .metric-window-note {
-    white-space: normal;
   }
 }
 
 @media (max-width: 760px) {
-  .business-hero {
-    padding-top: 22px;
-  }
-
   .home-kpi-rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -586,11 +556,6 @@
 @media (max-width: 480px) {
   .business-hero {
     gap: 10px;
-    padding: 14px 0 12px;
-  }
-
-  .business-headline h1 {
-    font-size: 27px;
   }
 
   #stateCopy {

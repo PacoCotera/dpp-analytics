@@ -30,13 +30,25 @@
       <nav class="primary-nav"></nav>
       <span id="main-content" class="skip-target" tabindex="-1"></span>
       <main class="catalog-main">
-        <header class="page-header catalog-page-header" data-dpp-qa="catalog-overview">
-          <div>
-            <div class="kicker">Product portfolio</div>
-            <h1 class="page-header__title">Products</h1>
-            <p class="page-header__description">Demand, availability and economics.</p>
+        <header class="page-lead catalog-page-header" data-dpp-qa="catalog-overview">
+          <div class="page-lead__identity">
+            <h1 class="page-lead__title">Products</h1>
+            <div class="page-lead__read">
+              <strong
+                id="portfolioRead"
+                title="Portfolio amount is reconciled Amazon Sales &amp; Traffic shopper spend including IVA. Net revenue ex IVA is in Finance."
+                >Reading the portfolio…</strong
+              >
+            </div>
+            <details class="page-lead__evidence">
+              <summary>Data basis</summary>
+              <p id="portfolioBasis">
+                28-day shopper spend incl. IVA · Amazon Sales &amp; Traffic + current FBA availability
+              </p>
+              <p class="metric-window-note" id="catalogDemandWindow">Loading product-demand window</p>
+            </details>
           </div>
-          <div class="page-header__aside">
+          <div class="page-lead__aside">
             <div class="kpi-rail portfolio-summary" aria-label="Portfolio summary">
               <div class="kpi">
                 <strong class="kpi__value" id="familyCount">—</strong><span class="kpi__label">Families</span>
@@ -56,38 +68,14 @@
         </header>
 
         <section
-          class="catalog-state"
-          data-dpp-qa="catalog-decisions"
-          aria-labelledby="portfolio-state-title"
-        >
-          <div class="funnel-read">
-            <div class="section-label">Portfolio state</div>
-            <h2 id="portfolio-state-title">Commercial read</h2>
-            <strong
-              id="portfolioRead"
-              title="Portfolio amount is reconciled Amazon Sales &amp; Traffic shopper spend including IVA. Net revenue ex IVA is in Finance."
-              >Reading the portfolio…</strong
-            >
-            <p id="portfolioBasis">
-              28-day shopper spend incl. IVA · Amazon Sales &amp; Traffic + current FBA availability
-            </p>
-            <p class="metric-window-note" id="catalogDemandWindow">Loading product-demand window</p>
-          </div>
-          <div class="attention" id="attentionList" aria-label="Commercial exceptions">
-            <div class="attention-empty">Checking commercial exceptions…</div>
-          </div>
-        </section>
-
-        <section
           class="catalog-analysis"
           data-dpp-qa="catalog-controls"
           aria-labelledby="catalog-analysis-title"
         >
           <div class="section-header catalog-analysis-header">
             <div>
-              <div class="section-label">Portfolio lens</div>
               <h2 class="section-header__title" id="catalog-analysis-title">Product performance</h2>
-              <p class="section-header__description" id="modeSource">Family = child roll-up</p>
+              <p class="sr-only" id="modeSource">Family = child roll-up</p>
             </div>
             <div
               class="analysis-modes choice-group"

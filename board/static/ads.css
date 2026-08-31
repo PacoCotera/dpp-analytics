@@ -307,22 +307,8 @@ main {
   padding-top: 16px;
 }
 
-main > .page-header {
-  min-height: 0;
-  padding: 16px 20px 12px;
-  border: var(--border-width) solid var(--line);
+.ads-page-lead {
   border-radius: var(--panel-radius) var(--panel-radius) 0 0;
-  background: var(--surface);
-}
-
-main > .page-header .page-header__title {
-  margin-top: 3px;
-  font-size: clamp(30px, 3vw, 40px);
-}
-
-main > .page-header .page-header__description {
-  margin-top: 4px;
-  line-height: 1.35;
 }
 
 main > .subnav {
@@ -559,10 +545,6 @@ main > .subnav {
 @media (max-width: 640px) {
   main {
     padding-top: 12px;
-  }
-
-  main > .page-header {
-    padding: 14px 15px 10px;
   }
 
   .ads-empty {

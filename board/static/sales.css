@@ -627,30 +627,8 @@
 
 /* Canonical sales route composition. */
 .sales-lead {
-  display: grid;
   grid-template-columns: minmax(220px, 1fr) auto;
-  align-items: end;
-  gap: 8px 24px;
-  padding: 18px 0 12px;
-  border-bottom: var(--border-width) solid var(--line);
-}
-
-.sales-lead .page-header {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.sales-lead .page-header__title {
-  margin-top: 3px;
-  font-size: clamp(30px, 3vw, 40px);
-}
-
-.sales-lead .page-header__description {
-  margin-top: 4px;
-  font-size: 14px;
-  line-height: 1.35;
+  align-items: center;
 }
 
 .sales-lead .subnav {
@@ -659,8 +637,7 @@
 }
 
 .sales-basis-note,
-.sales-lead > .metric-window-note {
-  grid-column: 1 / -1;
+.sales-lead .metric-window-note {
   margin: 0;
   padding: 0;
   border: 0;
@@ -668,10 +645,6 @@
   color: var(--muted);
   font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
-}
-
-.sales-lead > .metric-window-note {
-  margin-top: -4px;
 }
 
 .sales-lead + .view.active {
@@ -1441,21 +1414,8 @@
 
 @media (max-width: 620px) {
   .sales-lead {
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
-    padding-top: 10px;
-  }
-
-  .sales-lead .page-header {
-    padding-block: 10px 6px;
-  }
-
-  .sales-lead .page-header__description,
-  .sales-basis-note {
-    display: none;
-  }
-
-  .sales-lead > .metric-window-note {
-    margin-top: 0;
   }
 
   .sales-lead .subnav {

@@ -45,6 +45,7 @@ workspace.
 `static/layout-system.css` owns reusable geometry:
 
 - `.page-header`
+- `.page-lead` and its identity, current-read, evidence-disclosure and aside slots
 - `.kpi-rail`
 - `.page-section`
 - `.section-header`
@@ -101,6 +102,12 @@ Page composition is not a generic sequence of page header, KPI cards and panels.
 business-question recipe documented in `ui-architecture-correction-2026-08-29.md`: a compact lead, an optional
 comparable KPI strip, one dominant working surface and only the supporting detail needed for the next decision.
 Introductory copy and legends must remain subordinate to charts, tables, queues and reports.
+
+`layout-system.css` owns the `.page-lead` surface and responsive contract. A route supplies one identity, one
+current operational read when available, an optional KPI/control aside, and closed adjacent evidence disclosures
+for metric windows, source cutoffs, listing metadata or rule provenance. Route styles may arrange those slots but
+must not recreate the surface, repeat the same interpretation in a second lead panel, or hide provenance only at a
+breakpoint. At phone widths the first dominant chart, table or action queue must begin within 760 CSS pixels.
 
 ### 6. Data/API
 

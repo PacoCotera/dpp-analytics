@@ -51,6 +51,103 @@
   min-width: 0;
 }
 
+/* One compact lead owns route identity, the current read and optional evidence.
+   Route styles may arrange domain content inside these slots, but must not
+   recreate the lead surface or put provenance back into the primary flow. */
+.page-lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 24px;
+  align-items: center;
+  min-width: 0;
+  padding: 14px 16px;
+  overflow: hidden;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--panel-radius);
+  background-color: var(--surface);
+  background-image: var(--dpp-panel-texture, none);
+}
+
+.page-lead__identity,
+.page-lead__aside {
+  min-width: 0;
+}
+
+.page-lead__title {
+  margin: 0;
+  font-family: var(--dpp-font-display, inherit);
+  font-size: clamp(26px, 2.4vw, 34px);
+  font-weight: var(--dpp-heading-weight, 780);
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.page-lead__read {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 5px;
+}
+
+.page-lead__read > strong {
+  font-family: var(--dpp-font-display, inherit);
+  font-size: 17px;
+  font-weight: var(--dpp-heading-weight, 760);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.page-lead__read .rule-trigger {
+  margin: 0;
+}
+
+.page-lead__description {
+  max-width: var(--reading-max);
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--dpp-metadata-size, 14px);
+  line-height: 1.35;
+}
+
+.page-lead__evidence {
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--dpp-metadata-size, 14px);
+}
+
+.page-lead__evidence > summary {
+  display: inline-flex;
+  min-height: var(--control-height);
+  align-items: center;
+  padding: 0 2px;
+  color: var(--accent-ink);
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.page-lead__evidence > summary::after {
+  content: ' ↓';
+  margin-left: 4px;
+}
+
+.page-lead__evidence[open] > summary::after {
+  content: ' ↑';
+}
+
+.page-lead__evidence .metric-window-note,
+.page-lead__evidence p {
+  max-width: min(760px, 100%);
+  margin: 2px 0 5px;
+  line-height: 1.35;
+}
+
+.page-lead__aside {
+  align-self: stretch;
+}
+
 /* Analytics workspaces share one responsive composition contract. Page files
    supply domain-specific content, not alternate page widths or panel systems. */
 .workspace {
@@ -594,6 +691,20 @@
   .page-header {
     gap: 10px;
     padding: 9px 0 11px;
+  }
+
+  .page-lead {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .page-lead__title {
+    font-size: 26px;
+  }
+
+  .page-lead__description {
+    line-height: 1.3;
   }
 
   .panel--chart .panel__header {

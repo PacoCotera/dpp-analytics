@@ -21,7 +21,6 @@ const routes = [
     js: read("board/static/catalog.js"),
     anchors: [
       "catalog-overview",
-      "catalog-decisions",
       "catalog-controls",
       "catalog-evidence",
     ],
@@ -180,12 +179,15 @@ assert(
   "Catalog: percent evidence does not preserve the shared malformed-value fallback",
 );
 assert(
-  !catalog.css.includes(".attention-item.bad") &&
-    !catalog.css.includes(".attention-item.warn") &&
-    !catalog.css.includes("color: var(--warn-ink) !important") &&
-    catalog.css.includes(".attention-item--review") &&
-    catalog.js.includes("attention-item--${BAD_STATES.has(state) ? 'critical' : 'review'}"),
-  "Catalog: attention cards still conflate child exceptions with filled warning state",
+  catalog.html.includes('class="page-lead catalog-page-header"') &&
+    catalog.html.includes('id="portfolioRead"') &&
+    catalog.html.includes('class="page-lead__evidence"') &&
+    !catalog.html.includes('data-dpp-qa="catalog-decisions"') &&
+    !catalog.html.includes('id="attentionList"') &&
+    !catalog.css.includes(".catalog-state") &&
+    !catalog.js.includes("renderAttention") &&
+    browserQa.includes("firstSurface: '[data-dpp-qa=\"catalog-evidence\"]'"),
+  "Catalog: redundant portfolio-state layer or primary-surface contract regressed",
 );
 
 const product = routes[1];

@@ -16,7 +16,6 @@ const $ = byId;
 const esc = escapeHtml;
 const num = integer;
 const SELLABLE_ROLES = new Set(['SELLABLE_VARIATION', 'SELLABLE_STANDALONE']);
-const BAD_STATES = new Set(['INVENTORY_RISK', 'TRAFFIC_NOT_CONVERTING', 'DECLINING']);
 const FUNNEL_STATES = new Set(['TRAFFIC_NOT_CONVERTING', 'CONVERTS_NEEDS_TRAFFIC']);
 const DORMANT_STATES = new Set(['DORMANT', 'WATCH']);
 const MOBILE_ROW_LIMIT = 6;
@@ -558,27 +557,6 @@ function renderPortfolio() {
     : '<div class="empty">No variation data is available for this analysis.</div>';
 }
 
-function renderAttention() {
-  const attention = (DATA.families || []).filter((family) => family.needs_attention).slice(0, 3);
-  $('attentionList').innerHTML = attention.length
-    ? attention
-        .map((family) => {
-          const state = family.primary_state || 'WATCH';
-          const exceptions = Number(family.child_exception_count || 0);
-          return `<div class="attention-item attention-item--${BAD_STATES.has(state) ? 'critical' : 'review'}">
-            <strong>${esc(compactFamilyName(family))}</strong>
-            <div class="attention-item__summary">
-              <span class="attention-item__state">${esc(labels[state] || state)}</span>
-              ${ruleTrigger(family.commercial_evaluation, DATA.interpretation_rules)}
-              <span class="attention-item__detail">· ${esc(explanation(family))}</span>
-              ${exceptions ? `<span class="attention-item__exception">· ${exceptions} child exception${exceptions === 1 ? '' : 's'}</span>` : ''}
-            </div>
-          </div>`;
-        })
-        .join('')
-    : '<div class="attention-empty">Nothing in the portfolio currently needs exceptional attention.</div>';
-}
-
 function render(data) {
   DATA = data;
   readCatalogUrlState();
@@ -600,7 +578,6 @@ function render(data) {
   $('freshness').textContent =
     `Data Kiosk through ${summary.traffic_through_date || '—'} · listings ${String(summary.listings_fetched_at || '').slice(0, 10) || '—'} · FBA current${Number(summary.ad_spend_t28 || 0) > 0 ? ` · Ads through ${summary.ads_through_date || 'latest available day'}` : ''}`;
 
-  renderAttention();
   syncFilterButtons();
   renderModes();
   renderPortfolio();

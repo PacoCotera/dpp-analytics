@@ -32,20 +32,15 @@
       <span id="main-content" class="skip-target" tabindex="-1"></span>
 
       <main>
-        <section class="page-header inventory-page-header" data-dpp-qa="inventory-overview">
-          <div>
-            <div class="kicker">Inventory manager</div>
-            <h1 class="page-header__title">Inventory</h1>
-            <p class="page-header__description">
-              Production and replenishment decisions from current stock and 28-day order velocity.
-            </p>
-            <p class="metric-window-note" id="inventoryVelocityWindow">Loading velocity basis</p>
-            <p class="inventory-thresholds">
-              STOCKOUT = 0 available · PRODUCE &lt; 14 days cover · PLAN 14–27 · OK ≥ 28 · HOLD = no recent
-              velocity
-            </p>
+        <section class="page-lead inventory-page-header" data-dpp-qa="inventory-overview">
+          <div class="page-lead__identity">
+            <h1 class="page-lead__title">Inventory</h1>
+            <details class="page-lead__evidence">
+              <summary>Data basis</summary>
+              <p class="metric-window-note" id="inventoryVelocityWindow">Loading velocity basis</p>
+            </details>
           </div>
-          <div class="page-header__aside inventory-header-actions">
+          <div class="page-lead__aside inventory-header-actions">
             <div class="kpi-rail" aria-label="Inventory key metrics">
               <div class="kpi">
                 <strong class="kpi__value" id="coverPortfolio">—</strong
