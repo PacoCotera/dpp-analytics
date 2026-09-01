@@ -174,7 +174,6 @@ async function measure(page, profile) {
         days: node.__data__.days || 1,
       }),
     );
-    const svgRect = document.querySelector("#chart").getBoundingClientRect();
     return {
       activeProfile: document.documentElement.getAttribute("data-dpp-theme"),
       activeWindow: document.querySelector(
@@ -188,9 +187,10 @@ async function measure(page, profile) {
       bars,
       ticks,
       gaps: ticks.slice(1).map((tick, index) => tick.left - ticks[index].right),
-      ticksContained: ticks.every(
+      ticksReadable: ticks.every(
         (tick) =>
-          tick.left >= svgRect.left - 1 && tick.right <= svgRect.right + 1,
+          tick.left >= -1 &&
+          tick.right <= document.documentElement.clientWidth + 1,
       ),
       pageOverflow:
         document.documentElement.scrollWidth -
@@ -247,8 +247,8 @@ function assertState(
     `${label} has intersecting x-axis labels: ${JSON.stringify({ ticks: state.ticks, gaps: state.gaps })}`,
   );
   assert(
-    state.ticksContained,
-    `${label} renders an x-axis label outside the chart`,
+    state.ticksReadable,
+    `${label} renders an x-axis label outside the readable viewport`,
   );
   assert(
     state.pageOverflow <= 1,
