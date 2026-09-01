@@ -1607,6 +1607,9 @@ async function verifyFinanceReport(page) {
     if (await overviewDisclosure.getAttribute('open')) {
       throw new Error('Finance mobile accounting detail is open by default');
     }
+    if (await page.locator('[data-dpp-qa="finance-accounting-overview"]').isVisible()) {
+      throw new Error('Finance mobile accounting detail renders while its disclosure is closed');
+    }
     const cashDisclosure = page.locator('#cashSettlementDisclosure');
     await cashDisclosure.waitFor({ state: 'visible', timeout: 5000 });
     if (await cashDisclosure.getAttribute('open')) {
@@ -1638,6 +1641,7 @@ async function verifyFinanceReport(page) {
     const currentSummary = document.querySelector('.finance-read--current-summary');
     const closedYtd = document.querySelector('#ytdBridge')?.closest('.finance-read');
     const accountingDisclosure = document.getElementById('financeOverviewDisclosure');
+    const accountingOverview = document.querySelector('[data-dpp-qa="finance-accounting-overview"]');
     return {
       evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
       controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
@@ -1658,7 +1662,8 @@ async function verifyFinanceReport(page) {
         !mobile ||
         (currentSummary.getBoundingClientRect().top < window.innerHeight &&
           closedYtd.getBoundingClientRect().top <= window.innerHeight + 120 &&
-          !accountingDisclosure.hasAttribute('open')),
+          !accountingDisclosure.hasAttribute('open') &&
+          accountingOverview.getClientRects().length === 0),
     };
   });
   if (!state.evidenceFloor || !state.controlFloor || !state.mobileHeaderAvailable || !state.tableRelationships || !state.anchoredSections || !state.ytdResultTone || !state.managementFirst || !state.mobileComparisonBudget) {
