@@ -411,14 +411,6 @@ import {
       .attr('stroke-width', 1.7)
       .attr('opacity', 0.48);
   }
-  function runLabel(sel) {
-    sel
-      .style('fill', MUTED)
-      .style('font-size', '11px')
-      .style('font-weight', '650')
-      .style('letter-spacing', '.015em');
-  }
-
   function monthData(rows) {
     const h = DATA.headline || {};
     return (rows || [])
@@ -539,7 +531,7 @@ import {
         .attr('y', (r) => y(r.value) - 8)
         .attr('text-anchor', 'middle')
         .text((r) => shortMoney(r.value));
-    const labels = c.plot
+    c.plot
       .selectAll('.sales-runrate-label')
       .data(ghost)
       .join('text')
@@ -548,7 +540,6 @@ import {
       .attr('y', (r) => Math.max(18, y(r.projection) - 8))
       .attr('text-anchor', 'middle')
       .text((r) => `Run rate · ${shortMoney(r.projection)}`);
-    runLabel(labels);
     let ticks = data;
     if (isFull && data.length > 18)
       ticks = data.filter((r, i) => r.date.getUTCMonth() % 3 === 0 || i === 0 || i === data.length - 1);
@@ -714,14 +705,13 @@ import {
         .attr('stroke', CURRENT)
         .attr('stroke-width', 1)
         .attr('stroke-opacity', 0.72);
-      const lab = c.plot
+      c.plot
         .append('text')
         .attr('class', 'sales-week-runrate-label')
         .attr('x', x(+current.week) + x.bandwidth() / 2)
         .attr('y', Math.max(18, y(projection.projected) - 8))
         .attr('text-anchor', 'middle')
         .text(`Run rate · ${shortMoney(projection.projected)}`);
-      runLabel(lab);
     }
     axis(
       c,
