@@ -109,6 +109,7 @@ const financeScript = readFileSync(join(staticRoot, 'finance.js'), 'utf8');
 const financeCss = readFileSync(join(staticRoot, 'finance.css'), 'utf8');
 const catalogCss = readFileSync(join(staticRoot, 'catalog.css'), 'utf8');
 const productCss = readFileSync(join(staticRoot, 'product.css'), 'utf8');
+const dataHealthHtml = readFileSync(join(staticRoot, 'data_health.html'), 'utf8');
 const dataHealthScript = readFileSync(join(staticRoot, 'data-health.js'), 'utf8');
 const chartSystem = readFileSync(join(staticRoot, 'chart-system.js'), 'utf8');
 const chartCss = readFileSync(join(staticRoot, 'chart-system.css'), 'utf8');
@@ -564,6 +565,15 @@ check(
     /expanded\s*=\s*!expanded/.test(dataHealthScript),
   'data-health.js',
   'automatic refresh must preserve the chosen pipeline visibility',
+);
+check(
+  /manual_sync_status/.test(dataHealthScript) &&
+    /forceRefresh:\s*force/.test(dataHealthScript) &&
+    /manualSyncStatus/.test(dataHealthHtml) &&
+    /aria-live=["']polite["']/.test(dataHealthHtml) &&
+    !/setTimeout\([^)]*5000/.test(dataHealthScript),
+  'data-health.js',
+  'manual sync actions must render durable API lifecycle state and announce transitions',
 );
 for (const pageStyle of Object.values(pageStyles)) {
   const pageCss = readFileSync(join(staticRoot, pageStyle), 'utf8');

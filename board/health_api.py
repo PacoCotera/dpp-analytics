@@ -5,6 +5,8 @@ import os
 from catalog_onboarding import catalog_onboarding_snapshot
 from health_contract import build_health_contract
 
+MANUAL_SYNC_COOLDOWN_SECONDS = 15 * 60
+
 
 def _one(cur, sql: str, params=()):
     cur.execute(sql, params)
@@ -162,6 +164,11 @@ def load_health_jobs(cur) -> list[dict]:
                 FROM ops.ingestion_runs
                 WHERE status='error'
                 ORDER BY source, job_name, started_at DESC
+            ), manual_sync AS (
+                SELECT DISTINCT ON (job_name)
+                    id, job_name, status, requested_at, started_at, finished_at, error_message
+                FROM ops.manual_sync_request
+                ORDER BY job_name, requested_at DESC
             )
             SELECT
                 l.source,
@@ -182,10 +189,29 @@ def load_health_jobs(cur) -> list[dict]:
                 s.success_records_written,
                 l.error_message,
                 e.last_error_at,
-                e.last_error_message
+                e.last_error_message,
+                m.id AS manual_sync_request_id,
+                m.status AS manual_sync_status,
+                m.requested_at AS manual_sync_requested_at,
+                m.started_at AS manual_sync_started_at,
+                m.finished_at AS manual_sync_finished_at,
+                m.error_message AS manual_sync_error_message,
+                CASE
+                    WHEN m.id IS NULL THEN true
+                    WHEN m.status IN ('pending','running') THEN false
+                    ELSE m.requested_at <= CURRENT_TIMESTAMP - interval '15 minutes'
+                END AS manual_sync_can_request,
+                CASE
+                    WHEN m.requested_at IS NULL THEN 0
+                    ELSE GREATEST(
+                        0,
+                        extract(epoch from (m.requested_at + interval '15 minutes' - CURRENT_TIMESTAMP))
+                    )::bigint
+                END AS manual_sync_cooldown_seconds
             FROM latest l
             LEFT JOIN last_success s USING (source, job_name)
             LEFT JOIN last_error e USING (source, job_name)
+            LEFT JOIN manual_sync m ON m.job_name=l.job_name
             ORDER BY
                 CASE l.status WHEN 'error' THEN 0 WHEN 'running' THEN 1 ELSE 2 END,
                 age_seconds DESC,
