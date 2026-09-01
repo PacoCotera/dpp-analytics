@@ -39,6 +39,14 @@
   line-height: 1.2;
 }
 
+.sales-runrate-label,
+.sales-week-runrate-label {
+  fill: var(--dpp-text-muted);
+  font-size: var(--dpp-metadata-size, 14px);
+  font-weight: 650;
+  letter-spacing: 0.015em;
+}
+
 .sales-signal {
   display: block;
   width: 100%;
