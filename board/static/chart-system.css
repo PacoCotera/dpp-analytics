@@ -147,12 +147,12 @@
   pointer-events: none;
 }
 
-.demand-rhythm__line-halo {
+.dpp-chart .demand-rhythm__line-halo {
   stroke: var(--dpp-surface, var(--surface));
   stroke-width: 7.5;
 }
 
-.demand-rhythm__line {
+.dpp-chart .demand-rhythm__line {
   stroke: var(--dpp-data3);
   stroke-width: 3.4;
 }

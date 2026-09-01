@@ -188,10 +188,7 @@
     const yearStart = new Date(Date.UTC(latest.date.getUTCFullYear(), 0, 1));
     const domainStart = options.window === 'ytd' ? yearStart : d3.utcDay.floor(firstDate);
     const domainEnd = d3.utcDay.offset(d3.utcDay.floor(latest.date), 1);
-    const x = d3
-      .scaleUtc()
-      .domain([domainStart, domainEnd])
-      .range([0, ctx.innerW]);
+    const x = d3.scaleUtc().domain([domainStart, domainEnd]).range([0, ctx.innerW]);
     const y = d3
       .scaleLinear()
       .domain([0, d3.max(data, (d) => Math.max(d.value, d.avg)) || 1])
@@ -229,8 +226,7 @@
       .attr('y1', 0)
       .attr('y2', ctx.innerH);
     grid(ctx, y, 3);
-    const daySlot =
-      data.length > 1 ? Math.abs(x(data[1].date) - x(data[0].date)) : ctx.innerW;
+    const daySlot = data.length > 1 ? Math.abs(x(data[1].date) - x(data[0].date)) : ctx.innerW;
     const barOccupancy = data.length <= 14 ? 0.5 : data.length <= 45 ? 0.52 : 0.72;
     const barW = Math.max(2, Math.min(44, daySlot * barOccupancy));
     const bars = ctx.plot

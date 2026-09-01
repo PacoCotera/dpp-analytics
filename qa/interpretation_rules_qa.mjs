@@ -64,12 +64,13 @@ try {
     }
 
     await page.goto(`${baseUrl}${surface.route}`, { waitUntil: 'networkidle', timeout: 30000 });
-    await page.locator('.rule-trigger').first().waitFor({ state: 'visible', timeout: 15000 });
+    const visibleRule = page.locator('.rule-trigger:visible').first();
+    await visibleRule.waitFor({ state: 'visible', timeout: 15000 });
     const buttons = await page.locator('.rule-trigger').count();
     if (buttons < surface.minimumButtons) {
       throw new Error(`${surface.route} rendered ${buttons} rule buttons, expected at least ${surface.minimumButtons}`);
     }
-    await page.locator('.rule-trigger').first().click();
+    await visibleRule.click();
     await page.locator('#interpretationRuleDialog[open]').waitFor({ state: 'visible', timeout: 5000 });
     const dialog = await page.locator('#interpretationRuleDialog').innerText();
     if (!/Current inputs/i.test(dialog) || !/Thresholds/i.test(dialog) || !/Eligibility/i.test(dialog)) {

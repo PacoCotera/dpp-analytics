@@ -879,6 +879,10 @@ try {
     document.getElementById("asof")?.textContent?.startsWith("Snapshot"),
   );
   await page.locator("#search").fill(inventoryQuery);
+  await page.waitForFunction(
+    (query) => new URL(window.location.href).searchParams.get("q") === query,
+    inventoryQuery,
+  );
   assertParam("q", inventoryQuery);
   assertParam("scope", null);
   await page.locator('[data-filter="all"]').click();
@@ -905,10 +909,10 @@ try {
   );
   await page.goBack();
   await page.waitForFunction(
-    () =>
-      document
-        .querySelector('[data-filter="current"]')
-        ?.getAttribute("aria-pressed") === "true",
+    (query) =>
+      document.querySelector('[data-filter="current"]')?.getAttribute("aria-pressed") === "true" &&
+      new URL(window.location.href).searchParams.get("q") === query,
+    inventoryQuery,
   );
   await assertInventoryView(inventoryPayload, "current", inventoryQuery);
   await page.goForward();
