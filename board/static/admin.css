@@ -332,7 +332,6 @@
 
 /* Canonical admin route composition. */
 main {
-  min-height: 58vh;
   max-width: none;
   padding-top: 16px;
 }

@@ -52,6 +52,8 @@ node /qa/ads_surface_qa.mjs "$base_url" "$work_dir"
 ads_surface_rc=$?
 node /qa/footer_qa.mjs "$base_url" "$work_dir"
 footer_rc=$?
+node /qa/short_state_footer_qa.mjs "$base_url" "$work_dir"
+short_state_footer_rc=$?
 node /qa/asset_revision_qa.mjs "$base_url" "$work_dir"
 asset_revision_rc=$?
 node /qa/favicon_qa.mjs "$base_url" "$work_dir"
@@ -99,6 +101,7 @@ if [ "$order_operations_rc" -ne 0 ]; then exit "$order_operations_rc"; fi
 if [ "$product_naming_rc" -ne 0 ]; then exit "$product_naming_rc"; fi
 if [ "$ads_surface_rc" -ne 0 ]; then exit "$ads_surface_rc"; fi
 if [ "$footer_rc" -ne 0 ]; then exit "$footer_rc"; fi
+if [ "$short_state_footer_rc" -ne 0 ]; then exit "$short_state_footer_rc"; fi
 if [ "$asset_revision_rc" -ne 0 ]; then exit "$asset_revision_rc"; fi
 if [ "$favicon_rc" -ne 0 ]; then exit "$favicon_rc"; fi
 if [ "$timezone_rc" -ne 0 ]; then exit "$timezone_rc"; fi

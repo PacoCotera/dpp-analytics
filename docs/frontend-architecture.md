@@ -33,6 +33,7 @@ Owns only global visual tokens and typography:
 - tab keyboard accessibility
 - shared favicon declaration and brand mark
 - one collapsed build-diagnostics footer sourced from server-injected release metadata
+- one header/main/footer column contract where main consumes the remaining viewport on short states and long routes retain natural document scrolling
 
 A page must not implement a second primary navigation system.
 
