@@ -16,6 +16,8 @@ node /qa/audit_batch1_qa.mjs "$base_url" "$work_dir"
 audit_batch1_rc=$?
 node /qa/analysis_state_qa.mjs "$base_url" "$work_dir"
 analysis_state_rc=$?
+node /qa/manual_sync_qa.mjs "$base_url" "$work_dir"
+manual_sync_rc=$?
 node /qa/numeric_ui_qa.mjs "$base_url" "$work_dir"
 numeric_rc=$?
 node /qa/ui_format_qa.mjs "$base_url" "$work_dir"
@@ -61,6 +63,7 @@ if [ "$presentation_profiles_rc" -ne 0 ]; then exit "$presentation_profiles_rc";
 if [ "$accessibility_rc" -ne 0 ]; then exit "$accessibility_rc"; fi
 if [ "$audit_batch1_rc" -ne 0 ]; then exit "$audit_batch1_rc"; fi
 if [ "$analysis_state_rc" -ne 0 ]; then exit "$analysis_state_rc"; fi
+if [ "$manual_sync_rc" -ne 0 ]; then exit "$manual_sync_rc"; fi
 if [ "$numeric_rc" -ne 0 ]; then exit "$numeric_rc"; fi
 if [ "$ui_format_rc" -ne 0 ]; then exit "$ui_format_rc"; fi
 if [ "$geography_rc" -ne 0 ]; then exit "$geography_rc"; fi

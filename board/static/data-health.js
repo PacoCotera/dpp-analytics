@@ -10,6 +10,9 @@ import {
 let jobs = [];
 let expanded = false;
 let catalogHealth = {};
+let manualSyncPollTimer = null;
+const manualSyncRequestErrors = new Map();
+const trackedManualSyncJobs = new Set();
 
 function duration(seconds, compact = false) {
   const value = Math.max(0, Number(seconds || 0));
@@ -26,6 +29,104 @@ function duration(seconds, compact = false) {
 }
 
 const timestamp = formatBusinessTimestamp;
+
+function manualSyncPresentation(item) {
+  const requestError = manualSyncRequestErrors.get(item.job_name);
+  if (requestError) {
+    return {
+      button: 'Try again',
+      detail: `Request failed · ${requestError}`,
+      disabled: false,
+      tone: 'failed',
+    };
+  }
+
+  const status = item.manual_sync_status;
+  const canRequest = item.manual_sync_can_request !== false;
+  const wait = duration(item.manual_sync_cooldown_seconds, true);
+  if (status === 'pending') {
+    return {
+      button: 'Queued',
+      detail: 'Request queued · waiting for the worker',
+      disabled: true,
+      tone: 'queued',
+    };
+  }
+  if (status === 'running') {
+    return {
+      button: 'Running…',
+      detail: `Started ${timestamp(item.manual_sync_started_at)}`,
+      disabled: true,
+      tone: 'running',
+    };
+  }
+  if (status === 'success' && !canRequest) {
+    return {
+      button: 'Completed',
+      detail: `Completed · sync available in ${wait}`,
+      disabled: true,
+      tone: 'completed',
+    };
+  }
+  if (status === 'error') {
+    const failure = item.manual_sync_error_message || 'Last manual sync failed';
+    return {
+      button: canRequest ? 'Retry sync' : 'Failed',
+      detail: canRequest ? `${failure} · retry available` : `${failure} · retry available in ${wait}`,
+      disabled: !canRequest,
+      tone: 'failed',
+    };
+  }
+  return { button: 'Sync now', detail: '', disabled: !canRequest, tone: '' };
+}
+
+function announceManualSync(message) {
+  byId('manualSyncStatus').textContent = message;
+}
+
+function announceManualSyncTransitions(previousJobs, nextJobs) {
+  const previous = new Map(previousJobs.map((item) => [item.job_name, item]));
+  nextJobs.forEach((item) => {
+    if (!trackedManualSyncJobs.has(item.job_name)) return;
+    const priorStatus = previous.get(item.job_name)?.manual_sync_status;
+    const status = item.manual_sync_status;
+    if (!status || status === priorStatus) return;
+    const label = item.label || item.job_name;
+    if (status === 'running') announceManualSync(`${label} sync is running.`);
+    else if (status === 'success') announceManualSync(`${label} sync completed.`);
+    else if (status === 'error') announceManualSync(`${label} sync failed.`);
+  });
+}
+
+function scheduleManualSyncRefresh(delay = 2500) {
+  if (manualSyncPollTimer !== null) return;
+  manualSyncPollTimer = window.setTimeout(() => {
+    manualSyncPollTimer = null;
+    refresh({ force: true });
+  }, delay);
+}
+
+function updateManualSyncPolling() {
+  const active = jobs.some((item) => ['pending', 'running'].includes(item.manual_sync_status));
+  if (active) scheduleManualSyncRefresh();
+  else if (manualSyncPollTimer !== null) {
+    window.clearTimeout(manualSyncPollTimer);
+    manualSyncPollTimer = null;
+  }
+}
+
+function applyManualSyncResponse(jobName, payload) {
+  const item = jobs.find((job) => job.job_name === jobName);
+  if (!item) return;
+  item.manual_sync_request_id = payload.id;
+  item.manual_sync_status = payload.status || 'pending';
+  item.manual_sync_requested_at = payload.requested_at;
+  item.manual_sync_started_at = payload.started_at;
+  item.manual_sync_finished_at = payload.finished_at;
+  item.manual_sync_error_message = payload.error_message;
+  item.manual_sync_can_request = false;
+  item.manual_sync_cooldown_seconds = Number(payload.retry_after_seconds || 0);
+}
 
 function jobState(item) {
   const status = item.latest_status || 'unknown';
@@ -225,13 +326,19 @@ function renderJobs() {
   }
 
   byId('jobs').innerHTML = rows
-    .map(
-      (item) => `<div class="health-job" role="row">
+    .map((item) => {
+      const sync = manualSyncPresentation(item);
+      const jobName = escapeHtml(item.job_name || '');
+      const statusId = `manual-sync-${jobName}`;
+      return `<div class="health-job" role="row">
       <div class="health-job__identity" role="cell">
         <div class="health-job__name">${escapeHtml(item.label || item.job_name || '')}</div>
         <div class="health-job__source">${escapeHtml(item.operation || item.source || '')}</div>
         <div class="health-job__purpose">${escapeHtml(item.purpose || '')}</div>
-        <button class="btn sync-now" type="button" data-job="${escapeHtml(item.job_name || '')}">Sync now</button>
+        <div class="sync-control">
+          <button class="btn sync-now" type="button" data-job="${jobName}" data-sync-status="${escapeHtml(item.manual_sync_status || 'idle')}"${sync.detail ? ` aria-describedby="${statusId}"` : ''}${sync.disabled ? ' disabled' : ''}>${escapeHtml(sync.button)}</button>
+          ${sync.detail ? `<span class="sync-state${sync.tone ? ` sync-state--${sync.tone}` : ''}" id="${statusId}">${escapeHtml(sync.detail)}</span>` : ''}
+        </div>
       </div>
       <div class="health-job__status" role="cell"><span class="health-status ${jobState(item)}">${stateLabel(jobState(item))}</span></div>
       <div class="health-job__age health-job__metric" role="cell">
@@ -247,8 +354,8 @@ function renderJobs() {
         <strong>${item.records_read == null ? '—' : integer(item.records_read)} read · ${item.records_written == null ? '—' : integer(item.records_written)} stored</strong>
         <small>Attempt ${timestamp(item.last_started_at)}</small>
       </div>
-    </div>`,
-    )
+    </div>`;
+    })
     .join('');
 }
 
@@ -308,35 +415,42 @@ function bindInteractions() {
   byId('jobs').addEventListener('click', async (event) => {
     const button = event.target.closest('.sync-now');
     if (!button || button.disabled) return;
+    const jobName = button.dataset.job;
+    const label = jobs.find((item) => item.job_name === jobName)?.label || jobName;
+    trackedManualSyncJobs.add(jobName);
+    manualSyncRequestErrors.delete(jobName);
     button.disabled = true;
     button.textContent = 'Queueing…';
+    announceManualSync(`Requesting ${label} sync.`);
     try {
       const response = await fetch('/api/manual-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_name: button.dataset.job }),
+        body: JSON.stringify({ job_name: jobName }),
       });
       const payload = await response.json();
-      if (!response.ok)
-        throw new Error(
-          payload.reason === 'cooldown' ? 'Recently requested' : payload.error || 'Request failed',
-        );
-      button.textContent = 'Queued';
-      window.setTimeout(refresh, 2500);
+      if (!response.ok && !['cooldown', 'in_progress'].includes(payload.reason)) {
+        throw new Error(payload.error || 'Request failed');
+      }
+      applyManualSyncResponse(jobName, payload);
+      renderJobs();
+      if (response.ok) announceManualSync(`${label} sync queued.`);
+      else announceManualSync(`${label} sync was already requested; showing its current status.`);
+      updateManualSyncPolling();
     } catch (error) {
-      button.textContent = error.message;
-    } finally {
-      window.setTimeout(() => {
-        button.disabled = false;
-        button.textContent = 'Sync now';
-      }, 5000);
+      manualSyncRequestErrors.set(jobName, error.message);
+      renderJobs();
+      announceManualSync(`${label} sync request failed: ${error.message}`);
     }
   });
 }
 
-async function refresh() {
+async function refresh({ force = false } = {}) {
   try {
-    render(await fetchJson('/api/data-health'));
+    const payload = await fetchJson('/api/data-health', { forceRefresh: force });
+    announceManualSyncTransitions(jobs, payload.jobs || []);
+    render(payload);
+    updateManualSyncPolling();
   } catch (error) {
     byId('summaryCount').textContent = '!';
     byId('summaryCount').dataset.state = 'failed';
@@ -344,13 +458,16 @@ async function refresh() {
     byId('healthTitle').textContent = 'Data health unavailable';
     byId('healthCopy').textContent = error.message;
     byId('healthUpdated').textContent = 'Automatic refresh will retry in 60s.';
+    if (jobs.some((item) => ['pending', 'running'].includes(item.manual_sync_status))) {
+      scheduleManualSyncRefresh(5000);
+    }
   }
 }
 
 function start() {
   bindInteractions();
   refresh();
-  window.setInterval(refresh, 60_000);
+  window.setInterval(() => refresh(), 60_000);
 }
 
 start();

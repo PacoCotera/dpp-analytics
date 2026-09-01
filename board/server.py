@@ -24,7 +24,7 @@ from asset_release import (
 )
 from catalog_api import catalog_payload as build_catalog_payload
 from finance_api import finance_payload as build_finance_payload
-from health_api import health_board_payload as build_health_board_payload
+from health_api import MANUAL_SYNC_COOLDOWN_SECONDS, health_board_payload as build_health_board_payload
 from inventory_api import inventory_payload as build_inventory_payload
 from product_api import product_payload as build_product_payload
 from response_cache import TTLResponseCache
@@ -591,28 +591,55 @@ class Handler(BaseHTTPRequestHandler):
             with connect() as conn, conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id,status,requested_at FROM ops.manual_sync_request
-                    WHERE job_name=%s AND requested_at > now() - interval '15 minutes'
-                    ORDER BY requested_at DESC LIMIT 1
+                    SELECT
+                        id,status,requested_at,started_at,finished_at,error_message,
+                        requested_at + interval '15 minutes' AS cooldown_until,
+                        GREATEST(
+                            0,
+                            extract(epoch from (requested_at + interval '15 minutes' - now()))
+                        )::bigint AS retry_after_seconds
+                    FROM ops.manual_sync_request
+                    WHERE job_name=%s
+                      AND (
+                        status IN ('pending','running')
+                        OR requested_at > now() - interval '15 minutes'
+                      )
+                    ORDER BY (status IN ('pending','running')) DESC, requested_at DESC
+                    LIMIT 1
                     """,
                     (job_name,),
                 )
                 recent = cur.fetchone()
                 if recent:
-                    body = json.dumps({"accepted": False, "reason": "cooldown", **recent}, default=str).encode()
+                    reason = "in_progress" if recent.get("status") in ("pending", "running") else "cooldown"
+                    body = json.dumps({"accepted": False, "reason": reason, **recent}, default=str).encode()
                     self.send_bytes(409, "application/json", body)
                     return
                 cur.execute(
                     """
                     INSERT INTO ops.manual_sync_request(job_name,requested_by)
-                    VALUES (%s,%s) RETURNING id,status,requested_at
+                    VALUES (%s,%s)
+                    RETURNING
+                        id,status,requested_at,
+                        requested_at + interval '15 minutes' AS cooldown_until
                     """,
                     (job_name, requested_by),
                 )
                 queued = cur.fetchone()
                 conn.commit()
             API_CACHE.clear()
-            self.send_bytes(202, "application/json", json.dumps({"accepted": True, **queued}, default=str).encode())
+            self.send_bytes(
+                202,
+                "application/json",
+                json.dumps(
+                    {
+                        "accepted": True,
+                        "retry_after_seconds": MANUAL_SYNC_COOLDOWN_SECONDS,
+                        **queued,
+                    },
+                    default=str,
+                ).encode(),
+            )
         except ValueError as exc:
             self.send_bytes(400, "application/json", json.dumps({"error": str(exc)}).encode())
         except Exception as exc:
