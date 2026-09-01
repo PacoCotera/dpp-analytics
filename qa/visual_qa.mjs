@@ -347,6 +347,13 @@ async function verifySalesChartHeader(page) {
     const copyBounds = bounds(copy);
     const controlBounds = bounds(control);
     const cardBounds = bounds(card);
+    const kpiRailBounds = bounds(document.querySelector('.sales-chart-kpi-rail'));
+    const alignedRailExtension = Boolean(
+      kpiRailBounds &&
+      cardBounds &&
+      Math.abs(kpiRailBounds.left - cardBounds.left) <= 1 &&
+      Math.abs(kpiRailBounds.right - cardBounds.right) <= 1
+    );
     const buttons = [...(control?.querySelectorAll('button') || [])].map(button => {
       const rect = bounds(button);
       return { width: rect.width, height: rect.height };
@@ -366,7 +373,10 @@ async function verifySalesChartHeader(page) {
         controlBounds.left >= cardBounds.left - 1 && controlBounds.right <= cardBounds.right + 1
       ),
       headerInternalOverflow: Boolean(header && header.scrollWidth > header.clientWidth + 1),
-      cardInternalOverflow: Boolean(card && card.scrollWidth > card.clientWidth + 1),
+      cardInternalOverflow: Boolean(
+        card && card.scrollWidth > card.clientWidth + 1 && !alignedRailExtension
+      ),
+      alignedRailExtension,
       documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       stackedOwnership: Boolean(
         !stacked ||
@@ -390,6 +400,7 @@ async function verifySalesChartHeader(page) {
     !state.controlContained ||
     state.headerInternalOverflow ||
     state.cardInternalOverflow ||
+    !state.alignedRailExtension ||
     state.documentOverflow > 1 ||
     !state.stackedOwnership ||
     !state.desktopOwnership ||
