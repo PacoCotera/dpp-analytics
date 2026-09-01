@@ -288,7 +288,6 @@
       const swatch = document.createElement('span');
       swatch.className = 'appearance-option__swatch';
       swatch.dataset.profileSwatch = profile.id;
-      swatch.style.setProperty('--appearance-swatch', profile.themeColor);
       swatch.setAttribute('aria-hidden', 'true');
 
       const copy = document.createElement('span');
