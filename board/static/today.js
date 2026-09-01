@@ -240,7 +240,8 @@ function renderDayPicker() {
   const chosen = data.selected_date || today;
   const limit = Math.min(7, Number(data.history_limit_days ?? 7));
 
-  byId('dayPicker').innerHTML = Array.from({ length: limit + 1 }, (_, index) => {
+  const picker = byId('dayPicker');
+  picker.innerHTML = Array.from({ length: limit + 1 }, (_, index) => {
     const dateString = shiftDate(today, -index);
     const date = parseDate(dateString);
     const live = index === 0;
@@ -256,11 +257,14 @@ function renderDayPicker() {
     </button>`;
   }).join('');
 
-  byId('dayPicker')
-    .querySelectorAll('button')
-    .forEach((button) => {
-      button.addEventListener('click', () => selectDay(button.dataset.date));
-    });
+  picker.querySelectorAll('button').forEach((button) => {
+    button.addEventListener('click', () => selectDay(button.dataset.date));
+  });
+
+  const active = picker.querySelector('.day-choice.active');
+  if (active) {
+    picker.scrollLeft = Math.max(0, active.offsetLeft - (picker.clientWidth - active.offsetWidth) / 2);
+  }
 }
 
 function selectDay(date) {

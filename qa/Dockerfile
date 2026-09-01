@@ -9,6 +9,7 @@ COPY accessibility_qa.mjs ./
 COPY audit_batch1_qa.mjs ./
 COPY analysis_state_qa.mjs ./
 COPY manual_sync_qa.mjs ./
+COPY today_day_picker_qa.mjs ./
 COPY numeric_ui_qa.mjs ./
 COPY ui_format_qa.mjs ./
 COPY geography_qa.mjs ./

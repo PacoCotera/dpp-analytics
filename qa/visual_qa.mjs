@@ -563,6 +563,12 @@ async function verifyToday(page) {
         rowSpread: Math.max(...tops) - Math.min(...tops),
         minChoiceWidth: Math.min(...widths),
         minChoiceHeight: Math.min(...heights),
+        scrollLeft: picker.scrollLeft,
+        scrollMax: picker.scrollWidth - picker.clientWidth,
+        activeVisible:
+          active.getBoundingClientRect().left >= pickerRect.left - 1 &&
+          active.getBoundingClientRect().right <= pickerRect.right + 1,
+        urlDate: new URL(window.location.href).searchParams.get('date'),
         stateLabel: document.getElementById('todayDayState')?.textContent.trim() || '',
         title: document.getElementById('todayTitle')?.textContent.trim() || '',
       };
@@ -584,8 +590,10 @@ async function verifyToday(page) {
     dayStates.some(item =>
       (item.compact && Math.abs(item.pickerWidth - item.availableWidth) > 2) ||
       item.rowSpread > 2 ||
-      item.minChoiceWidth < 24 ||
-      item.minChoiceHeight < 40 ||
+      item.minChoiceWidth < 44 ||
+      item.minChoiceHeight < 44 ||
+      !item.activeVisible ||
+      item.urlDate !== (item.live ? null : item.date) ||
       (item.live
         ? item.stateLabel !== 'Live operating day' || item.title !== 'Today'
         : item.stateLabel !== 'Closed operating day' || item.title === 'Today')
