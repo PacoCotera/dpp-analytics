@@ -12,11 +12,51 @@ import {
 } from './ui-utils.js';
 
 const sku = new URLSearchParams(window.location.search).get('sku') || '';
+const PRODUCT_WINDOWS = new Set(['28d', '90d', 'ytd']);
+const PRODUCT_METRICS = new Set(['sales', 'units']);
 let data = null;
-let days = '28';
+let productWindow = '28d';
 let metric = 'sales';
 let ordersExpanded = false;
 const ORDER_PREVIEW_LIMIT = 6;
+
+function readProductUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedWindow = params.get('window') || '28d';
+  const requestedMetric = params.get('metric') || 'sales';
+  productWindow = PRODUCT_WINDOWS.has(requestedWindow) ? requestedWindow : '28d';
+  metric = PRODUCT_METRICS.has(requestedMetric) ? requestedMetric : 'sales';
+}
+
+function writeProductUrlState(method = 'pushState') {
+  const url = new URL(window.location.href);
+  if (productWindow === '28d') url.searchParams.delete('window');
+  else url.searchParams.set('window', productWindow);
+  if (metric === 'sales') url.searchParams.delete('metric');
+  else url.searchParams.set('metric', metric);
+  window.history[method]({}, '', url);
+}
+
+function syncProductControls() {
+  document.querySelectorAll('[data-days]').forEach((button) => {
+    const buttonWindow = button.dataset.days === 'ytd' ? 'ytd' : `${button.dataset.days}d`;
+    const active = buttonWindow === productWindow;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  document.querySelectorAll('[data-metric]').forEach((button) => {
+    const active = button.dataset.metric === metric;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+}
+
+function restoreProductUrlState({ normalize = false } = {}) {
+  readProductUrlState();
+  syncProductControls();
+  if (normalize) writeProductUrlState('replaceState');
+  draw();
+}
 
 function age(seconds) {
   const value = Number(seconds || 0);
@@ -81,9 +121,16 @@ function decimal(value, digits = 2) {
 function draw() {
   if (!data || !window.DPPCharts) return;
   const series = data.series || [];
-  const rows = days === 'ytd' ? series : series.slice(-Number(days));
+  let rows;
+  if (productWindow === 'ytd') {
+    const year = String(series.at(-1)?.business_date || '').slice(0, 4);
+    rows = year ? series.filter((row) => String(row.business_date || '').startsWith(year)) : series;
+  } else {
+    rows = series.slice(-Number.parseInt(productWindow, 10));
+  }
   window.DPPCharts.productDemand('#chart', rows, { metric });
-  const windowLabel = days === 'ytd' ? 'year to date' : `last ${days} days`;
+  const windowLabel =
+    productWindow === 'ytd' ? 'year to date' : `last ${Number.parseInt(productWindow, 10)} days`;
   byId('chartSub').textContent =
     metric === 'units'
       ? `Units ordered · reconciled Amazon Sales & Traffic · ${windowLabel}`
@@ -445,29 +492,27 @@ function render(payload) {
 function bindInteractions() {
   document.querySelectorAll('[data-days]').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('[data-days]').forEach((item) => {
-        item.classList.remove('active');
-        item.setAttribute('aria-pressed', 'false');
-      });
-      button.classList.add('active');
-      button.setAttribute('aria-pressed', 'true');
-      days = button.dataset.days || '28';
+      const requestedWindow = button.dataset.days === 'ytd' ? 'ytd' : `${button.dataset.days}d`;
+      if (!PRODUCT_WINDOWS.has(requestedWindow) || requestedWindow === productWindow) return;
+      productWindow = requestedWindow;
+      syncProductControls();
+      writeProductUrlState();
       draw();
     });
   });
 
   document.querySelectorAll('[data-metric]').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('[data-metric]').forEach((item) => {
-        item.classList.remove('active');
-        item.setAttribute('aria-pressed', 'false');
-      });
-      button.classList.add('active');
-      button.setAttribute('aria-pressed', 'true');
-      metric = button.dataset.metric || 'sales';
+      const requestedMetric = button.dataset.metric;
+      if (!PRODUCT_METRICS.has(requestedMetric) || requestedMetric === metric) return;
+      metric = requestedMetric;
+      syncProductControls();
+      writeProductUrlState();
       draw();
     });
   });
+
+  window.addEventListener('popstate', () => restoreProductUrlState({ normalize: true }));
 
   byId('ordersPanel').addEventListener('toggle', () => {
     byId('orderToggle').textContent = byId('ordersPanel').open ? 'Hide ↑' : 'View ↓';
@@ -496,6 +541,7 @@ async function start() {
     return;
   }
 
+  restoreProductUrlState({ normalize: true });
   bindInteractions();
 
   try {

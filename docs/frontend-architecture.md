@@ -140,9 +140,11 @@ shareable, whitespace-normalized `q` search (limited to 120 characters); Current
 omitted defaults. Search edits replace the current history entry so typing does not create one entry per
 keystroke, while scope changes push history. Finance owns `window`, a canonical `YYYY-MM` `month` only in Month
 view, and the non-default `cogs=excluded` state; YTD with COGS included is the omitted default. Trajectory owns
-`window`, with `180d` as its omitted default and `90d` and `ytd` as explicit values. Default values are omitted,
-invalid values normalize to documented defaults, and unrelated parameters are preserved. Changing a stable
-choice pushes browser history; direct load, refresh, Back, and Forward must render the same state.
+`window`, with `180d` as its omitted default and `90d` and `ytd` as explicit values. Product owns `window` and
+`metric`; `28d` and Money (`sales`) are the omitted defaults, while `90d`, `ytd`, and `units` are explicit values.
+Default values are omitted, invalid values normalize to documented defaults, and unrelated parameters are
+preserved. Changing a stable choice pushes browser history; direct load, refresh, Back, and Forward must render
+the same state.
 
 Session scroll/tab restoration is subordinate to the URL. `ui-shell.js` may restore saved context only when the
 saved query string exactly matches the current query string. New stable tabs, filters, windows, or drill-down keys
