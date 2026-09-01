@@ -162,6 +162,85 @@ async function assertInventoryView(payload, scope, search = "") {
   return inventory;
 }
 
+async function productState() {
+  return page.evaluate(() => {
+    const days = document.querySelector('[data-days][aria-pressed="true"]')
+      ?.dataset.days;
+    return {
+      metric: document.querySelector('[data-metric][aria-pressed="true"]')
+        ?.dataset.metric,
+      window: days === "ytd" ? "ytd" : `${days}d`,
+      description: document.getElementById("chartSub")?.textContent?.trim(),
+      signature: [...document.querySelectorAll("#chart .dpp-bar")].map(
+        (node) => ({
+          businessDate: String(node.__data__?.business_date || ""),
+          sales: Number(node.__data__?.sales || 0),
+          units: Number(node.__data__?.units || 0),
+          value: Number(node.__data__?.value || 0),
+        }),
+      ),
+    };
+  });
+}
+
+function expectedProductRows(payload, windowKey) {
+  const series = payload.series || [];
+  if (windowKey === "ytd") {
+    const year = String(series.at(-1)?.business_date || "").slice(0, 4);
+    return year
+      ? series.filter((row) => String(row.business_date || "").startsWith(year))
+      : series;
+  }
+  return series.slice(-Number.parseInt(windowKey, 10));
+}
+
+async function assertProductView(payload, metric, windowKey) {
+  const state = await productState();
+  const expectedRows = expectedProductRows(payload, windowKey);
+  const expectedSignature = expectedRows.map((row) => ({
+    businessDate: String(row.business_date || ""),
+    sales: Number(row.sales || 0),
+    units: Number(row.units || 0),
+    value: Number(metric === "units" ? row.units || 0 : row.sales || 0),
+  }));
+  const expectedDescription =
+    metric === "units"
+      ? "Units ordered · reconciled Amazon Sales & Traffic"
+      : "Shopper spend incl. IVA · reconciled Amazon Sales & Traffic";
+  const expectedWindow =
+    windowKey === "ytd"
+      ? "year to date"
+      : `last ${Number.parseInt(windowKey, 10)} days`;
+  assert(
+    state.metric === metric && state.window === windowKey,
+    `Product controls restored ${state.metric}/${state.window}, expected ${metric}/${windowKey}`,
+  );
+  assert(
+    state.description === `${expectedDescription} · ${expectedWindow}`,
+    `Product ${metric}/${windowKey} description is wrong: ${state.description}`,
+  );
+  assert(
+    JSON.stringify(state.signature) === JSON.stringify(expectedSignature),
+    `Product ${metric}/${windowKey} chart is not synchronized to the API series`,
+  );
+  return state;
+}
+
+async function waitForProductControls(metric, windowKey) {
+  await page.waitForFunction(
+    ([expectedMetric, expectedWindow]) => {
+      const days = document.querySelector('[data-days][aria-pressed="true"]')
+        ?.dataset.days;
+      return (
+        document.querySelector('[data-metric][aria-pressed="true"]')?.dataset
+          .metric === expectedMetric &&
+        (days === "ytd" ? "ytd" : `${days}d`) === expectedWindow
+      );
+    },
+    [metric, windowKey],
+  );
+}
+
 async function trajectoryState() {
   return page.evaluate(() => ({
     selected: document.querySelector(
@@ -639,6 +718,93 @@ try {
   assertParam("trace", "keep");
   checks.push(
     "Invalid state is normalized without deleting unrelated query parameters",
+  );
+
+  const productMetrics = ["sales", "units"];
+  const productWindows = ["28d", "90d", "ytd"];
+  let productPayload;
+  for (const productMetric of productMetrics) {
+    for (const productWindow of productWindows) {
+      await page.goto(
+        `${baseUrl}/product?sku=PNC-001&metric=${productMetric}&window=${productWindow}&trace=keep`,
+        { waitUntil: "domcontentloaded", timeout: 30000 },
+      );
+      await page.locator("#chart .dpp-bar").first().waitFor({ timeout: 15000 });
+      productPayload ||= await page.evaluate(async () =>
+        (await fetch("/api/product?sku=PNC-001", { cache: "no-store" })).json(),
+      );
+      const directState = await assertProductView(
+        productPayload,
+        productMetric,
+        productWindow,
+      );
+      assertParam("metric", productMetric === "sales" ? null : productMetric);
+      assertParam("window", productWindow === "28d" ? null : productWindow);
+      assertParam("sku", "PNC-001");
+      assertParam("trace", "keep");
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await waitForProductControls(productMetric, productWindow);
+      await page.locator("#chart .dpp-bar").first().waitFor({ timeout: 15000 });
+      assert(
+        JSON.stringify(await productState()) === JSON.stringify(directState),
+        `Product refresh changed ${productMetric}/${productWindow}`,
+      );
+    }
+  }
+  checks.push(
+    "Every Product metric/window direct link and refresh renders the exact API-backed series",
+  );
+
+  await page.goto(`${baseUrl}/product?sku=PNC-001&trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.locator("#chart .dpp-bar").first().waitFor({ timeout: 15000 });
+  const productHistory = [
+    ["sales", "28d"],
+    ["units", "28d"],
+    ["units", "90d"],
+    ["sales", "90d"],
+    ["sales", "ytd"],
+    ["units", "ytd"],
+  ];
+  await page.locator('[data-metric="units"]').click();
+  await page.locator('[data-days="90"]').click();
+  await page.locator('[data-metric="sales"]').click();
+  await page.locator('[data-days="ytd"]').click();
+  await page.locator('[data-metric="units"]').click();
+  for (let index = productHistory.length - 2; index >= 0; index -= 1) {
+    await page.goBack();
+    const [productMetric, productWindow] = productHistory[index];
+    await waitForProductControls(productMetric, productWindow);
+    await assertProductView(productPayload, productMetric, productWindow);
+  }
+  for (let index = 1; index < productHistory.length; index += 1) {
+    await page.goForward();
+    const [productMetric, productWindow] = productHistory[index];
+    await waitForProductControls(productMetric, productWindow);
+    await assertProductView(productPayload, productMetric, productWindow);
+  }
+  assertParam("metric", "units");
+  assertParam("window", "ytd");
+  assertParam("sku", "PNC-001");
+  assertParam("trace", "keep");
+  checks.push(
+    "Product Back and Forward restore all supported metric/window combinations and chart data",
+  );
+
+  await page.goto(
+    `${baseUrl}/product?sku=PNC-001&metric=invalid&window=invalid&trace=keep`,
+    { waitUntil: "domcontentloaded", timeout: 30000 },
+  );
+  await page.locator("#chart .dpp-bar").first().waitFor({ timeout: 15000 });
+  await assertProductView(productPayload, "sales", "28d");
+  assertParam("metric", null);
+  assertParam("window", null);
+  assertParam("sku", "PNC-001");
+  assertParam("trace", "keep");
+  checks.push(
+    "Invalid Product state normalizes to Money/28D without losing product or unrelated parameters",
   );
 
   const inventoryScopes = [

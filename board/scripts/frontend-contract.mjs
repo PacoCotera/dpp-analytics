@@ -556,6 +556,17 @@ check(
   'Inventory must own validated, canonical, history-restored scope and search URL state',
 );
 check(
+  /PRODUCT_WINDOWS/.test(productScript) &&
+    /PRODUCT_METRICS/.test(productScript) &&
+    /params\.get\('window'\)/.test(productScript) &&
+    /params\.get\('metric'\)/.test(productScript) &&
+    /url\.searchParams\.set\('window', productWindow\)/.test(productScript) &&
+    /url\.searchParams\.set\('metric', metric\)/.test(productScript) &&
+    /window\.addEventListener\('popstate'/.test(productScript),
+  'product.js',
+  'Product must own validated, canonical, history-restored demand window and metric URL state',
+);
+check(
   /let expanded\s*=\s*false/.test(dataHealthScript),
   'data-health.js',
   'healthy state must default to compact pipeline exceptions',
