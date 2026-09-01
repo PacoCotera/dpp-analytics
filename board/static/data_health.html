@@ -134,13 +134,15 @@
         </section>
 
         <section class="page-section coverage-section">
-          <details class="warehouse-reference">
-            <summary>
+          <details class="warehouse-reference" id="warehouseReference">
+            <summary id="warehouseReferenceSummary" aria-label="Show warehouse totals">
               <span>
                 <strong>Warehouse scale</strong>
                 <small>Reference totals, not a freshness diagnostic</small>
               </span>
-              <span class="warehouse-reference__action">Show</span>
+              <span class="warehouse-reference__action" id="warehouseReferenceAction"
+                >Show warehouse totals</span
+              >
             </summary>
             <div class="source-grid">
               <div class="source"><strong id="orders">—</strong><span>orders captured</span></div>

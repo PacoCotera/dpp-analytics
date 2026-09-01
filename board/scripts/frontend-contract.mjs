@@ -112,6 +112,7 @@ const catalogCss = readFileSync(join(staticRoot, 'catalog.css'), 'utf8');
 const productCss = readFileSync(join(staticRoot, 'product.css'), 'utf8');
 const dataHealthHtml = readFileSync(join(staticRoot, 'data_health.html'), 'utf8');
 const dataHealthScript = readFileSync(join(staticRoot, 'data-health.js'), 'utf8');
+const dataHealthCss = readFileSync(join(staticRoot, 'data-health.css'), 'utf8');
 const chartSystem = readFileSync(join(staticRoot, 'chart-system.js'), 'utf8');
 const chartCss = readFileSync(join(staticRoot, 'chart-system.css'), 'utf8');
 const salesGeographyScript = readFileSync(join(staticRoot, 'sales-geography-v2.js'), 'utf8');
@@ -594,6 +595,19 @@ check(
     !/setTimeout\([^)]*5000/.test(dataHealthScript),
   'data-health.js',
   'manual sync actions must render durable API lifecycle state and announce transitions',
+);
+check(
+  /id=["']warehouseReferenceSummary["'][^>]+aria-label=["']Show warehouse totals["']/.test(dataHealthHtml) &&
+    /function syncWarehouseReference/.test(dataHealthScript) &&
+    /addEventListener\('toggle', syncWarehouseReference\)/.test(dataHealthScript) &&
+    /summary\.setAttribute\('aria-label', label\)/.test(dataHealthScript) &&
+    /action\.textContent\s*=\s*label/.test(dataHealthScript) &&
+    !/\.warehouse-reference\[open\]\s+\.warehouse-reference__action::before/.test(dataHealthCss) &&
+    !/\.warehouse-reference\[open\]\s+\.warehouse-reference__action\s*\{[^}]*font-size:\s*0/s.test(
+      dataHealthCss,
+    ),
+  'data-health warehouse disclosure',
+  'visible and accessible state copy must share real DOM text instead of CSS-generated semantics',
 );
 for (const pageStyle of Object.values(pageStyles)) {
   const pageCss = readFileSync(join(staticRoot, pageStyle), 'utf8');
