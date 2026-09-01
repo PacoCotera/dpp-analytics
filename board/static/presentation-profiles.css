@@ -66,7 +66,7 @@
   --dpp-radius-large: 18px;
   --dpp-radius-pill: 999px;
   --dpp-border-width: 1px;
-  --dpp-control-height: 42px;
+  --dpp-control-height: 44px;
   --dpp-shadow-low: 0 8px 22px #342b1d12;
   --dpp-shadow-high: 0 18px 48px #342b1d1f;
   --dpp-panel-texture: none;
@@ -138,7 +138,7 @@
   --dpp-radius-large: 18px;
   --dpp-radius-pill: 999px;
   --dpp-border-width: 1px;
-  --dpp-control-height: 42px;
+  --dpp-control-height: 44px;
   --dpp-shadow-low: 0 8px 22px #11182714;
   --dpp-shadow-high: 0 18px 48px #11182724;
   --dpp-panel-texture: none;
@@ -210,7 +210,7 @@
   --dpp-radius-large: 18px;
   --dpp-radius-pill: 999px;
   --dpp-border-width: 1px;
-  --dpp-control-height: 42px;
+  --dpp-control-height: 44px;
   --dpp-shadow-low: 0 8px 22px #3a173f12;
   --dpp-shadow-high: 0 18px 48px #3a173f24;
   --dpp-panel-texture: none;
@@ -282,7 +282,7 @@
   --dpp-radius-large: 18px;
   --dpp-radius-pill: 999px;
   --dpp-border-width: 1px;
-  --dpp-control-height: 42px;
+  --dpp-control-height: 44px;
   --dpp-shadow-low: 0 10px 26px #00000038;
   --dpp-shadow-high: 0 22px 54px #0000005c;
   --dpp-panel-texture: none;
@@ -354,7 +354,7 @@
   --dpp-radius-large: 18px;
   --dpp-radius-pill: 999px;
   --dpp-border-width: 1px;
-  --dpp-control-height: 42px;
+  --dpp-control-height: 44px;
   --dpp-shadow-low: 0 10px 26px #0000003d;
   --dpp-shadow-high: 0 22px 54px #0006;
   --dpp-panel-texture: none;
@@ -424,7 +424,7 @@
   --dpp-radius-large: 4px;
   --dpp-radius-pill: 2px;
   --dpp-border-width: 1px;
-  --dpp-control-height: 42px;
+  --dpp-control-height: 44px;
   --dpp-shadow-low: 0 0 0 1px #74ff9514;
   --dpp-shadow-high: 0 0 28px #74ff951a;
   --dpp-panel-texture: repeating-linear-gradient(0deg, transparent 0 23px, #74ff950d 23px 24px);

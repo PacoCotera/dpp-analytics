@@ -115,6 +115,7 @@ for (const profileId of expectedProfileIds) {
       themeColor: document.querySelector("meta[name='theme-color']")?.content,
       stored: JSON.parse(localStorage.getItem(window.dppPresentation.storageKey)),
       canvas: getComputedStyle(root).getPropertyValue('--dpp-canvas').trim(),
+      controlHeight: getComputedStyle(root).getPropertyValue('--dpp-control-height').trim(),
       selected: document.querySelector('input[name="dpp-appearance"]:checked')?.value,
       expected: {
         profile: profile.profile,
@@ -134,6 +135,7 @@ for (const profileId of expectedProfileIds) {
   assert(result.stored?.profileId === profileId, `${profileId} was not persisted`);
   assert(result.selected === profileId, `${profileId} Appearance choice is not selected`);
   assert(result.canvas, `${profileId} generated CSS tokens are unavailable`);
+  assert(result.controlHeight === '44px', `${profileId} control height is ${result.controlHeight}`);
   profileChecks.push(result);
 }
 

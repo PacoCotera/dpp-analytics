@@ -59,6 +59,12 @@ workspace.
 
 These primitives are intentionally data-agnostic. Variable-length content such as action queues must not share geometry with fixed KPI rails. KPI rails remain stable while action lists grow or disappear vertically.
 
+Shared action, choice, segmented-choice and definition-disclosure controls consume
+`--dpp-control-height` and must render at least 44 × 44 CSS pixels in every presentation profile. Route styles
+must not reduce that target. Truly inline disclosures may use the WCAG 2.2 24px exception only when their
+surrounding spacing preserves a 24 × 24 CSS-pixel target; those exceptions remain route-owned and must be
+documented in the route's browser QA.
+
 ### 4. Visualization system
 
 `static/chart-system.css` and `static/chart-system.js` own reusable chart behavior:

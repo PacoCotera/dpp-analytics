@@ -37,7 +37,7 @@
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
-  --control-height: var(--dpp-control-height, 42px);
+  --control-height: var(--dpp-control-height, 44px);
   --radius: var(--dpp-radius-large, 18px);
   --radius-sm: var(--dpp-radius-small, 8px);
   --panel-radius: var(--dpp-radius-medium, 12px);

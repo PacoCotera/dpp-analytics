@@ -234,7 +234,7 @@ function validateProfile(profile, index) {
   assert(profile.themeColor === profile.tokens.header, `${context} themeColor must match header`);
   assert(Number.parseFloat(profile.tokens.bodySize) >= 15, `${context} body text is below 15px`);
   assert(Number.parseFloat(profile.tokens.metadataSize) >= 14, `${context} metadata is below 14px`);
-  assert(Number.parseFloat(profile.tokens.controlHeight) >= 40, `${context} controls are below 40px`);
+  assert(Number.parseFloat(profile.tokens.controlHeight) >= 44, `${context} controls are below 44px`);
 
   const semanticColors = new Set([
     profile.tokens.interaction,
