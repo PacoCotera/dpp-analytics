@@ -13,6 +13,35 @@ import {
 let trajectoryPayload = null;
 let trajectoryWindow = '180d';
 let trajectoryResizeFrame = 0;
+const TRAJECTORY_WINDOWS = new Set(['90d', '180d', 'ytd']);
+
+function readTrajectoryUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedWindow = params.get('window') || '180d';
+  trajectoryWindow = TRAJECTORY_WINDOWS.has(requestedWindow) ? requestedWindow : '180d';
+}
+
+function writeTrajectoryUrlState(method = 'pushState') {
+  const url = new URL(window.location.href);
+  if (trajectoryWindow === '180d') url.searchParams.delete('window');
+  else url.searchParams.set('window', trajectoryWindow);
+  window.history[method]({}, '', url);
+}
+
+function syncTrajectoryWindowControl() {
+  document.querySelectorAll('[data-trajectory-window]').forEach((button) => {
+    const active = button.dataset.trajectoryWindow === trajectoryWindow;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+}
+
+function restoreTrajectoryUrlState({ normalize = false } = {}) {
+  readTrajectoryUrlState();
+  syncTrajectoryWindowControl();
+  if (normalize) writeTrajectoryUrlState('replaceState');
+  renderTrajectoryChart();
+}
 
 function toneClass(value) {
   const n = Number(value);
@@ -168,15 +197,15 @@ function render(payload) {
 function bindInteractions() {
   document.querySelectorAll('[data-trajectory-window]').forEach((button) => {
     button.addEventListener('click', () => {
-      trajectoryWindow = button.dataset.trajectoryWindow;
-      document.querySelectorAll('[data-trajectory-window]').forEach((item) => {
-        const active = item === button;
-        item.classList.toggle('active', active);
-        item.setAttribute('aria-pressed', String(active));
-      });
+      const requestedWindow = button.dataset.trajectoryWindow;
+      if (!TRAJECTORY_WINDOWS.has(requestedWindow) || requestedWindow === trajectoryWindow) return;
+      trajectoryWindow = requestedWindow;
+      syncTrajectoryWindowControl();
+      writeTrajectoryUrlState();
       renderTrajectoryChart();
     });
   });
+  window.addEventListener('popstate', () => restoreTrajectoryUrlState({ normalize: true }));
   byId('helpBtn').addEventListener('click', () => {
     const button = byId('helpBtn');
     const help = byId('help');
@@ -197,6 +226,7 @@ function bindInteractions() {
   }
 }
 async function start() {
+  restoreTrajectoryUrlState({ normalize: true });
   bindInteractions();
   try {
     render(await fetchJson('/api/trajectory'));

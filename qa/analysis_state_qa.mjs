@@ -97,6 +97,69 @@ async function catalogRows() {
   });
 }
 
+async function trajectoryState() {
+  return page.evaluate(() => ({
+    selected: document.querySelector(
+      '[data-trajectory-window][aria-pressed="true"]',
+    )?.dataset.trajectoryWindow,
+    description: document
+      .getElementById("trajectoryChartDescription")
+      ?.textContent?.trim(),
+    barCount: document.querySelectorAll("#chart .dpp-bar").length,
+  }));
+}
+
+function expectedTrajectoryState(payload, selected) {
+  const series = payload.series || [];
+  let rows;
+  if (selected === "90d") rows = series.slice(-90);
+  else if (selected === "ytd") {
+    const year = String(series.at(-1)?.business_date || "").slice(0, 4);
+    rows = series.filter((row) =>
+      String(row.business_date || "").startsWith(year),
+    );
+  } else rows = series.slice(-180);
+
+  const weekly = rows.length > 120;
+  const marks = weekly
+    ? new Set(
+        rows.map((row) => {
+          const date = new Date(`${row.business_date}T00:00:00Z`);
+          date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+          return date.toISOString().slice(0, 10);
+        }),
+      ).size
+    : rows.length;
+  const label =
+    selected === "90d"
+      ? "90 days"
+      : selected === "ytd"
+        ? "Year to date"
+        : "180 days";
+  return {
+    marks,
+    descriptionStart: `${label} · ${weekly ? "weekly average daily" : "daily"}`,
+  };
+}
+
+async function assertTrajectoryWindow(payload, selected) {
+  const state = await trajectoryState();
+  const expected = expectedTrajectoryState(payload, selected);
+  assert(
+    state.selected === selected,
+    `Trajectory selected ${state.selected}, expected ${selected}`,
+  );
+  assert(
+    state.description?.startsWith(expected.descriptionStart),
+    `Trajectory ${selected} aggregation label is wrong: ${state.description}`,
+  );
+  assert(
+    state.barCount === expected.marks,
+    `Trajectory ${selected} rendered ${state.barCount} marks, expected ${expected.marks}`,
+  );
+  return state;
+}
+
 function assertCatalogOrder(rows, sort, mode, familyAttention) {
   assert(
     rows.length > 1,
@@ -410,6 +473,113 @@ try {
   assertParam("trace", "keep");
   checks.push(
     "Invalid state is normalized without deleting unrelated query parameters",
+  );
+
+  await page.goto(`${baseUrl}/trajectory?window=90d&trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.waitForFunction(
+    () => document.querySelectorAll("#chart .dpp-bar").length > 0,
+  );
+  const trajectoryPayload = await page.evaluate(async () =>
+    (await fetch("/api/trajectory", { cache: "no-store" })).json(),
+  );
+  await assertTrajectoryWindow(trajectoryPayload, "90d");
+  assertParam("window", "90d");
+  assertParam("trace", "keep");
+
+  await page.goto(`${baseUrl}/trajectory?window=ytd&trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-trajectory-window="ytd"]')
+        ?.getAttribute("aria-pressed") === "true",
+  );
+  await assertTrajectoryWindow(trajectoryPayload, "ytd");
+  assertParam("window", "ytd");
+
+  await page.goto(`${baseUrl}/trajectory?window=180d&trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-trajectory-window="180d"]')
+        ?.getAttribute("aria-pressed") === "true",
+  );
+  await assertTrajectoryWindow(trajectoryPayload, "180d");
+  assertParam("window", null);
+  checks.push("Trajectory deep links restore every window and its aggregation");
+
+  await page.locator('[data-trajectory-window="90d"]').click();
+  await assertTrajectoryWindow(trajectoryPayload, "90d");
+  assertParam("window", "90d");
+  await page.locator('[data-trajectory-window="ytd"]').click();
+  const ytdState = await assertTrajectoryWindow(trajectoryPayload, "ytd");
+  assertParam("window", "ytd");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-trajectory-window="ytd"]')
+        ?.getAttribute("aria-pressed") === "true",
+  );
+  assert(
+    JSON.stringify(await trajectoryState()) === JSON.stringify(ytdState),
+    "Trajectory YTD state or aggregation changed after refresh",
+  );
+  checks.push(
+    "Trajectory interactions write canonical refresh-stable window state",
+  );
+
+  await page.goBack();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-trajectory-window="90d"]')
+        ?.getAttribute("aria-pressed") === "true",
+  );
+  await assertTrajectoryWindow(trajectoryPayload, "90d");
+  await page.goBack();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-trajectory-window="180d"]')
+        ?.getAttribute("aria-pressed") === "true",
+  );
+  await assertTrajectoryWindow(trajectoryPayload, "180d");
+  await page.goForward();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-trajectory-window="90d"]')
+        ?.getAttribute("aria-pressed") === "true",
+  );
+  await assertTrajectoryWindow(trajectoryPayload, "90d");
+  checks.push(
+    "Trajectory Back and Forward restore window state and aggregation",
+  );
+
+  await page.goto(`${baseUrl}/trajectory?window=invalid&trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-trajectory-window="180d"]')
+        ?.getAttribute("aria-pressed") === "true",
+  );
+  await assertTrajectoryWindow(trajectoryPayload, "180d");
+  assertParam("window", null);
+  assertParam("trace", "keep");
+  checks.push(
+    "Invalid Trajectory windows normalize without losing unrelated state",
   );
 } catch (error) {
   failures.push(error.message);
