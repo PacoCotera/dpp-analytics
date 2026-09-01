@@ -484,6 +484,7 @@ function renderCurrentMonth(current, closed) {
   const status = byId('status');
   status.className = `finance-status ${stateClass(state)}`;
   status.querySelector('span').textContent = stateLabel(state);
+  byId('financeOverviewSummary').textContent = stateLabel(state);
 
   byId('sales').textContent = financeMoney(current.net_sales_ex_vat);
   byId('iva').textContent = financeMoney(current.iva_on_sales);
@@ -862,6 +863,9 @@ function bindInteractions() {
 }
 
 async function start() {
+  if (window.matchMedia('(max-width: 640px)').matches) {
+    byId('financeOverviewDisclosure').open = false;
+  }
   bindInteractions();
 
   try {

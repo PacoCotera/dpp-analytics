@@ -670,6 +670,15 @@ main {
   margin-top: 10px;
 }
 
+.finance-overview-disclosure {
+  display: block;
+  margin-top: 10px;
+}
+
+.finance-overview-disclosure > summary {
+  display: none;
+}
+
 .finance-read.wide {
   grid-column: 1 / -1;
 }
@@ -917,8 +926,16 @@ main {
     margin-top: 14px;
   }
 
-  .finance-read--current-summary {
-    display: none;
+  .finance-overview-disclosure > summary {
+    display: flex;
+    padding: 12px 13px;
+    border: 1px solid var(--line);
+    border-radius: var(--panel-radius);
+    background: var(--surface);
+  }
+
+  .finance-overview-disclosure[open] > .report-grid {
+    margin-top: 8px;
   }
 
   .finance-mobile-disclosure > summary {

@@ -46,75 +46,7 @@
           </div>
         </header>
 
-        <div class="report-grid" data-dpp-qa="finance-accounting-overview">
-          <section class="report" data-dpp-qa="finance-current-period">
-            <h2 class="section-label">Customer money</h2>
-            <div class="money-strip">
-              <div class="money-cell">
-                <div class="eyebrow">Net sales ex IVA</div>
-                <div id="sales" class="big-money">—</div>
-                <div class="cell-note">Before Mexico IVA.</div>
-              </div>
-              <div class="money-cell">
-                <div class="eyebrow">IVA withheld</div>
-                <div id="iva" class="big-money">—</div>
-                <div class="cell-note">Withheld and remitted by Amazon.</div>
-              </div>
-              <div class="money-cell">
-                <div class="eyebrow">Gross customer spend</div>
-                <div id="gross" class="big-money">—</div>
-                <div class="cell-note">Shopper spend including IVA.</div>
-              </div>
-            </div>
-
-            <h2 class="section-label">Current month bridge</h2>
-            <div id="currentLines"></div>
-          </section>
-
-          <aside class="status-rail">
-            <h2>Current accounting state</h2>
-            <p id="statusCopy">OPEN is provisional; Amazon close and seller COGS are tracked separately.</p>
-            <div class="rail-row rail-row--release">
-              <span>Order releases</span><strong id="releaseCoverage">—</strong>
-            </div>
-            <div class="rail-row rail-row--cogs">
-              <span>Seller COGS coverage</span><strong id="cogsCoverage">—</strong>
-            </div>
-            <div class="rail-row rail-row--cash cash">
-              <span>Amazon payout cash posted this month</span><strong id="cash">—</strong>
-            </div>
-            <p class="cell-note">Cash timing only; payout dates can differ from the sales month.</p>
-            <div class="rail-row rail-row--history">
-              <span>Management-closed months</span><strong id="closedCount">—</strong>
-            </div>
-            <div class="rail-row rail-row--history">
-              <span>Restated latest versions</span><strong id="restatedCount">—</strong>
-            </div>
-            <details class="state-explainer">
-              <summary>How accounting states work</summary>
-              <div class="state-guide">
-                <div class="state-row">
-                  <span class="state-pill">OPEN</span>
-                  <p>Current month. Amazon and seller economics remain provisional.</p>
-                </div>
-                <div class="state-row">
-                  <span class="state-pill">AMAZON CLOSING</span>
-                  <p>Historical month still waiting for releases, advertising close or grace.</p>
-                </div>
-                <div class="state-row">
-                  <span class="state-pill">AMAZON CLOSED · COGS PENDING</span>
-                  <p>Amazon-side accounting is final; management close waits only for frozen seller COGS.</p>
-                </div>
-                <div class="state-row">
-                  <span class="state-pill">CLOSED / RESTATED</span>
-                  <p>Immutable management version. Corrections require an explicit restatement.</p>
-                </div>
-              </div>
-            </details>
-          </aside>
-        </div>
-
-        <section class="finance-reads" data-dpp-qa="finance-analysis">
+        <section class="finance-reads finance-management-reads" data-dpp-qa="finance-management-summary">
           <article class="finance-read finance-read--current-summary">
             <div class="finance-read__head">
               <div>
@@ -136,7 +68,89 @@
             </div>
             <div id="ytdBridge" class="bridge bridge--closed"></div>
           </article>
+        </section>
 
+        <details
+          id="financeOverviewDisclosure"
+          class="finance-mobile-disclosure finance-overview-disclosure"
+          open
+        >
+          <summary>
+            <span>Customer money &amp; accounting details</span
+            ><strong id="financeOverviewSummary">OPEN</strong>
+          </summary>
+          <div class="report-grid" data-dpp-qa="finance-accounting-overview">
+            <section class="report" data-dpp-qa="finance-current-period">
+              <h2 class="section-label">Customer money</h2>
+              <div class="money-strip">
+                <div class="money-cell">
+                  <div class="eyebrow">Net sales ex IVA</div>
+                  <div id="sales" class="big-money">—</div>
+                  <div class="cell-note">Before Mexico IVA.</div>
+                </div>
+                <div class="money-cell">
+                  <div class="eyebrow">IVA withheld</div>
+                  <div id="iva" class="big-money">—</div>
+                  <div class="cell-note">Withheld and remitted by Amazon.</div>
+                </div>
+                <div class="money-cell">
+                  <div class="eyebrow">Gross customer spend</div>
+                  <div id="gross" class="big-money">—</div>
+                  <div class="cell-note">Shopper spend including IVA.</div>
+                </div>
+              </div>
+
+              <h2 class="section-label">Current month bridge</h2>
+              <div id="currentLines"></div>
+            </section>
+
+            <aside class="status-rail">
+              <h2>Current accounting state</h2>
+              <p id="statusCopy">OPEN is provisional; Amazon close and seller COGS are tracked separately.</p>
+              <div class="rail-row rail-row--release">
+                <span>Order releases</span><strong id="releaseCoverage">—</strong>
+              </div>
+              <div class="rail-row rail-row--cogs">
+                <span>Seller COGS coverage</span><strong id="cogsCoverage">—</strong>
+              </div>
+              <div class="rail-row rail-row--cash cash">
+                <span>Amazon payout cash posted this month</span><strong id="cash">—</strong>
+              </div>
+              <p class="cell-note">Cash timing only; payout dates can differ from the sales month.</p>
+              <div class="rail-row rail-row--history">
+                <span>Management-closed months</span><strong id="closedCount">—</strong>
+              </div>
+              <div class="rail-row rail-row--history">
+                <span>Restated latest versions</span><strong id="restatedCount">—</strong>
+              </div>
+              <details class="state-explainer">
+                <summary>How accounting states work</summary>
+                <div class="state-guide">
+                  <div class="state-row">
+                    <span class="state-pill">OPEN</span>
+                    <p>Current month. Amazon and seller economics remain provisional.</p>
+                  </div>
+                  <div class="state-row">
+                    <span class="state-pill">AMAZON CLOSING</span>
+                    <p>Historical month still waiting for releases, advertising close or grace.</p>
+                  </div>
+                  <div class="state-row">
+                    <span class="state-pill">AMAZON CLOSED · COGS PENDING</span>
+                    <p>
+                      Amazon-side accounting is final; management close waits only for frozen seller COGS.
+                    </p>
+                  </div>
+                  <div class="state-row">
+                    <span class="state-pill">CLOSED / RESTATED</span>
+                    <p>Immutable management version. Corrections require an explicit restatement.</p>
+                  </div>
+                </div>
+              </details>
+            </aside>
+          </div>
+        </details>
+
+        <section class="finance-reads finance-investigation-reads" data-dpp-qa="finance-analysis">
           <article class="finance-read wide" id="cashSettlementCard">
             <details id="cashSettlementDisclosure" class="finance-mobile-disclosure">
               <summary>
