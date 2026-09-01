@@ -91,6 +91,7 @@ const serverScript = readFileSync(join(root, 'server.py'), 'utf8');
 const presentationRegistry = JSON.parse(readFileSync(join(root, 'presentation', 'profiles.json'), 'utf8'));
 const todayHtml = readFileSync(join(staticRoot, 'today.html'), 'utf8');
 const todayScript = readFileSync(join(staticRoot, 'today.js'), 'utf8');
+const todayCss = readFileSync(join(staticRoot, 'today.css'), 'utf8');
 const homeHtml = readFileSync(join(staticRoot, 'home.html'), 'utf8');
 const homeScript = readFileSync(join(staticRoot, 'home.js'), 'utf8');
 const homeCss = readFileSync(join(staticRoot, 'home.css'), 'utf8');
@@ -392,6 +393,14 @@ check(
   /if \(period === 'ytd'\) return rows;/.test(todayScript),
   'today.js',
   'Today YTD must return the calendar-year payload instead of falling through to 30D',
+);
+check(
+  /grid-template-columns:\s*minmax\(60px,\s*1\.5fr\)\s*repeat\(7,\s*minmax\(44px,\s*1fr\)\)/.test(todayCss) &&
+    /\.day-choice\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px/s.test(todayCss) &&
+    /overflow-x:\s*auto/.test(todayCss) &&
+    /picker\.scrollLeft\s*=\s*Math\.max/.test(todayScript),
+  'today.css',
+  'Today mobile day choices must be contained, reachable, selected-visible 44px touch targets',
 );
 check(
   !/\.home-health\s*\{[^}]*\bpadding\s*:/s.test(homeCss),

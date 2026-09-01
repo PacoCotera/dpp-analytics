@@ -1400,15 +1400,20 @@ html.wall-mode .today-section {
   }
 
   .day-picker {
-    grid-template-columns: minmax(48px, 1.5fr) repeat(7, minmax(0, 1fr));
+    min-width: 0;
+    grid-template-columns: minmax(60px, 1.5fr) repeat(7, minmax(44px, 1fr));
     gap: 2px;
     padding: 3px;
     border-radius: var(--radius-sm);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
   }
 
   .day-choice {
-    min-width: 0;
+    min-width: 44px;
     width: 100%;
+    min-height: 44px;
     padding-inline: 2px;
   }
 
