@@ -642,7 +642,7 @@ main > .page-header .page-header__description {
 }
 
 .health-job--header {
-  padding: 0 0 9px;
+  padding: 0 12px 9px;
   border-top: 0;
   color: var(--muted);
   font-size: 14px;

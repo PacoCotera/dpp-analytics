@@ -293,6 +293,10 @@ async function verifySalesOverview(page) {
     const ruleTrigger = [...document.querySelectorAll('.sales-page .rule-trigger')]
       .find(element => element.getClientRects().length > 0);
     const todayLink = document.querySelector('.sales-utility-today .btn');
+    const kpiRail = document.querySelector('.sales-chart-kpi-rail');
+    const chartCard = document.querySelector('.sales-chart-card');
+    const kpiRect = kpiRail?.getBoundingClientRect();
+    const cardRect = chartCard?.getBoundingClientRect();
     return {
       mobile,
       chartBeforeSignals: Boolean(
@@ -305,13 +309,19 @@ async function verifySalesOverview(page) {
       ruleTriggerFont: Number.parseFloat(ruleTrigger ? getComputedStyle(ruleTrigger).fontSize : '0'),
       todayLinkHeight: todayLink?.getBoundingClientRect().height || 0,
       todayLinkFont: Number.parseFloat(todayLink ? getComputedStyle(todayLink).fontSize : '0'),
+      railAligned: Boolean(
+        kpiRect && cardRect &&
+        Math.abs(kpiRect.left - cardRect.left) <= 1 &&
+        Math.abs(kpiRect.right - cardRect.right) <= 1
+      ),
     };
   });
   if (
     state.ruleTriggerHeight < 24 ||
     state.ruleTriggerFont < 14 ||
     state.todayLinkHeight < 24 ||
-    state.todayLinkFont < 14
+    state.todayLinkFont < 14 ||
+    !state.railAligned
   ) {
     throw new Error(`Sales utility control floor mismatch: ${JSON.stringify(state)}`);
   }
@@ -664,9 +674,14 @@ async function verifyToday(page) {
         dayPickerRect && dayPickerRect.left >= -2 && dayPickerRect.right <= window.innerWidth + 2
       ),
       productValues,
+      evidenceBottomContained: (() => {
+        const sectionRect = evidenceSection?.getBoundingClientRect();
+        const lastRect = document.getElementById('ordersPanel')?.getBoundingClientRect();
+        return Boolean(sectionRect && lastRect && sectionRect.bottom - lastRect.bottom >= 20);
+      })(),
     };
   });
-  if (!state.dayPickerContained)
+  if (!state.dayPickerContained || !state.evidenceBottomContained)
     throw new Error(`Today day picker overflow: ${JSON.stringify(state)}`);
   if (
     state.productValues.some(
@@ -799,6 +814,7 @@ async function verifyBusiness(page) {
     const healthOverall = healthContract.overall || {};
     const ads = document.getElementById('adsRead');
     const brand = document.querySelector('.topbar a.brand');
+    const footer = document.querySelector('.footer');
     const explanation = String(payload.business_momentum?.explanation || '').trim();
     const expectedHeadline =
       (explanation.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [])[0]?.trim() ||
@@ -871,6 +887,9 @@ async function verifyBusiness(page) {
       adsVisible: Boolean(ads && !ads.hidden && getComputedStyle(ads).display !== 'none'),
       adsExpected: Boolean(payload.ads?.through_date),
       adsAfterHealth: !ads || ads.hidden || top(health) < top(ads),
+      footerGap: footer && secondary
+        ? footer.getBoundingClientRect().top - secondary.getBoundingClientRect().bottom
+        : 0,
     };
   });
   if (
@@ -896,7 +915,8 @@ async function verifyBusiness(page) {
     !state.signalCopy ||
     !state.productDriversRemoved ||
     state.adsVisible !== state.adsExpected ||
-    !state.adsAfterHealth
+    !state.adsAfterHealth ||
+    state.footerGap < 24
   ) {
     throw new Error(`Business decision-board contract mismatch: ${JSON.stringify(state)}`);
   }
@@ -1027,6 +1047,12 @@ async function verifyDataHealth(page) {
         document.querySelector('.pipeline-panel [role="table"]')?.getAttribute('aria-label') === 'Pipeline health' &&
         document.querySelectorAll('.health-job--header [role="columnheader"]').length === 5 &&
         [...document.querySelectorAll('#jobs .health-job')].every(row => row.getAttribute('role') === 'row' && row.querySelectorAll('[role="cell"]').length === 5),
+      desktopHeaderInset: (() => {
+        if (window.innerWidth <= 900) return true;
+        const body = document.querySelector('.pipeline-panel .panel__body')?.getBoundingClientRect();
+        const first = document.querySelector('.health-job--header [role="columnheader"]')?.getBoundingClientRect();
+        return Boolean(body && first && first.left - body.left >= 11);
+      })(),
       mobileHeaderAvailable:
         window.innerWidth > 900 || window.getComputedStyle(document.querySelector('.health-job--header')).display !== 'none',
       evidenceFloor: [...document.querySelectorAll(
@@ -1061,6 +1087,7 @@ async function verifyDataHealth(page) {
     !state.genericRingRemoved ||
     !state.mobilePipelineMetrics ||
     !state.pipelineTable ||
+    !state.desktopHeaderInset ||
     !state.mobileHeaderAvailable ||
     !state.evidenceFloor ||
     !state.controlFloor ||
@@ -1475,6 +1502,14 @@ async function verifyTrajectory(page) {
     )].filter(element => element.getClientRects().length > 0);
     const ruleTrigger = [...document.querySelectorAll('.trajectory-page .rule-trigger')]
       .find(element => element.getClientRects().length > 0);
+    const weeks = document.querySelector('.trajectory-weeks');
+    const disclosure = document.querySelector('.week-disclosure');
+    const weekSummary = disclosure?.querySelector('summary');
+    const contained = (child, owner) => {
+      const childRect = child?.getBoundingClientRect();
+      const ownerRect = owner?.getBoundingClientRect();
+      return Boolean(childRect && ownerRect && childRect.left >= ownerRect.left - 1 && childRect.right <= ownerRect.right + 1);
+    };
     return {
       mobile,
       emptyPaidVisible: Boolean(paidEmpty && paid && window.getComputedStyle(paid).display !== 'none'),
@@ -1493,6 +1528,7 @@ async function verifyTrajectory(page) {
       evidenceFloor: evidence.every(element => Number.parseFloat(getComputedStyle(element).fontSize) >= 14),
       ruleTriggerHeight: ruleTrigger?.getBoundingClientRect().height || 0,
       ruleTriggerFont: Number.parseFloat(ruleTrigger ? getComputedStyle(ruleTrigger).fontSize : '0'),
+      volatilityContained: contained(disclosure, weeks) && contained(weekSummary, disclosure),
     };
   });
   if (
@@ -1500,6 +1536,7 @@ async function verifyTrajectory(page) {
     state.ruleTriggerHeight < 24 ||
     state.ruleTriggerFont < 14 ||
     !state.chartContained ||
+    !state.volatilityContained ||
     state.chartBars > 32 ||
     state.progressBars
   )
@@ -1777,6 +1814,7 @@ async function verifyFinanceReport(page) {
     const closedYtd = document.querySelector('#ytdBridge')?.closest('.finance-read');
     const accountingDisclosure = document.getElementById('financeOverviewDisclosure');
     const accountingOverview = document.querySelector('[data-dpp-qa="finance-accounting-overview"]');
+    const evidenceDetails = document.querySelector('.finance-evidence details');
     return {
       evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
       controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
@@ -1799,9 +1837,14 @@ async function verifyFinanceReport(page) {
           closedYtd.getBoundingClientRect().top <= window.innerHeight + 120 &&
           !accountingDisclosure.hasAttribute('open') &&
           accountingOverview.getClientRects().length === 0),
+      accountingEvidenceBound: Boolean(
+        evidenceDetails &&
+        Number.parseFloat(getComputedStyle(evidenceDetails).borderTopWidth) >= 1 &&
+        getComputedStyle(evidenceDetails).overflow === 'hidden'
+      ),
     };
   });
-  if (!state.evidenceFloor || !state.controlFloor || !state.mobileHeaderAvailable || !state.tableRelationships || !state.anchoredSections || !state.ytdResultTone || !state.managementFirst || !state.mobileComparisonBudget) {
+  if (!state.evidenceFloor || !state.controlFloor || !state.mobileHeaderAvailable || !state.tableRelationships || !state.anchoredSections || !state.ytdResultTone || !state.managementFirst || !state.mobileComparisonBudget || !state.accountingEvidenceBound) {
     throw new Error(`Finance hierarchy/accessibility presentation mismatch: ${JSON.stringify(state)}`);
   }
 }
@@ -1960,7 +2003,7 @@ async function verifySalesOrders(page) {
 }
 
 const scenarios = [
-  ['today', '/', ['mobile', 'desktop', 'wide'], verifyToday],
+  ['today', '/', ['mobile', 'tablet', 'desktop', 'wide'], verifyToday],
   ['today-wall', '/?wall=1', ['desktop']],
   ['business', '/business', ['mobile', 'tablet', 'desktop', 'wide'], verifyBusiness],
   ['sales-overview', '/sales', ['mobile', 'tablet', 'desktop'], verifySalesOverview],
@@ -1982,7 +2025,7 @@ const scenarios = [
   ['finance-overview', '/finance', ['mobile', 'desktop'], verifyFinanceReport],
   ['finance-closed', '/finance', ['mobile', 'tablet', 'desktop'], verifyFinanceClosed],
   ['finance-ledger', '/finance', ['mobile', 'desktop'], verifyFinanceEvidence],
-  ['trajectory', '/trajectory', ['mobile', 'desktop', 'wide'], verifyTrajectory],
+  ['trajectory', '/trajectory', ['mobile', 'tablet', 'desktop', 'wide'], verifyTrajectory],
   ['data-health', '/data-health', ['mobile', 'desktop', 'wide'], verifyDataHealth],
   ['admin', '/admin', ['mobile', 'desktop'], verifyAdmin],
 ].map(([name, url, views, action, setup]) => ({ name, url, views, action, setup }));

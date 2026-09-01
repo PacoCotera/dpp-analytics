@@ -300,11 +300,13 @@
   color: var(--muted);
   font-size: 14px;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .today-business-evidence > summary b,
 .today-orders > summary b,
 .today-products-reference > summary b {
+  flex: 0 0 auto;
   color: var(--dpp-interaction);
   font-size: 14px;
   white-space: nowrap;
@@ -1139,6 +1141,10 @@ html.wall-mode body.shell-drawer-open {
 .today-orders .order-grid {
   padding-right: 14px;
   padding-left: 14px;
+}
+
+.today-evidence > .panel__body {
+  padding-bottom: var(--space-5);
 }
 
 html.wall-mode .today-main {

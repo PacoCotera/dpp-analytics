@@ -116,6 +116,9 @@
   color: var(--ink);
 }
 .week-disclosure {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   border: var(--border-width) solid var(--line);
   border-radius: var(--panel-radius);
@@ -131,10 +134,15 @@
   font-weight: 800;
   cursor: pointer;
 }
+.week-disclosure summary > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .week-disclosure summary::-webkit-details-marker {
   display: none;
 }
 .week-disclosure summary::after {
+  flex: 0 0 auto;
   color: var(--accent-ink);
   font-size: var(--dpp-metadata-size, 14px);
   font-weight: 700;
@@ -475,7 +483,13 @@
 }
 
 .trajectory-weeks {
+  min-width: 0;
   margin-bottom: 0;
+}
+
+.trajectory-weeks .section-header__description {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 /* Continuous evidence sequence: sections own hierarchy, objects own bounds. */
