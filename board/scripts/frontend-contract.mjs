@@ -105,6 +105,8 @@ const catalogScript = readFileSync(join(staticRoot, 'catalog.js'), 'utf8');
 const inventoryHtml = readFileSync(join(staticRoot, 'inventory.html'), 'utf8');
 const inventoryScript = readFileSync(join(staticRoot, 'inventory.js'), 'utf8');
 const salesHtml = readFileSync(join(staticRoot, 'sales.html'), 'utf8');
+const salesScript = readFileSync(join(staticRoot, 'sales-canonical.js'), 'utf8');
+const salesCss = readFileSync(join(staticRoot, 'sales.css'), 'utf8');
 const financeHtml = readFileSync(join(staticRoot, 'finance.html'), 'utf8');
 const financeScript = readFileSync(join(staticRoot, 'finance.js'), 'utf8');
 const financeCss = readFileSync(join(staticRoot, 'finance.css'), 'utf8');
@@ -319,7 +321,8 @@ for (const marker of [
   check(shellScript.includes(marker), 'ui-shell.js', `missing shared footer contract: ${marker}`);
 }
 check(
-  serverScript.includes('meta name="dpp-build-revision"') && serverScript.includes('version_page(text, ASSET_VERSION)'),
+  serverScript.includes('meta name="dpp-build-revision"') &&
+    serverScript.includes('version_page(text, ASSET_VERSION)'),
   'server.py',
   'must inject build metadata before applying the shared asset revision',
 );
@@ -608,6 +611,12 @@ check(
     ),
   'data-health warehouse disclosure',
   'visible and accessible state copy must share real DOM text instead of CSS-generated semantics',
+);
+check(
+  /formatCount\(r\.units_t28 \|\| 0, 'unit'\)\} \/ 28D/.test(salesScript) &&
+    !/#skuRows td:nth-child\(6\)::after\s*\{[^}]*content:\s*['"][^'"]*units[^'"]*['"]/s.test(salesCss),
+  'Sales product driver units',
+  'count, unit plurality, and window copy must share real DOM text instead of CSS-generated semantics',
 );
 for (const pageStyle of Object.values(pageStyles)) {
   const pageCss = readFileSync(join(staticRoot, pageStyle), 'utf8');

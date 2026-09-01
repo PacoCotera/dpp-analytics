@@ -70,6 +70,8 @@ documented in the route's browser QA.
 Disclosure state and action copy belong to real DOM text and the owning runtime. CSS must not inject “Show” or
 “Hide” semantics with generated content or suppress stale state text visually. Data Health's warehouse reference
 keeps its visible action and exact summary accessible name synchronized on the native `details` toggle event.
+Metric counts, units and windows follow the same rule: the owning runtime renders the complete string through the
+shared formatter. Responsive CSS may position that string, but must not generate semantic suffixes or plurals.
 
 Compact numeric metadata uses `.state-read__meta` and remains on one line. Paragraph-like comparison captions
 opt into `.state-read__meta--prose`, which wraps arbitrary copy inside its assigned lead-aside width rather than
