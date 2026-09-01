@@ -439,6 +439,9 @@ check(
     /@media \(max-width:\s*640px\)[\s\S]*?\.finance-overview-disclosure\s*>\s*summary\s*\{[^}]*display:\s*flex/s.test(
       financeCss,
     ) &&
+    /\.finance-overview-disclosure:not\(\[open\]\)\s*>\s*\.report-grid\s*\{[^}]*display:\s*none/s.test(
+      financeCss,
+    ) &&
     !/\.finance-read--current-summary\s*\{[^}]*display:\s*none/s.test(financeCss),
   'finance.html',
   'Finance mobile must disclose detail progressively without hiding the management comparison',

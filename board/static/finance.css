@@ -679,6 +679,10 @@ main {
   display: none;
 }
 
+.finance-overview-disclosure:not([open]) > .report-grid {
+  display: none;
+}
+
 .finance-read.wide {
   grid-column: 1 / -1;
 }
