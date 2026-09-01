@@ -8,7 +8,7 @@ import {
 } from './ui-utils.js';
 
 let jobs = [];
-let expanded = true;
+let expanded = false;
 let catalogHealth = {};
 
 function duration(seconds, compact = false) {
@@ -215,6 +215,8 @@ function renderCatalogOnboarding(payload) {
 }
 
 function renderJobs() {
+  byId('toggle').textContent = expanded ? 'Problems only' : 'All jobs';
+  byId('toggle').setAttribute('aria-expanded', String(expanded));
   const rows = expanded ? jobs : problemJobs();
   if (!rows.length && !expanded) {
     byId('jobs').innerHTML =
@@ -301,8 +303,6 @@ function render(payload) {
 function bindInteractions() {
   byId('toggle').addEventListener('click', () => {
     expanded = !expanded;
-    byId('toggle').textContent = expanded ? 'Problems only' : 'All jobs';
-    byId('toggle').setAttribute('aria-expanded', String(expanded));
     renderJobs();
   });
   byId('jobs').addEventListener('click', async (event) => {

@@ -70,7 +70,7 @@ All operational tables share one contract:
 - Wide workspaces use available inline space for the dominant chart and its decision support; they do not preserve a narrow desktop composition in the center of a large viewport.
 - Analytical charts size to their container. They do not create internal horizontal scrolling while unused viewport width is available.
 - Secondary cards may sit beside a dominant chart on wide screens, but collapse in reading order before either becomes cramped.
-- A healthy-state summary never replaces operational controls. Data Health always exposes every pipeline row and its row-level action by default; “Problems only” is an optional filter.
+- A healthy-state summary never replaces operational controls. Data Health defaults to the compact exceptions-only view, keeps warning/failed rows and their actions visible, and exposes the complete pipeline through the explicit “All jobs” control. Automatic refresh preserves the operator's chosen view.
 - Compact horizon summaries use comparable numbers and labels. Decorative progress bars do not substitute for the main trajectory chart.
 
 ### Presentation profiles

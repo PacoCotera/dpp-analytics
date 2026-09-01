@@ -478,9 +478,15 @@ check(
   'long trajectory windows must aggregate daily bars for readable density',
 );
 check(
-  /let expanded\s*=\s*true/.test(dataHealthScript),
+  /let expanded\s*=\s*false/.test(dataHealthScript),
   'data-health.js',
-  'healthy state must keep pipeline jobs and their actions visible by default',
+  'healthy state must default to compact pipeline exceptions',
+);
+check(
+  (dataHealthScript.match(/expanded\s*=/g) || []).length === 2 &&
+    /expanded\s*=\s*!expanded/.test(dataHealthScript),
+  'data-health.js',
+  'automatic refresh must preserve the chosen pipeline visibility',
 );
 for (const pageStyle of Object.values(pageStyles)) {
   const pageCss = readFileSync(join(staticRoot, pageStyle), 'utf8');
