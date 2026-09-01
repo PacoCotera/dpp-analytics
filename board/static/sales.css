@@ -308,7 +308,8 @@
   display: grid;
   min-height: 64px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 2px 4px 0;
+  margin: 2px -18px 0;
+  padding: 0 18px;
   border-top: var(--border-width) solid var(--line);
 }
 
@@ -1044,7 +1045,8 @@
 
   .sales-chart-kpi-rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin: 2px 3px 0;
+    margin: 2px -12px 0;
+    padding: 0 12px;
   }
 
   .sales-chart-kpi {

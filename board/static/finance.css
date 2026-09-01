@@ -526,8 +526,11 @@
 }
 
 .finance-evidence details {
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
+  overflow: hidden;
+  padding: 0 16px;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--surface);
 }
 
 .finance-evidence summary {
@@ -537,6 +540,14 @@
   font-size: 14px;
   font-weight: 780;
   cursor: pointer;
+}
+
+.finance-evidence details[open] summary {
+  border-bottom: var(--border-width) solid var(--line);
+}
+
+.finance-evidence #events {
+  padding-bottom: 12px;
 }
 
 .event-row {

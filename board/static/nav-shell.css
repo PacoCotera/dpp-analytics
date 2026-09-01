@@ -528,7 +528,7 @@ body.shell-drawer-open {
 }
 
 .footer {
-  margin-top: 20px;
+  margin-top: var(--space-6, 28px);
   padding: 12px 4px 0;
   border-top: var(--dpp-border-width) solid var(--dpp-border);
   color: var(--dpp-text-subtle);
