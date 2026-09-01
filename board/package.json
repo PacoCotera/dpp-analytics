@@ -14,7 +14,8 @@
     "format": "prettier --write 'static/**/*.{css,html,js}'",
     "test:ads-assets": "node scripts/ads-chart-loader-contract.mjs",
     "test:formats": "node scripts/ui-format-contract.mjs",
-    "quality": "npm run lint && npm run test:formats && npm run test:ads-assets && npm run format:check"
+    "test:trajectory-ticks": "node scripts/trajectory-tick-contract.mjs",
+    "quality": "npm run lint && npm run test:formats && npm run test:ads-assets && npm run test:trajectory-ticks && npm run format:check"
   },
   "devDependencies": {
     "@eslint/js": "9.9.1",

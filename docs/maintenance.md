@@ -212,6 +212,8 @@ Start in `board/static/ui-shell.js` and `nav-shell.css`. Do not patch individual
 ### Change a reusable chart
 
 Start in `chart-system.js`/`chart-system.css`. Page runtimes should provide data and choose the chart, not fork a generic chart implementation unless the analytical form is truly page-specific.
+For Trajectory weekly-axis changes, run `npm run test:trajectory-ticks` in `board/` and the dedicated rendered-label
+browser gate; both endpoint retention and collision-free labels are release requirements.
 
 ### Change shared number or date copy
 

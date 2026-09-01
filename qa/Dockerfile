@@ -13,6 +13,7 @@ COPY manual_sync_qa.mjs ./
 COPY today_day_picker_qa.mjs ./
 COPY today_mobile_benchmark_qa.mjs ./
 COPY trajectory_lead_caption_qa.mjs ./
+COPY trajectory_axis_ticks_qa.mjs ./
 COPY shared_control_targets_qa.mjs ./
 COPY numeric_ui_qa.mjs ./
 COPY ui_format_qa.mjs ./

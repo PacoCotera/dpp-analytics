@@ -90,6 +90,11 @@ Pages choose the correct analytical chart but should not independently recreate 
 demand pages pass canonical series to the shared owner; `chart-system.js` renders an explicit range-empty state
 when the selected metric is all zero.
 
+Weekly Trajectory axes use an explicit, width-aware tick set. The shared chart owner keeps the first and last
+periods labeled, distributes the remaining labels across the available plot width, and removes candidates that
+would violate the desktop or compact center-spacing contract. `npm run test:trajectory-ticks` protects endpoint
+retention and the supported width budgets; production browser QA additionally checks rendered label bounds.
+
 Pages with a canonical non-chart state may defer the shared chart runtime. Ads owns this boundary in
 `ads-chart-loader.js`: the page loads chart CSS, D3 and `chart-system.js` only after its API reports both a
 `READY` connection and `ready` reporting data, while retaining the release revision on every dynamic URL.
