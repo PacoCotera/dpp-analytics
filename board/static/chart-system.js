@@ -123,9 +123,10 @@
       .call(d3.axisLeft(y).ticks(ticks).tickSize(0).tickPadding(10).tickFormat(formatter))
       .call((g) => g.select('.domain').remove());
   }
-  function bottomAxis(ctx, x, formatter, ticks) {
+  function bottomAxis(ctx, x, formatter, ticks, tickValues) {
     const axis = d3.axisBottom(x).tickSize(0).tickPadding(12).tickFormat(formatter);
     if (ticks) axis.ticks(ticks);
+    if (tickValues) axis.tickValues(tickValues);
     ctx.plot
       .append('g')
       .attr('class', 'dpp-axis')
@@ -699,13 +700,14 @@
     ctx.plot.append('path').datum(marks).attr('class', 'dpp-line-halo').attr('d', line);
     ctx.plot.append('path').datum(marks).attr('class', 'dpp-line').attr('d', line);
     if (weekly) {
-      const maxTicks = Math.max(2, Math.min(8, Math.floor(ctx.innerW / (compact ? 64 : 76))));
-      const tickStep = Math.max(1, Math.ceil(marks.length / maxTicks));
-      bottomAxis(ctx, x, (value, index) =>
-        index === 0 || index === marks.length - 1 || index % tickStep === 0
-          ? d3.utcFormat('%b %-d')(new Date(Number(value)))
-          : '',
+      const values = marks.map((d) => +d.date);
+      const tickValues = trajectoryTickValues(
+        values,
+        values.map((value) => x(value) + x.bandwidth() / 2),
+        ctx.innerW,
+        compact,
       );
+      bottomAxis(ctx, x, (value) => d3.utcFormat('%b %-d')(new Date(Number(value))), null, tickValues);
     } else {
       bottomAxis(ctx, x, d3.utcFormat('%b'), d3.utcMonth.every(1));
     }
@@ -721,6 +723,32 @@
           ]
         : [`Shopper spend ${fullMoney(d.value)}`, `28-day average ${fullMoney(d.avg)}`],
     }));
+  }
+
+  function trajectoryTickValues(values, positions, plotWidth, compact = false) {
+    if (values.length <= 2) return values.slice();
+    const minimumSpacing = compact ? 64 : 76;
+    const tickCount = Math.min(
+      values.length,
+      Math.max(2, Math.min(8, Math.floor(plotWidth / minimumSpacing))),
+    );
+    const lastIndex = values.length - 1;
+    const candidateIndexes = Array.from({ length: tickCount }, (_, index) =>
+      Math.round((index * lastIndex) / (tickCount - 1)),
+    );
+    const selectedIndexes = [0];
+    const lastPosition = positions[lastIndex];
+    candidateIndexes.slice(1, -1).forEach((index) => {
+      const previousIndex = selectedIndexes.at(-1);
+      if (
+        positions[index] - positions[previousIndex] >= minimumSpacing &&
+        lastPosition - positions[index] >= minimumSpacing
+      ) {
+        selectedIndexes.push(index);
+      }
+    });
+    selectedIndexes.push(lastIndex);
+    return selectedIndexes.map((index) => values[index]);
   }
 
   function aggregateSeriesByWeek(data) {
@@ -1037,5 +1065,6 @@
     financeWaterfall,
     dailyRhythm,
     productDemand,
+    trajectoryTickValues,
   };
 })();
