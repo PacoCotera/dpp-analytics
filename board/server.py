@@ -43,7 +43,6 @@ LABELS_PATH = Path(
         "/config/product_labels.json" if Path("/config").exists() else DEFAULT_LABELS_PATH,
     )
 )
-BUILD_TOKEN = "__DPP_BUILD_SHA__"
 
 
 def deployment_sha() -> str:
@@ -64,11 +63,15 @@ FAVICON_BODY = (STATIC / "favicon.svg").read_bytes()
 
 
 def versioned_page(name: str) -> bytes:
-    """Attach one content-derived generation to every local asset dependency."""
+    """Attach build diagnostics and one asset generation to every workspace."""
     text = (STATIC / name).read_text()
-    if text.count(BUILD_TOKEN) != 1:
-        raise RuntimeError(f"{name}: expected exactly one build token")
-    text = text.replace(BUILD_TOKEN, BUILD_SHA)
+    if text.count("<head>") != 1:
+        raise RuntimeError(f"{name}: expected exactly one head element")
+    text = text.replace(
+        "<head>",
+        f'<head>\n    <meta name="dpp-build-revision" content="{BUILD_SHA}" />',
+        1,
+    )
     return version_page(text, ASSET_VERSION).encode()
 
 

@@ -116,6 +116,11 @@ async function verifyControlTrustAppearance(page, expectedProfile) {
         ratio: Number(contrast(color, token('--dpp-surface')).toFixed(2)),
       };
     }).filter(item => Number.isFinite(item.ratio));
+    const footer = document.querySelector('.app > footer.footer');
+    const footerDetails = footer?.querySelector('.footer-diagnostics');
+    const footerSummary = footerDetails?.querySelector(':scope > summary');
+    const footerRect = footer?.getBoundingClientRect();
+    const footerSummaryRect = footerSummary?.getBoundingClientRect();
     return {
       theme: root.getAttribute('data-dpp-theme'),
       profile: root.getAttribute('data-dpp-profile'),
@@ -147,6 +152,17 @@ async function verifyControlTrustAppearance(page, expectedProfile) {
         document.querySelector('.nav-primary-set a.active .domain-link__label')?.textContent?.trim() === expectedLabel &&
         document.querySelector('.shell-header-context__title')?.textContent?.trim() === expectedLabel,
       pageTitle: document.title === `Dirty Pawz Press · ${expectedLabel}`,
+      footerContract:
+        document.querySelectorAll('footer.footer').length === 1 &&
+        footer?.getAttribute('aria-label') === 'Build diagnostics' &&
+        footerDetails &&
+        !footerDetails.open &&
+        footerSummary?.textContent?.trim() === 'Build info' &&
+        footer.innerText.replace(/\s+/g, ' ').trim() === 'Build info' &&
+        footerSummaryRect?.height >= 40 &&
+        footerRect?.left >= -2 &&
+        footerRect?.right <= window.innerWidth + 2 &&
+        getComputedStyle(footer).textTransform === 'none',
     };
   }, expectedProfile);
   if (
@@ -163,6 +179,7 @@ async function verifyControlTrustAppearance(page, expectedProfile) {
     !state.renderedChartContrastFloor ||
     !state.shellIdentity ||
     !state.pageTitle ||
+    !state.footerContract ||
     (expectedProfile === 'weyland' && state.profile !== 'weyland')
   ) {
     throw new Error(`Control/trust ${expectedProfile} appearance mismatch: ${JSON.stringify(state)}`);

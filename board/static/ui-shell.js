@@ -137,6 +137,33 @@
     return backdrop;
   }
 
+  function createDiagnosticsFooter(app) {
+    if (app.querySelector(':scope > footer.footer')) return;
+
+    const buildRevision = document.querySelector('meta[name="dpp-build-revision"]')?.content || 'dev';
+    const assetRevision = document.querySelector('meta[name="dpp-asset-revision"]')?.content || 'dev';
+    const footer = document.createElement('footer');
+    footer.className = 'footer';
+    footer.setAttribute('aria-label', 'Build diagnostics');
+
+    const details = document.createElement('details');
+    details.className = 'footer-diagnostics';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Build info';
+    const values = document.createElement('div');
+    values.className = 'footer-diagnostics__values';
+    const build = document.createElement('span');
+    build.className = 'footer-build';
+    build.textContent = `main ${buildRevision}`;
+    const assets = document.createElement('span');
+    assets.className = 'footer-assets';
+    assets.textContent = `assets ${assetRevision}`;
+    values.append(build, assets);
+    details.append(summary, values);
+    footer.appendChild(details);
+    app.appendChild(footer);
+  }
+
   function openDrawer(trigger) {
     const sidebar = document.getElementById('app-sidebar');
     const menuButton = document.querySelector('.shell-menu-button');
@@ -386,6 +413,7 @@
     if (skipLink) skipLink.after(backdrop, sidebar);
     else document.body.prepend(backdrop, sidebar);
     createGlobalHeader(topbar);
+    createDiagnosticsFooter(app);
     syncDrawerMode();
 
     if (typeof mobileMedia.addEventListener === 'function')

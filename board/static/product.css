@@ -475,14 +475,6 @@
   display: none;
 }
 
-.footer {
-  margin-top: 20px;
-}
-
-.footer-build {
-  overflow-wrap: anywhere;
-}
-
 /* Canonical product route composition. */
 main {
   max-width: none;
@@ -874,13 +866,6 @@ main {
 
   .product-order__foot {
     display: grid;
-  }
-}
-
-@media (max-width: 480px) {
-  .footer {
-    display: grid;
-    gap: 10px;
   }
 }
 

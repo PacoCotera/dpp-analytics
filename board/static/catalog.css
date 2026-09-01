@@ -341,14 +341,6 @@
   font-size: 14px;
 }
 
-.footer {
-  margin-top: 20px;
-}
-
-.footer-build {
-  overflow-wrap: anywhere;
-}
-
 .catalog-filter-field[hidden] {
   display: none;
 }
@@ -797,11 +789,6 @@
 }
 
 @media (max-width: 480px) {
-  .footer {
-    display: grid;
-    gap: 10px;
-  }
-
   .portfolio-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
