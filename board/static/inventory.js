@@ -11,10 +11,22 @@ import {
 const ATTENTION_ACTIONS = new Set(['STOCKOUT', 'PRODUCE', 'PLAN']);
 const URGENT_ACTIONS = new Set(['STOCKOUT', 'PRODUCE']);
 const KNOWN_ACTIONS = new Set(['STOCKOUT', 'PRODUCE', 'PLAN', 'OK', 'HOLD']);
+const INVENTORY_SCOPES = new Set([
+  'current',
+  'attention',
+  'ok',
+  'no_velocity',
+  'alias',
+  'retired',
+  'archived',
+  'all',
+]);
+const MAX_SEARCH_LENGTH = 120;
 
 const state = {
   rows: [],
   filter: 'current',
+  search: '',
 };
 
 const LIFECYCLE_LABELS = {
@@ -23,6 +35,46 @@ const LIFECYCLE_LABELS = {
   RETIRED: 'Retired',
   ARCHIVED: 'Archived',
 };
+
+function normalizeSearch(value) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .slice(0, MAX_SEARCH_LENGTH)
+    .trim();
+}
+
+function readInventoryUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedScope = params.get('scope') || 'current';
+  state.filter = INVENTORY_SCOPES.has(requestedScope) ? requestedScope : 'current';
+  state.search = normalizeSearch(params.get('q'));
+}
+
+function writeInventoryUrlState(method = 'pushState') {
+  const url = new URL(window.location.href);
+  if (state.filter === 'current') url.searchParams.delete('scope');
+  else url.searchParams.set('scope', state.filter);
+  const query = normalizeSearch(state.search);
+  if (query) url.searchParams.set('q', query);
+  else url.searchParams.delete('q');
+  window.history[method]({}, '', url);
+}
+
+function syncInventoryControls() {
+  byId('search').value = state.search;
+  document.querySelectorAll('.filter').forEach((button) => {
+    const selected = button.dataset.filter === state.filter;
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+}
+
+function restoreInventoryUrlState({ normalize = false } = {}) {
+  readInventoryUrlState();
+  syncInventoryControls();
+  renderRows();
+  if (normalize) writeInventoryUrlState('replaceState');
+}
 
 function normalizeAction(action) {
   return KNOWN_ACTIONS.has(action) ? action : 'HOLD';
@@ -51,7 +103,7 @@ function daysCover(row) {
 }
 
 function filteredRows() {
-  const query = byId('search').value.trim().toLowerCase();
+  const query = normalizeSearch(state.search).toLowerCase();
 
   return state.rows.filter((row) => {
     if (
@@ -180,27 +232,34 @@ function bindInteractions() {
     const expanded = byId('how').classList.toggle('show');
     byId('howBtn').setAttribute('aria-expanded', String(expanded));
   });
-  byId('search').addEventListener('input', renderRows);
+  byId('search').addEventListener('input', (event) => {
+    state.search = event.target.value.slice(0, MAX_SEARCH_LENGTH);
+    renderRows();
+    writeInventoryUrlState('replaceState');
+  });
 
   document.querySelectorAll('.filter').forEach((button) => {
     button.addEventListener('click', () => {
-      document.querySelectorAll('.filter').forEach((item) => {
-        item.classList.remove('active');
-        item.setAttribute('aria-pressed', 'false');
-      });
-      button.classList.add('active');
-      button.setAttribute('aria-pressed', 'true');
-      state.filter = button.dataset.filter;
+      const requestedScope = button.dataset.filter;
+      if (!INVENTORY_SCOPES.has(requestedScope) || requestedScope === state.filter) return;
+      state.filter = requestedScope;
+      syncInventoryControls();
       renderRows();
+      writeInventoryUrlState();
     });
   });
+
+  window.addEventListener('popstate', () => restoreInventoryUrlState({ normalize: true }));
 }
 
 async function start() {
+  readInventoryUrlState();
   bindInteractions();
+  syncInventoryControls();
 
   try {
     render(await fetchJson('/api/inventory'));
+    writeInventoryUrlState('replaceState');
   } catch (error) {
     setText('asof', `Inventory unavailable · ${error.message}`);
   }

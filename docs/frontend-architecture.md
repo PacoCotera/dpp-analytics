@@ -135,12 +135,14 @@ routes and new persistent interactive view controls must be added to that gate i
 
 Persistent analytical choices are URL state, not session-only UI state. Sales owns `view` and `range`; its lazy
 Geography renderer owns `geo_range`, `metric`, `sku`, and canonical two-digit `state`. Catalog owns `mode`,
-`filter`, and `sort`; transient free-text search remains session-only. Finance owns `window`, a canonical
-`YYYY-MM` `month` only in Month view, and the non-default `cogs=excluded` state; YTD with COGS included is the
-omitted default. Trajectory owns `window`, with `180d` as its omitted default and `90d` and `ytd` as explicit
-values. Default values are omitted, invalid values normalize to documented defaults, and unrelated parameters
-are preserved. Changing a choice pushes browser history; direct load, refresh, Back, and Forward must render the
-same state.
+`filter`, and `sort`; its transient free-text search remains session-only. Inventory owns `scope` and the
+shareable, whitespace-normalized `q` search (limited to 120 characters); Current stock and empty search are the
+omitted defaults. Search edits replace the current history entry so typing does not create one entry per
+keystroke, while scope changes push history. Finance owns `window`, a canonical `YYYY-MM` `month` only in Month
+view, and the non-default `cogs=excluded` state; YTD with COGS included is the omitted default. Trajectory owns
+`window`, with `180d` as its omitted default and `90d` and `ytd` as explicit values. Default values are omitted,
+invalid values normalize to documented defaults, and unrelated parameters are preserved. Changing a stable
+choice pushes browser history; direct load, refresh, Back, and Forward must render the same state.
 
 Session scroll/tab restoration is subordinate to the URL. `ui-shell.js` may restore saved context only when the
 saved query string exactly matches the current query string. New stable tabs, filters, windows, or drill-down keys
