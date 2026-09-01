@@ -363,15 +363,146 @@ const inventoryStatePayloads = {
   },
 };
 
+const healthyHealthJob = {
+  job_name: "orders",
+  label: "Orders",
+  operation: "Amazon SP-API · Orders",
+  source: "Amazon SP-API",
+  purpose: "Powers order and fulfilment decisions.",
+  domain: "Orders",
+  latest_status: "success",
+  latest_attempt_status: "success",
+  is_stale: false,
+  age_seconds: 180,
+  attempt_age_seconds: 180,
+  expected_interval_seconds: 300,
+  stale_after_seconds: 900,
+  next_due_in_seconds: 120,
+  overdue_by_seconds: 0,
+  records_read: 8,
+  records_written: 8,
+  last_success_at: "2026-08-28T23:57:00Z",
+  last_started_at: "2026-08-28T23:57:00Z",
+  error_message: null,
+};
+
+const staleHealthJob = {
+  ...healthyHealthJob,
+  job_name: "inventory",
+  label: "FBA inventory",
+  operation: "Amazon SP-API · FBA Inventory",
+  purpose: "Powers stock position, cover and replenishment decisions.",
+  domain: "Inventory",
+  is_stale: true,
+  age_seconds: 5400,
+  next_due_in_seconds: 0,
+  overdue_by_seconds: 4500,
+};
+
+const failedHealthJob = {
+  ...healthyHealthJob,
+  job_name: "finance",
+  label: "Finance transactions",
+  operation: "Amazon SP-API · Finances",
+  purpose: "Powers transaction and contribution decisions.",
+  domain: "Finance",
+  latest_status: "error",
+  latest_attempt_status: "error",
+  error_message: "Fixture finance collection failed.",
+  last_error_at: "2026-08-28T23:55:00Z",
+};
+
+function dataHealthPayload(stateJobs) {
+  const problemCount = stateJobs.filter(
+    (job) =>
+      job.latest_status === "error" ||
+      job.latest_status === "interrupted" ||
+      job.is_stale ||
+      !["success", "running"].includes(job.latest_status),
+  ).length;
+  return {
+    local_time: "2026-08-28T18:00:00-06:00",
+    checked_at: "2026-08-29T00:00:00Z",
+    warehouse: {
+      orders: 80,
+      financial_transactions: 40,
+      seller_listings: 12,
+      inventory_snapshots: 20,
+    },
+    health_contract: {
+      contract_id: "BUSINESS_DECISION_HEALTH_V1",
+      overall: {
+        state: problemCount ? "degraded" : "healthy",
+        active_condition_count: problemCount,
+        affected_domains: problemCount ? ["Inventory", "Finance"] : [],
+      },
+      pipeline_scope: {
+        total: 6,
+        included: [
+          "orders",
+          "finance",
+          "listings",
+          "inventory",
+          "catalog",
+          "settlements",
+        ],
+        excluded: [],
+        exclusion_rule: "Supporting jobs are outside the decision contract.",
+      },
+      domains: [
+        { label: "Orders", critical: true, state: "healthy" },
+        {
+          label: "Finance",
+          critical: true,
+          state: problemCount > 1 ? "failed" : "healthy",
+        },
+        {
+          label: "Inventory",
+          critical: true,
+          state: problemCount ? "stale" : "healthy",
+        },
+        { label: "Catalog", critical: true, state: "healthy" },
+        { label: "Sales", critical: true, state: "healthy" },
+      ],
+    },
+    catalog: {
+      summary: {
+        source_ready: 3,
+        onboarding: 0,
+        source_attention: 0,
+        taxonomy_attention: 0,
+      },
+      items: [],
+    },
+    jobs: stateJobs,
+  };
+}
+
+const dataHealthStatePayloads = {
+  zero: dataHealthPayload([
+    healthyHealthJob,
+    { ...healthyHealthJob, job_name: "catalog", label: "Catalog enrichment" },
+    { ...healthyHealthJob, job_name: "listings", label: "Seller listings" },
+  ]),
+  one: dataHealthPayload([
+    healthyHealthJob,
+    staleHealthJob,
+    { ...healthyHealthJob, job_name: "catalog", label: "Catalog enrichment" },
+  ]),
+  many: dataHealthPayload([healthyHealthJob, staleHealthJob, failedHealthJob]),
+};
+
 const htmlRoutes = new Map([
   ["/catalog", "catalog.html"],
   ["/product", "product.html"],
   ["/inventory", "inventory.html"],
+  ["/data-health", "data_health.html"],
 ]);
 const apiRoutes = new Map([
   ["/api/catalog", catalogPayload],
   ["/api/product", productPayload],
   ["/api/inventory", inventoryPayload],
+  ["/api/data-health", dataHealthStatePayloads.zero],
 ]);
 const mime = {
   ".css": "text/css; charset=utf-8",
@@ -958,6 +1089,160 @@ try {
       await context.close();
     }
   }
+
+  for (const [problemState, payload] of Object.entries(
+    dataHealthStatePayloads,
+  )) {
+    for (const width of [393, 1600]) {
+      const context = await browser.newContext({
+        viewport: { width, height: 900 },
+      });
+      await context.addInitScript(() => {
+        const nativeSetInterval = window.setInterval.bind(window);
+        window.setInterval = (callback, delay, ...args) => {
+          if (delay === 60_000) {
+            window.__dppDataHealthRefresh = () => callback(...args);
+            return 60_000;
+          }
+          return nativeSetInterval(callback, delay, ...args);
+        };
+      });
+      const page = await context.newPage();
+      const browserErrors = [];
+      page.on("pageerror", (error) => browserErrors.push(error.message));
+      page.on("console", (message) => {
+        if (message.type() === "error") browserErrors.push(message.text());
+      });
+      await page.route("**/api/data-health", (route) =>
+        route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify(payload),
+        }),
+      );
+      await page.goto(`${baseUrl}/data-health`, {
+        waitUntil: "networkidle",
+        timeout: 20_000,
+      });
+      await page.locator("#jobs > *").first().waitFor();
+
+      const expectedProblems =
+        problemState === "zero" ? 0 : problemState === "one" ? 1 : 2;
+      const expectedLabels =
+        problemState === "zero"
+          ? []
+          : problemState === "one"
+            ? ["FBA inventory"]
+            : ["FBA inventory", "Finance transactions"];
+      const initial = await page.evaluate(() => {
+        const pipeline = document
+          .querySelector('[data-dpp-qa="data-health-pipeline"]')
+          .getBoundingClientRect();
+        return {
+          expanded: document
+            .getElementById("toggle")
+            ?.getAttribute("aria-expanded"),
+          copy: document.getElementById("toggle")?.textContent.trim(),
+          rows: document.querySelectorAll("#jobs .health-job").length,
+          syncActions: document.querySelectorAll("#jobs .sync-now").length,
+          empty: document
+            .getElementById("jobs")
+            ?.textContent.includes("No pipeline exceptions."),
+          labels: [...document.querySelectorAll("#jobs .health-job__name")].map(
+            (node) => node.textContent.trim(),
+          ),
+          pipelineHeight: Math.round(pipeline.height),
+          documentHeight: document.documentElement.scrollHeight,
+          overflow:
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+        };
+      });
+      assert(
+        initial.expanded === "false" &&
+          initial.copy === "All jobs" &&
+          initial.rows === expectedProblems &&
+          initial.syncActions === expectedProblems &&
+          initial.empty === !expectedProblems &&
+          JSON.stringify(initial.labels) === JSON.stringify(expectedLabels),
+        `Data Health ${problemState}/${width}: compact state mismatch ${JSON.stringify(initial)}`,
+      );
+      assert(
+        initial.overflow <= 1 &&
+          (problemState !== "zero" ||
+            (initial.pipelineHeight <= 340 &&
+              initial.documentHeight <= (width <= 640 ? 1400 : 1100))),
+        `Data Health ${problemState}/${width}: healthy geometry mismatch ${JSON.stringify(initial)}`,
+      );
+
+      await page.locator("#toggle").click();
+      await page.waitForFunction(
+        (count) =>
+          document.querySelectorAll("#jobs .health-job").length === count,
+        payload.jobs.length,
+      );
+      await page.evaluate(() => window.__dppDataHealthRefresh());
+      const refreshed = await page.evaluate(() => ({
+        expanded: document
+          .getElementById("toggle")
+          ?.getAttribute("aria-expanded"),
+        copy: document.getElementById("toggle")?.textContent.trim(),
+        rows: document.querySelectorAll("#jobs .health-job").length,
+        detailsVisible:
+          window.innerWidth > 640 ||
+          [...document.querySelectorAll("#jobs .health-job")].every((row) =>
+            [
+              row.querySelector(".health-job__age"),
+              row.querySelector(".health-job__cadence"),
+              row.querySelector(".health-job__rows"),
+              row.querySelector(".health-job__purpose"),
+            ].every(
+              (detail) =>
+                detail && window.getComputedStyle(detail).display !== "none",
+            ),
+          ),
+      }));
+      assert(
+        refreshed.expanded === "true" &&
+          refreshed.copy === "Problems only" &&
+          refreshed.rows === payload.jobs.length &&
+          refreshed.detailsVisible,
+        `Data Health ${problemState}/${width}: All jobs refresh mismatch ${JSON.stringify(refreshed)}`,
+      );
+
+      await page.locator("#toggle").click();
+      await page.waitForFunction(
+        (count) =>
+          document.querySelectorAll("#jobs .health-job").length === count,
+        expectedProblems,
+      );
+      const collapsed = await page.evaluate(() => ({
+        expanded: document
+          .getElementById("toggle")
+          ?.getAttribute("aria-expanded"),
+        copy: document.getElementById("toggle")?.textContent.trim(),
+        rows: document.querySelectorAll("#jobs .health-job").length,
+        empty: document
+          .getElementById("jobs")
+          ?.textContent.includes("No pipeline exceptions."),
+      }));
+      assert(
+        collapsed.expanded === "false" &&
+          collapsed.copy === "All jobs" &&
+          collapsed.rows === expectedProblems &&
+          collapsed.empty === !expectedProblems &&
+          browserErrors.length === 0,
+        `Data Health ${problemState}/${width}: Problems only mismatch ${JSON.stringify({ collapsed, browserErrors })}`,
+      );
+      results.push({
+        route: `data-health-${problemState}`,
+        profile: "warm-studio",
+        width,
+        ...initial,
+        state: "PASS",
+      });
+      await context.close();
+    }
+  }
 } catch (error) {
   failures.push(error.message);
 } finally {
@@ -1007,6 +1292,15 @@ console.log(
           actionHeight,
           recordsTop,
           firstRecordTop,
+          documentHeight,
+        })),
+      dataHealthComposition: results
+        .filter((result) => result.route.startsWith("data-health-"))
+        .map(({ route, width, rows, pipelineHeight, documentHeight }) => ({
+          route,
+          width,
+          rows,
+          pipelineHeight,
           documentHeight,
         })),
     },

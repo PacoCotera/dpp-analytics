@@ -836,7 +836,7 @@ async function verifyBusiness(page) {
 async function verifyDataHealth(page) {
   await assertWorkspaceLandmarks(page, ['data-health-overview', 'catalog-onboarding']);
   await wait(page, '.health-summary');
-  await wait(page, '#jobs .health-job');
+  await wait(page, '#jobs > *');
   const state = await page.evaluate(async () => {
     const [response, homeResponse] = await Promise.all([
       fetch('/api/data-health', { cache: 'no-store' }),
@@ -878,6 +878,9 @@ async function verifyDataHealth(page) {
       ).length,
       toggleExpanded: document.getElementById('toggle')?.getAttribute('aria-expanded'),
       toggleCopy: document.getElementById('toggle')?.textContent?.trim(),
+      emptyConfirmation:
+        problems.length > 0 ||
+        document.getElementById('jobs')?.textContent?.includes('No pipeline exceptions.'),
       attentionVisible: Boolean(attention && !attention.hidden),
       incidents: incidents.length,
       incidentStructure: incidents.every(incident =>
@@ -904,9 +907,15 @@ async function verifyDataHealth(page) {
         document.querySelector('.warehouse-reference summary')?.getBoundingClientRect().height || 0,
       genericRingRemoved: !document.getElementById('ring'),
       refreshCopy: document.getElementById('healthUpdated')?.textContent || '',
+      pipelineHeight:
+        document
+          .querySelector('[data-dpp-qa="data-health-pipeline"]')
+          ?.getBoundingClientRect().height || 0,
+      documentHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
       mobilePipelineMetrics:
         window.innerWidth > 640 ||
-        ([...document.querySelectorAll('#jobs .health-job')].length === jobs.length &&
+        ([...document.querySelectorAll('#jobs .health-job')].length === problems.length &&
           [...document.querySelectorAll('#jobs .health-job')].every(row =>
             [
               row.querySelector('.health-job__age'),
@@ -936,10 +945,11 @@ async function verifyDataHealth(page) {
     !state.homeApiOk ||
     !state.checkedAt ||
     !state.jobs ||
-    state.renderedJobs !== state.jobs ||
-    state.syncActions !== state.jobs ||
-    state.toggleExpanded !== 'true' ||
-    state.toggleCopy !== 'Problems only' ||
+    state.renderedJobs !== state.problems ||
+    state.syncActions !== state.problems ||
+    state.toggleExpanded !== 'false' ||
+    state.toggleCopy !== 'All jobs' ||
+    !state.emptyConfirmation ||
     !state.contractComplete ||
     !state.compactCoverage ||
     state.healthContractId !== 'BUSINESS_DECISION_HEALTH_V1' ||
@@ -956,11 +966,65 @@ async function verifyDataHealth(page) {
     !state.evidenceFloor ||
     !state.controlFloor ||
     !state.refreshCopy.includes('refreshes every 60s') ||
+    (state.problems === 0 &&
+      (state.pipelineHeight > 340 ||
+        state.documentHeight > Math.max(1400, state.viewportHeight))) ||
     state.attentionVisible !== Boolean(state.problems) ||
     state.incidents !== state.problems ||
     (state.problems > 0 && !state.incidentStructure)
   ) {
     throw new Error(`Data Health diagnostic contract mismatch: ${JSON.stringify(state)}`);
+  }
+
+  await page.locator('#toggle').click();
+  await page.waitForFunction(
+    expected => document.querySelectorAll('#jobs .health-job').length === expected,
+    state.jobs,
+  );
+  const expandedState = await page.evaluate(() => ({
+    expanded: document.getElementById('toggle')?.getAttribute('aria-expanded'),
+    copy: document.getElementById('toggle')?.textContent?.trim(),
+    rows: document.querySelectorAll('#jobs .health-job').length,
+    syncActions: document.querySelectorAll('#jobs .sync-now').length,
+    detailsVisible:
+      window.innerWidth > 640 ||
+      [...document.querySelectorAll('#jobs .health-job')].every(row =>
+        [
+          row.querySelector('.health-job__age'),
+          row.querySelector('.health-job__cadence'),
+          row.querySelector('.health-job__rows'),
+          row.querySelector('.health-job__purpose'),
+        ].every(metric => metric && window.getComputedStyle(metric).display !== 'none'),
+      ),
+  }));
+  if (
+    expandedState.expanded !== 'true' ||
+    expandedState.copy !== 'Problems only' ||
+    expandedState.rows !== state.jobs ||
+    expandedState.syncActions !== state.jobs ||
+    !expandedState.detailsVisible
+  ) {
+    throw new Error(`Data Health All jobs contract mismatch: ${JSON.stringify(expandedState)}`);
+  }
+
+  await page.locator('#toggle').click();
+  await page.waitForFunction(
+    expected => document.querySelectorAll('#jobs .health-job').length === expected,
+    state.problems,
+  );
+  const collapsedState = await page.evaluate(() => ({
+    expanded: document.getElementById('toggle')?.getAttribute('aria-expanded'),
+    copy: document.getElementById('toggle')?.textContent?.trim(),
+    rows: document.querySelectorAll('#jobs .health-job').length,
+    empty: document.getElementById('jobs')?.textContent?.includes('No pipeline exceptions.'),
+  }));
+  if (
+    collapsedState.expanded !== 'false' ||
+    collapsedState.copy !== 'All jobs' ||
+    collapsedState.rows !== state.problems ||
+    (state.problems === 0 && !collapsedState.empty)
+  ) {
+    throw new Error(`Data Health Problems only contract mismatch: ${JSON.stringify(collapsedState)}`);
   }
 }
 

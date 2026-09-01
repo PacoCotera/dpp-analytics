@@ -61,6 +61,8 @@ const routes = [
   },
 ];
 const browserQa = read("qa/commerce_ui_browser_qa.mjs");
+const dataHealthHtml = read("board/static/data_health.html");
+const dataHealthScript = read("board/static/data-health.js");
 
 const paletteLiteral =
   /#[0-9a-f]{3,8}\b|(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch)\s*\(/i;
@@ -245,6 +247,23 @@ assert(
 );
 
 assert(
+  dataHealthHtml.includes('id="toggle" type="button" aria-expanded="false"') &&
+    dataHealthHtml.includes("All jobs") &&
+    dataHealthScript.includes("let expanded = false") &&
+    dataHealthScript.includes("const rows = expanded ? jobs : problemJobs()"),
+  "Data Health: compact exceptions-first default is incomplete",
+);
+assert(
+  browserQa.includes("const dataHealthStatePayloads") &&
+    browserQa.includes('problemState === "zero" ? 0') &&
+    browserQa.includes("window.__dppDataHealthRefresh") &&
+    browserQa.includes(
+      "Data Health ${problemState}/${width}: All jobs refresh mismatch",
+    ),
+  "Data Health: zero/one/many or automatic-refresh browser coverage is missing",
+);
+
+assert(
   browserQa.includes(
     "const widthMatrix = [320, 720, 721, 768, 900, 901, 1024, 1180, 1600]",
   ),
@@ -268,5 +287,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Commerce UI QA passed: Catalog, Product Workspace and Inventory use semantic profiles, anchored hierarchy, readable evidence, accessible controls, and one Catalog runtime owner.",
+  "Commerce UI QA passed: Catalog, Product Workspace, Inventory and Data Health preserve semantic profiles, anchored hierarchy, readable evidence and accessible controls.",
 );
