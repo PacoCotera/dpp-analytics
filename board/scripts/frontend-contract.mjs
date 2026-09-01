@@ -84,6 +84,8 @@ const ownedStyles = new Set([
 const failures = [];
 const theme = readFileSync(join(staticRoot, 'theme.css'), 'utf8');
 const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
+const navShell = readFileSync(join(staticRoot, 'nav-shell.css'), 'utf8');
+const adminCss = readFileSync(join(staticRoot, 'admin.css'), 'utf8');
 const presentationRuntime = readFileSync(join(staticRoot, 'presentation.js'), 'utf8');
 const presentationCss = readFileSync(join(staticRoot, 'presentation-profiles.css'), 'utf8');
 const shellScript = readFileSync(join(staticRoot, 'ui-shell.js'), 'utf8');
@@ -778,6 +780,17 @@ check(
 );
 check(!shellSelector.test(theme), 'theme.css', 'application-shell rules belong to nav-shell.css');
 check(!shellSelector.test(layout), 'layout-system.css', 'application-shell rules belong to nav-shell.css');
+check(
+  /\.app\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s.test(navShell) &&
+    /\.app\s*>\s*main\s*\{[^}]*flex:\s*1\s+0\s+auto;/s.test(navShell),
+  'nav-shell.css',
+  'shared shell must allocate the viewport remainder to main so short-state footers reach the page floor',
+);
+check(
+  !/main\s*\{[^}]*min-height:\s*[\d.]+vh/s.test(adminCss),
+  'admin.css',
+  'Admin must not compensate for shared shell height with a route-owned viewport minimum',
+);
 check(!retiredComponentSelector.test(theme), 'theme.css', 'retired component rules remain in the theme');
 check(
   !pageOwnedOrRetiredThemeSelector.test(theme),

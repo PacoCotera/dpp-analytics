@@ -44,7 +44,7 @@ Before adding page-specific code, check whether the behavior belongs in one of t
 | `presentation-registry.js` / `presentation-profiles.css`   | generated browser registry and semantic token scopes; do not edit directly                                                                       |
 | `presentation.js`                                          | synchronous profile restoration, root attributes, browser chrome, local preference and public apply/reset API                                    |
 | `theme.css`                                                | global token aliases, typography and base visual language                                                                                        |
-| `nav-shell.css`                                            | fixed desktop sidebar, connected global header and accessible mobile drawer presentation                                                         |
+| `nav-shell.css`                                            | fixed desktop sidebar, connected global header, accessible mobile drawer, and the shared short/long page-height contract                         |
 | `ui-shell.js`                                              | ordered primary navigation, active route, global identity, tab keyboard behavior, mobile drawer behavior and the shared build-diagnostics footer |
 | `layout-system.css`                                        | reusable page headers, KPI rails, panels, grids, segmented controls, tables and status strips                                                    |
 | `chart-system.css` / `chart-system.js`                     | reusable chart grammar, axes, tooltips, legends, period treatment and shared chart forms                                                         |

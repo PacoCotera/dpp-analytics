@@ -62,11 +62,17 @@ body.shell-drawer-open {
 }
 
 .app {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   max-width: none;
   margin: 0 0 0 var(--dpp-shell-sidebar-width);
   padding: 0 var(--dpp-shell-gutter) 34px;
   background: var(--dpp-page);
+}
+
+.app > main {
+  flex: 1 0 auto;
 }
 
 .shell-global-header.topbar {
