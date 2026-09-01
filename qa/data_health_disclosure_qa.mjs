@@ -122,8 +122,9 @@ async function disclosureState(page) {
         actionFontSize: Number.parseFloat(style.fontSize),
         actionWhiteSpace: style.whiteSpace,
         pseudoContent: pseudo.content,
-        warehouseTotalsVisible:
-          document.querySelector(".source-grid").getClientRects().length > 0,
+        warehouseTotalsVisible: document
+          .querySelector(".source-grid")
+          .checkVisibility(),
         pageOverflow:
           document.documentElement.scrollWidth -
           document.documentElement.clientWidth,
