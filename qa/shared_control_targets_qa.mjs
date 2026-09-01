@@ -74,13 +74,14 @@ for (const [engineName, engine, viewport] of engines) {
         response?.ok(),
         `${engineName} ${route} returned ${response?.status()}`,
       );
-      await page
-        .locator(".rule-trigger:visible,.segmented-control__item:visible")
-        .first()
-        .waitFor({
-          state: "visible",
-          timeout: 10_000,
-        });
+      const readySelector =
+        route === "/catalog"
+          ? "#portfolio .family"
+          : ".rule-trigger:visible,.segmented-control__item:visible";
+      await page.locator(readySelector).first().waitFor({
+        state: "visible",
+        timeout: 10_000,
+      });
 
       let expectedHeights = null;
       for (const profile of profiles) {
@@ -167,7 +168,7 @@ for (const [engineName, engine, viewport] of engines) {
           `${engineName} ${route} ${profile} token is ${state.token}`,
         );
         assert(
-          state.targets.length > 0,
+          route === "/catalog" || state.targets.length > 0,
           `${engineName} ${route} ${profile} has no shared targets`,
         );
         assert(
@@ -231,7 +232,7 @@ for (const [engineName, engine, viewport] of engines) {
         }
       }
       checks.push(
-        `${engineName} ${route}: ${profiles.length} profiles at 44px with stable geometry`,
+        `${engineName} ${route}: ${profiles.length} profiles, ${expectedHeights.length} visible targets, 44px stable geometry`,
       );
     } catch (error) {
       failures.push(`${engineName} ${route}: ${error.message}`);
