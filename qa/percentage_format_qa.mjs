@@ -123,7 +123,8 @@ async function loadRoute(page, route) {
     waitUntil: "domcontentloaded",
     timeout: 30_000,
   });
-  assert(response?.ok(), `${route} returned ${response?.status()}`);
+  const status = response?.status();
+  assert(response?.ok() || status === 304, `${route} returned ${status}`);
   await page.waitForTimeout(900);
   await settle(page);
 }
