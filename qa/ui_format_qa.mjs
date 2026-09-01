@@ -37,8 +37,8 @@ try {
     JSON.stringify(shared.counts),
   );
   check(
-    "Shared currency places the sign before the symbol",
-    shared.positive === "$884" && shared.negative === "−$884",
+    "Shared currency separates the symbol and places a negative sign first",
+    shared.positive === "$\u00a0884" && shared.negative === "−$\u00a0884",
     `${shared.positive} / ${shared.negative}`,
   );
   check(

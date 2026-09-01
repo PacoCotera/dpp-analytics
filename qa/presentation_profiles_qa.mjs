@@ -141,6 +141,10 @@ for (const profileId of expectedProfileIds) {
   profileChecks.push(result);
 }
 
+await page.locator('.business-health-card').nth(2).waitFor({
+  state: 'visible',
+  timeout: 10_000,
+});
 const structure = await page.evaluate(() => ({
   h1: [...document.querySelectorAll('main h1')].map((heading) => heading.textContent.trim()),
   pageRecipes: [...document.querySelectorAll('main section[data-dpp-qa]')].map(

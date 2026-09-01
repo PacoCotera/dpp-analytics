@@ -252,6 +252,11 @@ try {
       timeout: 30000,
     });
     const element = page.locator(check.selector);
+    await element.waitFor({ state: "attached", timeout: 15000 });
+    const evidence = element.locator("xpath=ancestor::details[1]");
+    if ((await evidence.count()) && !(await evidence.getAttribute("open"))) {
+      await evidence.locator("summary").first().click();
+    }
     await element.waitFor({ state: "visible", timeout: 15000 });
     const text = ((await element.textContent()) || "").trim();
     for (const pattern of check.patterns) {

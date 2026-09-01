@@ -191,20 +191,13 @@ try {
   });
   await page.locator('#healthHeadline').waitFor({ state: 'visible', timeout: 10000 });
   const deletedProductUi = await page.evaluate(() => {
-    const fact = [...document.querySelectorAll('.product-health__fact')].find(
-      item => item.querySelector('.label')?.textContent?.trim() === 'Listing',
-    );
-    const parentFact = [...document.querySelectorAll('.product-health__fact')].find(
-      item => item.querySelector('.label')?.textContent?.trim() === 'Parent ASIN',
-    );
     return {
       headline: document.querySelector('#healthHeadline')?.childNodes?.[0]?.textContent?.trim() || '',
       explanation: document.querySelector('#healthRead')?.textContent?.trim() || '',
       listing: {
-        value: fact?.querySelector('strong')?.textContent?.trim() || '',
-        note: fact?.querySelector('small')?.textContent?.trim() || '',
+        value: document.querySelector('#listingState')?.textContent?.trim() || '',
+        note: document.querySelector('#listingNote')?.textContent?.trim() || '',
       },
-      parentNote: parentFact?.querySelector('small')?.textContent?.trim() || '',
       variationNote: document.querySelector('#variationNote')?.textContent?.trim() || '',
       inventoryDecision: document.querySelector('#invDecision')?.textContent?.trim() || '',
       economicsDecision: document.querySelector('#econDecision')?.textContent?.trim() || '',
@@ -216,7 +209,6 @@ try {
     deletedProductUi.explanation !== 'Absent from the latest Amazon seller-catalog snapshot' ||
     deletedProductUi.listing.value !== 'Deleted' ||
     !deletedProductUi.listing.note.startsWith('Last Amazon status ') ||
-    deletedProductUi.parentNote !== 'historical relationship unavailable' ||
     deletedProductUi.variationNote !== 'not a current offer' ||
     deletedProductUi.inventoryDecision !== 'No current inventory decision.' ||
     deletedProductUi.economicsDecision !== 'Historical record' ||

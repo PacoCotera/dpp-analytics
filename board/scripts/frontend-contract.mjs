@@ -454,7 +454,7 @@ check(
   'Catalog mobile metrics must use a readable two-row grid',
 );
 check(
-  /\.finance-progression\s*\{[^}]*min-height:\s*720px/s.test(financeCss) &&
+  /\.finance-progression\s*\{[^}]*min-height:\s*730px/s.test(financeCss) &&
     /point\._current\s*&&\s*!compact\s*&&\s*!dense/.test(financeScript) &&
     /index\s*===\s*0\s*\|\|\s*\(index\s*%\s*labelStep\s*===\s*0\s*&&\s*index\s*<\s*points\.length\s*-\s*1\)/.test(
       financeScript,

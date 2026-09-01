@@ -724,19 +724,19 @@
   table-layout: fixed;
 }
 .sales-page .geo-table col.geo-col-area {
-  width: 41%;
+  width: 46%;
 }
 .sales-page .geo-table col.geo-col-sales {
   width: 18%;
 }
 .sales-page .geo-table col.geo-col-orders {
-  width: 15%;
+  width: 13%;
 }
 .sales-page .geo-table col.geo-col-units {
-  width: 13%;
+  width: 11%;
 }
 .sales-page .geo-table col.geo-col-aov {
-  width: 13%;
+  width: 12%;
 }
 .sales-page .geo-table th,
 .sales-page .geo-table td {
