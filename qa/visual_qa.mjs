@@ -722,6 +722,27 @@ async function verifyToday(page) {
     throw new Error(`Today desktop evidence is collapsed: ${JSON.stringify(state)}`);
 }
 
+async function verifyTodayEvidenceContainment(page) {
+  await wait(page, '#ordersPanel');
+  const state = await page.evaluate(() => {
+    const section = document.querySelector('.today-evidence')?.getBoundingClientRect();
+    const last = document.getElementById('ordersPanel')?.getBoundingClientRect();
+    const summaries = [...document.querySelectorAll('.today-orders summary')];
+    return {
+      bottomInset: section && last ? section.bottom - last.bottom : 0,
+      summaryOverflow: summaries.map(element => element.scrollWidth - element.clientWidth),
+      pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  if (
+    state.bottomInset < 20 ||
+    state.summaryOverflow.some(value => value > 1) ||
+    state.pageOverflow > 1
+  ) {
+    throw new Error(`Today evidence containment mismatch: ${JSON.stringify(state)}`);
+  }
+}
+
 async function verifySalesGeography(page) {
   await wait(page, '#geoRankedRows tr');
   await wait(page, '#geoMap .geo-shape');
@@ -2014,7 +2035,8 @@ async function verifySalesOrders(page) {
 }
 
 const scenarios = [
-  ['today', '/', ['mobile', 'tablet', 'desktop', 'wide'], verifyToday],
+  ['today', '/', ['mobile', 'desktop', 'wide'], verifyToday],
+  ['today-evidence-containment', '/', ['tablet'], verifyTodayEvidenceContainment],
   ['today-wall', '/?wall=1', ['desktop']],
   ['business', '/business', ['mobile', 'tablet', 'desktop', 'wide'], verifyBusiness],
   ['sales-overview', '/sales', ['mobile', 'tablet', 'desktop'], verifySalesOverview],
