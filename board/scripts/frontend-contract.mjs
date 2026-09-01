@@ -526,6 +526,15 @@ check(
   'long trajectory windows must aggregate daily bars for readable density',
 );
 check(
+  /TRAJECTORY_WINDOWS/.test(trajectoryScript) &&
+    /params\.get\('window'\)/.test(trajectoryScript) &&
+    /url\.searchParams\.delete\('window'\)/.test(trajectoryScript) &&
+    /url\.searchParams\.set\('window', trajectoryWindow\)/.test(trajectoryScript) &&
+    /window\.addEventListener\('popstate'/.test(trajectoryScript),
+  'trajectory.js',
+  'Trajectory must own validated, canonical, history-restored window URL state',
+);
+check(
   /let expanded\s*=\s*false/.test(dataHealthScript),
   'data-health.js',
   'healthy state must default to compact pipeline exceptions',
