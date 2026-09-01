@@ -157,7 +157,7 @@
       }))
       .filter((d) => d.date)
       .sort((a, b) => d3.ascending(a.date, b.date));
-    if (data.length < 2) return empty(selector, 'Not enough sales history yet.');
+    if (!data.length) return empty(selector, 'Not enough sales history yet.');
     const averageDays = Math.max(2, Number(options.averageDays || 7));
     data.forEach((d, i) => {
       const start = Math.max(0, i - (averageDays - 1));
