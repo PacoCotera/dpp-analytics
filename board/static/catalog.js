@@ -20,6 +20,7 @@ const FUNNEL_STATES = new Set(['TRAFFIC_NOT_CONVERTING', 'CONVERTS_NEEDS_TRAFFIC
 const DORMANT_STATES = new Set(['DORMANT', 'WATCH']);
 const MOBILE_ROW_LIMIT = 6;
 const CATALOG_FILTERS = new Set(['all', 'attention', 'funnel', 'stock', 'dormant', 'inactive']);
+const CATALOG_SORTS = new Set(['attention', 'sales', 'traffic', 'conversion', 'stock', 'name']);
 
 const labels = {
   INVENTORY_RISK: 'Inventory risk',
@@ -51,6 +52,7 @@ let DATA = {
 };
 let filter = 'all';
 let mode = 'family';
+let sort = 'attention';
 
 function availableModes() {
   const modes = new Set(['family', 'sku']);
@@ -66,6 +68,8 @@ function readCatalogUrlState() {
   mode = availableModes().has(requestedMode) ? requestedMode : 'family';
   const requestedFilter = params.get('filter') || 'all';
   filter = mode === 'family' && CATALOG_FILTERS.has(requestedFilter) ? requestedFilter : 'all';
+  const requestedSort = params.get('sort') || 'attention';
+  sort = CATALOG_SORTS.has(requestedSort) ? requestedSort : 'attention';
 }
 
 function writeCatalogUrlState({ replace = false } = {}) {
@@ -74,6 +78,8 @@ function writeCatalogUrlState({ replace = false } = {}) {
   else url.searchParams.set('mode', mode);
   if (mode === 'family' && filter !== 'all') url.searchParams.set('filter', filter);
   else url.searchParams.delete('filter');
+  if (sort === 'attention') url.searchParams.delete('sort');
+  else url.searchParams.set('sort', sort);
   window.history[replace ? 'replaceState' : 'pushState']({}, '', url);
 }
 
@@ -85,9 +91,14 @@ function syncFilterButtons() {
   });
 }
 
+function syncSortControl() {
+  $('sort').value = sort;
+}
+
 function restoreCatalogUrlState() {
   readCatalogUrlState();
   syncFilterButtons();
+  syncSortControl();
   renderModes();
   renderPortfolio();
 }
@@ -245,7 +256,6 @@ function compareRows(sort, a, b, nameA, nameB) {
 }
 
 function familySorted() {
-  const sort = $('sort').value;
   return DATA.families.filter(familyMatches).sort((a, b) => {
     if (sort === 'attention') {
       return (
@@ -363,7 +373,6 @@ function dimensionRow(row, kind) {
 
 function skuRows() {
   const query = $('search').value.trim().toLowerCase();
-  const sort = $('sort').value;
   const rows = (DATA.products || [])
     .filter((product) => SELLABLE_ROLES.has(product.product_role))
     .filter(
@@ -461,7 +470,6 @@ function setHead(first = 'Family / product') {
 }
 
 function sortAnalysisRows(rows) {
-  const sort = $('sort').value;
   return [...rows].sort((a, b) =>
     compareRows(sort === 'attention' ? 'sales' : sort, a, b, a.label || a.value, b.label || b.value),
   );
@@ -575,10 +583,9 @@ function render(data) {
     `28D through ${summary.traffic_through_date || 'latest completed day'} · ${summary.sellable_offers || 0} current Amazon offers across ${summary.families || 0} families · ${summary.amazon_dimension_coverage || 0} offers with Amazon variation metadata${Number(summary.ad_spend_t28 || 0) > 0 ? ` · Paid support ${money(summary.ad_spend_t28)} · ${ratioPercent(summary.ad_tacos_t28)} TACOS · ${decimal(summary.ad_roas_t28)}× attributed ROAS` : ' · Paid support awaiting Amazon Ads data'}`;
   $('catalogDemandWindow').textContent = formatMetricWindow(data.metric_windows?.RECONCILED_PRODUCT_T28);
   $('asof').textContent = `Demand through ${summary.traffic_through_date || '—'}`;
-  $('freshness').textContent =
-    `Data Kiosk through ${summary.traffic_through_date || '—'} · listings ${String(summary.listings_fetched_at || '').slice(0, 10) || '—'} · FBA current${Number(summary.ad_spend_t28 || 0) > 0 ? ` · Ads through ${summary.ads_through_date || 'latest available day'}` : ''}`;
 
   syncFilterButtons();
+  syncSortControl();
   renderModes();
   renderPortfolio();
   writeCatalogUrlState({ replace: true });
@@ -595,7 +602,12 @@ async function load() {
 
 function bindInteractions() {
   $('search').addEventListener('input', renderPortfolio);
-  $('sort').addEventListener('change', renderPortfolio);
+  $('sort').addEventListener('change', (event) => {
+    sort = CATALOG_SORTS.has(event.currentTarget.value) ? event.currentTarget.value : 'attention';
+    syncSortControl();
+    writeCatalogUrlState();
+    renderPortfolio();
+  });
   document.querySelectorAll('.filter').forEach((button) => {
     button.addEventListener('click', () => {
       if (button.dataset.filter === filter) return;

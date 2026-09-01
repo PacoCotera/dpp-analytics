@@ -51,7 +51,76 @@ async function catalogState() {
       .mode,
     filter: document.querySelector('[data-filter][aria-pressed="true"]')
       ?.dataset.filter,
+    sort: document.getElementById("sort")?.value,
   }));
+}
+
+async function catalogRows() {
+  return page.evaluate(() => {
+    const number = (node) =>
+      Number(
+        String(node?.textContent || "")
+          .replace(/−/g, "-")
+          .replace(/[^0-9.-]/g, ""),
+      );
+    const fromRow = (row, nameSelector) => ({
+      id: row.dataset.family || "",
+      name: row.querySelector(nameSelector)?.textContent?.trim() || "",
+      sales: number(
+        row.querySelector(
+          ":scope > summary .metric-sales strong, :scope > .metric-sales strong",
+        ),
+      ),
+      traffic: number(
+        row.querySelector(
+          ":scope > summary .metric-funnel strong, :scope > .metric-funnel strong",
+        ),
+      ),
+      conversion: number(
+        row.querySelector(
+          ":scope > summary .metric-funnel b, :scope > .metric-funnel b",
+        ),
+      ),
+      stock: number(
+        row.querySelector(
+          ":scope > summary .metric-stock b, :scope > .metric-stock b",
+        ),
+      ),
+    });
+    const families = [...document.querySelectorAll("#portfolio > .family")].map(
+      (row) => fromRow(row, ".family-name"),
+    );
+    if (families.length) return families;
+    return [...document.querySelectorAll("#portfolio > .analysis-row")].map(
+      (row) => fromRow(row, ".analysis-identity strong"),
+    );
+  });
+}
+
+function assertCatalogOrder(rows, sort, mode, familyAttention) {
+  assert(
+    rows.length > 1,
+    `${mode}/${sort} did not render enough rows to verify ordering`,
+  );
+  const compare = (previous, current) => {
+    if (sort === "name") return previous.name.localeCompare(current.name) <= 0;
+    if (sort === "stock") return previous.stock <= current.stock;
+    const key = sort === "attention" ? "sales" : sort;
+    if (sort === "attention" && mode === "family") {
+      const previousAttention = familyAttention.get(previous.id) ? 1 : 0;
+      const currentAttention = familyAttention.get(current.id) ? 1 : 0;
+      return (
+        previousAttention > currentAttention ||
+        (previousAttention === currentAttention &&
+          previous.sales >= current.sales)
+      );
+    }
+    return previous[key] >= current[key];
+  };
+  assert(
+    rows.slice(1).every((row, index) => compare(rows[index], row)),
+    `${mode}/${sort} row order is not canonical: ${JSON.stringify(rows)}`,
+  );
 }
 
 try {
@@ -168,32 +237,79 @@ try {
   );
   checks.push("Sales overview date window is shareable and refresh-stable");
 
-  await page.goto(`${baseUrl}/catalog?mode=sku&trace=keep`, {
-    waitUntil: "networkidle",
-    timeout: 20000,
+  await page.goto(`${baseUrl}/catalog?mode=sku&sort=name&trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
   });
   await page
     .locator('[data-mode="sku"][aria-pressed="true"]')
-    .waitFor({ timeout: 10000 });
+    .waitFor({ timeout: 15000 });
+  await page
+    .locator("#portfolio > .analysis-row")
+    .first()
+    .waitFor({ timeout: 15000 });
   let catalog = await catalogState();
   assert(
-    catalog.mode === "sku" && catalog.filter === "all",
-    `Catalog direct mode did not restore: ${JSON.stringify(catalog)}`,
+    catalog.mode === "sku" &&
+      catalog.filter === "all" &&
+      catalog.sort === "name",
+    `Catalog direct mode/sort did not restore: ${JSON.stringify(catalog)}`,
   );
+  assertParam("sort", "name");
+  const catalogPayload = await page.evaluate(async () =>
+    (await fetch("/api/catalog", { cache: "no-store" })).json(),
+  );
+  const familyAttention = new Map(
+    (catalogPayload.families || []).map((family) => [
+      family.family_asin || "",
+      Boolean(family.needs_attention),
+    ]),
+  );
+  assertCatalogOrder(await catalogRows(), "name", "sku", familyAttention);
+  checks.push("Catalog direct links restore the selected sort and row order");
+
+  const sorts = [
+    "attention",
+    "sales",
+    "traffic",
+    "conversion",
+    "stock",
+    "name",
+  ];
+  for (const sort of sorts) {
+    await page.locator("#sort").selectOption(sort);
+    catalog = await catalogState();
+    assert(
+      catalog.sort === sort,
+      `Catalog SKU sort control did not select ${sort}`,
+    );
+    assertParam("sort", sort === "attention" ? null : sort);
+    assertParam("trace", "keep");
+    assertCatalogOrder(await catalogRows(), sort, "sku", familyAttention);
+  }
+  const skuNameOrder = await catalogRows();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    () => document.getElementById("sort")?.value === "name",
+  );
+  await page
+    .locator("#portfolio > .analysis-row")
+    .first()
+    .waitFor({ timeout: 15000 });
+  assert(
+    JSON.stringify(await catalogRows()) === JSON.stringify(skuNameOrder),
+    "Catalog refresh changed the selected SKU sort order",
+  );
+  checks.push("Every SKU sort is canonical, shareable, and refresh-stable");
+
   await page.locator('[data-mode="family"]').click();
   await page.locator('[data-filter="attention"]').click();
   assertParam("mode", null);
   assertParam("filter", "attention");
+  assertParam("sort", "name");
   assertParam("trace", "keep");
-  await page.reload({ waitUntil: "networkidle" });
-  catalog = await catalogState();
-  assert(
-    catalog.mode === "family" && catalog.filter === "attention",
-    `Catalog refresh lost filter: ${JSON.stringify(catalog)}`,
-  );
-  checks.push("Catalog mode and filter state are shareable and refresh-stable");
 
-  await page.goBack({ waitUntil: "networkidle" });
+  await page.goBack();
   await page.waitForFunction(
     () =>
       document
@@ -202,10 +318,12 @@ try {
   );
   catalog = await catalogState();
   assert(
-    catalog.mode === "family" && catalog.filter === "all",
+    catalog.mode === "family" &&
+      catalog.filter === "all" &&
+      catalog.sort === "name",
     `Catalog Back did not restore Family/All: ${JSON.stringify(catalog)}`,
   );
-  await page.goBack({ waitUntil: "networkidle" });
+  await page.goBack();
   await page.waitForFunction(
     () =>
       document
@@ -214,29 +332,81 @@ try {
   );
   catalog = await catalogState();
   assert(
-    catalog.mode === "sku" && catalog.filter === "all",
+    catalog.mode === "sku" &&
+      catalog.filter === "all" &&
+      catalog.sort === "name",
     `Catalog Back did not restore SKU mode: ${JSON.stringify(catalog)}`,
   );
-  await page.goForward({ waitUntil: "networkidle" });
+  await page.goForward();
   await page.waitForFunction(
     () =>
       document
         .querySelector('[data-mode="family"]')
         ?.getAttribute("aria-pressed") === "true",
   );
-  checks.push("Catalog browser back/forward restores mode and filter state");
+  checks.push(
+    "Catalog browser back/forward restores mode, filter, and sort state",
+  );
 
-  await page.goto(`${baseUrl}/catalog?mode=invalid&filter=invalid&trace=keep`, {
-    waitUntil: "networkidle",
-    timeout: 20000,
-  });
+  await page.locator('[data-filter="attention"]').click();
+  await page.locator("#sort").selectOption("sales");
+  const familySalesOrder = await catalogRows();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    () => document.getElementById("sort")?.value === "sales",
+  );
+  await page.waitForFunction(() =>
+    document.querySelector("#portfolio > .family, #portfolio > .empty"),
+  );
   catalog = await catalogState();
   assert(
-    catalog.mode === "family" && catalog.filter === "all",
+    catalog.mode === "family" &&
+      catalog.filter === "attention" &&
+      catalog.sort === "sales",
+    `Catalog refresh lost mode/filter/sort: ${JSON.stringify(catalog)}`,
+  );
+  assert(
+    JSON.stringify(await catalogRows()) === JSON.stringify(familySalesOrder),
+    "Catalog refresh changed the selected Family sort order",
+  );
+  await page.locator('[data-filter="all"]').click();
+  assertParam("filter", null);
+
+  for (const sort of sorts) {
+    await page.locator("#sort").selectOption(sort);
+    catalog = await catalogState();
+    assert(
+      catalog.sort === sort,
+      `Catalog Family sort control did not select ${sort}`,
+    );
+    assertParam("sort", sort === "attention" ? null : sort);
+    assertParam("filter", null);
+    assertCatalogOrder(await catalogRows(), sort, "family", familyAttention);
+  }
+  checks.push(
+    "Every Family sort is canonical and preserves compatible filter state",
+  );
+
+  await page.goto(
+    `${baseUrl}/catalog?mode=invalid&filter=invalid&sort=invalid&trace=keep`,
+    {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    },
+  );
+  await page.waitForFunction(
+    () => document.getElementById("sort")?.value === "attention",
+  );
+  catalog = await catalogState();
+  assert(
+    catalog.mode === "family" &&
+      catalog.filter === "all" &&
+      catalog.sort === "attention",
     `Invalid Catalog URL did not fall back safely: ${JSON.stringify(catalog)}`,
   );
   assertParam("mode", null);
   assertParam("filter", null);
+  assertParam("sort", null);
   assertParam("trace", "keep");
   checks.push(
     "Invalid state is normalized without deleting unrelated query parameters",
