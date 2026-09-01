@@ -10,7 +10,14 @@ const surfaces = [
   { route: '/business', api: '/api/home?refresh=1', rules: ['BUSINESS_MOMENTUM_V1'], minimumButtons: 1 },
   { route: '/', api: '/api/today?refresh=1', rules: ['TODAY_PACE_V1', 'TODAY_BUSINESS_CONTEXT_V1'], minimumButtons: 2 },
   { route: '/sales', api: '/api/sales?refresh=1', rules: ['TODAY_PACE_V1', 'SALES_PRODUCT_CHANGE_V1', 'SALES_CONCENTRATION_V1', 'SALES_BREADTH_V1'], minimumButtons: 4 },
-  { route: '/catalog', api: '/api/catalog?refresh=1', rules: ['CATALOG_COMMERCIAL_STATE_V1', 'CATALOG_FAMILY_STATE_V1', 'CATALOG_DIMENSION_CONVERSION_V1'], minimumButtons: 1 },
+  {
+    route: '/catalog',
+    api: '/api/catalog?refresh=1',
+    rules: ['CATALOG_COMMERCIAL_STATE_V1', 'CATALOG_FAMILY_STATE_V1', 'CATALOG_DIMENSION_CONVERSION_V1'],
+    minimumButtons: 1,
+    ruleDisclosure: 'details.family',
+    visibleRuleSelector: 'details.family[open] .rule-trigger',
+  },
   { route: '/product?sku=PNC-001L', api: '/api/product?sku=PNC-001L&refresh=1', rules: ['CATALOG_COMMERCIAL_STATE_V1'], minimumButtons: 1 },
   { route: '/trajectory', api: '/api/trajectory?refresh=1', rules: ['TRAJECTORY_STRUCTURE_V1'], minimumButtons: 1 },
 ];
@@ -70,20 +77,16 @@ try {
     if (buttons < surface.minimumButtons) {
       throw new Error(`${surface.route} rendered ${buttons} rule buttons, expected at least ${surface.minimumButtons}`);
     }
-    await page.waitForFunction(
-      () => [...document.querySelectorAll('.rule-trigger')].some((button) => button.getClientRects().length > 0),
-      null,
-      { timeout: 15000 },
-    );
-    let visibleRule = null;
-    for (let index = 0; index < buttons; index += 1) {
-      const candidate = ruleButtons.nth(index);
-      if (await candidate.isVisible()) {
-        visibleRule = candidate;
-        break;
+    if (surface.ruleDisclosure) {
+      const disclosure = page.locator(surface.ruleDisclosure).first();
+      await disclosure.waitFor({ state: 'attached', timeout: 15000 });
+      if (!(await disclosure.evaluate((element) => element.open))) {
+        await disclosure.locator('summary').click();
       }
     }
-    if (!visibleRule) throw new Error(`${surface.route} rendered no visible rule button`);
+    const visibleRule = page.locator(surface.visibleRuleSelector || '.rule-trigger').first();
+    await visibleRule.scrollIntoViewIfNeeded();
+    await visibleRule.waitFor({ state: 'visible', timeout: 15000 });
     await visibleRule.click();
     await page.locator('#interpretationRuleDialog[open]').waitFor({ state: 'visible', timeout: 5000 });
     const dialog = await page.locator('#interpretationRuleDialog').innerText();

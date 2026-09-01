@@ -213,6 +213,11 @@ async function verifyModal(browser, engine, width, height) {
 
     await page.keyboard.press('Escape');
     await dialog.waitFor({ state: 'hidden', timeout: 5000 });
+    await page.waitForFunction(
+      () => document.activeElement?.matches('.rule-trigger[data-rule-for="dayHeadline"]'),
+      null,
+      { timeout: 1000 },
+    );
     if (!(await trigger.evaluate((element) => element === document.activeElement))) {
       throw new Error(`${label} Escape did not restore the invoking trigger`);
     }
@@ -239,6 +244,11 @@ async function verifyModal(browser, engine, width, height) {
     await dialog.waitFor({ state: 'visible', timeout: 5000 });
     await page.getByRole('button', { name: 'Close rule detail' }).click();
     await dialog.waitFor({ state: 'hidden', timeout: 5000 });
+    await page.waitForFunction(
+      () => document.activeElement?.matches('.rule-trigger[data-rule-for="dayHeadline"]'),
+      null,
+      { timeout: 1000 },
+    );
     if (!(await trigger.evaluate((element) => element === document.activeElement))) {
       throw new Error(`${label} Close did not restore the invoking trigger`);
     }
