@@ -1378,13 +1378,50 @@ html.wall-mode .today-section {
   }
 
   .today-context {
-    gap: 4px 8px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: center;
+    gap: 6px 8px;
     padding: 8px 10px;
   }
 
-  .today-context > span,
-  .today-context > p {
+  .today-context > span {
     display: none;
+  }
+
+  .today-context > strong {
+    min-width: 0;
+    grid-column: 1;
+  }
+
+  .today-context > .rule-trigger {
+    grid-row: 1;
+    grid-column: 2;
+    margin: 0;
+  }
+
+  .today-context > p {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    padding-top: 6px;
+    border-top: var(--border-width) solid var(--line);
+  }
+
+  .today-context .business-benchmark {
+    min-width: 0;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 4px;
+    border-left: var(--border-width) solid var(--line);
+    white-space: nowrap;
+  }
+
+  .today-context .business-benchmark:first-child {
+    border-left: 0;
   }
 
   .today-operations-grid {

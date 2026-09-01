@@ -117,6 +117,9 @@ current operational read when available, an optional KPI/control aside, and clos
 for metric windows, source cutoffs, listing metadata or rule provenance. Route styles may arrange those slots but
 must not recreate the surface, repeat the same interpretation in a second lead panel, or hide provenance only at a
 breakpoint. At phone widths the first dominant chart, table or action queue must begin within 760 CSS pixels.
+Today keeps the MTD, 30D and WTD benchmarks that justify its business-context headline visible at phone widths.
+The headline and compact benchmark row remain programmatically associated inside the labelled business-context
+group; responsive composition may reduce supporting prose, but it must not remove the operational read's evidence.
 
 ### 6. Data/API
 
