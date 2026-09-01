@@ -491,21 +491,43 @@ function bindInteractions() {
 }
 
 async function start() {
-  bindInteractions();
-
   if (!sku) {
-    byId('hero').innerHTML =
-      '<div class="empty"><strong>No SKU selected.</strong> Open a product from Catalog, Sales or Inventory.</div>';
+    renderEmptyWorkspace();
     return;
   }
+
+  bindInteractions();
 
   try {
     render(await fetchJson(`/api/product?sku=${encodeURIComponent(sku)}`));
   } catch (error) {
-    byId('hero').innerHTML =
-      `<div class="empty"><strong>Product unavailable.</strong> ${escapeHtml(error.message)}</div>`;
+    renderEmptyWorkspace({
+      title: 'Product unavailable',
+      description: error.message,
+    });
     byId('asof').textContent = 'Feed unavailable';
   }
+}
+
+function renderEmptyWorkspace({
+  title = 'Choose a product',
+  description = 'Open a product from Catalog, Sales or Inventory to see its demand, stock and decisions.',
+} = {}) {
+  document.body.classList.add('product-page--empty');
+  const hero = byId('hero');
+  hero.classList.add('product-hero--empty');
+  hero.setAttribute('aria-labelledby', 'productEmptyTitle');
+  hero.innerHTML = `<div class="product-empty-state">
+    <div class="section-label">Product workspace</div>
+    <h1 class="page-lead__title" id="productEmptyTitle">${escapeHtml(title)}</h1>
+    <p class="page-lead__description">${escapeHtml(description)}</p>
+    <nav class="product-empty-actions" aria-label="Choose a product source">
+      <a class="btn" href="/catalog">Browse Products</a>
+      <a class="btn" href="/sales">Open Sales</a>
+      <a class="btn" href="/inventory">Open Inventory</a>
+    </nav>
+  </div>`;
+  byId('asof').textContent = 'Select a product';
 }
 
 start();

@@ -96,6 +96,7 @@ const trajectoryHtml = readFileSync(join(staticRoot, 'trajectory.html'), 'utf8')
 const trajectoryScript = readFileSync(join(staticRoot, 'trajectory.js'), 'utf8');
 const trajectoryCss = readFileSync(join(staticRoot, 'trajectory.css'), 'utf8');
 const productHtml = readFileSync(join(staticRoot, 'product.html'), 'utf8');
+const productScript = readFileSync(join(staticRoot, 'product.js'), 'utf8');
 const catalogHtml = readFileSync(join(staticRoot, 'catalog.html'), 'utf8');
 const catalogScript = readFileSync(join(staticRoot, 'catalog.js'), 'utf8');
 const inventoryHtml = readFileSync(join(staticRoot, 'inventory.html'), 'utf8');
@@ -400,6 +401,15 @@ check(
   !/\.hero-command\s*\{[^}]*display:\s*none/s.test(productCss),
   'product.css',
   'Product Health must remain visible on mobile',
+);
+check(
+  /document\.body\.classList\.add\('product-page--empty'\)/.test(productScript) &&
+    /hero\.classList\.add\('product-hero--empty'\)/.test(productScript) &&
+    /aria-label="Choose a product source"/.test(productScript) &&
+    /\.product-page--empty\s+main\s*>\s*:not\(#hero\)\s*\{[^}]*display:\s*none/s.test(productCss) &&
+    /\.product-hero\.product-hero--empty\s*\{[^}]*display:\s*block/s.test(productCss),
+  'product.html',
+  'Product missing-SKU route must own one complete empty workspace',
 );
 check(
   /@media \(max-width:\s*480px\)[\s\S]*?\.family\s*>\s*summary,[\s\S]*?grid-template-columns:\s*repeat\(2,/s.test(

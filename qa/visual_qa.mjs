@@ -1264,6 +1264,41 @@ async function verifyProductWorkspace(page) {
   if (mobileHierarchy.mobile) await page.locator('#ordersPanel > summary').click();
 }
 
+async function verifyProductMissingSku(page) {
+  await wait(page, '#productEmptyTitle');
+  const state = await page.evaluate(() => {
+    const visible = element => Boolean(element?.getClientRects().length);
+    const hero = document.getElementById('hero');
+    const empty = document.querySelector('.product-empty-state');
+    return {
+      bodyState: document.body.classList.contains('product-page--empty'),
+      title: document.getElementById('productEmptyTitle')?.textContent?.trim(),
+      messageWidth: Math.round(empty?.getBoundingClientRect().width || 0),
+      heroHeight: Math.round(hero?.getBoundingClientRect().height || 0),
+      visibleMainChildren: [...document.querySelectorAll('main > *')].filter(visible).length,
+      visibleAnalysis: ['.product-kpi-rail', '.product-workspace', '#ordersPanel', '#productReference']
+        .filter(selector => visible(document.querySelector(selector))),
+      actions: [...document.querySelectorAll('.product-empty-actions a')].map(link => ({
+        href: link.getAttribute('href'),
+        height: Math.round(link.getBoundingClientRect().height),
+      })),
+      overflow: document.documentElement.scrollWidth - window.innerWidth,
+    };
+  });
+  const expectedLinks = ['/catalog', '/sales', '/inventory'];
+  if (
+    !state.bodyState ||
+    state.title !== 'Choose a product' ||
+    state.messageWidth < 240 ||
+    state.heroHeight > 420 ||
+    state.visibleMainChildren !== 1 ||
+    state.visibleAnalysis.length ||
+    state.actions.length !== expectedLinks.length ||
+    state.actions.some((action, index) => action.href !== expectedLinks[index] || action.height < 40) ||
+    state.overflow > 0
+  ) throw new Error(`Product missing-SKU state mismatch: ${JSON.stringify(state)}`);
+}
+
 async function verifyProductZeroDemand(page) {
   await wait(page, '#chart .dpp-muted');
   const salesState = await page.evaluate(async () => {
@@ -1838,6 +1873,7 @@ const scenarios = [
   ['catalog-ruling', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'dimension:ruling')],
   ['catalog-combinations', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'pair')],
   ['catalog-sku', '/catalog', ['mobile', 'desktop'], p => verifyCatalogMode(p, 'sku')],
+  ['product-missing-sku', '/product', ['mobile', 'desktop'], verifyProductMissingSku],
   ['product-pnc-001', '/product?sku=PNC-001', ['mobile', 'desktop'], verifyProductWorkspace],
   ['product-zero-demand', '/product?sku=PNC-001L', ['desktop'], verifyProductZeroDemand, mockProductZeroDemand],
   ['inventory', '/inventory', ['mobile', 'tablet', 'desktop'], verifyInventory],
