@@ -1596,9 +1596,9 @@ async function verifyFinanceReport(page) {
     'finance-accounting-overview',
     'finance-immutable-history',
   ]);
-  await wait(page, '#currentLines .finance-line');
   const isMobile = (await page.evaluate(() => window.innerWidth)) <= 640;
   if (isMobile) {
+    await wait(page, '#currentBridge .bridge-step');
     if (!(await page.locator('.finance-read--current-summary').isVisible())) {
       throw new Error('Finance mobile hides the current-month management comparison');
     }
@@ -1617,6 +1617,7 @@ async function verifyFinanceReport(page) {
     }
     await wait(page, '#cashSettlementSummary');
   } else {
+    await wait(page, '#currentLines .finance-line');
     await wait(page, '#currentBridge .bridge-step');
   }
   await wait(page, '#ytdBridge .bridge-step');
