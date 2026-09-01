@@ -778,6 +778,14 @@ check(
   'sales-geography-v2.js',
   'scripted map zoom must respect reduced-motion preferences',
 );
+check(
+  !shellScript.includes("swatch.style.setProperty('--appearance-swatch'") &&
+    presentationRegistry.profiles.every(({ id }) =>
+      presentationCss.includes(`[data-profile-swatch='${id}']`),
+    ),
+  'presentation-profiles.css',
+  'appearance swatches must come from generated profile CSS without CSP-blocked inline styles',
+);
 check(!shellSelector.test(theme), 'theme.css', 'application-shell rules belong to nav-shell.css');
 check(!shellSelector.test(layout), 'layout-system.css', 'application-shell rules belong to nav-shell.css');
 check(
