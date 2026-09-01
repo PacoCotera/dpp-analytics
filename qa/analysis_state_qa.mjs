@@ -97,6 +97,71 @@ async function catalogRows() {
   });
 }
 
+async function inventoryState() {
+  return page.evaluate(() => ({
+    scope: document.querySelector('.filter[aria-pressed="true"]')?.dataset
+      .filter,
+    search: document.getElementById("search")?.value,
+    rows: [
+      ...document.querySelectorAll("#rows tr th[scope='row'] .product-sku"),
+    ].map((node) => node.textContent?.trim()),
+  }));
+}
+
+function expectedInventoryRows(payload, scope, search = "") {
+  const attentionActions = new Set(["STOCKOUT", "PRODUCE", "PLAN"]);
+  const query = String(search || "")
+    .replace(/\s+/g, " ")
+    .slice(0, 120)
+    .trim()
+    .toLowerCase();
+  return (payload.rows || [])
+    .filter((row) => {
+      if (
+        query &&
+        !`${row.product || ""} ${row.sku || ""} ${row.canonical_sku || ""}`
+          .toLowerCase()
+          .includes(query)
+      )
+        return false;
+      if (scope === "current" && !row.is_default_inventory) return false;
+      if (
+        scope === "attention" &&
+        (!row.is_default_inventory || !attentionActions.has(row.action))
+      )
+        return false;
+      if (scope === "ok" && (!row.is_default_inventory || row.action !== "OK"))
+        return false;
+      if (scope === "no_velocity" && row.has_velocity) return false;
+      if (scope === "alias" && row.inventory_lifecycle !== "ALIAS")
+        return false;
+      if (scope === "retired" && row.inventory_lifecycle !== "RETIRED")
+        return false;
+      if (scope === "archived" && row.inventory_lifecycle !== "ARCHIVED")
+        return false;
+      return true;
+    })
+    .map((row) => row.sku);
+}
+
+async function assertInventoryView(payload, scope, search = "") {
+  const inventory = await inventoryState();
+  const expectedRows = expectedInventoryRows(payload, scope, search);
+  assert(
+    inventory.scope === scope,
+    `Inventory selected ${inventory.scope}, expected ${scope}`,
+  );
+  assert(
+    inventory.search === search,
+    `Inventory search is ${inventory.search}, expected ${search}`,
+  );
+  assert(
+    JSON.stringify(inventory.rows) === JSON.stringify(expectedRows),
+    `Inventory ${scope}/${search} rows are wrong: ${JSON.stringify(inventory.rows)} vs ${JSON.stringify(expectedRows)}`,
+  );
+  return inventory;
+}
+
 async function trajectoryState() {
   return page.evaluate(() => ({
     selected: document.querySelector(
@@ -574,6 +639,147 @@ try {
   assertParam("trace", "keep");
   checks.push(
     "Invalid state is normalized without deleting unrelated query parameters",
+  );
+
+  const inventoryScopes = [
+    "current",
+    "attention",
+    "ok",
+    "no_velocity",
+    "alias",
+    "retired",
+    "archived",
+    "all",
+  ];
+  let inventoryPayload;
+  for (const scope of inventoryScopes) {
+    await page.goto(`${baseUrl}/inventory?scope=${scope}&trace=keep`, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
+    await page.waitForFunction(() =>
+      document.getElementById("asof")?.textContent?.startsWith("Snapshot"),
+    );
+    inventoryPayload ||= await page.evaluate(async () =>
+      (await fetch("/api/inventory", { cache: "no-store" })).json(),
+    );
+    await assertInventoryView(inventoryPayload, scope);
+    assertParam("scope", scope === "current" ? null : scope);
+    assertParam("q", null);
+    assertParam("trace", "keep");
+  }
+  checks.push(
+    "Every Inventory scope restores its selected ARIA state and exact rows from a canonical direct link",
+  );
+
+  const inventoryQuery = String(
+    inventoryPayload.rows?.find((row) => row.sku)?.sku || "",
+  ).trim();
+  assert(inventoryQuery, "Inventory has no SKU available for search-state QA");
+  await page.goto(
+    `${baseUrl}/inventory?scope=all&q=${encodeURIComponent(inventoryQuery)}&trace=keep`,
+    { waitUntil: "domcontentloaded", timeout: 30000 },
+  );
+  await page.waitForFunction(
+    (query) => document.getElementById("search")?.value === query,
+    inventoryQuery,
+  );
+  const inventorySearchState = await assertInventoryView(
+    inventoryPayload,
+    "all",
+    inventoryQuery,
+  );
+  assertParam("scope", "all");
+  assertParam("q", inventoryQuery);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    (query) => document.getElementById("search")?.value === query,
+    inventoryQuery,
+  );
+  assert(
+    JSON.stringify(await inventoryState()) ===
+      JSON.stringify(inventorySearchState),
+    "Inventory search result changed after refresh",
+  );
+  checks.push(
+    "Inventory search is shareable and refresh-stable with the exact result rows",
+  );
+
+  await page.goto(`${baseUrl}/inventory?trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.waitForFunction(() =>
+    document.getElementById("asof")?.textContent?.startsWith("Snapshot"),
+  );
+  await page.locator("#search").fill(inventoryQuery);
+  assertParam("q", inventoryQuery);
+  assertParam("scope", null);
+  await page.locator('[data-filter="all"]').click();
+  const inventoryAllHistory = await assertInventoryView(
+    inventoryPayload,
+    "all",
+    inventoryQuery,
+  );
+  assertParam("scope", "all");
+  await page.locator('[data-filter="alias"]').click();
+  await assertInventoryView(inventoryPayload, "alias", inventoryQuery);
+  assertParam("scope", "alias");
+  await page.goBack();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-filter="all"]')
+        ?.getAttribute("aria-pressed") === "true",
+  );
+  assert(
+    JSON.stringify(await inventoryState()) ===
+      JSON.stringify(inventoryAllHistory),
+    "Inventory Back did not restore All records with its search",
+  );
+  await page.goBack();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-filter="current"]')
+        ?.getAttribute("aria-pressed") === "true",
+  );
+  await assertInventoryView(inventoryPayload, "current", inventoryQuery);
+  await page.goForward();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-filter="all"]')
+        ?.getAttribute("aria-pressed") === "true",
+  );
+  assert(
+    JSON.stringify(await inventoryState()) ===
+      JSON.stringify(inventoryAllHistory),
+    "Inventory Forward did not restore All records with its search",
+  );
+  checks.push(
+    "Inventory scope changes create useful Back and Forward history while preserving search",
+  );
+
+  const overlongSearch = "inventory ".repeat(20);
+  const normalizedSearch = overlongSearch
+    .replace(/\s+/g, " ")
+    .slice(0, 120)
+    .trim();
+  await page.goto(
+    `${baseUrl}/inventory?scope=invalid&q=${encodeURIComponent(overlongSearch)}&trace=keep`,
+    { waitUntil: "domcontentloaded", timeout: 30000 },
+  );
+  await page.waitForFunction(
+    (query) => document.getElementById("search")?.value === query,
+    normalizedSearch,
+  );
+  await assertInventoryView(inventoryPayload, "current", normalizedSearch);
+  assertParam("scope", null);
+  assertParam("q", normalizedSearch);
+  assertParam("trace", "keep");
+  checks.push(
+    "Invalid Inventory scope and overlong search normalize without losing unrelated parameters",
   );
 
   await page.goto(`${baseUrl}/trajectory?window=90d&trace=keep`, {

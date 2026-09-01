@@ -102,6 +102,7 @@ const productScript = readFileSync(join(staticRoot, 'product.js'), 'utf8');
 const catalogHtml = readFileSync(join(staticRoot, 'catalog.html'), 'utf8');
 const catalogScript = readFileSync(join(staticRoot, 'catalog.js'), 'utf8');
 const inventoryHtml = readFileSync(join(staticRoot, 'inventory.html'), 'utf8');
+const inventoryScript = readFileSync(join(staticRoot, 'inventory.js'), 'utf8');
 const salesHtml = readFileSync(join(staticRoot, 'sales.html'), 'utf8');
 const financeHtml = readFileSync(join(staticRoot, 'finance.html'), 'utf8');
 const financeScript = readFileSync(join(staticRoot, 'finance.js'), 'utf8');
@@ -543,6 +544,15 @@ check(
     /window\.addEventListener\('popstate'/.test(financeScript),
   'finance.js',
   'Finance must own validated, canonical, history-restored window, month, and COGS URL state',
+);
+check(
+  /INVENTORY_SCOPES/.test(inventoryScript) &&
+    /params\.get\('scope'\)/.test(inventoryScript) &&
+    /params\.get\('q'\)/.test(inventoryScript) &&
+    /url\.searchParams\.set\('q', query\)/.test(inventoryScript) &&
+    /window\.addEventListener\('popstate'/.test(inventoryScript),
+  'inventory.js',
+  'Inventory must own validated, canonical, history-restored scope and search URL state',
 );
 check(
   /let expanded\s*=\s*false/.test(dataHealthScript),
