@@ -75,7 +75,7 @@ for (const [engineName, engine, viewport] of engines) {
         `${engineName} ${route} returned ${response?.status()}`,
       );
       await page
-        .locator(".rule-trigger,.segmented-control__item")
+        .locator(".rule-trigger:visible,.segmented-control__item:visible")
         .first()
         .waitFor({
           state: "visible",
