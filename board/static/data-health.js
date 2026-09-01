@@ -407,7 +407,18 @@ function render(payload) {
   renderJobs();
 }
 
+function syncWarehouseReference() {
+  const reference = byId('warehouseReference');
+  const summary = byId('warehouseReferenceSummary');
+  const action = byId('warehouseReferenceAction');
+  const label = reference.open ? 'Hide warehouse totals' : 'Show warehouse totals';
+  summary.setAttribute('aria-label', label);
+  action.textContent = label;
+}
+
 function bindInteractions() {
+  byId('warehouseReference').addEventListener('toggle', syncWarehouseReference);
+  syncWarehouseReference();
   byId('toggle').addEventListener('click', () => {
     expanded = !expanded;
     renderJobs();

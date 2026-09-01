@@ -283,19 +283,11 @@
 }
 
 .warehouse-reference__action {
+  flex: 0 0 auto;
   color: var(--accent-ink);
   font-size: 14px;
   font-weight: 820;
-  text-transform: uppercase;
-}
-
-.warehouse-reference[open] .warehouse-reference__action::before {
-  content: 'Hide';
-  font-size: 14px;
-}
-
-.warehouse-reference[open] .warehouse-reference__action {
-  font-size: 0;
+  white-space: nowrap;
 }
 
 .pipeline-panel .panel__body {

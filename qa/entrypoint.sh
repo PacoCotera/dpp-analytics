@@ -28,6 +28,8 @@ node /qa/trajectory_lead_caption_qa.mjs "$base_url" "$work_dir"
 trajectory_lead_caption_rc=$?
 node /qa/trajectory_axis_ticks_qa.mjs "$base_url" "$work_dir"
 trajectory_axis_ticks_rc=$?
+node /qa/data_health_disclosure_qa.mjs "$base_url" "$work_dir"
+data_health_disclosure_rc=$?
 node /qa/shared_control_targets_qa.mjs "$base_url" "$work_dir"
 shared_control_targets_rc=$?
 node /qa/numeric_ui_qa.mjs "$base_url" "$work_dir"
@@ -81,6 +83,7 @@ if [ "$today_day_picker_rc" -ne 0 ]; then exit "$today_day_picker_rc"; fi
 if [ "$today_mobile_benchmark_rc" -ne 0 ]; then exit "$today_mobile_benchmark_rc"; fi
 if [ "$trajectory_lead_caption_rc" -ne 0 ]; then exit "$trajectory_lead_caption_rc"; fi
 if [ "$trajectory_axis_ticks_rc" -ne 0 ]; then exit "$trajectory_axis_ticks_rc"; fi
+if [ "$data_health_disclosure_rc" -ne 0 ]; then exit "$data_health_disclosure_rc"; fi
 if [ "$shared_control_targets_rc" -ne 0 ]; then exit "$shared_control_targets_rc"; fi
 if [ "$numeric_rc" -ne 0 ]; then exit "$numeric_rc"; fi
 if [ "$ui_format_rc" -ne 0 ]; then exit "$ui_format_rc"; fi

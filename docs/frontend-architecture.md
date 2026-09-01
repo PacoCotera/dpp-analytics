@@ -67,6 +67,10 @@ must not reduce that target. Truly inline disclosures may use the WCAG 2.2 24px 
 surrounding spacing preserves a 24 × 24 CSS-pixel target; those exceptions remain route-owned and must be
 documented in the route's browser QA.
 
+Disclosure state and action copy belong to real DOM text and the owning runtime. CSS must not inject “Show” or
+“Hide” semantics with generated content or suppress stale state text visually. Data Health's warehouse reference
+keeps its visible action and exact summary accessible name synchronized on the native `details` toggle event.
+
 Compact numeric metadata uses `.state-read__meta` and remains on one line. Paragraph-like comparison captions
 opt into `.state-read__meta--prose`, which wraps arbitrary copy inside its assigned lead-aside width rather than
 letting the shared lead's overflow boundary clip it.
