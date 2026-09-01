@@ -52,7 +52,6 @@
   }
 
   function syncBrowserChrome(profile) {
-    root.style.colorScheme = profile.colorScheme;
     const themeColor = findOrCreateMeta("meta[name='theme-color']", 'theme-color');
     const colorScheme = findOrCreateMeta("meta[name='color-scheme']", 'color-scheme');
     themeColor.content = profile.themeColor;

@@ -329,6 +329,10 @@ async function runContract() {
   for (const marker of runtimeMarkers) {
     assert(runtimeSource.includes(marker), `runtime is missing required behavior marker: ${marker}`);
   }
+  assert(
+    !runtimeSource.includes('root.style.colorScheme'),
+    'runtime must use generated profile CSS for CSP-safe color-scheme application',
+  );
   new Function(runtimeSource);
 
   const build = spawnSync(process.execPath, [BUILD_PATH, '--check'], {

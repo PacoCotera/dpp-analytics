@@ -111,7 +111,8 @@ for (const profileId of expectedProfileIds) {
       rootTheme: root.getAttribute('data-dpp-theme'),
       rootProfile: root.getAttribute('data-dpp-profile'),
       chartStyle: root.getAttribute('data-dpp-chart-style'),
-      colorScheme: root.style.colorScheme,
+      colorScheme: getComputedStyle(root).colorScheme,
+      inlineStyle: root.getAttribute('style'),
       themeColor: document.querySelector("meta[name='theme-color']")?.content,
       stored: JSON.parse(localStorage.getItem(window.dppPresentation.storageKey)),
       canvas: getComputedStyle(root).getPropertyValue('--dpp-canvas').trim(),
@@ -131,6 +132,7 @@ for (const profileId of expectedProfileIds) {
   assert(result.rootProfile === result.expected.profile, `${profileId} profile attribute differs`);
   assert(result.chartStyle === result.expected.chartStyle, `${profileId} chart style differs`);
   assert(result.colorScheme === result.expected.colorScheme, `${profileId} color scheme differs`);
+  assert(result.inlineStyle === null, `${profileId} writes an inline root style`);
   assert(result.themeColor === result.expected.themeColor, `${profileId} browser chrome differs`);
   assert(result.stored?.profileId === profileId, `${profileId} was not persisted`);
   assert(result.selected === profileId, `${profileId} Appearance choice is not selected`);
