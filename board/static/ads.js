@@ -1,8 +1,17 @@
-import { byId, escapeHtml, fetchJson, formatBusinessClock, formatCount, integer, money } from './ui-utils.js';
+import {
+  byId,
+  escapeHtml,
+  fetchJson,
+  formatBusinessClock,
+  formatCount,
+  integer,
+  money,
+  percent,
+} from './ui-utils.js';
 import { loadAdsChartDependencies } from './ads-chart-loader.js';
-const ratioPercent = (v) => (v == null ? '—' : `${(Number(v) * 100).toFixed(1)}%`);
-const deltaPercent = (v) => (v == null ? '—' : `${Number(v) > 0 ? '+' : ''}${Number(v).toFixed(1)}%`);
-const deltaPoints = (v) => (v == null ? '—' : `${Number(v) > 0 ? '+' : ''}${Number(v).toFixed(1)} pts`);
+const ratioPercent = (value) => percent(value, { scale: 100, sign: false });
+const deltaPercent = (value) => percent(value);
+const deltaPoints = (value) => percent(value).replace('%', ' pts');
 const multiple = (v) => (v == null ? '—' : `${Number(v).toFixed(2)}×`);
 function setMetric(id, value) {
   const e = byId(id);

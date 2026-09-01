@@ -1,13 +1,25 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { formatCount, formatMonthYear, money } from '../static/format-core.js';
+import { formatCount, formatMonthYear, money, percent } from '../static/format-core.js';
 
 assert.equal(formatCount(0, 'order'), '0 orders');
 assert.equal(formatCount(1, 'order'), '1 order');
 assert.equal(formatCount(2, 'order'), '2 orders');
 assert.equal(formatCount(1, 'unit'), '1 unit');
 assert.equal(formatCount(2, 'unit'), '2 units');
+
+assert.equal(percent(null), '—');
+assert.equal(percent(undefined), '—');
+assert.equal(percent(Number.NaN), '—');
+assert.equal(percent(0), '0.0%');
+assert.equal(percent(12.44), '+12.4%');
+assert.equal(percent(-12.44), '−12.4%');
+assert.equal(percent(12.44, { sign: false }), '12.4%');
+assert.equal(percent(-12.44, { sign: false }), '−12.4%');
+assert.equal(percent(0.125, { scale: 100, sign: false }), '12.5%');
+assert.equal(percent(1234.56, { digits: 2 }), '+1,234.56%');
+assert.equal(percent(-1234.56, { digits: 0, sign: false }), '−1,235%');
 
 assert.equal(money(0), '$\u00a00');
 assert.equal(money(884), '$\u00a0884');

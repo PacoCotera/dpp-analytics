@@ -2,6 +2,7 @@ export const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0
 export const number1 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
 
 const moneyFormatters = new Map();
+const percentFormatters = new Map();
 export const MONEY_PREFIX = '$\u00a0';
 const monthYearShort = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -28,6 +29,20 @@ function moneyFormatter(digits) {
   return moneyFormatters.get(places);
 }
 
+function percentFormatter(digits) {
+  const places = Math.max(0, Math.min(6, Math.round(Number(digits) || 0)));
+  if (!percentFormatters.has(places)) {
+    percentFormatters.set(
+      places,
+      new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: places,
+        maximumFractionDigits: places,
+      }),
+    );
+  }
+  return percentFormatters.get(places);
+}
+
 export function integer(value) {
   return number0.format(Math.round(Number(value || 0)));
 }
@@ -35,6 +50,14 @@ export function integer(value) {
 export function formatCount(value, singular, plural = `${singular}s`) {
   const numeric = Math.round(Number(value || 0));
   return `${number0.format(numeric)} ${numeric === 1 ? singular : plural}`;
+}
+
+export function percent(value, { digits = 1, sign = true, scale = 1 } = {}) {
+  if (value === null || value === undefined) return '—';
+  const numeric = Number(value) * Number(scale);
+  if (!Number.isFinite(numeric)) return '—';
+  const prefix = numeric < 0 ? '−' : sign && numeric > 0 ? '+' : '';
+  return `${prefix}${percentFormatter(digits).format(Math.abs(numeric))}%`;
 }
 
 export function money(value, { compact = false, digits = 0 } = {}) {

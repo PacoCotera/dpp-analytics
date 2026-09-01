@@ -7,6 +7,7 @@ import {
   formatMonthYear,
   integer,
   money,
+  percent,
 } from './ui-utils.js';
 
 const number0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
@@ -68,10 +69,6 @@ function valueClass(value) {
   if (numeric < 0) return 'neg';
   if (numeric > 0) return 'pos';
   return '';
-}
-
-function percentage0(value) {
-  return value === null || value === undefined ? '—' : `${Number(value).toFixed(0)}%`;
 }
 
 function monthDate(value) {
@@ -526,12 +523,15 @@ function renderCurrentMonth(current, closed) {
   byId('iva').textContent = financeMoney(current.iva_on_sales);
   byId('gross').textContent = financeMoney(current.shopper_product_spend);
   byId('cash').textContent = financeMoney(current.cash_transferred);
-  byId('cogsCoverage').textContent = percentage0(current.cogs_coverage_pct);
+  byId('cogsCoverage').textContent = percent(current.cogs_coverage_pct, {
+    digits: 0,
+    sign: false,
+  });
 
   const releaseCoverage = Number(current.core_orders || 0)
     ? (100 * Number(current.released_orders || 0)) / Number(current.core_orders)
     : 100;
-  byId('releaseCoverage').textContent = percentage0(releaseCoverage);
+  byId('releaseCoverage').textContent = percent(releaseCoverage, { digits: 0, sign: false });
   byId('closedCount').textContent = integer(closed.length);
   byId('restatedCount').textContent = integer(
     closed.filter((item) => String(item.state || '').toUpperCase() === 'RESTATED').length,
@@ -632,8 +632,8 @@ function renderPendingMonths(payload) {
         <div><strong>${monthLabel(item.month)}</strong><small>${financeMoney(item.net_sales_ex_vat)} sales ex IVA</small></div>
         <div><span class="pending-badge ${ready ? 'ready' : ''}">${escapeHtml(stateLabel(normalizedState))}</span><small>${item.amazon_state === 'CLOSED' ? 'Amazon-side final' : 'Amazon-side closing'}</small></div>
         <div><strong>${escapeHtml(waits)}</strong><small>${escapeHtml(cogsRead)}</small></div>
-        <div class="pending-metric"><span>Order release</span><strong>${percentage0(item.release_coverage_pct)}</strong></div>
-        <div class="pending-metric"><span>COGS coverage</span><strong>${percentage0(item.cogs_coverage_pct)}</strong></div>
+        <div class="pending-metric"><span>Order release</span><strong>${percent(item.release_coverage_pct, { digits: 0, sign: false })}</strong></div>
+        <div class="pending-metric"><span>COGS coverage</span><strong>${percent(item.cogs_coverage_pct, { digits: 0, sign: false })}</strong></div>
       </div>`;
     })
     .join('');
@@ -656,7 +656,7 @@ function renderHistory(current, closed) {
         const open = Boolean(item._current);
         const margin =
           !open && item.contribution_margin_pct != null
-            ? `${Number(item.contribution_margin_pct).toFixed(1)}%`
+            ? percent(item.contribution_margin_pct, { sign: false })
             : open && item._adsPending
               ? 'pre-ads'
               : 'provisional';
