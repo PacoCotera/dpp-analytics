@@ -623,6 +623,13 @@ check(
   'count, unit plurality, and window copy must share real DOM text instead of CSS-generated semantics',
 );
 check(
+  !/\sstyle\s*=/.test(salesScript) &&
+    /class="product-line__copy"/.test(salesScript) &&
+    /\.product-line__copy\s*\{[^}]*min-width:\s*0/s.test(theme),
+  'sales-canonical.js',
+  'Sales product identity layout must use the shared stylesheet without CSP-blocked inline styles',
+);
+check(
   /export function percent\(value, \{ digits = 1, sign = true, scale = 1 \} = \{\}\)/.test(
     formatCoreScript,
   ) &&
