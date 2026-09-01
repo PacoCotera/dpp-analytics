@@ -1,4 +1,11 @@
-import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleTrigger } from './ui-utils.js';
+import {
+  formatBusinessClock,
+  formatCount,
+  formatMetricWindow,
+  money,
+  mountRuleTrigger,
+  percent,
+} from './ui-utils.js';
 
 /* Sales canonical renderer v2: one fetch, one DOM owner, one chart owner. */
 (() => {
@@ -7,10 +14,6 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
   if (!d3) return;
   const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   const shortMoney = (value) => money(value, { compact: true });
-  const pct = (v) =>
-    v == null || !Number.isFinite(Number(v))
-      ? '—'
-      : `${Number(v) > 0 ? '+' : Number(v) < 0 ? '−' : ''}${Math.abs(Number(v)).toFixed(1)}%`;
   const cls = (v) => (Number(v) > 0 ? 'good' : Number(v) < 0 ? 'bad' : '');
   const esc = (s) =>
     String(s || '').replace(
@@ -128,24 +131,26 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
     set('mtdLabel', `${monthName(h.business_date)} MTD`);
     set('mtdSales', money(h.sales_mtd));
     set('mtdVolume', `${formatCount(h.orders_mtd, 'order')} · ${formatCount(h.units_mtd, 'unit')}`);
-    set('mtdNote', `${pct(h.delta_mtd_pct)} vs same days last month`, cls(h.delta_mtd_pct));
+    set('mtdNote', `${percent(h.delta_mtd_pct)} vs same days last month`, cls(h.delta_mtd_pct));
     set('salesRunRate', money(h.projected_month_sales));
     set('t7Sales', money(h.sales_t7));
     set(
       't7Volume',
       `${formatCount(h.orders_t7, 'order')} · ${formatCount(sum(series.slice(-7), 'units'), 'unit')}`,
     );
-    set('t7Note', `${pct(h.delta7_pct)} vs prior 7`, cls(h.delta7_pct));
+    set('t7Note', `${percent(h.delta7_pct)} vs prior 7`, cls(h.delta7_pct));
     set('t28Sales', money(h.sales_t28));
     set('t28Volume', `${formatCount(h.orders_t28, 'order')} · ${formatCount(h.units_t28, 'unit')}`);
-    set('t28Note', `${pct(h.delta28_pct)} vs prior 28`, cls(h.delta28_pct));
+    set('t28Note', `${percent(h.delta28_pct)} vs prior 28`, cls(h.delta28_pct));
     set('todaySales', money(t.sales_today));
     set('todayMeta', `${formatCount(t.orders_today, 'order')} · ${formatCount(t.units_today, 'unit')}`);
     const pv = t.pace_vs_same_weekday_pct,
       todayRead = DATA?.today_read || {};
     set(
       'todayPace',
-      todayRead.eligible ? `${pct(pv)} vs same weekday / same time` : todayRead.label || 'Pace unavailable',
+      todayRead.eligible
+        ? `${percent(pv)} vs same weekday / same time`
+        : todayRead.label || 'Pace unavailable',
       todayRead.eligible ? cls(pv) : '',
     );
     mountRuleTrigger(document.getElementById('todayPace'), todayRead, DATA.interpretation_rules);
@@ -177,9 +182,9 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
       'productChangeDriver',
       mover.product
         ? `${mover.product} ${moverChange >= 0 ? 'added' : 'reduced'} ${shortMoney(Math.abs(moverChange))}.`
-        : `${pct(delta)} vs the prior 28 days.`,
+        : `${percent(delta)} vs the prior 28 days.`,
     );
-    set('productConcentration', concentration == null ? '—' : `${Number(concentration).toFixed(1)}%`);
+    set('productConcentration', percent(concentration, { sign: false }));
     set('productConcentrationState', read.concentration_state || 'Unavailable');
     mountRuleTrigger(
       document.getElementById('productConcentrationState'),
@@ -220,7 +225,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
         const img = r.image_url
           ? `<img class="product-thumb" src="${esc(r.image_url)}" alt="" loading="lazy">`
           : '';
-        return `<tr${index >= PRODUCT_MOBILE_LIMIT ? ' class="product-reference-row"' : ''}><td><a class="product-line" href="/product?sku=${encodeURIComponent(r.sku)}">${img}<div style="min-width:0"><div class="product-sku">${esc(r.sku)}</div><div class="product-name">${esc(r.product || r.sku)}</div></div></a></td><td class="num product-sales"><strong>${money(r.sales_t28)}</strong></td><td class="num product-share">${r.share_t28_pct == null ? '—' : `${Number(r.share_t28_pct).toFixed(1)}%`}</td><td class="num product-change ${cls(r.sales_change_t28)}"><strong>${r.sales_change_t28 == null ? '—' : shortMoney(r.sales_change_t28)}</strong><small>${pct(r.delta28_pct)}</small></td><td class="num product-movement">${r.movement_contribution_pct == null ? '—' : `${Number(r.movement_contribution_pct).toFixed(1)}%`}</td><td class="num product-units">${formatCount(r.units_t28 || 0, 'unit')} / 28D</td><td class="product-state"><span class="state ${esc(r.state)}">${esc(r.state)}</span></td></tr>`;
+        return `<tr${index >= PRODUCT_MOBILE_LIMIT ? ' class="product-reference-row"' : ''}><td><a class="product-line" href="/product?sku=${encodeURIComponent(r.sku)}">${img}<div style="min-width:0"><div class="product-sku">${esc(r.sku)}</div><div class="product-name">${esc(r.product || r.sku)}</div></div></a></td><td class="num product-sales"><strong>${money(r.sales_t28)}</strong></td><td class="num product-share">${percent(r.share_t28_pct, { sign: false })}</td><td class="num product-change ${cls(r.sales_change_t28)}"><strong>${r.sales_change_t28 == null ? '—' : shortMoney(r.sales_change_t28)}</strong><small>${percent(r.delta28_pct)}</small></td><td class="num product-movement">${percent(r.movement_contribution_pct, { sign: false })}</td><td class="num product-units">${formatCount(r.units_t28 || 0, 'unit')} / 28D</td><td class="product-state"><span class="state ${esc(r.state)}">${esc(r.state)}</span></td></tr>`;
       })
       .join('');
     document.getElementById('products')?.classList.toggle('products-expanded', PRODUCTS_EXPANDED);
@@ -585,7 +590,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
           v: fullRows.length ? money(total / fullRows.length) : '—',
           n: 'average / month',
         },
-        { l: 'Benchmark', v: pct(delta), n: 'last 12M vs prior 12M', tone: cls(delta) },
+        { l: 'Benchmark', v: percent(delta), n: 'last 12M vs prior 12M', tone: cls(delta) },
       ]);
     } else if (isYtd) {
       const total = sum(data, 'value');
@@ -606,7 +611,12 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
           n: 'month to date',
         },
         { l: 'Pace', v: `${money(h.daily_avg_mtd)}/day`, n: `run rate ${money(h.projected_month_sales)}` },
-        { l: 'Benchmark', v: pct(h.delta_mtd_pct), n: 'vs same days last month', tone: cls(h.delta_mtd_pct) },
+        {
+          l: 'Benchmark',
+          v: percent(h.delta_mtd_pct),
+          n: 'vs same days last month',
+          tone: cls(h.delta_mtd_pct),
+        },
       ]);
   }
 
@@ -733,9 +743,15 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
         const tr = [{ label: 'Sales', value: money(w.sales) }];
         if (w.days >= 7) {
           if (w.previous?.days >= 7 && w.previous.sales > 0)
-            tr.push({ label: 'LW', value: pct((100 * (w.sales - w.previous.sales)) / w.previous.sales) });
+            tr.push({
+              label: 'LW',
+              value: percent((100 * (w.sales - w.previous.sales)) / w.previous.sales),
+            });
           if (w.benchmark > 0)
-            tr.push({ label: '4W', value: pct((100 * (w.sales - w.benchmark)) / w.benchmark) });
+            tr.push({
+              label: '4W',
+              value: percent((100 * (w.sales - w.benchmark)) / w.benchmark),
+            });
         } else tr.push({ label: 'WTD', value: 'partial' });
         showTip(
           c,
@@ -764,7 +780,7 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
           ? `weekday-adjusted · through ${d3.utcFormat('%a')(projection.latest)}`
           : 'latest completed week',
       },
-      { l: 'Benchmark', v: pct(delta), n: 'last 4W vs prior 4W', tone: cls(delta) },
+      { l: 'Benchmark', v: percent(delta), n: 'last 4W vs prior 4W', tone: cls(delta) },
     ]);
   }
 
@@ -878,8 +894,15 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
       .on('pointerenter pointermove focus', function (e, r) {
         const tr = [{ label: 'Sales', value: money(r.sales) }];
         if (r.prev?.sales > 0)
-          tr.push({ label: 'PD', value: pct((100 * (r.sales - r.prev.sales)) / r.prev.sales) });
-        if (r.avg7 > 0) tr.push({ label: '7D', value: pct((100 * (r.sales - r.avg7)) / r.avg7) });
+          tr.push({
+            label: 'PD',
+            value: percent((100 * (r.sales - r.prev.sales)) / r.prev.sales),
+          });
+        if (r.avg7 > 0)
+          tr.push({
+            label: '7D',
+            value: percent((100 * (r.sales - r.avg7)) / r.avg7),
+          });
         showTip(
           c,
           this,
@@ -897,7 +920,12 @@ import { formatBusinessClock, formatCount, formatMetricWindow, money, mountRuleT
         n: 'last 28 days',
       },
       { l: 'Pace', v: `${money(h.daily_avg_t28)}/day`, n: '28-day average' },
-      { l: 'Benchmark', v: pct(h.delta28_pct), n: 'vs prior 28 days', tone: cls(h.delta28_pct) },
+      {
+        l: 'Benchmark',
+        v: percent(h.delta28_pct),
+        n: 'vs prior 28 days',
+        tone: cls(h.delta28_pct),
+      },
     ]);
   }
 

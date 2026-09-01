@@ -72,6 +72,9 @@ Disclosure state and action copy belong to real DOM text and the owning runtime.
 keeps its visible action and exact summary accessible name synchronized on the native `details` toggle event.
 Metric counts, units and windows follow the same rule: the owning runtime renders the complete string through the
 shared formatter. Responsive CSS may position that string, but must not generate semantic suffixes or plurals.
+Percentage copy is owned by `format-core.js` across every route. Its contract uses a Unicode minus for negative
+values, an optional plus only for positive signed values, locale grouping, explicit precision and optional ratio
+scaling; route modules must not rebuild signs or percent suffixes.
 
 Compact numeric metadata uses `.state-read__meta` and remains on one line. Paragraph-like comparison captions
 opt into `.state-read__meta--prose`, which wraps arbitrary copy inside its assigned lead-aside width rather than

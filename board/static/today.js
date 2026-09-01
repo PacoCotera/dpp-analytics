@@ -7,6 +7,7 @@ import {
   integer,
   money,
   mountRuleTrigger,
+  percent,
 } from './ui-utils.js';
 
 const d3 = window.d3;
@@ -26,9 +27,7 @@ function parseDate(value) {
 }
 
 function signedPercent0(value) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) return '—';
-  const numeric = Number(value);
-  return `${numeric >= 0 ? '+' : '−'}${Math.abs(numeric).toFixed(0)}%`;
+  return percent(value, { digits: 0 });
 }
 
 function tone(value) {
@@ -454,7 +453,7 @@ function renderProducts(payload) {
               <div class="meta">${formatCount(item.units, 'unit')} · ${formatCount(item.orders, 'order')}</div>
               <div class="share-track"><i style="width:${Math.max(2, Math.min(100, contribution))}%"></i></div>
             </div>
-            <div class="value"><strong>${money(item.sales || 0)}</strong><span class="share">${contribution.toFixed(0)}% of shopper spend</span></div>
+            <div class="value"><strong>${money(item.sales || 0)}</strong><span class="share">${percent(contribution, { digits: 0, sign: false })} of shopper spend</span></div>
           </a>`;
     });
     const secondary = cards.slice(3);

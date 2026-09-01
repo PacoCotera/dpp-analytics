@@ -1,7 +1,7 @@
 import './data-cache.js';
-import { formatCount, formatMonthYear, integer, money, number0, number1 } from './format-core.js';
+import { formatCount, formatMonthYear, integer, money, number0, number1, percent } from './format-core.js';
 
-export { formatCount, formatMonthYear, integer, money, number0, number1 };
+export { formatCount, formatMonthYear, integer, money, number0, number1, percent };
 export const BUSINESS_TIME_ZONE = 'America/Mexico_City';
 export const BUSINESS_TIME_ZONE_LABEL = 'Mexico City';
 
@@ -48,13 +48,6 @@ export function formatMetricWindow(window) {
     ? formatBusinessTimestamp(window.source_as_of)
     : 'source update unavailable';
   return `${window.label} · ${window.source} · ${start} to ${through} · ${includedDays} included days · source updated ${sourceUpdate}`;
-}
-
-export function percent(value, { digits = 1, sign = true } = {}) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
-  const numeric = Number(value);
-  const prefix = sign && numeric > 0 ? '+' : '';
-  return `${prefix}${numeric.toFixed(digits)}%`;
 }
 
 export function escapeHtml(value) {

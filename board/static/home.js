@@ -80,8 +80,8 @@ function renderAds(ads) {
   metrics.hidden = false;
   document.getElementById('adsSpend').textContent = money(a.spend);
   document.getElementById('adsRoas').textContent = a.roas == null ? '—' : `${Number(a.roas).toFixed(2)}×`;
-  document.getElementById('adsAcos').textContent = a.acos == null ? '—' : `${Number(a.acos).toFixed(1)}%`;
-  document.getElementById('adsTacos').textContent = a.tacos == null ? '—' : `${Number(a.tacos).toFixed(1)}%`;
+  document.getElementById('adsAcos').textContent = percent(a.acos, { sign: false });
+  document.getElementById('adsTacos').textContent = percent(a.tacos, { sign: false });
   headline.textContent = a.trusted
     ? 'Advertising context is decision-grade'
     : 'Advertising context is still provisional';
@@ -151,7 +151,7 @@ function renderBusinessHealth(data) {
       <div class="business-health-card__head"><span>Finance</span><span>${escapeHtml(String(finance.state || 'Not closed').replaceAll('_', ' '))}</span></div>
       <strong class="business-health-card__value ${financeTone}">${contribution == null ? '—' : money(contribution)}</strong>
       <div class="business-health-card__title">${escapeHtml(monthLabel(finance.month))} contribution</div>
-      <p>${margin == null ? 'No closed margin available yet.' : `${Number(margin).toFixed(1)}% after product COGS · net sales ex IVA`}</p>
+      <p>${margin == null ? 'No closed margin available yet.' : `${percent(margin, { sign: false })} after product COGS · net sales ex IVA`}</p>
     </a>
     <a class="business-health-card" href="/inventory">
       <div class="business-health-card__head"><span>Inventory</span><span>${needsAction ? 'Action required' : 'Clear'}</span></div>

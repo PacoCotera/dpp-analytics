@@ -108,8 +108,7 @@ function pct(value) {
 }
 
 function ratioPercent(value) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) return '—';
-  return percent(100 * Number(value), { sign: false });
+  return percent(value, { scale: 100, sign: false });
 }
 
 function decimal(value, digits = 2) {
@@ -291,8 +290,8 @@ function childRow(product) {
       <strong>${esc(labels[product.commercial_state] || product.commercial_state || 'Product')}</strong>${ruleTrigger(product.commercial_evaluation, DATA.interpretation_rules)}
       <span>${esc(product.commercial_explanation || '')}</span>
     </div>
-    <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(product.sales_t28)}</strong><span data-mobile-label="28D">${formatCount(product.units_t28, 'unit')}${delta === null || delta === undefined ? '' : ` · ${Number(delta) >= 0 ? '+' : ''}${Number(delta).toFixed(0)}%`}</span></div>
-    <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(product.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(product.conversion_t28_pct)}</b> CVR${product.sessions_delta28_pct === null || product.sessions_delta28_pct === undefined ? '' : ` · traffic ${Number(product.sessions_delta28_pct) >= 0 ? '+' : ''}${Number(product.sessions_delta28_pct).toFixed(0)}%`}</span></div>
+    <div class="cell metric-sales" data-mobile-title="28D sales"><strong>${money(product.sales_t28)}</strong><span data-mobile-label="28D">${formatCount(product.units_t28, 'unit')}${delta === null || delta === undefined ? '' : ` · ${percent(delta, { digits: 0 })}`}</span></div>
+    <div class="cell metric-funnel" data-mobile-title="Conversion"><strong>${num(product.sessions_t28)} sessions</strong><span data-mobile-label="Funnel"><b>${pct(product.conversion_t28_pct)}</b> CVR${product.sessions_delta28_pct === null || product.sessions_delta28_pct === undefined ? '' : ` · traffic ${percent(product.sessions_delta28_pct, { digits: 0 })}`}</span></div>
     <div class="cell metric-stock" data-mobile-title="Available"><strong>${formatCount(product.units_t28, 'unit')}</strong><span data-mobile-label="Stock"><b>${num(stock)}</b> stock${cover === null || cover === undefined ? '' : ` · ${Number(cover).toFixed(0)}d cover`}</span></div>
     <div class="cell economics">${economicsChild(product)}</div>
   </div>`;
@@ -350,7 +349,7 @@ function comparativeRead(row) {
 
   return [
     evaluation.label || 'Portfolio comparison',
-    `${share.toFixed(0)}% of 28D sales · ${row.family_count || 0} ${Number(row.family_count || 0) === 1 ? 'family' : 'families'}`,
+    `${percent(share, { digits: 0, sign: false })} of 28D sales · ${row.family_count || 0} ${Number(row.family_count || 0) === 1 ? 'family' : 'families'}`,
   ];
 }
 

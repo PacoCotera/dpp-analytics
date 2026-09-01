@@ -16,6 +16,7 @@ COPY trajectory_lead_caption_qa.mjs ./
 COPY trajectory_axis_ticks_qa.mjs ./
 COPY data_health_disclosure_qa.mjs ./
 COPY sales_driver_units_qa.mjs ./
+COPY percentage_format_qa.mjs ./
 COPY shared_control_targets_qa.mjs ./
 COPY numeric_ui_qa.mjs ./
 COPY ui_format_qa.mjs ./

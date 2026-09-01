@@ -1,4 +1,4 @@
-import { formatCount, money } from './format-core.js';
+import { formatCount, money, percent } from './format-core.js';
 
 /* Sales geography v2: local SEPOMEX labels + same-origin filtered postal polygons. */
 (() => {
@@ -275,8 +275,8 @@ import { formatCount, money } from './format-core.js';
 
   function coverageCopy() {
     const c = DATA?.geography?.coverage || {};
-    const pct = c.coverage_pct == null ? '—' : `${Number(c.coverage_pct).toFixed(1)}%`;
-    const resolution = c.alias_resolution_pct == null ? '—' : `${Number(c.alias_resolution_pct).toFixed(1)}%`;
+    const pct = percent(c.coverage_pct, { sign: false });
+    const resolution = percent(c.alias_resolution_pct, { sign: false });
     if (!Number(c.orders_with_postal || 0))
       return 'Postal geography authorized · historical backfill is populating.';
     return `${formatCount(c.canonical_states, 'canonical state')} · ${formatCount(c.unmapped_orders, 'unmapped order')} · ${resolution} alias resolution across ${formatCount(c.orders_with_postal, 'postal order')} · ${formatCount(c.alias_resolved_orders, 'alias-labelled order')} resolved · ${formatCount(c.postal_codes, 'postal code')} · ${pct} postal coverage`;
@@ -974,7 +974,10 @@ import { formatCount, money } from './format-core.js';
     if (zoomIn) zoomIn.disabled = scale >= maxScale - 0.001;
     if (reset) {
       reset.disabled = scale <= 1.001;
-      reset.title = scale <= 1.001 ? 'Map is fitted to view' : `Reset map view · ${Math.round(scale * 100)}%`;
+      reset.title =
+        scale <= 1.001
+          ? 'Map is fitted to view'
+          : `Reset map view · ${percent(scale, { digits: 0, scale: 100, sign: false })}`;
     }
   }
 

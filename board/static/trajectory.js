@@ -50,13 +50,13 @@ function toneClass(value) {
   return '';
 }
 function share(value) {
-  return value === null || value === undefined ? '—' : `${Number(value).toFixed(1)}%`;
+  return percent(value, { sign: false });
 }
 function renderStory(read = {}, rules = {}, ads = {}) {
   const title = read.label || 'Trajectory unavailable';
   let copy = read.explanation || 'Not enough reconciled history is available to interpret trajectory.';
   if (ads.status === 'ready' && Number(ads.spend || 0) > 0) {
-    const efficiency = ads.tacos == null ? '' : ` TACOS is ${Number(ads.tacos).toFixed(1)}%.`;
+    const efficiency = ads.tacos == null ? '' : ` TACOS is ${percent(ads.tacos, { sign: false })}.`;
     copy += ` Paid media supported the latest 28-day period with ${money(ads.spend)} of spend.${efficiency} Read this as context, not proof that advertising caused the sales movement.`;
   }
   byId('storyTitle').textContent = title;
@@ -128,7 +128,7 @@ function renderPortfolio(p = {}) {
       `${productive}${active ? ` / ${active}` : ''}`,
       productiveShare == null
         ? 'No active offers'
-        : `Selling in T28 · ${productiveShare.toFixed(0)}% of active`,
+        : `Selling in T28 · ${percent(productiveShare, { digits: 0, sign: false })} of active`,
     ],
     ['Revenue / SKU', money(p.revenue_per_active_sku), 'T28 average across active sellable offers'],
     ['Median SKU', money(p.median_revenue_per_sku), 'Less distorted by the largest products'],

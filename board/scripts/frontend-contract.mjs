@@ -87,6 +87,8 @@ const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
 const presentationRuntime = readFileSync(join(staticRoot, 'presentation.js'), 'utf8');
 const presentationCss = readFileSync(join(staticRoot, 'presentation-profiles.css'), 'utf8');
 const shellScript = readFileSync(join(staticRoot, 'ui-shell.js'), 'utf8');
+const formatCoreScript = readFileSync(join(staticRoot, 'format-core.js'), 'utf8');
+const uiUtilsScript = readFileSync(join(staticRoot, 'ui-utils.js'), 'utf8');
 const serverScript = readFileSync(join(root, 'server.py'), 'utf8');
 const presentationRegistry = JSON.parse(readFileSync(join(root, 'presentation', 'profiles.json'), 'utf8'));
 const todayHtml = readFileSync(join(staticRoot, 'today.html'), 'utf8');
@@ -617,6 +619,46 @@ check(
     !/#skuRows td:nth-child\(6\)::after\s*\{[^}]*content:\s*['"][^'"]*units[^'"]*['"]/s.test(salesCss),
   'Sales product driver units',
   'count, unit plurality, and window copy must share real DOM text instead of CSS-generated semantics',
+);
+check(
+  /export function percent\(value, \{ digits = 1, sign = true, scale = 1 \} = \{\}\)/.test(
+    formatCoreScript,
+  ) &&
+    /numeric < 0 \? '−'/.test(formatCoreScript) &&
+    /percentFormatter\(digits\)\.format\(Math\.abs\(numeric\)\)/.test(formatCoreScript),
+  'format-core.js',
+  'percentage formatting must own Unicode minus, precision, scaling, and locale grouping',
+);
+check(
+  /import \{[^}]*percent[^}]*\} from '\.\/format-core\.js'/s.test(uiUtilsScript) &&
+    /export \{[^}]*percent[^}]*\}/s.test(uiUtilsScript) &&
+    !/export function percent/.test(uiUtilsScript),
+  'ui-utils.js',
+  'shared UI utilities must re-export the canonical percentage formatter without redefining it',
+);
+for (const percentConsumer of [
+  'ads.js',
+  'catalog.js',
+  'finance.js',
+  'home.js',
+  'product.js',
+  'sales-canonical.js',
+  'today.js',
+  'trajectory.js',
+]) {
+  const source = readFileSync(join(staticRoot, percentConsumer), 'utf8');
+  check(
+    /\bpercent\b/.test(source) &&
+      !/toFixed\([^)]*\)[^;\n]{0,80}%/.test(source) &&
+      !/function percentage0|const pct\s*=/.test(source),
+    percentConsumer,
+    'route percentage copy must consume format-core.js instead of assembling signs and suffixes locally',
+  );
+}
+check(
+  !/coverage_pct[^;\n]*toFixed|alias_resolution_pct[^;\n]*toFixed/.test(salesGeographyScript),
+  'sales-geography-v2.js',
+  'Geography percentage copy must consume format-core.js',
 );
 for (const pageStyle of Object.values(pageStyles)) {
   const pageCss = readFileSync(join(staticRoot, pageStyle), 'utf8');

@@ -108,8 +108,7 @@ function listedDate(value) {
 }
 
 function ratioPercent(value) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) return '—';
-  return percent(100 * Number(value), { sign: false });
+  return percent(value, { scale: 100, sign: false });
 }
 
 function decimal(value, digits = 2) {
