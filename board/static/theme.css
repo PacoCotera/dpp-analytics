@@ -284,6 +284,10 @@ h1 {
   gap: 11px;
 }
 
+.product-line__copy {
+  min-width: 0;
+}
+
 .product-thumb {
   flex: 0 0 auto;
   width: 42px;
