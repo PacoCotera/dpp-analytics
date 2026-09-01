@@ -1592,14 +1592,20 @@ async function verifyFinanceWindows(page) {
 async function verifyFinanceReport(page) {
   await assertWorkspaceLandmarks(page, [
     'finance-accounting-header',
+    'finance-management-summary',
     'finance-accounting-overview',
     'finance-immutable-history',
   ]);
   await wait(page, '#currentLines .finance-line');
   const isMobile = (await page.evaluate(() => window.innerWidth)) <= 640;
   if (isMobile) {
-    if (await page.locator('.finance-read--current-summary').isVisible()) {
-      throw new Error('Finance mobile repeats the current-month contribution summary');
+    if (!(await page.locator('.finance-read--current-summary').isVisible())) {
+      throw new Error('Finance mobile hides the current-month management comparison');
+    }
+    const overviewDisclosure = page.locator('#financeOverviewDisclosure');
+    await overviewDisclosure.waitFor({ state: 'visible', timeout: 5000 });
+    if (await overviewDisclosure.getAttribute('open')) {
+      throw new Error('Finance mobile accounting detail is open by default');
     }
     const cashDisclosure = page.locator('#cashSettlementDisclosure');
     await cashDisclosure.waitFor({ state: 'visible', timeout: 5000 });
@@ -1628,6 +1634,10 @@ async function verifyFinanceReport(page) {
     const tableHead = document.querySelector('#history thead');
     const ytdFinal = document.querySelector('#ytdBridge .bridge-step.final');
     const ytdFinalValue = ytdFinal?.querySelector('strong');
+    const managementSummary = document.querySelector('[data-dpp-qa="finance-management-summary"]');
+    const currentSummary = document.querySelector('.finance-read--current-summary');
+    const closedYtd = document.querySelector('#ytdBridge')?.closest('.finance-read');
+    const accountingDisclosure = document.getElementById('financeOverviewDisclosure');
     return {
       evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
       controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
@@ -1641,9 +1651,17 @@ async function verifyFinanceReport(page) {
           ytdFinalValue &&
           (!ytdFinalValue.classList.contains('neg') || ytdFinal.classList.contains('negative'))
       ),
+      managementFirst:
+        Boolean(managementSummary && currentSummary && closedYtd && accountingDisclosure) &&
+        managementSummary.getBoundingClientRect().top < accountingDisclosure.getBoundingClientRect().top,
+      mobileComparisonBudget:
+        !mobile ||
+        (currentSummary.getBoundingClientRect().top < window.innerHeight &&
+          closedYtd.getBoundingClientRect().top <= window.innerHeight + 120 &&
+          !accountingDisclosure.hasAttribute('open')),
     };
   });
-  if (!state.evidenceFloor || !state.controlFloor || !state.mobileHeaderAvailable || !state.tableRelationships || !state.anchoredSections || !state.ytdResultTone) {
+  if (!state.evidenceFloor || !state.controlFloor || !state.mobileHeaderAvailable || !state.tableRelationships || !state.anchoredSections || !state.ytdResultTone || !state.managementFirst || !state.mobileComparisonBudget) {
     throw new Error(`Finance hierarchy/accessibility presentation mismatch: ${JSON.stringify(state)}`);
   }
 }

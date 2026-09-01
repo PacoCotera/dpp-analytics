@@ -56,6 +56,7 @@ const requiredQaMarkers = {
   'finance.html': [
     'finance-workspace',
     'finance-accounting-header',
+    'finance-management-summary',
     'finance-accounting-overview',
     'finance-current-period',
     'finance-analysis',
@@ -422,6 +423,26 @@ check(
   'finance.js',
   'Finance mobile windows must keep a stable card and collision-safe chart labels',
 );
+check(
+  financeHtml.indexOf('data-dpp-qa="finance-management-summary"') <
+    financeHtml.indexOf('id="financeOverviewDisclosure"') &&
+    financeHtml.indexOf('id="financeOverviewDisclosure"') <
+      financeHtml.indexOf('data-dpp-qa="finance-analysis"'),
+  'finance.html',
+  'Finance must lead with the current-versus-YTD management comparison',
+);
+check(
+  /id="financeOverviewDisclosure"[\s\S]*?open/.test(financeHtml) &&
+    /matchMedia\('\(max-width: 640px\)'\)[\s\S]*?financeOverviewDisclosure'\)\.open\s*=\s*false/.test(
+      financeScript,
+    ) &&
+    /@media \(max-width:\s*640px\)[\s\S]*?\.finance-overview-disclosure\s*>\s*summary\s*\{[^}]*display:\s*flex/s.test(
+      financeCss,
+    ) &&
+    !/\.finance-read--current-summary\s*\{[^}]*display:\s*none/s.test(financeCss),
+  'finance.html',
+  'Finance mobile must disclose detail progressively without hiding the management comparison',
+);
 for (const [page, html] of [
   ['home.html', homeHtml],
   ['today.html', todayHtml],
@@ -444,9 +465,7 @@ check(
   'Business and Today demand must share one chart renderer',
 );
 check(
-  /const barOccupancy = data\.length <= 14 \? 0\.5 : data\.length <= 45 \? 0\.52 : 0\.72/.test(
-    chartSystem,
-  ) &&
+  /const barOccupancy = data\.length <= 14 \? 0\.5 : data\.length <= 45 \? 0\.52 : 0\.72/.test(chartSystem) &&
     /options\.window === 'ytd' \? yearStart : d3\.utcDay\.floor\(firstDate\)/.test(chartSystem) &&
     /curveCatmullRom\.alpha\(0\.5\)/.test(chartSystem),
   'chart-system.js',
