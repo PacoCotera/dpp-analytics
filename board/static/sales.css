@@ -1225,10 +1225,6 @@
     font-size: var(--dpp-metadata-size, 14px);
   }
 
-  #skuRows td:nth-child(6)::after {
-    content: ' units / 28D';
-  }
-
   #skuRows td:nth-child(7) {
     grid-area: state;
     justify-self: end;

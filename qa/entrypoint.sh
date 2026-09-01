@@ -30,6 +30,8 @@ node /qa/trajectory_axis_ticks_qa.mjs "$base_url" "$work_dir"
 trajectory_axis_ticks_rc=$?
 node /qa/data_health_disclosure_qa.mjs "$base_url" "$work_dir"
 data_health_disclosure_rc=$?
+node /qa/sales_driver_units_qa.mjs "$base_url" "$work_dir"
+sales_driver_units_rc=$?
 node /qa/shared_control_targets_qa.mjs "$base_url" "$work_dir"
 shared_control_targets_rc=$?
 node /qa/numeric_ui_qa.mjs "$base_url" "$work_dir"
@@ -84,6 +86,7 @@ if [ "$today_mobile_benchmark_rc" -ne 0 ]; then exit "$today_mobile_benchmark_rc
 if [ "$trajectory_lead_caption_rc" -ne 0 ]; then exit "$trajectory_lead_caption_rc"; fi
 if [ "$trajectory_axis_ticks_rc" -ne 0 ]; then exit "$trajectory_axis_ticks_rc"; fi
 if [ "$data_health_disclosure_rc" -ne 0 ]; then exit "$data_health_disclosure_rc"; fi
+if [ "$sales_driver_units_rc" -ne 0 ]; then exit "$sales_driver_units_rc"; fi
 if [ "$shared_control_targets_rc" -ne 0 ]; then exit "$shared_control_targets_rc"; fi
 if [ "$numeric_rc" -ne 0 ]; then exit "$numeric_rc"; fi
 if [ "$ui_format_rc" -ne 0 ]; then exit "$ui_format_rc"; fi
