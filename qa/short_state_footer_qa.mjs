@@ -29,6 +29,8 @@ const shortRoutes = [
 ];
 const failures = [];
 const checks = [];
+const PLAYWRIGHT_SCREENSHOT_CSP_WARNING =
+  "Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear in the style-src directive of the Content Security Policy.";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -123,6 +125,26 @@ for (const [engineName, engine] of engines) {
         failedResponses.push(`${response.status()} ${response.url()}`);
       }
     });
+    const assertCleanRuntime = (label) => {
+      assert(
+        !browserErrors.length,
+        `${label} browser errors: ${browserErrors}`,
+      );
+      assert(
+        !failedResponses.length,
+        `${label} failed responses: ${failedResponses}`,
+      );
+    };
+    const discardScreenshotCspNoise = () => {
+      // WebKit reports Playwright's temporary full-page capture stylesheet
+      // against the application's CSP. App errors are asserted before capture,
+      // so only this exact automation-owned message is safe to discard here.
+      for (let index = browserErrors.length - 1; index >= 0; index -= 1) {
+        if (browserErrors[index] === PLAYWRIGHT_SCREENSHOT_CSP_WARNING) {
+          browserErrors.splice(index, 1);
+        }
+      }
+    };
     await page.route("**/api/ads", (route) =>
       route.fulfill({
         status: 200,
@@ -176,6 +198,7 @@ for (const [engineName, engine] of engines) {
           );
           checks.push(`${label}: short-state footer reaches shell floor`);
         }
+        assertCleanRuntime(`${engineName} ${viewport.label} ${route.path}`);
         await page.screenshot({
           path: path.join(
             outDir,
@@ -183,6 +206,7 @@ for (const [engineName, engine] of engines) {
           ),
           fullPage: true,
         });
+        discardScreenshotCspNoise();
       }
 
       await loadRoute(page, "/sales?view=products");
@@ -202,14 +226,7 @@ for (const [engineName, engine] of engines) {
         );
         checks.push(`${label}: long route scrolls naturally`);
       }
-      assert(
-        !browserErrors.length,
-        `${engineName} ${viewport.label} browser errors: ${browserErrors}`,
-      );
-      assert(
-        !failedResponses.length,
-        `${engineName} ${viewport.label} failed responses: ${failedResponses}`,
-      );
+      assertCleanRuntime(`${engineName} ${viewport.label}`);
     } catch (error) {
       failures.push(`${engineName} ${viewport.label}: ${error.message}`);
     } finally {
