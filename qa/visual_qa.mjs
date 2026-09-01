@@ -615,6 +615,7 @@ async function verifyToday(page) {
     const reference = document.getElementById('todayProductsReference');
     const priority = [...document.querySelectorAll('.today-products-priority .today-product')];
     const dayPicker = document.getElementById('dayPicker');
+    const dayPickerRect = dayPicker?.getBoundingClientRect();
     const rhythmKpis = [...document.querySelectorAll('.rhythm-kpi')];
     const tops = rhythmKpis.map(item => Math.round(item.getBoundingClientRect().top));
     const productValues = priority.map(card => {
@@ -659,7 +660,9 @@ async function verifyToday(page) {
       priorityVisible: priority.filter(item => item.getBoundingClientRect().height > 0).length,
       rhythmKpis: rhythmKpis.length,
       rhythmTopSpread: tops.length ? Math.max(...tops) - Math.min(...tops) : null,
-      dayPickerContained: Boolean(dayPicker && dayPicker.scrollWidth <= dayPicker.clientWidth + 2),
+      dayPickerContained: Boolean(
+        dayPickerRect && dayPickerRect.left >= -2 && dayPickerRect.right <= window.innerWidth + 2
+      ),
       productValues,
     };
   });
