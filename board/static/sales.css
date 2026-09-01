@@ -623,6 +623,7 @@
 .orders-more,
 .products-more {
   display: none;
+  min-height: var(--control-height);
 }
 
 /* Canonical sales route composition. */
@@ -947,10 +948,8 @@
   border-left: 0;
 }
 
-.sales-range button,
-.products-more,
-.orders-more {
-  min-height: var(--control-height);
+.sales-range button {
+  min-height: 44px;
 }
 
 @media (max-width: 980px) {
@@ -1412,7 +1411,7 @@
   }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 640px) {
   .sales-lead {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
@@ -1450,6 +1449,7 @@
 
   .sales-chart-header {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sales-range {

@@ -9,6 +9,12 @@ const viewports = {
   tablet: { width: 1024, height: 768, isMobile: false, hasTouch: true },
   desktop: { width: 1600, height: 1000, isMobile: false, hasTouch: false },
   wide: { width: 2560, height: 1440, isMobile: false, hasTouch: false },
+  sales619: { width: 619, height: 915, isMobile: true, hasTouch: true },
+  sales620: { width: 620, height: 915, isMobile: true, hasTouch: true },
+  sales621: { width: 621, height: 915, isMobile: true, hasTouch: true },
+  sales639: { width: 639, height: 915, isMobile: true, hasTouch: true },
+  sales640: { width: 640, height: 915, isMobile: true, hasTouch: true },
+  sales641: { width: 641, height: 915, isMobile: true, hasTouch: true },
 };
 const wait = (page, selector) => page.locator(selector).first().waitFor({ state: 'visible', timeout: 5000 });
 
@@ -300,6 +306,71 @@ async function verifySalesOverview(page) {
   }
   if (!state.mobile && state.referenceOpen)
     throw new Error('Sales Overview desktop reference context should remain secondary');
+}
+
+async function verifySalesChartHeader(page) {
+  await wait(page, '#monthChart .dpp-bar');
+  const state = await page.evaluate(() => {
+    const header = document.querySelector('.sales-chart-header');
+    const copy = header?.firstElementChild;
+    const control = header?.querySelector('.sales-range');
+    const card = header?.closest('.sales-chart-card');
+    const bounds = element => element?.getBoundingClientRect();
+    const headerBounds = bounds(header);
+    const copyBounds = bounds(copy);
+    const controlBounds = bounds(control);
+    const cardBounds = bounds(card);
+    const buttons = [...(control?.querySelectorAll('button') || [])].map(button => {
+      const rect = bounds(button);
+      return { width: rect.width, height: rect.height };
+    });
+    const stacked = window.innerWidth <= 640;
+    return {
+      width: window.innerWidth,
+      title: document.getElementById('salesChartTitle')?.textContent.trim() || '',
+      subtitle: document.getElementById('salesChartSub')?.textContent.trim() || '',
+      copyWidth: copyBounds?.width || 0,
+      headerContained: Boolean(
+        headerBounds && cardBounds &&
+        headerBounds.left >= cardBounds.left - 1 && headerBounds.right <= cardBounds.right + 1
+      ),
+      controlContained: Boolean(
+        controlBounds && cardBounds &&
+        controlBounds.left >= cardBounds.left - 1 && controlBounds.right <= cardBounds.right + 1
+      ),
+      headerInternalOverflow: Boolean(header && header.scrollWidth > header.clientWidth + 1),
+      cardInternalOverflow: Boolean(card && card.scrollWidth > card.clientWidth + 1),
+      documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      stackedOwnership: Boolean(
+        !stacked ||
+        (header && getComputedStyle(header).display === 'grid' &&
+          headerBounds && controlBounds && Math.abs(headerBounds.left - controlBounds.left) <= 1 &&
+          Math.abs(headerBounds.right - controlBounds.right) <= 1)
+      ),
+      desktopOwnership: Boolean(
+        stacked ||
+        (header && getComputedStyle(header).display === 'flex' && copyBounds?.width >= 220 &&
+          controlBounds?.width <= 300)
+      ),
+      buttonTargets: buttons,
+    };
+  });
+  if (
+    state.title !== 'Monthly shopper spend' ||
+    !state.subtitle ||
+    state.copyWidth < 220 ||
+    !state.headerContained ||
+    !state.controlContained ||
+    state.headerInternalOverflow ||
+    state.cardInternalOverflow ||
+    state.documentOverflow > 1 ||
+    !state.stackedOwnership ||
+    !state.desktopOwnership ||
+    state.buttonTargets.length !== 5 ||
+    state.buttonTargets.some(target => target.width < 44 || target.height < 44)
+  ) {
+    throw new Error(`Sales chart header boundary mismatch: ${JSON.stringify(state)}`);
+  }
 }
 
 async function verifySalesProducts(page) {
@@ -1865,6 +1936,7 @@ const scenarios = [
   ['today-wall', '/?wall=1', ['desktop']],
   ['business', '/business', ['mobile', 'tablet', 'desktop', 'wide'], verifyBusiness],
   ['sales-overview', '/sales', ['mobile', 'tablet', 'desktop'], verifySalesOverview],
+  ['sales-header-boundary', '/sales', ['sales619', 'sales620', 'sales621', 'sales639', 'sales640', 'sales641'], verifySalesChartHeader],
   ['sales-products', '/sales', ['mobile', 'desktop'], verifySalesProducts],
   ['sales-orders', '/sales', ['mobile', 'desktop'], verifySalesOrders],
   ['sales-geography', '/sales?view=geography', ['mobile', 'desktop'], verifySalesGeography],
@@ -1922,7 +1994,7 @@ const requestedScenarios = new Set((process.env.DPP_QA_SCENARIOS || '').split(',
 const plannedScenarios = requestedScenarios.size ? scenarios.filter(scenario => requestedScenarios.has(scenario.name)) : scenarios;
 const browserPlans = [
   { name: 'chromium', engine: chromium, scenarios: plannedScenarios },
-  { name: 'webkit', engine: webkit, scenarios: plannedScenarios.filter(scenario => ['today', 'business', 'trajectory', 'data-health'].includes(scenario.name)) },
+  { name: 'webkit', engine: webkit, scenarios: plannedScenarios.filter(scenario => ['today', 'business', 'sales-header-boundary', 'trajectory', 'data-health'].includes(scenario.name)) },
 ].filter(plan => requestedBrowsers.has(plan.name));
 
 for (const plan of browserPlans) {
