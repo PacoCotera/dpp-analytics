@@ -1045,8 +1045,8 @@
 
   .sales-chart-kpi-rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin: 2px -12px 0;
-    padding: 0 12px;
+    margin: 2px -19px 0;
+    padding: 0 19px;
   }
 
   .sales-chart-kpi {
@@ -1469,6 +1469,8 @@
   .sales-chart-kpi-rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: 104px;
+    margin: 2px -13px 0;
+    padding: 0 13px;
   }
 
   .sales-chart-kpi:nth-child(odd) {
