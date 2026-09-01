@@ -77,9 +77,14 @@
             </div>
           </div>
 
-          <div class="today-context" aria-live="polite">
-            <span>Business context</span>
-            <strong id="pulseHeadline">Reading the business…</strong>
+          <div
+            class="today-context"
+            aria-live="polite"
+            aria-labelledby="pulseContextLabel pulseHeadline"
+            aria-describedby="pulseExplanation"
+          >
+            <span id="pulseContextLabel">Business context</span>
+            <strong id="pulseHeadline" aria-describedby="pulseExplanation">Reading the business…</strong>
             <p id="pulseExplanation">Separating today’s signal from the broader trend.</p>
           </div>
         </section>
