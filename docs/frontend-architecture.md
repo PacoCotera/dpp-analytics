@@ -134,10 +134,10 @@ routes and new persistent interactive view controls must be added to that gate i
 ## Shareable analysis state
 
 Persistent analytical choices are URL state, not session-only UI state. Sales owns `view` and `range`; its lazy
-Geography renderer owns `geo_range`, `metric`, `sku`, and canonical two-digit `state`. Catalog owns `mode` and
-`filter`. Default values are omitted, invalid values normalize to documented defaults, and unrelated parameters
-are preserved. Changing a choice pushes browser history; direct load, refresh, Back, and Forward must render the
-same state.
+Geography renderer owns `geo_range`, `metric`, `sku`, and canonical two-digit `state`. Catalog owns `mode`,
+`filter`, and `sort`; transient free-text search remains session-only. Default values are omitted, invalid values
+normalize to documented defaults, and unrelated parameters are preserved. Changing a choice pushes browser
+history; direct load, refresh, Back, and Forward must render the same state.
 
 Session scroll/tab restoration is subordinate to the URL. `ui-shell.js` may restore saved context only when the
 saved query string exactly matches the current query string. New stable tabs, filters, windows, or drill-down keys

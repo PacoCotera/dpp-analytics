@@ -15,8 +15,20 @@ if (/\bfetch\s*\(\s*['"`]\/api\/catalog(?:[?'"`])/m.test(source)) {
 if ((source.match(/\bfetchJson\s*\(\s*['"`]\/api\/catalog(?:[?'"`])/gm) || []).length !== 1) {
   failures.push(`${owner}: must own exactly one /api/catalog request through shared fetchJson`);
 }
+for (const marker of [
+  'CATALOG_SORTS',
+  "params.get('sort')",
+  "url.searchParams.set('sort', sort)",
+  "url.searchParams.delete('sort')",
+  "$('sort').addEventListener('change'",
+]) {
+  if (!source.includes(marker)) failures.push(`${owner}: missing canonical sort URL ownership: ${marker}`);
+}
 if (/MutationObserver/.test(source)) {
   failures.push(`${owner}: must render Ads context directly rather than post-render observation`);
+}
+if (source.includes("$('freshness')")) {
+  failures.push(`${owner}: writes to the retired freshness node instead of owned lead evidence`);
 }
 if (existsSync(join(root, 'static', 'catalog-ads-context.js'))) {
   failures.push('catalog-ads-context.js: superseded second renderer still exists');
