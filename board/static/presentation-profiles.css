@@ -430,6 +430,7 @@
   --dpp-panel-texture: repeating-linear-gradient(0deg, transparent 0 23px, #74ff950d 23px 24px);
   --dpp-motion-duration: 100ms;
 }
+
 .appearance-option__swatch[data-profile-swatch='warm-studio'] {
   --appearance-swatch: #f7f3ec;
 }
