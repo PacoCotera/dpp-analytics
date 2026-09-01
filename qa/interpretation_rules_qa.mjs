@@ -64,12 +64,26 @@ try {
     }
 
     await page.goto(`${baseUrl}${surface.route}`, { waitUntil: 'networkidle', timeout: 30000 });
-    const visibleRule = page.locator('.rule-trigger:visible').first();
-    await visibleRule.waitFor({ state: 'visible', timeout: 15000 });
-    const buttons = await page.locator('.rule-trigger').count();
+    const ruleButtons = page.locator('.rule-trigger');
+    await ruleButtons.first().waitFor({ state: 'attached', timeout: 15000 });
+    const buttons = await ruleButtons.count();
     if (buttons < surface.minimumButtons) {
       throw new Error(`${surface.route} rendered ${buttons} rule buttons, expected at least ${surface.minimumButtons}`);
     }
+    await page.waitForFunction(
+      () => [...document.querySelectorAll('.rule-trigger')].some((button) => button.getClientRects().length > 0),
+      null,
+      { timeout: 15000 },
+    );
+    let visibleRule = null;
+    for (let index = 0; index < buttons; index += 1) {
+      const candidate = ruleButtons.nth(index);
+      if (await candidate.isVisible()) {
+        visibleRule = candidate;
+        break;
+      }
+    }
+    if (!visibleRule) throw new Error(`${surface.route} rendered no visible rule button`);
     await visibleRule.click();
     await page.locator('#interpretationRuleDialog[open]').waitFor({ state: 'visible', timeout: 5000 });
     const dialog = await page.locator('#interpretationRuleDialog').innerText();
