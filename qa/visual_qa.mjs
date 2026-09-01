@@ -2000,7 +2000,6 @@ const browserPlans = [
 for (const plan of browserPlans) {
 const browser = await plan.engine.launch({ headless: true });
 for (const scenario of plan.scenarios) for (const viewportName of scenario.views) {
-  if (plan.name === 'webkit' && !['mobile', 'desktop', 'wide'].includes(viewportName)) continue;
   const viewport = viewports[viewportName];
   const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, isMobile: viewport.isMobile, hasTouch: viewport.hasTouch, deviceScaleFactor: 1 });
   if (scenario.profile) {
