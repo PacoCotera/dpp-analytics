@@ -260,6 +260,15 @@
   white-space: nowrap;
 }
 
+.state-read__meta--prose {
+  white-space: normal;
+}
+
+.state-read__meta--prose > span {
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
 .rule-trigger {
   display: inline-flex;
   flex: 0 0 auto;

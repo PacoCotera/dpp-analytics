@@ -24,6 +24,8 @@ node /qa/today_day_picker_qa.mjs "$base_url" "$work_dir"
 today_day_picker_rc=$?
 node /qa/today_mobile_benchmark_qa.mjs "$base_url" "$work_dir"
 today_mobile_benchmark_rc=$?
+node /qa/trajectory_lead_caption_qa.mjs "$base_url" "$work_dir"
+trajectory_lead_caption_rc=$?
 node /qa/shared_control_targets_qa.mjs "$base_url" "$work_dir"
 shared_control_targets_rc=$?
 node /qa/numeric_ui_qa.mjs "$base_url" "$work_dir"
@@ -75,6 +77,7 @@ if [ "$analysis_state_rc" -ne 0 ]; then exit "$analysis_state_rc"; fi
 if [ "$manual_sync_rc" -ne 0 ]; then exit "$manual_sync_rc"; fi
 if [ "$today_day_picker_rc" -ne 0 ]; then exit "$today_day_picker_rc"; fi
 if [ "$today_mobile_benchmark_rc" -ne 0 ]; then exit "$today_mobile_benchmark_rc"; fi
+if [ "$trajectory_lead_caption_rc" -ne 0 ]; then exit "$trajectory_lead_caption_rc"; fi
 if [ "$shared_control_targets_rc" -ne 0 ]; then exit "$shared_control_targets_rc"; fi
 if [ "$numeric_rc" -ne 0 ]; then exit "$numeric_rc"; fi
 if [ "$ui_format_rc" -ne 0 ]; then exit "$ui_format_rc"; fi
