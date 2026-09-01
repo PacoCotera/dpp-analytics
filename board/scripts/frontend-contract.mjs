@@ -624,10 +624,18 @@ check(
 );
 check(
   !/\sstyle\s*=/.test(salesScript) &&
+    !/\.style\(/.test(salesScript) &&
     /class="product-line__copy"/.test(salesScript) &&
     /\.product-line__copy\s*\{[^}]*min-width:\s*0/s.test(theme),
   'sales-canonical.js',
   'Sales product identity layout must use the shared stylesheet without CSP-blocked inline styles',
+);
+check(
+  /\.sales-runrate-label,\s*\.sales-week-runrate-label\s*\{[^}]*fill:\s*var\(--dpp-text-muted\)[^}]*font-size:\s*var\(--dpp-metadata-size,\s*14px\)[^}]*font-weight:\s*650[^}]*letter-spacing:\s*0\.015em/s.test(
+    salesCss,
+  ),
+  'sales.css',
+  'Sales run-rate labels must use route CSS instead of D3 style injection',
 );
 check(
   /export function percent\(value, \{ digits = 1, sign = true, scale = 1 \} = \{\}\)/.test(
