@@ -86,6 +86,8 @@ const theme = readFileSync(join(staticRoot, 'theme.css'), 'utf8');
 const layout = readFileSync(join(staticRoot, 'layout-system.css'), 'utf8');
 const presentationRuntime = readFileSync(join(staticRoot, 'presentation.js'), 'utf8');
 const presentationCss = readFileSync(join(staticRoot, 'presentation-profiles.css'), 'utf8');
+const shellScript = readFileSync(join(staticRoot, 'ui-shell.js'), 'utf8');
+const serverScript = readFileSync(join(root, 'server.py'), 'utf8');
 const presentationRegistry = JSON.parse(readFileSync(join(root, 'presentation', 'profiles.json'), 'utf8'));
 const todayHtml = readFileSync(join(staticRoot, 'today.html'), 'utf8');
 const todayScript = readFileSync(join(staticRoot, 'today.js'), 'utf8');
@@ -289,8 +291,8 @@ for (const page of pages) {
   );
 
   const footers = html.match(/<footer\b[^>]*class=["'][^"']*\bfooter\b[^"']*["'][^>]*>/gi) || [];
-  check(footers.length === 1, page, 'must contain exactly one shared footer');
-  check((html.match(/__DPP_BUILD_SHA__/g) || []).length === 1, page, 'must contain exactly one build token');
+  check(footers.length === 0, page, 'route HTML must not own the shared diagnostic footer');
+  check((html.match(/__DPP_BUILD_SHA__/g) || []).length === 0, page, 'contains a legacy build token');
 }
 
 check(pages.length === 11, 'static', `expected exactly 11 HTML workspaces; found ${pages.length}`);
@@ -303,6 +305,20 @@ check(
 for (const expected of Object.keys(pageStyles)) {
   check(pages.includes(expected), expected, 'declared page is missing from static');
 }
+
+for (const marker of [
+  'createDiagnosticsFooter',
+  'dpp-build-revision',
+  'dpp-asset-revision',
+  'footer-diagnostics',
+]) {
+  check(shellScript.includes(marker), 'ui-shell.js', `missing shared footer contract: ${marker}`);
+}
+check(
+  serverScript.includes('meta name="dpp-build-revision"') && serverScript.includes('version_page(text, ASSET_VERSION)'),
+  'server.py',
+  'must inject build metadata before applying the shared asset revision',
+);
 
 const registryProfileIds = presentationRegistry.profiles.map(({ id }) => id);
 check(

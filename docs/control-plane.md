@@ -34,7 +34,7 @@ The deploy workflow performs these stages in order:
 16. upload browser-QA artifacts;
 17. publish a machine-readable deployment heartbeat to GitHub.
 
-The board image itself does not inject CSS, JavaScript or page behavior. Its HTML build mutation is limited to stamping the deployed SHA into the footer.
+The board image itself does not inject CSS, JavaScript or page behavior. The server exposes the deployed SHA as inert page metadata; the source-controlled application shell owns its collapsed diagnostic presentation.
 
 ## Production browser QA
 

@@ -521,18 +521,55 @@ body.shell-drawer-open {
 }
 
 .footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
   margin-top: 20px;
-  padding: 18px 4px 2px;
+  padding: 12px 4px 0;
   border-top: var(--dpp-border-width) solid var(--dpp-border);
   color: var(--dpp-text-subtle);
   font-family: var(--dpp-font-detail);
   font-size: var(--dpp-metadata-size, 14px);
-  letter-spacing: 0.04em;
   line-height: 1.4;
-  text-transform: uppercase;
+}
+
+.footer-diagnostics {
+  width: max-content;
+  max-width: 100%;
+}
+
+.footer-diagnostics summary {
+  display: inline-flex;
+  min-height: var(--control-height);
+  align-items: center;
+  gap: 7px;
+  color: var(--dpp-text-subtle);
+  font-weight: 760;
+  list-style: none;
+  cursor: pointer;
+}
+
+.footer-diagnostics summary::-webkit-details-marker {
+  display: none;
+}
+
+.footer-diagnostics summary::after {
+  content: '+';
+  color: var(--dpp-text-muted);
+}
+
+.footer-diagnostics[open] summary::after {
+  content: '−';
+}
+
+.footer-diagnostics__values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  padding: 0 0 10px;
+  color: var(--dpp-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.footer-diagnostics__values span {
+  overflow-wrap: anywhere;
 }
 
 :root[data-dpp-theme='weyland'] .brand-title,
@@ -807,11 +844,6 @@ body.shell-drawer-open {
   .appearance-option {
     grid-template-columns: 20px 22px minmax(0, 1fr);
     padding-inline: 8px;
-  }
-
-  .footer {
-    display: grid;
-    gap: 5px;
   }
 }
 

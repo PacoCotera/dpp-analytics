@@ -32,6 +32,7 @@ Owns only global visual tokens and typography:
 - accessible mobile navigation drawer
 - tab keyboard accessibility
 - shared favicon declaration and brand mark
+- one collapsed build-diagnostics footer sourced from server-injected release metadata
 
 A page must not implement a second primary navigation system.
 
@@ -173,11 +174,11 @@ A workspace should be boring to inspect:
 - Docker does not inject CSS, JavaScript or page behavior;
 - a second override stylesheet or post-render enhancer is a code smell, not an extension point.
 
-The served workspaces now follow this model: Business, Today, Sales, Products, Product Workspace, Inventory, Finance, Trajectory, Advertising, Data Health and Admin. `ui-shell.js` owns this destination dictionary for sidebar labels, active state, and mobile header identity; route runtimes must not introduce competing destination names. Admin has one composition (`admin.html`), one page stylesheet (`admin.css`) and one runtime (`admin.js`); authentication, lifecycle membership, validation and persistence remain server-owned.
+The served workspaces now follow this model: Business, Today, Sales, Products, Product Workspace, Inventory, Finance, Trajectory, Advertising, Data Health and Admin. `ui-shell.js` owns this destination dictionary for sidebar labels, active state, and mobile header identity; route runtimes must not introduce competing destination names. It also owns the single collapsed “Build info” disclosure. Route HTML must not duplicate a footer or deployment token; `board/server.py` supplies build and asset revisions as metadata. Admin has one composition (`admin.html`), one page stylesheet (`admin.css`) and one runtime (`admin.js`); authentication, lifecycle membership, validation and persistence remain server-owned.
 
 ## Build boundary
 
-Frontend dependencies are source-controlled. The Docker build no longer rewrites pages to inject stylesheets, scripts, tabs or enhancement layers. Its only HTML mutation is the visible deployment SHA in the footer.
+Frontend dependencies are source-controlled. The Docker build no longer rewrites pages to inject stylesheets, scripts, tabs or enhancement layers. The server exposes the deployment SHA as inert metadata; `ui-shell.js` reveals it only through the shared diagnostic disclosure.
 
 At server startup, the complete static tree is hashed into one release manifest. The server attaches that revision to every page dependency and to transitive local CSS/JavaScript references, and injects the same revision into the HTML metadata and response headers. This transport transformation does not inject behavior or alter business logic. Fingerprinted responses are immutable; intentionally stable routes use validators.
 

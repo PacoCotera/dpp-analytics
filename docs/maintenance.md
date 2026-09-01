@@ -11,22 +11,22 @@ Use this document as the first stop when changing or debugging the application. 
 - `board` — Python operating-board server built from `board/`, exposed on host port `8088`.
 - `grafana` — supporting dashboards, exposed on host port `3000`.
 
-The board is server-rendered only in the sense that Python serves static HTML and JSON APIs. Page behavior runs in source-controlled browser JavaScript. Docker does **not** inject frontend behavior; it only stamps the deployed commit into page footers.
+The board is server-rendered only in the sense that Python serves static HTML and JSON APIs. Page behavior runs in source-controlled browser JavaScript. Docker does **not** inject frontend behavior; `board/server.py` exposes the deployed commit as page metadata and the shared application shell renders it on demand.
 
 ## Workspace ownership map
 
-| Route | API / business owner | HTML | CSS | Browser runtime |
-| --- | --- | --- | --- | --- |
-| `/`, `/today` | `board/today_api.py` | `board/static/today.html` | `today.css` | `today.js` + tiny synchronous `today-bootstrap.js` for wall mode |
-| `/business`, `/home`, `/index.html` | `board/home_api.py`; shared decision health: `board/health_contract.py` | `home.html` | `home.css` | `home.js` |
-| `/sales` | canonical Sales adapter over `board/sales_api.py`; lazy Geography: `board/sales_geography_api.py` | `sales.html` | `sales.css` + `sales-geography.css` | `sales-canonical.js` + lazy `sales-geography.js` / `sales-geography-v2.js` |
-| `/catalog` | `board/catalog_api.py` | `catalog.html` | `catalog.css` | `catalog.js` |
-| `/product?sku=...` | `board/product_api.py` | `product.html` | `product.css` | `product.js` |
-| `/inventory` | `board/inventory_api.py` | `inventory.html` | `inventory.css` | `inventory.js` |
-| `/ads` | `board/ads_api.py` | `ads.html` | `ads.css` | `ads.js` |
-| `/finance` | runtime module imported as `finance_api` by `board/server.py` | `finance.html` | `finance.css` | `finance.js` |
-| `/trajectory` | `board/trajectory_api.py` | `trajectory.html` | `trajectory.css` | `trajectory.js` |
-| `/data-health` | `board/health_api.py`; shared decision health: `board/health_contract.py` | `data_health.html` | `data-health.css` | `data-health.js` |
+| Route                               | API / business owner                                                                              | HTML                      | CSS                                 | Browser runtime                                                            |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------- | -------------------------------------------------------------------------- |
+| `/`, `/today`                       | `board/today_api.py`                                                                              | `board/static/today.html` | `today.css`                         | `today.js` + tiny synchronous `today-bootstrap.js` for wall mode           |
+| `/business`, `/home`, `/index.html` | `board/home_api.py`; shared decision health: `board/health_contract.py`                           | `home.html`               | `home.css`                          | `home.js`                                                                  |
+| `/sales`                            | canonical Sales adapter over `board/sales_api.py`; lazy Geography: `board/sales_geography_api.py` | `sales.html`              | `sales.css` + `sales-geography.css` | `sales-canonical.js` + lazy `sales-geography.js` / `sales-geography-v2.js` |
+| `/catalog`                          | `board/catalog_api.py`                                                                            | `catalog.html`            | `catalog.css`                       | `catalog.js`                                                               |
+| `/product?sku=...`                  | `board/product_api.py`                                                                            | `product.html`            | `product.css`                       | `product.js`                                                               |
+| `/inventory`                        | `board/inventory_api.py`                                                                          | `inventory.html`          | `inventory.css`                     | `inventory.js`                                                             |
+| `/ads`                              | `board/ads_api.py`                                                                                | `ads.html`                | `ads.css`                           | `ads.js`                                                                   |
+| `/finance`                          | runtime module imported as `finance_api` by `board/server.py`                                     | `finance.html`            | `finance.css`                       | `finance.js`                                                               |
+| `/trajectory`                       | `board/trajectory_api.py`                                                                         | `trajectory.html`         | `trajectory.css`                    | `trajectory.js`                                                            |
+| `/data-health`                      | `board/health_api.py`; shared decision health: `board/health_contract.py`                         | `data_health.html`        | `data-health.css`                   | `data-health.js`                                                           |
 
 ### Two filename traps
 
@@ -37,20 +37,20 @@ The board is server-rendered only in the sense that Python serves static HTML an
 
 Before adding page-specific code, check whether the behavior belongs in one of these shared layers:
 
-| File | Owns |
-| --- | --- |
-| `board/presentation/profiles.json` / `profile.schema.json` | authoritative, schema-validated six-profile presentation configuration |
-| `scripts/build-presentation-profiles.mjs` | generates the source-controlled browser registry and profile CSS; `--check` rejects drift |
-| `presentation-registry.js` / `presentation-profiles.css` | generated browser registry and semantic token scopes; do not edit directly |
-| `presentation.js` | synchronous profile restoration, root attributes, browser chrome, local preference and public apply/reset API |
-| `theme.css` | global token aliases, typography and base visual language |
-| `nav-shell.css` | fixed desktop sidebar, connected global header and accessible mobile drawer presentation |
-| `ui-shell.js` | ordered primary navigation, active route, global identity, tab keyboard behavior and mobile drawer behavior |
-| `layout-system.css` | reusable page headers, KPI rails, panels, grids, segmented controls, tables and status strips |
-| `chart-system.css` / `chart-system.js` | reusable chart grammar, axes, tooltips, legends, period treatment and shared chart forms |
-| `data-cache.js` | session-scoped GET JSON cache, browser in-flight dedupe and endpoint freshness policy |
-| `ui-utils.js` | escaping, number/money formatting, DOM helpers, shared interpretation-rule disclosure and JSON-fetch facade used by ES-module pages |
-| `vendor/d3.v7.min.js` | vendored D3 runtime |
+| File                                                       | Owns                                                                                                                                             |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `board/presentation/profiles.json` / `profile.schema.json` | authoritative, schema-validated six-profile presentation configuration                                                                           |
+| `scripts/build-presentation-profiles.mjs`                  | generates the source-controlled browser registry and profile CSS; `--check` rejects drift                                                        |
+| `presentation-registry.js` / `presentation-profiles.css`   | generated browser registry and semantic token scopes; do not edit directly                                                                       |
+| `presentation.js`                                          | synchronous profile restoration, root attributes, browser chrome, local preference and public apply/reset API                                    |
+| `theme.css`                                                | global token aliases, typography and base visual language                                                                                        |
+| `nav-shell.css`                                            | fixed desktop sidebar, connected global header and accessible mobile drawer presentation                                                         |
+| `ui-shell.js`                                              | ordered primary navigation, active route, global identity, tab keyboard behavior, mobile drawer behavior and the shared build-diagnostics footer |
+| `layout-system.css`                                        | reusable page headers, KPI rails, panels, grids, segmented controls, tables and status strips                                                    |
+| `chart-system.css` / `chart-system.js`                     | reusable chart grammar, axes, tooltips, legends, period treatment and shared chart forms                                                         |
+| `data-cache.js`                                            | session-scoped GET JSON cache, browser in-flight dedupe and endpoint freshness policy                                                            |
+| `ui-utils.js`                                              | escaping, number/money formatting, DOM helpers, shared interpretation-rule disclosure and JSON-fetch facade used by ES-module pages              |
+| `vendor/d3.v7.min.js`                                      | vendored D3 runtime                                                                                                                              |
 
 A page should not add a second nav, duplicate generic panel geometry, inject CSS from JavaScript, or create a post-render “enhancer” layer.
 
@@ -277,8 +277,8 @@ reference workspace without multiplying every route by every appearance.
 After each deployed UI-revamp block, use the standalone, parameterized DPP Playwright runner for acceptance. Do
 not substitute the repository's predefined CI Playwright matrix. Run Chromium desktop, Chromium mobile, WebKit
 desktop and WebKit mobile at the exact dimensions required by the change; include Firefox desktop when engine
-comparison is relevant. Each run must record the exact deployed SHA from the footer and the active asset revision
-before navigation and visual evidence are accepted. The repository QA/deployment suite remains an independent
+comparison is relevant. Each run must record the exact deployed SHA and active asset revision from page metadata,
+then verify the same values in the Build info disclosure before navigation and visual evidence are accepted. The repository QA/deployment suite remains an independent
 regression gate. The capability table, session matrix and ChatGPT reconnection procedure are canonical in
 [`browser-qa.md`](browser-qa.md).
 

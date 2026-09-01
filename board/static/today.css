@@ -777,12 +777,6 @@
   font-size: 14px;
 }
 
-.footer {
-  max-width: var(--content-max);
-  margin-right: auto;
-  margin-left: auto;
-}
-
 :root[data-dpp-profile='weyland'] .today-section,
 :root[data-dpp-profile='weyland'] .today-overview-grid,
 :root[data-dpp-profile='weyland'] .today-operations-grid,

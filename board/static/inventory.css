@@ -449,10 +449,6 @@
   background: var(--good);
 }
 
-.footer-build {
-  overflow-wrap: anywhere;
-}
-
 /* Canonical inventory route composition. */
 main {
   width: 100%;
@@ -639,13 +635,6 @@ main {
   padding-bottom: 10px;
   font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.35;
-}
-
-@media (max-width: 480px) {
-  .footer {
-    display: grid;
-    gap: 10px;
-  }
 }
 
 @media (max-width: 1000px) {
