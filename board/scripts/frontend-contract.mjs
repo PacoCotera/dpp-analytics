@@ -535,6 +535,16 @@ check(
   'Trajectory must own validated, canonical, history-restored window URL state',
 );
 check(
+  /FINANCE_WINDOWS/.test(financeScript) &&
+    /params\.get\('window'\)/.test(financeScript) &&
+    /params\.get\('month'\)/.test(financeScript) &&
+    /params\.get\('cogs'\)/.test(financeScript) &&
+    /url\.searchParams\.set\('cogs', 'excluded'\)/.test(financeScript) &&
+    /window\.addEventListener\('popstate'/.test(financeScript),
+  'finance.js',
+  'Finance must own validated, canonical, history-restored window, month, and COGS URL state',
+);
+check(
   /let expanded\s*=\s*false/.test(dataHealthScript),
   'data-health.js',
   'healthy state must default to compact pipeline exceptions',

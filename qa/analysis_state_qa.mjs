@@ -160,6 +160,107 @@ async function assertTrajectoryWindow(payload, selected) {
   return state;
 }
 
+async function financeState() {
+  return page.evaluate(() => ({
+    window: document.querySelector(
+      '[data-finance-window][aria-selected="true"]',
+    )?.dataset.financeWindow,
+    month: document.getElementById("monthPicker")?.value?.slice(0, 7),
+    includeCogs:
+      document.getElementById("cogsToggle")?.getAttribute("aria-pressed") ===
+      "true",
+    title: document.getElementById("progressionTitle")?.textContent?.trim(),
+    description: document.getElementById("progressionSub")?.textContent?.trim(),
+    aria: document.getElementById("progression")?.getAttribute("aria-label"),
+    months: [...document.querySelectorAll("#progression [data-month]")].map(
+      (node) => node.dataset.month?.slice(0, 7),
+    ),
+    signature: [
+      ...document.querySelectorAll("#progression .finance-chart-bar"),
+    ].map((node) => [
+      node.getAttribute("class"),
+      node.getAttribute("x"),
+      node.getAttribute("y"),
+      node.getAttribute("height"),
+      node.parentElement?.querySelector("title")?.textContent || "",
+    ]),
+  }));
+}
+
+function financeRows(payload) {
+  const rows = (payload.closed_months || [])
+    .map((row) => ({ ...row, current: false }))
+    .sort((a, b) => String(a.month).localeCompare(String(b.month)));
+  const current = payload.current_month || {};
+  if (current.month) {
+    rows.push({
+      month: current.month,
+      contribution_after_product_cogs:
+        current.estimated_contribution_before_current_ads,
+      current: true,
+    });
+  }
+  return rows;
+}
+
+function expectedFinanceMonths(payload, windowKey) {
+  const rows = financeRows(payload);
+  const currentMonth = payload.current_month?.month;
+  const currentDate = new Date(`${String(currentMonth).slice(0, 10)}T12:00:00`);
+  const currentOrdinal =
+    currentDate.getFullYear() * 12 + currentDate.getMonth();
+  return rows
+    .filter((row) => {
+      const date = new Date(`${String(row.month).slice(0, 10)}T12:00:00`);
+      const ordinal = date.getFullYear() * 12 + date.getMonth();
+      if (windowKey === "3m")
+        return ordinal >= currentOrdinal - 2 && ordinal <= currentOrdinal;
+      if (windowKey === "ytd")
+        return date.getFullYear() === currentDate.getFullYear();
+      if (windowKey === "12m")
+        return ordinal >= currentOrdinal - 11 && ordinal <= currentOrdinal;
+      if (windowKey === "lastYear")
+        return date.getFullYear() === currentDate.getFullYear() - 1;
+      return true;
+    })
+    .filter(
+      (row) =>
+        row.contribution_after_product_cogs !== null &&
+        row.contribution_after_product_cogs !== undefined,
+    )
+    .map((row) => String(row.month).slice(0, 7));
+}
+
+async function assertFinanceWindow(payload, windowKey, includeCogs = true) {
+  const state = await financeState();
+  assert(
+    state.window === windowKey,
+    `Finance selected ${state.window}, expected ${windowKey}`,
+  );
+  assert(
+    state.includeCogs === includeCogs,
+    `Finance ${windowKey} COGS state is ${state.includeCogs}, expected ${includeCogs}`,
+  );
+  if (windowKey !== "month") {
+    const expectedMonths = expectedFinanceMonths(payload, windowKey);
+    assert(
+      JSON.stringify(state.months) === JSON.stringify(expectedMonths),
+      `Finance ${windowKey} chart months are wrong: ${JSON.stringify(state.months)} vs ${JSON.stringify(expectedMonths)}`,
+    );
+    assert(
+      state.aria?.includes(
+        includeCogs ? "product COGS included" : "product COGS excluded",
+      ),
+      `Finance ${windowKey} chart label does not expose the COGS basis: ${state.aria}`,
+    );
+  }
+  assert(
+    state.signature.length > 0,
+    `Finance ${windowKey} rendered no chart signature`,
+  );
+  return state;
+}
+
 function assertCatalogOrder(rows, sort, mode, familyAttention) {
   assert(
     rows.length > 1,
@@ -580,6 +681,195 @@ try {
   assertParam("trace", "keep");
   checks.push(
     "Invalid Trajectory windows normalize without losing unrelated state",
+  );
+
+  const financeWindows = ["3m", "ytd", "12m", "lastYear", "all"];
+  let financePayload;
+  for (const windowKey of financeWindows) {
+    await page.goto(`${baseUrl}/finance?window=${windowKey}&trace=keep`, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
+    await page.waitForFunction(
+      (key) =>
+        document
+          .querySelector(`[data-finance-window="${key}"]`)
+          ?.getAttribute("aria-selected") === "true",
+      windowKey,
+    );
+    financePayload ||= await page.evaluate(async () =>
+      (await fetch("/api/finance", { cache: "no-store" })).json(),
+    );
+    await assertFinanceWindow(financePayload, windowKey);
+    assertParam("window", windowKey === "ytd" ? null : windowKey);
+    assertParam("month", null);
+    assertParam("cogs", null);
+    assertParam("trace", "keep");
+  }
+  checks.push(
+    "Every Finance trajectory window restores from a canonical deep link",
+  );
+
+  await page.goto(`${baseUrl}/finance?window=3m&cogs=excluded&trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.waitForFunction(
+    () =>
+      document.getElementById("cogsToggle")?.getAttribute("aria-pressed") ===
+      "false",
+  );
+  const excludedState = await assertFinanceWindow(financePayload, "3m", false);
+  assertParam("window", "3m");
+  assertParam("cogs", "excluded");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    () =>
+      document.getElementById("cogsToggle")?.getAttribute("aria-pressed") ===
+      "false",
+  );
+  assert(
+    JSON.stringify(await financeState()) === JSON.stringify(excludedState),
+    "Finance excluded-COGS chart changed after refresh",
+  );
+  await page.locator("#cogsToggle").click();
+  const includedState = await assertFinanceWindow(financePayload, "3m", true);
+  assertParam("cogs", null);
+  assert(
+    JSON.stringify(includedState.signature) !==
+      JSON.stringify(excludedState.signature),
+    "Finance COGS toggle did not change the chart data signature",
+  );
+  checks.push(
+    "Finance COGS state is canonical, visible in the chart, and refresh-stable",
+  );
+
+  const closedMonth = String(
+    financePayload.closed_months?.at(-1)?.month || "",
+  ).slice(0, 7);
+  assert(
+    /^\d{4}-\d{2}$/.test(closedMonth),
+    "Finance has no valid closed month for URL-state QA",
+  );
+  await page.goto(
+    `${baseUrl}/finance?window=month&month=${closedMonth}&trace=keep`,
+    {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    },
+  );
+  await page.waitForFunction(
+    (month) => document.getElementById("monthPicker")?.value?.startsWith(month),
+    closedMonth,
+  );
+  const monthState = await assertFinanceWindow(financePayload, "month");
+  assert(
+    monthState.month === closedMonth,
+    `Finance selected month is ${monthState.month}`,
+  );
+  assertParam("window", "month");
+  assertParam("month", closedMonth);
+  assertParam("cogs", null);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    (month) => document.getElementById("monthPicker")?.value?.startsWith(month),
+    closedMonth,
+  );
+  assert(
+    JSON.stringify(await financeState()) === JSON.stringify(monthState),
+    "Finance month chart changed after refresh",
+  );
+  checks.push(
+    "Finance Month deep links restore the month and exact chart signature",
+  );
+
+  await page.goto(`${baseUrl}/finance?window=month&month=1900-01&trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  const fallbackMonth = String(financePayload.current_month?.month || "").slice(
+    0,
+    7,
+  );
+  await page.waitForFunction(
+    (month) => document.getElementById("monthPicker")?.value?.startsWith(month),
+    fallbackMonth,
+  );
+  const fallbackState = await assertFinanceWindow(financePayload, "month");
+  assert(
+    fallbackState.month === fallbackMonth,
+    "Finance invalid month did not select current month",
+  );
+  assertParam("window", "month");
+  assertParam("month", fallbackMonth);
+  assertParam("trace", "keep");
+
+  await page.goto(`${baseUrl}/finance?trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.locator('[data-finance-window="3m"]').click();
+  const historyIncluded = await assertFinanceWindow(financePayload, "3m", true);
+  await page.locator("#cogsToggle").click();
+  const historyExcluded = await assertFinanceWindow(
+    financePayload,
+    "3m",
+    false,
+  );
+  await page.locator('[data-finance-window="all"]').click();
+  await assertFinanceWindow(financePayload, "all", false);
+  await page.goBack();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-finance-window="3m"]')
+        ?.getAttribute("aria-selected") === "true" &&
+      document.getElementById("cogsToggle")?.getAttribute("aria-pressed") ===
+        "false",
+  );
+  assert(
+    JSON.stringify(await financeState()) === JSON.stringify(historyExcluded),
+    "Finance Back did not restore 3M with COGS excluded",
+  );
+  await page.goBack();
+  await page.waitForFunction(
+    () =>
+      document.getElementById("cogsToggle")?.getAttribute("aria-pressed") ===
+      "true",
+  );
+  assert(
+    JSON.stringify(await financeState()) === JSON.stringify(historyIncluded),
+    "Finance Back did not restore 3M with COGS included",
+  );
+  await page.goForward();
+  await page.waitForFunction(
+    () =>
+      document.getElementById("cogsToggle")?.getAttribute("aria-pressed") ===
+      "false",
+  );
+  assert(
+    JSON.stringify(await financeState()) === JSON.stringify(historyExcluded),
+    "Finance Forward did not restore 3M with COGS excluded",
+  );
+  checks.push("Finance Back and Forward restore window, COGS, and chart state");
+
+  await page.goto(
+    `${baseUrl}/finance?window=invalid&month=1900-99&cogs=invalid&trace=keep`,
+    { waitUntil: "domcontentloaded", timeout: 30000 },
+  );
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-finance-window="ytd"]')
+        ?.getAttribute("aria-selected") === "true",
+  );
+  await assertFinanceWindow(financePayload, "ytd", true);
+  assertParam("window", null);
+  assertParam("month", null);
+  assertParam("cogs", null);
+  assertParam("trace", "keep");
+  checks.push(
+    "Invalid Finance state normalizes without losing unrelated parameters",
   );
 } catch (error) {
   failures.push(error.message);

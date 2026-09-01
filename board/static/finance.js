@@ -16,6 +16,42 @@ const viewState = {
   selectedMonth: null,
   includeCogs: true,
 };
+const FINANCE_WINDOWS = new Set(['month', '3m', 'ytd', '12m', 'lastYear', 'all']);
+
+function readFinanceUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedWindow = params.get('window') || 'ytd';
+  const requestedMonth = params.get('month') || '';
+  viewState.window = FINANCE_WINDOWS.has(requestedWindow) ? requestedWindow : 'ytd';
+  viewState.selectedMonth =
+    viewState.window === 'month' && /^\d{4}-(?:0[1-9]|1[0-2])$/.test(requestedMonth)
+      ? `${requestedMonth}-01`
+      : null;
+  viewState.includeCogs = viewState.window === 'month' || params.get('cogs') !== 'excluded';
+}
+
+function writeFinanceUrlState(method = 'pushState') {
+  const url = new URL(window.location.href);
+  if (viewState.window === 'ytd') url.searchParams.delete('window');
+  else url.searchParams.set('window', viewState.window);
+  if (viewState.window === 'month' && viewState.selectedMonth) {
+    url.searchParams.set('month', monthKey(viewState.selectedMonth));
+  } else {
+    url.searchParams.delete('month');
+  }
+  if (viewState.window !== 'month' && !viewState.includeCogs) {
+    url.searchParams.set('cogs', 'excluded');
+  } else {
+    url.searchParams.delete('cogs');
+  }
+  window.history[method]({}, '', url);
+}
+
+function restoreFinanceUrlState({ normalize = false } = {}) {
+  readFinanceUrlState();
+  renderWindow();
+  if (normalize && viewState.payload) writeFinanceUrlState('replaceState');
+}
 
 function financeMoney(value) {
   if (value === null || value === undefined) return '—';
@@ -792,9 +828,12 @@ function renderWindow() {
 
 function inspectMonth(month) {
   if (!month) return;
+  if (viewState.window === 'month' && monthKey(viewState.selectedMonth) === monthKey(month)) return;
   viewState.window = 'month';
   viewState.selectedMonth = month;
+  viewState.includeCogs = true;
   renderWindow();
+  writeFinanceUrlState();
 }
 
 function render(payload) {
@@ -830,11 +869,15 @@ function bindInteractions() {
 
   document.querySelectorAll('[data-finance-window]').forEach((button) => {
     button.addEventListener('click', () => {
-      viewState.window = button.dataset.financeWindow;
+      const requestedWindow = button.dataset.financeWindow;
+      if (!FINANCE_WINDOWS.has(requestedWindow) || requestedWindow === viewState.window) return;
+      viewState.window = requestedWindow;
+      if (viewState.window === 'month') viewState.includeCogs = true;
       if (viewState.window === 'month' && !viewState.selectedMonth) {
         viewState.selectedMonth = viewState.payload?.current_month?.month || null;
       }
       renderWindow();
+      writeFinanceUrlState();
     });
   });
 
@@ -842,12 +885,16 @@ function bindInteractions() {
     viewState.window = 'month';
     viewState.selectedMonth = event.target.value;
     renderWindow();
+    writeFinanceUrlState();
   });
 
   byId('cogsToggle').addEventListener('click', () => {
     viewState.includeCogs = !viewState.includeCogs;
     renderWindow();
+    writeFinanceUrlState();
   });
+
+  window.addEventListener('popstate', () => restoreFinanceUrlState({ normalize: true }));
 
   const chart = byId('progression');
   chart.addEventListener('click', (event) => {
@@ -866,10 +913,12 @@ async function start() {
   if (window.matchMedia('(max-width: 640px)').matches) {
     byId('financeOverviewDisclosure').open = false;
   }
+  readFinanceUrlState();
   bindInteractions();
 
   try {
     render(await fetchJson('/api/finance'));
+    writeFinanceUrlState('replaceState');
   } catch (error) {
     byId('periodLabel').textContent = 'Finance unavailable';
     byId('throughLabel').textContent = error.message;
