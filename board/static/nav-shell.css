@@ -1,7 +1,7 @@
 /* Persistent DPP Analytics shell. Page geometry remains owned by layout-system.css. */
 :root {
   --dpp-shell-sidebar-width: 244px;
-  --dpp-shell-header-height: 72px;
+  --dpp-shell-header-height: 80px;
   --dpp-shell-gutter: clamp(20px, 2.4vw, 36px);
 }
 
@@ -137,7 +137,8 @@ body.shell-drawer-open {
   font-size: var(--dpp-metadata-size, 14px);
   letter-spacing: 0.04em;
   line-height: 1.25;
-  white-space: nowrap;
+  text-wrap: balance;
+  white-space: normal;
 }
 
 .shell-mobile-brand,
@@ -732,7 +733,7 @@ body.shell-drawer-open {
 
   .app-sidebar__header {
     display: flex;
-    min-height: 64px;
+    min-height: 80px;
     align-items: center;
     gap: 10px;
     padding: 9px 12px 9px 14px;

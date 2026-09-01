@@ -39,7 +39,9 @@ A page must not implement a second primary navigation system.
 The shell and route compositions follow the active architecture in
 [`ui-architecture-correction-2026-08-29.md`](ui-architecture-correction-2026-08-29.md). The approved desktop
 frame uses a persistent left sidebar; only mobile collapses it into a drawer. Today is the first and default
-workspace.
+workspace. The sidebar brand keeps the complete business and marketplace label visible in every presentation
+profile. Its subtitle may balance across two lines, while the sidebar and global headers remain aligned on
+desktop and the drawer header contains the same full label on mobile.
 
 ### 3. Layout system
 

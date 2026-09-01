@@ -8,6 +8,8 @@ node /qa/visual_qa.mjs "$base_url" "$work_dir"
 visual_rc=$?
 node /qa/nav_qa.mjs "$base_url" "$work_dir"
 nav_rc=$?
+node /qa/sidebar_subtitle_qa.mjs "$base_url" "$work_dir"
+sidebar_subtitle_rc=$?
 node /qa/presentation_profiles_qa.mjs "$base_url" "$work_dir"
 presentation_profiles_rc=$?
 node /qa/accessibility_qa.mjs "$base_url" "$work_dir"
@@ -63,6 +65,7 @@ admin_rc=$?
 cp -a "$work_dir"/. "$out_root"/ 2>/dev/null || true
 if [ "$visual_rc" -ne 0 ]; then exit "$visual_rc"; fi
 if [ "$nav_rc" -ne 0 ]; then exit "$nav_rc"; fi
+if [ "$sidebar_subtitle_rc" -ne 0 ]; then exit "$sidebar_subtitle_rc"; fi
 if [ "$presentation_profiles_rc" -ne 0 ]; then exit "$presentation_profiles_rc"; fi
 if [ "$accessibility_rc" -ne 0 ]; then exit "$accessibility_rc"; fi
 if [ "$audit_batch1_rc" -ne 0 ]; then exit "$audit_batch1_rc"; fi
