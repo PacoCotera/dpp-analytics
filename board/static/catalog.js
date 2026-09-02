@@ -9,6 +9,7 @@ import {
   integer,
   money,
   percent,
+  revealActiveChoice,
   ruleTrigger,
 } from './ui-utils.js';
 
@@ -84,11 +85,13 @@ function writeCatalogUrlState({ replace = false } = {}) {
 }
 
 function syncFilterButtons() {
+  const group = $('filters');
   document.querySelectorAll('.filter').forEach((item) => {
     const selected = item.dataset.filter === filter;
     item.classList.toggle('active', selected);
     item.setAttribute('aria-pressed', String(selected));
   });
+  revealActiveChoice(group);
 }
 
 function syncSortControl() {
@@ -461,6 +464,7 @@ function renderModes() {
         renderPortfolio();
       });
     });
+  revealActiveChoice($('analysisModes'));
 }
 
 function setHead(first = 'Family / product') {
@@ -610,13 +614,8 @@ function bindInteractions() {
   document.querySelectorAll('.filter').forEach((button) => {
     button.addEventListener('click', () => {
       if (button.dataset.filter === filter) return;
-      document.querySelectorAll('.filter').forEach((item) => {
-        item.classList.remove('active');
-        item.setAttribute('aria-pressed', 'false');
-      });
-      button.classList.add('active');
-      button.setAttribute('aria-pressed', 'true');
       filter = button.dataset.filter;
+      syncFilterButtons();
       writeCatalogUrlState();
       renderPortfolio();
     });

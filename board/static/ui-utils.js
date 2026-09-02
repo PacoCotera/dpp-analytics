@@ -101,6 +101,22 @@ export function setText(id, value) {
   return element;
 }
 
+export function revealActiveChoice(group) {
+  const active = group?.querySelector('[aria-pressed="true"], [aria-selected="true"]');
+  if (!active) return;
+
+  requestAnimationFrame(() => {
+    if (!active.isConnected || !group.isConnected) return;
+    const groupRect = group.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    const inset = 6;
+    let delta = 0;
+    if (activeRect.left < groupRect.left + inset) delta = activeRect.left - groupRect.left - inset;
+    else if (activeRect.right > groupRect.right - inset) delta = activeRect.right - groupRect.right + inset;
+    if (delta) group.scrollTo({ left: group.scrollLeft + delta, behavior: 'auto' });
+  });
+}
+
 let interpretationRules = {};
 let ruleDialogBound = false;
 let ruleDialogTrigger = null;
