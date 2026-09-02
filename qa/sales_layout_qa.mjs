@@ -61,6 +61,21 @@ function monitor(page) {
   return { browserErrors, failedResponses };
 }
 
+async function installApiSnapshot(context, api) {
+  await context.route("**/api/sales*", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname !== "/api/sales") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(api),
+    });
+  });
+}
+
 async function settle(page) {
   await page.evaluate(async () => {
     await document.fonts.ready;
@@ -170,7 +185,24 @@ async function driverGeometry(page) {
   });
 }
 
-for (const [engineName, engine] of engines) {
+let api;
+try {
+  const response = await fetch(`${baseUrl}/api/sales`, {
+    headers: { accept: "application/json" },
+  });
+  assert(response.ok, `Sales API returned ${response.status}`);
+  api = await response.json();
+  const partialMonth = [...(api.months || [])]
+    .reverse()
+    .find((month) => month.partial);
+  assert(partialMonth, "Sales API has no partial month for run-rate QA");
+  const actual = Number(partialMonth.sales || 0);
+  api.headline.projected_month_sales = Math.max(actual + 1_000, actual * 1.25);
+} catch (error) {
+  failures.push(`API snapshot: ${error.message}`);
+}
+
+for (const [engineName, engine] of api ? engines : []) {
   const browser = await engine.launch({ headless: true });
   for (const viewport of viewports) {
     const context = await browser.newContext({
@@ -178,6 +210,7 @@ for (const [engineName, engine] of engines) {
       isMobile: viewport.width < 720,
       hasTouch: viewport.width < 720,
     });
+    await installApiSnapshot(context, api);
     const page = await context.newPage();
     const pageMonitor = monitor(page);
     const scenario = `${engineName} ${viewport.width}x${viewport.height}`;
