@@ -147,10 +147,45 @@ const ruleDialogFocusableSelector = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
-function ruleValue(value) {
+const ruleValueLabels = {
+  OK: 'No inventory action',
+  PLAN: 'Plan replenishment',
+  PRODUCE: 'Produce inventory',
+  STOCKOUT: 'Out of stock',
+};
+
+function sentenceValue(value) {
+  const normalized = String(value).replaceAll('_', ' ').trim();
+  return normalized
+    ? `${normalized.charAt(0).toUpperCase()}${normalized.slice(1).toLowerCase()}`
+    : 'unavailable';
+}
+
+function ruleValue(name, value) {
   if (value === null || value === undefined) return 'unavailable';
-  if (typeof value === 'boolean') return value ? 'yes' : 'no';
-  return String(value);
+  if (name === 'is_live') return value ? 'Live day' : 'Closed day';
+  if (name.endsWith('_pct')) return percent(Number(value));
+  if (['sales_t28', 'sales_change_t28'].includes(name)) return money(Number(value));
+  if (
+    [
+      'orders',
+      'operating_decisions',
+      'growing',
+      'declining',
+      'stable',
+      'eligible_exposure_days',
+      'sessions_t28',
+      'units_t28',
+      'active_sellable_count',
+      'eligible_child_count',
+      'portfolio_traffic_median_t28',
+    ].includes(name)
+  )
+    return integer(Number(value));
+  if (Array.isArray(value))
+    return value.map((item) => ruleValueLabels[item] || sentenceValue(item)).join(', ');
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return ruleValueLabels[value] || sentenceValue(value);
 }
 
 function ruleDialogFocusables(dialog) {
@@ -228,19 +263,19 @@ export function bindRuleDisclosure(rules = {}) {
     const inputs = Object.entries(evaluation.inputs || {})
       .map(
         ([name, value]) =>
-          `<li><span>${escapeHtml(name.replaceAll('_', ' '))}</span><strong>${escapeHtml(ruleValue(value))}</strong></li>`,
+          `<li><span>${escapeHtml(rule.input_labels?.[name] || 'Supporting measure')}</span><strong>${escapeHtml(ruleValue(name, value))}</strong></li>`,
       )
       .join('');
     const thresholds = (rule.thresholds || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
     dialog.querySelector('.rule-dialog__body').innerHTML = `
       <div class="rule-dialog__head">
-        <div><small>${escapeHtml(rule.id || evaluation.rule_id || 'Interpretation rule')} · v${escapeHtml(rule.version || evaluation.rule_version || '—')}</small><h2>${escapeHtml(rule.name || 'Interpretation rule')}</h2></div>
+        <div><small>Decision definition</small><h2>${escapeHtml(rule.name || 'Interpretation rule')}</h2></div>
         <button class="rule-dialog__close" type="button" aria-label="Close rule detail">×</button>
       </div>
       <div class="rule-dialog__result"><span>Current result</span><strong>${escapeHtml(evaluation.label || 'Unavailable')}</strong><small>${escapeHtml(evaluation.eligibility || '')}</small></div>
       <dl><dt>Window</dt><dd>${escapeHtml(rule.window || 'Not documented')}</dd><dt>Eligibility</dt><dd>${escapeHtml(rule.eligibility || 'Not documented')}</dd></dl>
-      <h3>Current inputs</h3><ul class="rule-dialog__inputs">${inputs || '<li>No inputs available</li>'}</ul>
-      <h3>Thresholds</h3><ul>${thresholds || '<li>No thresholds documented</li>'}</ul>`;
+      <h3>Measures used</h3><ul class="rule-dialog__inputs">${inputs || '<li>No measures available</li>'}</ul>
+      <h3>How the result is assigned</h3><ul>${thresholds || '<li>No decision bands documented</li>'}</ul>`;
     const closeButton = dialog.querySelector('.rule-dialog__close');
     closeButton.addEventListener('click', () => dialog.close());
     ruleDialogTrigger = trigger;

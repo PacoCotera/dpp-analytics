@@ -662,6 +662,15 @@ check(
   'ui-utils.js',
   'shared UI utilities must re-export the canonical percentage formatter without redefining it',
 );
+check(
+  /rule\.input_labels\?\.\[name\]/.test(uiUtilsScript) &&
+    /<small>Decision definition<\/small>/.test(uiUtilsScript) &&
+    /<h3>Measures used<\/h3>/.test(uiUtilsScript) &&
+    /<h3>How the result is assigned<\/h3>/.test(uiUtilsScript) &&
+    !/<small>\$\{escapeHtml\(rule\.id/.test(uiUtilsScript),
+  'ui-utils.js',
+  'Rule dialogs must render business-facing copy instead of implementation identifiers',
+);
 for (const percentConsumer of [
   'ads.js',
   'catalog.js',

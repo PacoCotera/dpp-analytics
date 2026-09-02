@@ -27,6 +27,14 @@ class InterpretationRuleTest(unittest.TestCase):
                 self.assertTrue(rule["inputs"])
                 self.assertTrue(rule["window"])
                 self.assertTrue(rule["thresholds"])
+                self.assertEqual(set(rule["inputs"]), set(rule["input_labels"]))
+                self.assertTrue(
+                    all("_" not in label for label in rule["input_labels"].values())
+                )
+                self.assertNotRegex(
+                    " ".join(rule["thresholds"]),
+                    r">=|<=|\bmax\s*\(|\d(?:\.\d+)?\s*x\s",
+                )
                 self.assertTrue(rule["eligibility"])
 
     def test_business_momentum_boundaries(self):
