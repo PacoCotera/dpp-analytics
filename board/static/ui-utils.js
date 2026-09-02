@@ -4,21 +4,33 @@ import { formatCount, formatMonthYear, integer, money, number0, number1, percent
 export { formatCount, formatMonthYear, integer, money, number0, number1, percent };
 export const BUSINESS_TIME_ZONE = 'America/Mexico_City';
 export const BUSINESS_TIME_ZONE_LABEL = 'Mexico City';
+const BUSINESS_STANDARD_TIME_ZONE = 'Etc/GMT+6';
+const MEXICO_CITY_LAST_DST_END = Date.parse('2022-10-30T07:00:00Z');
 
-const businessClockFormatter = new Intl.DateTimeFormat('en-GB', {
-  timeZone: BUSINESS_TIME_ZONE,
+function formatterPair(locale, options) {
+  return {
+    historical: new Intl.DateTimeFormat(locale, { ...options, timeZone: BUSINESS_TIME_ZONE }),
+    standard: new Intl.DateTimeFormat(locale, { ...options, timeZone: BUSINESS_STANDARD_TIME_ZONE }),
+  };
+}
+
+const businessClockFormatters = formatterPair('en-GB', {
   hour: '2-digit',
   minute: '2-digit',
   hourCycle: 'h23',
 });
-
-const businessTimestampFormatter = new Intl.DateTimeFormat('en-MX', {
-  timeZone: BUSINESS_TIME_ZONE,
+const businessTimestampFormatters = formatterPair('en-MX', {
   month: 'short',
   day: 'numeric',
   hour: 'numeric',
   minute: '2-digit',
 });
+
+function formatBusinessDate(date, formatters) {
+  return (date.getTime() >= MEXICO_CITY_LAST_DST_END ? formatters.standard : formatters.historical).format(
+    date,
+  );
+}
 
 export function formatBusinessClock(value) {
   const localTime =
@@ -29,14 +41,14 @@ export function formatBusinessClock(value) {
   if (localTime) return `${value} ${BUSINESS_TIME_ZONE_LABEL}`;
   const date = value === null || value === undefined || value === '' ? new Date() : new Date(value);
   if (Number.isNaN(date.getTime())) return `--:-- ${BUSINESS_TIME_ZONE_LABEL}`;
-  return `${businessClockFormatter.format(date)} ${BUSINESS_TIME_ZONE_LABEL}`;
+  return `${formatBusinessDate(date, businessClockFormatters)} ${BUSINESS_TIME_ZONE_LABEL}`;
 }
 
 export function formatBusinessTimestamp(value) {
   if (!value) return 'Not recorded';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  return `${businessTimestampFormatter.format(date)} ${BUSINESS_TIME_ZONE_LABEL}`;
+  return `${formatBusinessDate(date, businessTimestampFormatters)} ${BUSINESS_TIME_ZONE_LABEL}`;
 }
 
 export function formatMetricWindow(window) {

@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -6,33 +6,69 @@ const baseUrl = (process.argv[2] || "http://127.0.0.1:8088").replace(/\/$/, "");
 const outDir = process.argv[3] || "/out";
 await fs.mkdir(outDir, { recursive: true });
 
-const browser = await chromium.launch({ headless: true });
-const context = await browser.newContext({
-  timezoneId: "UTC",
-  viewport: { width: 1280, height: 800 },
-});
-const page = await context.newPage();
 const errors = [];
-page.on("pageerror", (error) => errors.push(error.message));
-page.on("console", (message) => {
-  if (message.type() === "error") errors.push(message.text());
-});
 
-await page.goto(`${baseUrl}/ads`, { waitUntil: "networkidle", timeout: 20000 });
-const dateCases = await page.evaluate(async () => {
-  const { formatBusinessClock, formatBusinessTimestamp } = await import(
-    "/assets/ui-utils.js"
+async function engineTimeState(engineName, engine) {
+  const browser = await engine.launch({ headless: true });
+  const context = await browser.newContext({
+    timezoneId: "UTC",
+    viewport: { width: 360, height: 800 },
+  });
+  const page = await context.newPage();
+  page.on("pageerror", (error) =>
+    errors.push(`${engineName}: ${error.message}`),
   );
-  return {
-    browserZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    winter2021: formatBusinessClock("2021-01-15T12:00:00Z"),
-    summer2021: formatBusinessClock("2021-07-15T12:00:00Z"),
-    winter2026: formatBusinessClock("2026-01-15T12:00:00Z"),
-    summer2026: formatBusinessClock("2026-07-15T12:00:00Z"),
-    todayOrder: formatBusinessClock("Aug 27 · 16:33"),
-    timestamp2026: formatBusinessTimestamp("2026-07-15T12:34:00Z"),
-  };
-});
+  page.on("console", (message) => {
+    if (message.type() === "error")
+      errors.push(`${engineName}: ${message.text()}`);
+  });
+
+  await page.goto(`${baseUrl}/ads`, {
+    waitUntil: "networkidle",
+    timeout: 20000,
+  });
+  const dateCases = await page.evaluate(async () => {
+    const { formatBusinessClock, formatBusinessTimestamp } =
+      await import("/assets/ui-utils.js");
+    return {
+      browserZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      winter2021: formatBusinessClock("2021-01-15T12:00:00Z"),
+      summer2021: formatBusinessClock("2021-07-15T12:00:00Z"),
+      winter2026: formatBusinessClock("2026-01-15T12:00:00Z"),
+      summer2026: formatBusinessClock("2026-07-15T12:00:00Z"),
+      todayOrder: formatBusinessClock("Aug 27 · 16:33"),
+      timestamp2026: formatBusinessTimestamp("2026-07-15T12:34:00Z"),
+      healthExample: formatBusinessTimestamp("2026-09-02T02:32:00Z"),
+    };
+  });
+
+  const disclosures = {};
+  for (const [route, selector] of [
+    ["/business", "#homeBusinessWindow"],
+    ["/catalog", "#catalogDemandWindow"],
+  ]) {
+    await page.goto(`${baseUrl}${route}`, {
+      waitUntil: "networkidle",
+      timeout: 20000,
+    });
+    await page.locator(".page-lead__evidence > summary").click();
+    await page.locator(selector).waitFor({ state: "visible", timeout: 5000 });
+    disclosures[route] = (
+      (await page.locator(selector).textContent()) || ""
+    ).trim();
+  }
+
+  await browser.close();
+  return { dateCases, disclosures };
+}
+
+const engineStates = {};
+for (const [engineName, engine] of [
+  ["chromium", chromium],
+  ["webkit", webkit],
+]) {
+  engineStates[engineName] = await engineTimeState(engineName, engine);
+}
 
 const expectedCases = {
   browserZone: "UTC",
@@ -42,11 +78,38 @@ const expectedCases = {
   summer2026: "06:00 Mexico City",
   todayOrder: "Aug 27 · 16:33 Mexico City",
   timestamp2026: "Jul 15, 6:34 AM Mexico City",
+  healthExample: "Sep 1, 8:32 PM Mexico City",
 };
-for (const [key, expected] of Object.entries(expectedCases)) {
-  if (dateCases[key] !== expected)
-    errors.push(`${key}: ${dateCases[key]} != ${expected}`);
+for (const [engineName, state] of Object.entries(engineStates)) {
+  for (const [key, expected] of Object.entries(expectedCases)) {
+    if (state.dateCases[key] !== expected) {
+      errors.push(
+        `${engineName} ${key}: ${state.dateCases[key]} != ${expected}`,
+      );
+    }
+  }
 }
+for (const route of ["/business", "/catalog"]) {
+  if (
+    engineStates.chromium.disclosures[route] !==
+    engineStates.webkit.disclosures[route]
+  ) {
+    errors.push(
+      `${route} engine divergence: ${engineStates.chromium.disclosures[route]} != ${engineStates.webkit.disclosures[route]}`,
+    );
+  }
+}
+
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({
+  timezoneId: "UTC",
+  viewport: { width: 1280, height: 800 },
+});
+const page = await context.newPage();
+page.on("pageerror", (error) => errors.push(error.message));
+page.on("console", (message) => {
+  if (message.type() === "error") errors.push(message.text());
+});
 
 const routes = [
   "/",
@@ -104,7 +167,7 @@ if (health.rendered !== health.expected) {
 
 const summary = {
   baseUrl,
-  dateCases,
+  engineStates,
   clocks,
   health,
   errors,
