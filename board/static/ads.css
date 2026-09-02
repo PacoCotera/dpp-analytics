@@ -328,6 +328,10 @@ main > .subnav {
   margin: 7px 2px 10px;
 }
 
+.ads-empty[hidden] {
+  display: none;
+}
+
 .ads-empty {
   display: grid;
   min-height: 280px;
