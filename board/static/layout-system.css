@@ -426,6 +426,21 @@
   box-shadow: inset 0 -2px var(--dpp-interaction, var(--accent));
 }
 
+.subnav.tabs {
+  gap: 3px;
+  padding: 3px;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--pill-radius);
+  background: var(--dpp-surface-subtle, var(--surface));
+}
+
+.subnav.tabs .subnav__item.active,
+.subnav.tabs .subnav__item[aria-selected='true'] {
+  background: var(--dpp-interaction, var(--ink));
+  color: var(--dpp-interaction-text);
+  box-shadow: none;
+}
+
 .page-section {
   margin-top: var(--section-gap);
 }

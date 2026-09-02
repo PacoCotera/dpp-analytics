@@ -297,6 +297,10 @@ async function verifySalesOverview(page) {
     const chartCard = document.querySelector('.sales-chart-card');
     const kpiRect = kpiRail?.getBoundingClientRect();
     const cardRect = chartCard?.getBoundingClientRect();
+    const tabs = document.querySelector('.sales-lead .subnav.tabs');
+    const activeTab = tabs?.querySelector('.subnav__item[aria-selected="true"]');
+    const tabsStyle = tabs ? getComputedStyle(tabs) : null;
+    const activeTabStyle = activeTab ? getComputedStyle(activeTab) : null;
     return {
       mobile,
       chartBeforeSignals: Boolean(
@@ -314,6 +318,19 @@ async function verifySalesOverview(page) {
         Math.abs(kpiRect.left - cardRect.left) <= 1 &&
         Math.abs(kpiRect.right - cardRect.right) <= 1
       ),
+      tabsBounded: Boolean(
+        tabsStyle &&
+        Number.parseFloat(tabsStyle.borderTopWidth) >= 1 &&
+        Number.parseFloat(tabsStyle.borderRightWidth) >= 1 &&
+        Number.parseFloat(tabsStyle.borderBottomWidth) >= 1 &&
+        Number.parseFloat(tabsStyle.borderLeftWidth) >= 1 &&
+        tabsStyle.backgroundColor !== 'rgba(0, 0, 0, 0)'
+      ),
+      activeTabShadowFree: Boolean(
+        activeTabStyle &&
+        activeTabStyle.boxShadow === 'none' &&
+        activeTabStyle.backgroundColor !== 'rgba(0, 0, 0, 0)'
+      ),
     };
   });
   if (
@@ -321,7 +338,9 @@ async function verifySalesOverview(page) {
     state.ruleTriggerFont < 14 ||
     state.todayLinkHeight < 24 ||
     state.todayLinkFont < 14 ||
-    !state.railAligned
+    !state.railAligned ||
+    !state.tabsBounded ||
+    !state.activeTabShadowFree
   ) {
     throw new Error(`Sales utility control floor mismatch: ${JSON.stringify(state)}`);
   }
@@ -919,6 +938,20 @@ async function verifyBusiness(page) {
         '#spark .demand-rhythm__bar--exceptional',
       ).length,
       rhythmWeekendDays: document.querySelectorAll('#spark .demand-rhythm__bar--weekend').length,
+      attentionSpacing: [...document.querySelectorAll('.attention-item')].every(item => {
+        const reason = item.querySelector('.attention-reason');
+        const meta = reason?.previousElementSibling;
+        if (!reason || !meta) return false;
+        const reasonRect = reason.getBoundingClientRect();
+        const metaRect = meta.getBoundingClientRect();
+        const itemRect = item.getBoundingClientRect();
+        const gapAbove = reasonRect.top - metaRect.bottom;
+        const gapBelow = itemRect.bottom - reasonRect.bottom;
+        return (
+          gapAbove >= 8 &&
+          (window.innerWidth <= 640 || Math.abs(gapAbove - gapBelow) <= 4.1)
+        );
+      }),
       signalCopy: document
         .querySelector('[data-dpp-qa="business-demand"] .section-header__description')
         ?.textContent?.replace(/\s+/g, ' ')
@@ -953,6 +986,7 @@ async function verifyBusiness(page) {
     !state.rhythmLatestRead ||
     state.rhythmExceptionalDays < 1 ||
     state.rhythmWeekendDays < 1 ||
+    !state.attentionSpacing ||
     !state.signalCopy ||
     !state.productDriversRemoved ||
     state.adsVisible !== state.adsExpected ||
