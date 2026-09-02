@@ -421,6 +421,19 @@ check(
   'Business Health must inherit the shared home-surface inset',
 );
 check(
+  /\.attention-reason\s*\{[^}]*margin-top:\s*8px/s.test(homeCss),
+  'home.css',
+  'Business decision reasons must retain balanced separation from inventory metadata',
+);
+check(
+  /\.subnav\.tabs\s*\{[^}]*padding:\s*3px[^}]*border:[^}]*border-radius:[^}]*background:/s.test(layout) &&
+    /\.subnav\.tabs\s+\.subnav__item\.active,[\s\S]*?\.subnav\.tabs\s+\.subnav__item\[aria-selected='true'\]\s*\{[^}]*background:[^}]*color:[^}]*box-shadow:\s*none/s.test(
+      layout,
+    ),
+  'layout-system.css',
+  'Shared tabs must use a bounded container and shadow-free selected state',
+);
+check(
   !/#geography\s+/.test(salesGeographyCss),
   'sales-geography.css',
   'Geography layout must not use ID specificity that defeats responsive rules',
