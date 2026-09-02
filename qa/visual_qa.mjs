@@ -1582,6 +1582,7 @@ async function verifyTrajectory(page) {
     const weeks = document.querySelector('.trajectory-weeks');
     const disclosure = document.querySelector('.week-disclosure');
     const weekSummary = disclosure?.querySelector('summary');
+    const weeksStyle = weeks ? getComputedStyle(weeks) : null;
     const contained = (child, owner) => {
       const childRect = child?.getBoundingClientRect();
       const ownerRect = owner?.getBoundingClientRect();
@@ -1605,6 +1606,16 @@ async function verifyTrajectory(page) {
       evidenceFloor: evidence.every(element => Number.parseFloat(getComputedStyle(element).fontSize) >= 14),
       ruleTriggerHeight: ruleTrigger?.getBoundingClientRect().height || 0,
       ruleTriggerFont: Number.parseFloat(ruleTrigger ? getComputedStyle(ruleTrigger).fontSize : '0'),
+      volatilitySurface: Boolean(
+        weeksStyle &&
+          Number.parseFloat(weeksStyle.borderTopWidth) >= 1 &&
+          Number.parseFloat(weeksStyle.borderRightWidth) >= 1 &&
+          Number.parseFloat(weeksStyle.borderBottomWidth) >= 1 &&
+          Number.parseFloat(weeksStyle.borderLeftWidth) >= 1 &&
+          Number.parseFloat(weeksStyle.borderRadius) > 0 &&
+          Number.parseFloat(weeksStyle.paddingTop) >= 16 &&
+          weeksStyle.backgroundColor !== 'rgba(0, 0, 0, 0)'
+      ),
       volatilityContained: contained(disclosure, weeks) && contained(weekSummary, disclosure),
     };
   });
@@ -1613,6 +1624,7 @@ async function verifyTrajectory(page) {
     state.ruleTriggerHeight < 24 ||
     state.ruleTriggerFont < 14 ||
     !state.chartContained ||
+    !state.volatilitySurface ||
     !state.volatilityContained ||
     state.chartBars > 32 ||
     state.progressBars
