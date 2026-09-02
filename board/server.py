@@ -108,7 +108,7 @@ API_CACHE_TTLS = {
     "/api/catalog": 300,
     "/api/inventory": 60,
     "/api/finance": 300,
-    "/api/ads": 300,
+    "/api/ads": 15,
     "/api/product": 300,
     "/api/trajectory": 600,
     "/api/data-health": 30,
