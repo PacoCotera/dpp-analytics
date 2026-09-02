@@ -68,6 +68,10 @@ must not reduce that target. Truly inline disclosures may use the WCAG 2.2 24px 
 surrounding spacing preserves a 24 × 24 CSS-pixel target; those exceptions remain route-owned and must be
 documented in the route's browser QA.
 
+Horizontally scrollable choice groups use the shared `revealActiveChoice` behavior after initial URL restoration,
+history restoration, and selection. The selected control must be fully visible without changing the page's
+vertical position or creating document-level horizontal overflow.
+
 Disclosure state and action copy belong to real DOM text and the owning runtime. CSS must not inject “Show” or
 “Hide” semantics with generated content or suppress stale state text visually. Data Health's warehouse reference
 keeps its visible action and exact summary accessible name synchronized on the native `details` toggle event.

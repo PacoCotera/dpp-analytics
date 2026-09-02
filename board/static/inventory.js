@@ -5,6 +5,7 @@ import {
   formatBusinessClock,
   formatMetricWindow,
   integer,
+  revealActiveChoice,
   setText,
 } from './ui-utils.js';
 
@@ -62,11 +63,13 @@ function writeInventoryUrlState(method = 'pushState') {
 
 function syncInventoryControls() {
   byId('search').value = state.search;
+  const filterGroup = document.querySelector('.inventory-filter-field .filters');
   document.querySelectorAll('.filter').forEach((button) => {
     const selected = button.dataset.filter === state.filter;
     button.classList.toggle('active', selected);
     button.setAttribute('aria-pressed', String(selected));
   });
+  revealActiveChoice(filterGroup);
 }
 
 function restoreInventoryUrlState({ normalize = false } = {}) {
