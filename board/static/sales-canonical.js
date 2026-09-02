@@ -450,16 +450,16 @@ import {
           ? 'Year-to-date monthly sales with current-month run rate'
           : 'Twelve months of monthly sales with current-month run rate',
     );
+    const chartMax = d3.max(data, (r) => Math.max(r.value, r.projection || 0)) || 1;
+    const annotationHeadroom = 30;
+    const annotationOffset = 14;
+    const yMax = chartMax * (c.ih / Math.max(1, c.ih - annotationHeadroom));
     const x = d3
         .scaleBand()
         .domain(data.map((r) => r.key))
         .range([0, c.iw])
         .padding(0.3),
-      y = d3
-        .scaleLinear()
-        .domain([0, d3.max(data, (r) => Math.max(r.value, r.projection || 0)) || 1])
-        .nice(4)
-        .range([c.ih, 0]);
+      y = d3.scaleLinear().domain([0, yMax]).nice(4).range([c.ih, 0]);
     grid(c, y);
     const pid = isFull ? 'sales-full-runrate' : isYtd ? 'sales-ytd-runrate' : 'sales-month-runrate';
     makePattern(c.svg, pid);
@@ -536,9 +536,9 @@ import {
       .data(ghost)
       .join('text')
       .attr('class', 'sales-runrate-label')
-      .attr('x', (r) => x(r.key) + x.bandwidth() / 2)
-      .attr('y', (r) => Math.max(18, y(r.projection) - 8))
-      .attr('text-anchor', 'middle')
+      .attr('x', (r) => x(r.key) + (c.compact ? x.bandwidth() : x.bandwidth() / 2))
+      .attr('y', (r) => Math.max(18, y(r.projection) - annotationOffset))
+      .attr('text-anchor', c.compact ? 'end' : 'middle')
       .text((r) => `Run rate · ${shortMoney(r.projection)}`);
     let ticks = data;
     if (isFull && data.length > 18)
