@@ -1188,6 +1188,8 @@ html.wall-mode .today-section {
 
 @media (max-width: 700px) {
   .today-section {
+    width: calc(100% - 4px);
+    margin-inline: 2px;
     padding: 22px 0;
   }
 

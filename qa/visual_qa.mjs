@@ -725,17 +725,22 @@ async function verifyToday(page) {
 async function verifyTodayEvidenceContainment(page) {
   await wait(page, '#ordersPanel');
   const state = await page.evaluate(() => {
+    const main = document.querySelector('.today-main')?.getBoundingClientRect();
     const section = document.querySelector('.today-evidence')?.getBoundingClientRect();
     const last = document.getElementById('ordersPanel')?.getBoundingClientRect();
     const summaries = [...document.querySelectorAll('.today-orders summary')];
     return {
+      mobile: window.innerWidth <= 700,
       bottomInset: section && last ? section.bottom - last.bottom : 0,
+      horizontalInset:
+        main && section ? Math.min(section.left - main.left, main.right - section.right) : 0,
       summaryOverflow: summaries.map(element => element.scrollWidth - element.clientWidth),
       pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
   if (
     state.bottomInset < 20 ||
+    (state.mobile && state.horizontalInset < 2) ||
     state.summaryOverflow.some(value => value > 1) ||
     state.pageOverflow > 1
   ) {
@@ -1588,12 +1593,18 @@ async function verifyTrajectory(page) {
 
   await page.locator('#weekDisclosure > summary').click();
   const openWeeks = await page.evaluate(() => {
+    const main = document.querySelector('.trajectory-main')?.getBoundingClientRect();
     const disclosure = document.getElementById('weekDisclosure')?.getBoundingClientRect();
     const timeline = document.getElementById('weeks')?.getBoundingClientRect();
     const last = document.querySelector('#weeks .week-row:last-child')?.getBoundingClientRect();
     return {
+      mobile: window.innerWidth <= 640,
       open: Boolean(document.getElementById('weekDisclosure')?.hasAttribute('open')),
       bottomInset: disclosure && last ? disclosure.bottom - last.bottom : 0,
+      horizontalInset:
+        main && disclosure
+          ? Math.min(disclosure.left - main.left, main.right - disclosure.right)
+          : 0,
       timelineContained: Boolean(
         disclosure &&
         timeline &&
@@ -1602,7 +1613,12 @@ async function verifyTrajectory(page) {
       ),
     };
   });
-  if (!openWeeks.open || openWeeks.bottomInset < 14 || !openWeeks.timelineContained) {
+  if (
+    !openWeeks.open ||
+    openWeeks.bottomInset < 14 ||
+    (openWeeks.mobile && openWeeks.horizontalInset < 2) ||
+    !openWeeks.timelineContained
+  ) {
     throw new Error(`Trajectory expanded-week containment mismatch: ${JSON.stringify(openWeeks)}`);
   }
 }
