@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import signal
+import threading
 import time
 from collections.abc import Callable
 
@@ -53,6 +54,18 @@ def _run(name: str, fn: Callable[[], dict]) -> dict | None:
     except Exception:
         log.exception("job=%s status=error elapsed=%.2fs", name, time.monotonic() - started)
         return None
+
+
+def _start_background_job(name: str, fn: Callable[[], dict]) -> threading.Thread:
+    """Run a slow optional collector without delaying core ingestion cadence."""
+    thread = threading.Thread(
+        target=_run,
+        args=(name, fn),
+        name=f"dpp-{name}",
+        daemon=True,
+    )
+    thread.start()
+    return thread
 
 
 def _refresh_catalog_cache_if_written(result: dict | None, kind: str) -> None:
@@ -324,9 +337,14 @@ def main() -> None:
         if settings.ads_enabled and settings.ads_credentials_present
         else float("inf")
     )
+    ads_thread: threading.Thread | None = None
 
     while not STOP:
         now = time.monotonic()
+
+        if ads_thread is not None and not ads_thread.is_alive():
+            ads_thread = None
+            next_ads = time.monotonic() + settings.ads_reporting_interval_seconds
 
         manual_job = _run_manual_sync()
         if manual_job:
@@ -407,9 +425,9 @@ def main() -> None:
             _refresh_catalog_cache_if_written(data_kiosk_result, "traffic")
             next_data_kiosk = time.monotonic() + settings.data_kiosk_interval_seconds
 
-        if now >= next_ads:
-            _run("amazon_ads", ingest_ads)
-            next_ads = time.monotonic() + settings.ads_reporting_interval_seconds
+        if now >= next_ads and ads_thread is None:
+            ads_thread = _start_background_job("amazon_ads", ingest_ads)
+            next_ads = float("inf")
 
         time.sleep(settings.scheduler_tick_seconds)
 
