@@ -726,11 +726,14 @@ async function verifyTodayEvidenceContainment(page) {
   await wait(page, '#ordersPanel');
   const state = await page.evaluate(() => {
     const main = document.querySelector('.today-main')?.getBoundingClientRect();
-    const section = document.querySelector('.today-evidence')?.getBoundingClientRect();
+    const sectionElement = document.querySelector('.today-evidence');
+    const section = sectionElement?.getBoundingClientRect();
+    const sectionStyle = sectionElement ? getComputedStyle(sectionElement) : null;
     const last = document.getElementById('ordersPanel')?.getBoundingClientRect();
     const summaries = [...document.querySelectorAll('.today-orders summary')];
     return {
       mobile: window.innerWidth <= 700,
+      bottomBorder: Number.parseFloat(sectionStyle?.borderBottomWidth || '0'),
       bottomInset: section && last ? section.bottom - last.bottom : 0,
       horizontalInset:
         main && section ? Math.min(section.left - main.left, main.right - section.right) : 0,
@@ -739,6 +742,7 @@ async function verifyTodayEvidenceContainment(page) {
     };
   });
   if (
+    state.bottomBorder < 1 ||
     state.bottomInset < 20 ||
     (state.mobile && state.horizontalInset < 2) ||
     state.summaryOverflow.some(value => value > 1) ||
@@ -1883,8 +1887,12 @@ async function verifyFinanceReport(page) {
     const currentSummary = document.querySelector('.finance-read--current-summary');
     const closedYtd = document.querySelector('#ytdBridge')?.closest('.finance-read');
     const accountingDisclosure = document.getElementById('financeOverviewDisclosure');
+    const accountingSummary = accountingDisclosure?.querySelector(':scope > summary');
     const accountingOverview = document.querySelector('[data-dpp-qa="finance-accounting-overview"]');
+    const settlementCard = document.getElementById('cashSettlementCard');
     const evidenceDetails = document.querySelector('.finance-evidence details');
+    const accountingSummaryStyle = accountingSummary ? getComputedStyle(accountingSummary) : null;
+    const settlementCardStyle = settlementCard ? getComputedStyle(settlementCard) : null;
     return {
       evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
       controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
@@ -1907,6 +1915,17 @@ async function verifyFinanceReport(page) {
           closedYtd.getBoundingClientRect().top <= window.innerHeight + 120 &&
           !accountingDisclosure.hasAttribute('open') &&
           accountingOverview.getClientRects().length === 0),
+      accountingOverviewBound: Boolean(
+        accountingSummaryStyle &&
+          settlementCardStyle &&
+          Number.parseFloat(accountingSummaryStyle.borderTopWidth) >= 1 &&
+          Number.parseFloat(accountingSummaryStyle.borderRightWidth) >= 1 &&
+          Number.parseFloat(accountingSummaryStyle.borderBottomWidth) >= 1 &&
+          Number.parseFloat(accountingSummaryStyle.borderLeftWidth) >= 1 &&
+          Number.parseFloat(accountingSummaryStyle.paddingInlineStart) > 0 &&
+          accountingSummaryStyle.borderRadius === settlementCardStyle.borderRadius &&
+          accountingSummaryStyle.backgroundColor === settlementCardStyle.backgroundColor
+      ),
       accountingEvidenceBound: Boolean(
         evidenceDetails &&
         Number.parseFloat(getComputedStyle(evidenceDetails).borderTopWidth) >= 1 &&
@@ -1914,7 +1933,7 @@ async function verifyFinanceReport(page) {
       ),
     };
   });
-  if (!state.evidenceFloor || !state.controlFloor || !state.mobileHeaderAvailable || !state.tableRelationships || !state.anchoredSections || !state.ytdResultTone || !state.managementFirst || !state.mobileComparisonBudget || !state.accountingEvidenceBound) {
+  if (!state.evidenceFloor || !state.controlFloor || !state.mobileHeaderAvailable || !state.tableRelationships || !state.anchoredSections || !state.ytdResultTone || !state.managementFirst || !state.mobileComparisonBudget || !state.accountingOverviewBound || !state.accountingEvidenceBound) {
     throw new Error(`Finance hierarchy/accessibility presentation mismatch: ${JSON.stringify(state)}`);
   }
 }

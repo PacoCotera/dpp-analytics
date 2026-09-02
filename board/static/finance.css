@@ -633,7 +633,8 @@ main {
 
 .report,
 .status-rail,
-.finance-read {
+.finance-read,
+.finance-overview-disclosure > summary {
   padding: 14px 16px;
   border: var(--border-width) solid var(--line);
   border-radius: var(--panel-radius);
@@ -684,10 +685,6 @@ main {
 .finance-overview-disclosure {
   display: block;
   margin-top: 10px;
-}
-
-.finance-overview-disclosure > summary {
-  display: none;
 }
 
 .finance-overview-disclosure:not([open]) > .report-grid {
@@ -944,9 +941,6 @@ main {
   .finance-overview-disclosure > summary {
     display: flex;
     padding: 12px 13px;
-    border: 1px solid var(--line);
-    border-radius: var(--panel-radius);
-    background: var(--surface);
   }
 
   .finance-overview-disclosure[open] > .report-grid {
