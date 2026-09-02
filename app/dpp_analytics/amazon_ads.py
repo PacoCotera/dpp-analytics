@@ -84,6 +84,10 @@ class AmazonAdsClient:
                 if time.monotonic()>=deadline:raise TimeoutError(f"Amazon Ads duplicate {grain} report did not become available within timeout")
                 time.sleep(settings.ads_report_poll_seconds)
                 continue
+            if r.status_code>=400:
+                detail=r.text.strip()
+                if len(detail)>2000:detail=detail[:2000]+"..."
+                raise RuntimeError(f"Amazon Ads createReport grain={grain} failed: HTTP {r.status_code}: {detail or '<empty response>'}")
             r.raise_for_status()
             if not rid: raise RuntimeError(f"Amazon Ads createReport returned no reportId: {b}")
             return str(rid)
