@@ -101,6 +101,32 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
         sleep.assert_called_once_with(5)
         self.assertEqual(self.ads.client.post.call_count, 2)
 
+    @patch.object(AmazonAdsClient, "headers", return_value={})
+    @patch("dpp_analytics.amazon_ads.time.sleep")
+    @patch("dpp_analytics.amazon_ads.time.monotonic", side_effect=[0, 1])
+    @patch(
+        "dpp_analytics.amazon_ads.settings",
+        SimpleNamespace(ads_report_poll_timeout_seconds=900, ads_report_poll_seconds=5),
+    )
+    def test_wait_for_report_publishes_vendor_status(
+        self, _clock, _sleep, _headers
+    ) -> None:
+        self.ads.client.get.return_value = _response(200, {
+            "reportId": "report-1",
+            "status": "COMPLETED",
+            "url": "https://download.example/report.gz",
+        })
+        statuses = []
+
+        result = self.ads.wait_for_report(
+            "profile-1",
+            "report-1",
+            on_status=lambda status, _payload: statuses.append(status),
+        )
+
+        self.assertEqual(result["status"], "COMPLETED")
+        self.assertEqual(statuses, ["COMPLETED"])
+
 
 if __name__ == "__main__":
     unittest.main()
