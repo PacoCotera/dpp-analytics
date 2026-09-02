@@ -34,6 +34,8 @@ node /qa/sales_driver_units_qa.mjs "$base_url" "$work_dir"
 sales_driver_units_rc=$?
 node /qa/sales_momentum_qa.mjs "$base_url" "$work_dir"
 sales_momentum_rc=$?
+node /qa/sales_layout_qa.mjs "$base_url" "$work_dir"
+sales_layout_rc=$?
 node /qa/catalog_family_overflow_qa.mjs "$base_url" "$work_dir"
 catalog_family_overflow_rc=$?
 node /qa/percentage_format_qa.mjs "$base_url" "$work_dir"
@@ -96,6 +98,7 @@ if [ "$trajectory_axis_ticks_rc" -ne 0 ]; then exit "$trajectory_axis_ticks_rc";
 if [ "$data_health_disclosure_rc" -ne 0 ]; then exit "$data_health_disclosure_rc"; fi
 if [ "$sales_driver_units_rc" -ne 0 ]; then exit "$sales_driver_units_rc"; fi
 if [ "$sales_momentum_rc" -ne 0 ]; then exit "$sales_momentum_rc"; fi
+if [ "$sales_layout_rc" -ne 0 ]; then exit "$sales_layout_rc"; fi
 if [ "$catalog_family_overflow_rc" -ne 0 ]; then exit "$catalog_family_overflow_rc"; fi
 if [ "$percentage_format_rc" -ne 0 ]; then exit "$percentage_format_rc"; fi
 if [ "$shared_control_targets_rc" -ne 0 ]; then exit "$shared_control_targets_rc"; fi

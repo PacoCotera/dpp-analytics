@@ -1179,8 +1179,8 @@
   #skuRows tr {
     display: grid;
     grid-template-areas:
-      'product sales'
-      'product share'
+      'product product'
+      'sales share'
       'change movement'
       'units state';
     grid-template-columns: minmax(0, 1fr) auto;
