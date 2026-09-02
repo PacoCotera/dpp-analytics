@@ -82,10 +82,6 @@
   color: var(--info-ink);
 }
 
-.today-main .today-section:last-child {
-  border-bottom: 0;
-}
-
 .today-main .today-section-header {
   display: flex;
   align-items: flex-end;

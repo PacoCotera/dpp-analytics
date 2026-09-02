@@ -411,6 +411,11 @@ check(
   'Today mobile day choices must be contained, reachable, selected-visible 44px touch targets',
 );
 check(
+  !/\.today-main\s+\.today-section:last-child\s*\{[^}]*border-bottom:\s*0/s.test(todayCss),
+  'today.css',
+  'Today must retain the complete boundary around its final reference section',
+);
+check(
   !/\.home-health\s*\{[^}]*\bpadding\s*:/s.test(homeCss),
   'home.css',
   'Business Health must inherit the shared home-surface inset',
@@ -492,6 +497,13 @@ check(
     !/\.finance-read--current-summary\s*\{[^}]*display:\s*none/s.test(financeCss),
   'finance.html',
   'Finance mobile must disclose detail progressively without hiding the management comparison',
+);
+check(
+  /\.finance-overview-disclosure\s*>\s*summary\s*\{[^}]*padding:[^}]*border:[^}]*border-radius:[^}]*background:/s.test(
+    financeCss,
+  ),
+  'finance.css',
+  'Finance accounting overview must use the same bounded disclosure treatment as settlement evidence',
 );
 for (const [page, html] of [
   ['home.html', homeHtml],
