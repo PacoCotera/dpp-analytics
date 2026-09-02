@@ -245,7 +245,7 @@ def _publish_state(state, detail_code, **metadata):
     db.set_integration_state("amazon_ads", state, detail_code, metadata)
 
 
-def _report_progress_callback(scope, grain, report_id, start, end):
+def _report_progress_callback(scope, grain, report_id, start, end, report_number, report_total):
     report_started_at=datetime.now(timezone.utc).isoformat()
     last_status=None
     last_published_at=0.0
@@ -260,6 +260,8 @@ def _report_progress_callback(scope, grain, report_id, start, end):
             "REPORT_VENDOR_PROCESSING",
             account_id=str(scope),
             grain=grain,
+            report_number=report_number,
+            report_total=report_total,
             report_id=report_id,
             vendor_status=vendor_status or "UNKNOWN",
             start_date=start.isoformat(),
@@ -322,8 +324,8 @@ def ingest_ads():
             total_read=total_written=0;report_ids=[];grains={"campaign":_write_campaign_rows,"product":_write_product_rows,"target":_write_target_rows,"search_term":_write_search_term_rows}
             for scope in scopes:
                 _ensure_account(scope);_ensure_required_grains(scope,start)
-                for grain,writer in grains.items():
-                    rid=client.create_report(scope,start,end,grain=grain);report_ids.append(rid);progress=_report_progress_callback(scope,grain,rid,start,end);progress("REQUESTED",{});status=client.wait_for_report(scope,rid,on_status=progress);location=status.get("url") or status.get("location")
+                for report_number,(grain,writer) in enumerate(grains.items(),start=1):
+                    rid=client.create_report(scope,start,end,grain=grain);report_ids.append(rid);progress=_report_progress_callback(scope,grain,rid,start,end,report_number,len(grains));progress("REQUESTED",{});status=client.wait_for_report(scope,rid,on_status=progress);location=status.get("url") or status.get("location")
                     if not location:raise RuntimeError(f"Amazon Ads report {rid} completed without download URL: {status}")
                     rows=client.download_report(str(location));total_read+=len(rows);written=writer(scope,rows,rid);total_written+=written
                     _record_report_run(scope,rid,grain,start,end,len(rows),status)
