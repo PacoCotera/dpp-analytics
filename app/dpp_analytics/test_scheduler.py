@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from .scheduler import _ads_delay_after_result, _initial_ads_due, _start_background_job
+from .settings import settings
 
 
 class BackgroundSchedulerTests(unittest.TestCase):
@@ -34,19 +35,17 @@ class BackgroundSchedulerTests(unittest.TestCase):
     def test_incomplete_ads_backfill_is_due_immediately(self, _complete) -> None:
         self.assertEqual(_initial_ads_due(), 0.0)
 
-    @patch("dpp_analytics.scheduler.settings.ads_reporting_interval_seconds", 21600)
     def test_successful_incomplete_ads_window_chains_immediately(self) -> None:
         self.assertEqual(
             _ads_delay_after_result({"status": "success", "backfill_complete": False}),
             0,
         )
 
-    @patch("dpp_analytics.scheduler.settings.ads_reporting_interval_seconds", 21600)
     def test_failed_or_current_ads_run_keeps_normal_interval(self) -> None:
-        self.assertEqual(_ads_delay_after_result(None), 21600)
+        self.assertEqual(_ads_delay_after_result(None), settings.ads_reporting_interval_seconds)
         self.assertEqual(
             _ads_delay_after_result({"status": "success", "backfill_complete": True}),
-            21600,
+            settings.ads_reporting_interval_seconds,
         )
 
 
