@@ -41,6 +41,7 @@ function percent(value) {
     return "—";
   }
   const numeric = Number(value);
+  if (numeric < 0) return `−${Math.abs(numeric).toFixed(1)}%`;
   return `${numeric > 0 ? "+" : ""}${numeric.toFixed(1)}%`;
 }
 
