@@ -6,7 +6,12 @@ from datetime import date
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from .amazon_ads import AmazonAdsClient, _target_key
+from .amazon_ads import (
+    AmazonAdsClient,
+    _target_key,
+    _write_search_term_rows,
+    _write_target_rows,
+)
 
 
 def _response(status_code: int, body: dict[str, object]):
@@ -126,6 +131,39 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "COMPLETED")
         self.assertEqual(statuses, ["COMPLETED"])
+
+    def _writer_sql(self, writer, row: dict[str, object]) -> str:
+        with patch("dpp_analytics.amazon_ads.db.connect") as connect:
+            connection = connect.return_value.__enter__.return_value
+            cursor = connection.cursor.return_value.__enter__.return_value
+            writer("profile-1", [row], "report-1")
+            return cursor.execute.call_args.args[0]
+
+    def test_target_upsert_matches_deployed_primary_key(self) -> None:
+        sql = self._writer_sql(
+            _write_target_rows,
+            {"date": "2026-08-01", "campaignId": "campaign-1", "keywordId": "keyword-1"},
+        )
+        self.assertIn(
+            "ON CONFLICT(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,search_term)",
+            sql,
+        )
+
+    def test_search_term_upsert_matches_corrected_primary_key(self) -> None:
+        sql = self._writer_sql(
+            _write_search_term_rows,
+            {
+                "date": "2026-08-01",
+                "campaignId": "campaign-1",
+                "keywordId": "keyword-1",
+                "searchTerm": "notebook",
+            },
+        )
+        self.assertIn(
+            "ON CONFLICT(account_id,business_date,campaign_id,ad_group_id,target_id,search_term)",
+            sql,
+        )
+        self.assertNotIn("ON CONFLICT(account_id,business_date,ad_product", sql)
 
 
 if __name__ == "__main__":
