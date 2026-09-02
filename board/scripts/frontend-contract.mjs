@@ -459,12 +459,14 @@ check(
     /index\s*===\s*0\s*\|\|\s*\(index\s*%\s*labelStep\s*===\s*0\s*&&\s*index\s*<\s*points\.length\s*-\s*1\)/.test(
       financeScript,
     ) &&
-    /const compactNudge\s*=\s*compact\s*\?/.test(financeScript) &&
+    /renderMonthWaterfall[\s\S]*?top:\s*compact\s*\?\s*58\s*:\s*26/s.test(financeScript) &&
+    /const valueY\s*=\s*compact[\s\S]*?index\s*%\s*2[\s\S]*?43[\s\S]*?22/s.test(financeScript) &&
+    /class="finance-chart-month finance-chart-value"/.test(financeScript) &&
     /point\.compactLabel\s*\|\|\s*point\.label/.test(financeScript) &&
     /if\s*\(!compact\)\s*\{\s*output\s*\+=\s*`<text class="dpp-muted"[^`]+PENDING<\/text>`/s.test(
       financeScript,
     ) &&
-    /totalTop\s*-\s*\(compact\s*\?\s*18\s*:\s*7\)/.test(financeScript),
+    /const totalValueY\s*=\s*compact\s*\?\s*43/.test(financeScript),
   'finance.js',
   'Finance mobile windows must keep a stable card and collision-safe chart labels',
 );
