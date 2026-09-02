@@ -122,7 +122,7 @@ The Amazon Ads worker publishes its current non-secret integration lifecycle in 
 
 Sponsored Products targeting and search-term ingestion uses Reporting v3's `keywordId`, `keyword`, and `targeting` fields. Automatic targeting expressions can lack a keyword ID, so their exact Amazon `targeting` value is the stable target key within account, campaign and ad group scope.
 
-Target and search-term upserts must use the exact primary-key grains established by migrations 010 and 019. The legacy target fact retains its empty `search_term` key, while the corrected search-term fact keys by account/date/campaign/ad group/target/query without `ad_product`.
+Migration 060 normalizes historical target-table drift to one target fact key: account, stable target identifier and business date. Campaign, ad group and ad product remain reported dimensions. The search-term fact keys by account/date/campaign/ad group/target/query without `ad_product`.
 
 **Never define “organic sales” as total seller sales minus attributed ad sales.** Attribution windows can overlap, lag and restate after the underlying seller sale.
 
