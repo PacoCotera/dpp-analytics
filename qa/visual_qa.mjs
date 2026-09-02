@@ -1090,8 +1090,10 @@ async function verifyDataHealth(page) {
         const first = document.querySelector('.health-job--header [role="columnheader"]')?.getBoundingClientRect();
         return Boolean(body && first && first.left - body.left >= 11);
       })(),
-      mobileHeaderAvailable:
-        window.innerWidth > 900 || window.getComputedStyle(document.querySelector('.health-job--header')).display !== 'none',
+      responsiveHeaderPresentation: (() => {
+        const display = window.getComputedStyle(document.querySelector('.health-job--header')).display;
+        return window.innerWidth > 900 ? display !== 'none' : display === 'none';
+      })(),
       evidenceFloor: [...document.querySelectorAll(
         '.health-copy,.health-updated,.incident__purpose,.incident__metrics dt,.incident__metrics small,.domain-chip strong,.domain-chip small,.health-job__name,.health-job__source,.health-job__metric,.catalog-health-item__identity,.catalog-health-item__state,.catalog-health-item__timing'
       )]
@@ -1125,7 +1127,7 @@ async function verifyDataHealth(page) {
     !state.mobilePipelineMetrics ||
     !state.pipelineTable ||
     !state.desktopHeaderInset ||
-    !state.mobileHeaderAvailable ||
+    !state.responsiveHeaderPresentation ||
     !state.evidenceFloor ||
     !state.controlFloor ||
     !state.refreshCopy.includes('refreshes every 60s') ||
