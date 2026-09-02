@@ -20,6 +20,7 @@ COPY sales_momentum_qa.mjs ./
 COPY sales_layout_qa.mjs ./
 COPY catalog_family_overflow_qa.mjs ./
 COPY choice_reveal_qa.mjs ./
+COPY mobile_layout_qa.mjs ./
 COPY percentage_format_qa.mjs ./
 COPY shared_control_targets_qa.mjs ./
 COPY numeric_ui_qa.mjs ./

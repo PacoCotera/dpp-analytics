@@ -371,7 +371,7 @@ function renderMonthWaterfall(svg, row) {
     ? Math.max(300, Math.round(svg.parentElement?.getBoundingClientRect().width || 0))
     : 900;
   const height = 300;
-  const margin = { left: compact ? 54 : 72, right: compact ? 12 : 20, top: 26, bottom: 62 };
+  const margin = { left: compact ? 54 : 72, right: compact ? 12 : 20, top: compact ? 58 : 26, bottom: 62 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
   setChartGeometry(svg, width, height);
@@ -474,10 +474,13 @@ function renderMonthWaterfall(svg, row) {
       }
     } else {
       output += `<g><rect class="finance-chart-bar dpp-bar${barClass}" x="${center - barWidth / 2}" y="${topY}" width="${barWidth}" height="${barHeight}" rx="4"></rect><title>${escapeHtml(point.detail)}: ${escapeHtml(compactSignedMoney(point.delta))}</title></g>`;
-      const compactNudge = compact ? (index % 2 ? 10 : -10) : 0;
-      const rawValueY = (positive ? topY - 7 : topY + barHeight + 13) + compactNudge;
-      const valueY = Math.max(margin.top + 10, Math.min(height - 66, rawValueY));
-      output += `<text class="finance-chart-month" x="${center}" y="${valueY}" text-anchor="middle">${compactSignedMoney(point.delta)}</text>`;
+      const rawValueY = positive ? topY - 7 : topY + barHeight + 13;
+      const valueY = compact
+        ? index % 2
+          ? 43
+          : 22
+        : Math.max(margin.top + 10, Math.min(height - 66, rawValueY));
+      output += `<text class="finance-chart-month finance-chart-value" x="${center}" y="${valueY}" text-anchor="middle">${compactSignedMoney(point.delta)}</text>`;
     }
 
     const nextCenter =
@@ -496,10 +499,9 @@ function renderMonthWaterfall(svg, row) {
   const totalTop = Math.min(zeroY, contributionY);
   const totalHeight = Math.max(2, Math.abs(contributionY - zeroY));
   output += `<g><rect class="finance-chart-bar finance-chart-bar--sales" x="${totalCenter - barWidth / 2}" y="${totalTop}" width="${barWidth}" height="${totalHeight}" rx="4"></rect><title>${row._adsPending ? 'Contribution before current-month advertising' : 'Contribution'}: ${escapeHtml(financeMoney(contribution))}</title></g>`;
-  const rawTotalValueY =
-    contribution >= 0 ? totalTop - (compact ? 18 : 7) : totalTop + totalHeight + (compact ? 20 : 13);
-  const totalValueY = Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
-  output += `<text class="finance-chart-month" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(contribution)}</text>`;
+  const rawTotalValueY = contribution >= 0 ? totalTop - 7 : totalTop + totalHeight + 13;
+  const totalValueY = compact ? 43 : Math.max(margin.top + 11, Math.min(height - 66, rawTotalValueY));
+  output += `<text class="finance-chart-month finance-chart-value" x="${totalCenter}" y="${totalValueY}" text-anchor="middle">${compactSignedMoney(contribution)}</text>`;
   if (open && !compact) {
     output += `<text class="dpp-muted" x="${totalCenter}" y="${height - 48}" text-anchor="middle">OPEN</text>`;
   }

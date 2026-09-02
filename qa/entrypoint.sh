@@ -40,6 +40,8 @@ node /qa/catalog_family_overflow_qa.mjs "$base_url" "$work_dir"
 catalog_family_overflow_rc=$?
 node /qa/choice_reveal_qa.mjs "$base_url" "$work_dir"
 choice_reveal_rc=$?
+node /qa/mobile_layout_qa.mjs "$base_url" "$work_dir"
+mobile_layout_rc=$?
 node /qa/percentage_format_qa.mjs "$base_url" "$work_dir"
 percentage_format_rc=$?
 node /qa/shared_control_targets_qa.mjs "$base_url" "$work_dir"
@@ -103,6 +105,7 @@ if [ "$sales_momentum_rc" -ne 0 ]; then exit "$sales_momentum_rc"; fi
 if [ "$sales_layout_rc" -ne 0 ]; then exit "$sales_layout_rc"; fi
 if [ "$catalog_family_overflow_rc" -ne 0 ]; then exit "$catalog_family_overflow_rc"; fi
 if [ "$choice_reveal_rc" -ne 0 ]; then exit "$choice_reveal_rc"; fi
+if [ "$mobile_layout_rc" -ne 0 ]; then exit "$mobile_layout_rc"; fi
 if [ "$percentage_format_rc" -ne 0 ]; then exit "$percentage_format_rc"; fi
 if [ "$shared_control_targets_rc" -ne 0 ]; then exit "$shared_control_targets_rc"; fi
 if [ "$numeric_rc" -ne 0 ]; then exit "$numeric_rc"; fi

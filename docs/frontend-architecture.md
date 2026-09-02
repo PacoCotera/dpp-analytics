@@ -72,6 +72,11 @@ Horizontally scrollable choice groups use the shared `revealActiveChoice` behavi
 history restoration, and selection. The selected control must be fully visible without changing the page's
 vertical position or creating document-level horizontal overflow.
 
+Compact waterfall charts reserve a dedicated annotation band above the plot. Value labels alternate between two
+lanes in that band so they do not sit on bars, connector rules, axes, or neighboring annotations. Responsive data
+tables that replace their column headers with per-cell labels remove the desktop header from layout and preserve
+the standard inner gutter on every mobile row.
+
 Disclosure state and action copy belong to real DOM text and the owning runtime. CSS must not inject “Show” or
 “Hide” semantics with generated content or suppress stale state text visually. Data Health's warehouse reference
 keeps its visible action and exact summary accessible name synchronized on the native `details` toggle event.
