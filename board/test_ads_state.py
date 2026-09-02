@@ -42,6 +42,8 @@ class AdsStateContractTest(unittest.TestCase):
                 "metadata": {
                     "account_id": "profile-1",
                     "grain": "campaign",
+                    "report_number": 1,
+                    "report_total": 4,
                     "report_id": "report-1",
                     "vendor_status": "PROCESSING",
                     "start_date": "2026-06-01",
@@ -55,6 +57,8 @@ class AdsStateContractTest(unittest.TestCase):
         progress = state["report_progress"]
         self.assertEqual(progress["report_id"], "report-1")
         self.assertEqual(progress["vendor_status"], "PROCESSING")
+        self.assertEqual(progress["report_number"], 1)
+        self.assertEqual(progress["report_total"], 4)
         self.assertGreaterEqual(progress["elapsed_seconds"], 0)
         self.assertNotIn("client_secret", progress)
 
