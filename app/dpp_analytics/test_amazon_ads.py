@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from datetime import date
 from types import SimpleNamespace
@@ -12,6 +13,7 @@ def _response(status_code: int, body: dict[str, object]):
     response = MagicMock()
     response.status_code = status_code
     response.json.return_value = body
+    response.text = json.dumps(body)
     return response
 
 
@@ -35,6 +37,19 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
 
         self.assertEqual(self._create(), "existing-report")
         self.ads.client.post.assert_called_once()
+
+    @patch.object(AmazonAdsClient, "headers", return_value={})
+    def test_create_error_includes_grain_and_amazon_detail(self, _headers) -> None:
+        self.ads.client.post.return_value = _response(
+            400,
+            {"detail": "Column targetingId is not supported"},
+        )
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "grain=campaign.*targetingId is not supported",
+        ):
+            self._create()
 
     @patch.object(AmazonAdsClient, "headers", return_value={})
     @patch("dpp_analytics.amazon_ads.time.sleep")
