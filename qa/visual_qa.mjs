@@ -1585,6 +1585,26 @@ async function verifyTrajectory(page) {
   }
   if (!state.mobile && (state.guideOpen || state.referenceOpen))
     throw new Error(`Trajectory secondary evidence is expanded: ${JSON.stringify(state)}`);
+
+  await page.locator('#weekDisclosure > summary').click();
+  const openWeeks = await page.evaluate(() => {
+    const disclosure = document.getElementById('weekDisclosure')?.getBoundingClientRect();
+    const timeline = document.getElementById('weeks')?.getBoundingClientRect();
+    const last = document.querySelector('#weeks .week-row:last-child')?.getBoundingClientRect();
+    return {
+      open: Boolean(document.getElementById('weekDisclosure')?.hasAttribute('open')),
+      bottomInset: disclosure && last ? disclosure.bottom - last.bottom : 0,
+      timelineContained: Boolean(
+        disclosure &&
+        timeline &&
+        timeline.left >= disclosure.left &&
+        timeline.right <= disclosure.right
+      ),
+    };
+  });
+  if (!openWeeks.open || openWeeks.bottomInset < 14 || !openWeeks.timelineContained) {
+    throw new Error(`Trajectory expanded-week containment mismatch: ${JSON.stringify(openWeeks)}`);
+  }
 }
 async function verifyInventory(page) {
   await assertWorkspaceLandmarks(page, [
