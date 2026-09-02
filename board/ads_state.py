@@ -72,7 +72,7 @@ def _report_progress(metadata: dict) -> dict | None:
     if not isinstance(metadata, dict) or not metadata.get("report_id"):
         return None
     allowed = (
-        "account_id", "grain", "report_id", "vendor_status", "start_date",
+        "account_id", "grain", "report_number", "report_total", "report_id", "vendor_status", "start_date",
         "end_date", "report_started_at", "last_polled_at",
     )
     progress = {key: metadata.get(key) for key in allowed}
