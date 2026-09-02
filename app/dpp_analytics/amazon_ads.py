@@ -213,7 +213,7 @@ def _write_target_rows(scope,rows,report_id):
         for row in rows:
             day=row.get("date");cid=str(row.get("campaignId") or "");tid=_target_key(row)
             if not day or not cid or not tid:continue
-            cur.execute("""INSERT INTO ads.daily_target(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,target_type,target_expression,match_type,impressions,clicks,spend,attributed_sales,purchases,units,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id) DO UPDATE SET target_type=EXCLUDED.target_type,target_expression=EXCLUDED.target_expression,match_type=EXCLUDED.match_type,impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,units=EXCLUDED.units,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,AD_PRODUCT,cid,str(row.get("adGroupId") or ""),tid,row.get("keywordType") or row.get("targetingType"),row.get("targeting") or row.get("keyword"),row.get("matchType"),_int(row,"impressions"),_int(row,"clicks"),_num(row,"cost","spend"),_num(row,"sales7d","sales"),_int(row,"purchases7d","purchases"),_int(row,"unitsSoldClicks7d","units"),ATTRIBUTION_WINDOW,report_id));written+=1
+            cur.execute("""INSERT INTO ads.daily_target(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,target_type,target_expression,match_type,impressions,clicks,spend,attributed_sales,purchases,units,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,search_term) DO UPDATE SET target_type=EXCLUDED.target_type,target_expression=EXCLUDED.target_expression,match_type=EXCLUDED.match_type,impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,units=EXCLUDED.units,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,AD_PRODUCT,cid,str(row.get("adGroupId") or ""),tid,row.get("keywordType") or row.get("targetingType"),row.get("targeting") or row.get("keyword"),row.get("matchType"),_int(row,"impressions"),_int(row,"clicks"),_num(row,"cost","spend"),_num(row,"sales7d","sales"),_int(row,"purchases7d","purchases"),_int(row,"unitsSoldClicks7d","units"),ATTRIBUTION_WINDOW,report_id));written+=1
         conn.commit()
     return written
 
@@ -224,7 +224,7 @@ def _write_search_term_rows(scope,rows,report_id):
         for row in rows:
             day=row.get("date");cid=str(row.get("campaignId") or "");term=str(row.get("searchTerm") or "").strip()
             if not day or not cid or not term:continue
-            cur.execute("""INSERT INTO ads.daily_search_term(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,search_term,match_type,impressions,clicks,spend,attributed_sales,purchases,units,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,search_term) DO UPDATE SET match_type=EXCLUDED.match_type,impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,units=EXCLUDED.units,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,AD_PRODUCT,cid,str(row.get("adGroupId") or ""),_target_key(row),term,row.get("matchType"),_int(row,"impressions"),_int(row,"clicks"),_num(row,"cost","spend"),_num(row,"sales7d","sales"),_int(row,"purchases7d","purchases"),_int(row,"unitsSoldClicks7d","units"),ATTRIBUTION_WINDOW,report_id));written+=1
+            cur.execute("""INSERT INTO ads.daily_search_term(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,search_term,match_type,impressions,clicks,spend,attributed_sales,purchases,units,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,campaign_id,ad_group_id,target_id,search_term) DO UPDATE SET ad_product=EXCLUDED.ad_product,match_type=EXCLUDED.match_type,impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,units=EXCLUDED.units,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,AD_PRODUCT,cid,str(row.get("adGroupId") or ""),_target_key(row),term,row.get("matchType"),_int(row,"impressions"),_int(row,"clicks"),_num(row,"cost","spend"),_num(row,"sales7d","sales"),_int(row,"purchases7d","purchases"),_int(row,"unitsSoldClicks7d","units"),ATTRIBUTION_WINDOW,report_id));written+=1
         conn.commit()
     return written
 
@@ -246,7 +246,18 @@ def _publish_state(state, detail_code, **metadata):
 
 
 def _report_progress_callback(scope, grain, report_id, start, end, report_number, report_total):
-    report_started_at=datetime.now(timezone.utc).isoformat()
+    metadata={
+        "account_id":str(scope),
+        "grain":grain,
+        "report_number":report_number,
+        "report_total":report_total,
+        "report_id":report_id,
+        "vendor_status":"REQUESTED",
+        "start_date":start.isoformat(),
+        "end_date":end.isoformat(),
+        "report_started_at":datetime.now(timezone.utc).isoformat(),
+        "last_polled_at":None,
+    }
     last_status=None
     last_published_at=0.0
 
@@ -255,22 +266,11 @@ def _report_progress_callback(scope, grain, report_id, start, end, report_number
         now=time.monotonic()
         if vendor_status==last_status and now-last_published_at<30:return
         last_status=vendor_status;last_published_at=now
-        _publish_state(
-            "BACKFILL_RUNNING",
-            "REPORT_VENDOR_PROCESSING",
-            account_id=str(scope),
-            grain=grain,
-            report_number=report_number,
-            report_total=report_total,
-            report_id=report_id,
-            vendor_status=vendor_status or "UNKNOWN",
-            start_date=start.isoformat(),
-            end_date=end.isoformat(),
-            report_started_at=report_started_at,
-            last_polled_at=datetime.now(timezone.utc).isoformat(),
-        )
+        metadata["vendor_status"]=vendor_status or "UNKNOWN"
+        metadata["last_polled_at"]=datetime.now(timezone.utc).isoformat()
+        _publish_state("BACKFILL_RUNNING","REPORT_VENDOR_PROCESSING",**metadata)
 
-    return publish
+    return publish,metadata
 
 
 def _backfill_complete():
@@ -313,7 +313,7 @@ def ingest_ads():
     if not settings.ads_credentials_present:
         _publish_state("AUTHORIZATION_PENDING", "CREDENTIALS_INCOMPLETE")
         return {"status":"missing_credentials"}
-    start,end=_next_window();client=AmazonAdsClient()
+    start,end=_next_window();client=AmazonAdsClient();failure_context={"start_date":start.isoformat(),"end_date":end.isoformat()}
     try:
         _publish_state("BACKFILL_RUNNING", "REPORT_WINDOW_RUNNING", start=start.isoformat(), end=end.isoformat())
         scopes,discovery=discover_scopes(client)
@@ -325,9 +325,12 @@ def ingest_ads():
             for scope in scopes:
                 _ensure_account(scope);_ensure_required_grains(scope,start)
                 for report_number,(grain,writer) in enumerate(grains.items(),start=1):
-                    rid=client.create_report(scope,start,end,grain=grain);report_ids.append(rid);progress=_report_progress_callback(scope,grain,rid,start,end,report_number,len(grains));progress("REQUESTED",{});status=client.wait_for_report(scope,rid,on_status=progress);location=status.get("url") or status.get("location")
+                    rid=client.create_report(scope,start,end,grain=grain);report_ids.append(rid);progress,failure_context=_report_progress_callback(scope,grain,rid,start,end,report_number,len(grains));progress("REQUESTED",{});status=client.wait_for_report(scope,rid,on_status=progress);location=status.get("url") or status.get("location")
                     if not location:raise RuntimeError(f"Amazon Ads report {rid} completed without download URL: {status}")
-                    rows=client.download_report(str(location));total_read+=len(rows);written=writer(scope,rows,rid);total_written+=written
+                    rows=client.download_report(str(location));total_read+=len(rows)
+                    try:written=writer(scope,rows,rid)
+                    except Exception as exc:raise RuntimeError(f"Amazon Ads write grain={grain} report_id={rid} failed: {exc}") from exc
+                    total_written+=written
                     _record_report_run(scope,rid,grain,start,end,len(rows),status)
                 _refresh_daily_account(scope,start,end)
             run["records_read"]=total_read;run["records_written"]=total_written
@@ -338,6 +341,6 @@ def ingest_ads():
             _publish_state("BACKFILL_RUNNING", "INITIAL_HISTORY_PENDING", accounts=len(scopes), through_date=end.isoformat())
         return {"status":"success","start":start.isoformat(),"end":end.isoformat(),"accounts":len(scopes),"records_read":total_read,"records_written":total_written,"report_ids":report_ids,"grains":list(grains),"transport":REPORT_TRANSPORT,"attribution_window":ATTRIBUTION_WINDOW}
     except Exception:
-        _publish_state("FAILED", "REPORT_INGESTION_FAILED")
+        _publish_state("FAILED", "REPORT_INGESTION_FAILED", **failure_context)
         raise
     finally:client.close()
