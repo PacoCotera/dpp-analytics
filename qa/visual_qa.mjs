@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 30222)
-Total output lines: 2323
-
 import { chromium, webkit } from 'playwright';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -1226,7 +1223,24 @@ async function verifyDataHealth(page) {
   }));
   if (
     collapsedState.expanded !== 'false' ||
-    collapsedStat…222 tokens truncated…unmappedSkus.join(', ')}`);
+    collapsedState.copy !== 'All jobs' ||
+    collapsedState.rows !== state.problems ||
+    (state.problems === 0 && !collapsedState.empty)
+  ) {
+    throw new Error(`Data Health Problems only contract mismatch: ${JSON.stringify(collapsedState)}`);
+  }
+}
+
+async function catalogSemantic(page) {
+  return page.evaluate(async () => {
+    const response = await fetch('/api/catalog', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) return { errors: [`catalog API ${response.status}`] };
+    const errors = [];
+    const close = (a, b, tolerance = 0.02) => Math.abs(Number(a || 0) - Number(b || 0)) <= tolerance;
+    if (!data.summary?.taxonomy_override_configured) errors.push('seller taxonomy is not configured');
+    const unmappedSkus = data.summary?.taxonomy_unmapped_skus || [];
+    if (unmappedSkus.length) errors.push(`sellable SKUs missing seller taxonomy: ${unmappedSkus.join(', ')}`);
     for (const family of data.families || []) {
       // Amazon lifecycle markers are operational metadata, never commercial family names.
       if (/\b(actual|archivo)\b/i.test(String(family.name || ''))) errors.push(`${family.family_asin}: raw Amazon lifecycle label leaked into family name`);
