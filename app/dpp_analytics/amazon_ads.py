@@ -273,7 +273,7 @@ def _report_progress_callback(scope, grain, report_id, start, end, report_number
     return publish,metadata
 
 
-def _backfill_complete():
+def ads_backfill_complete():
     cursor = db.get_cursor(SOURCE, JOB, "through_date")
     if not cursor:
         return False
@@ -295,7 +295,7 @@ def probe_ads():
         scopes,meta=discover_scopes(client)
         if not scopes:
             _publish_state("AUTHORIZATION_PENDING", "NO_MX_ADVERTISER_PROFILE")
-        elif _backfill_complete():
+        elif ads_backfill_complete():
             _publish_state("READY", "REPORTING_CURRENT", accounts=len(scopes))
         else:
             _publish_state("BACKFILL_RUNNING", "INITIAL_HISTORY_PENDING", accounts=len(scopes))
@@ -335,11 +335,12 @@ def ingest_ads():
                 _refresh_daily_account(scope,start,end)
             run["records_read"]=total_read;run["records_written"]=total_written
         db.set_cursor(SOURCE,JOB,end.isoformat(),"through_date")
-        if end >= date.today()-timedelta(days=1):
+        backfill_complete = end >= date.today()-timedelta(days=1)
+        if backfill_complete:
             _publish_state("READY", "REPORTING_CURRENT", accounts=len(scopes), through_date=end.isoformat())
         else:
             _publish_state("BACKFILL_RUNNING", "INITIAL_HISTORY_PENDING", accounts=len(scopes), through_date=end.isoformat())
-        return {"status":"success","start":start.isoformat(),"end":end.isoformat(),"accounts":len(scopes),"records_read":total_read,"records_written":total_written,"report_ids":report_ids,"grains":list(grains),"transport":REPORT_TRANSPORT,"attribution_window":ATTRIBUTION_WINDOW}
+        return {"status":"success","start":start.isoformat(),"end":end.isoformat(),"backfill_complete":backfill_complete,"accounts":len(scopes),"records_read":total_read,"records_written":total_written,"report_ids":report_ids,"grains":list(grains),"transport":REPORT_TRANSPORT,"attribution_window":ATTRIBUTION_WINDOW}
     except Exception:
         _publish_state("FAILED", "REPORT_INGESTION_FAILED", **failure_context)
         raise
