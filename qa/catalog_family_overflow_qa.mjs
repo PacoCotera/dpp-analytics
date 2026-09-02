@@ -67,6 +67,26 @@ async function settle(page) {
   });
 }
 
+async function settleChevronTransitions(page) {
+  await settle(page);
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll(".family[open] > summary > .chev")].every(
+        (chevron) =>
+          chevron
+            .getAnimations()
+            .every(
+              (animation) =>
+                animation.playState !== "running" &&
+                animation.playState !== "pending",
+            ),
+      ),
+    undefined,
+    { timeout: 2_000 },
+  );
+  await settle(page);
+}
+
 async function familyState(page) {
   return page.evaluate(() => {
     const families = [
@@ -134,7 +154,7 @@ for (const [engineName, engine] of engines) {
       const families = page.locator("#portfolio > .family");
       await families.first().waitFor({ state: "visible", timeout: 15_000 });
       await families.first().locator(":scope > summary").click();
-      await settle(page);
+      await settleChevronTransitions(page);
 
       for (const profile of profiles) {
         await page.evaluate(
@@ -167,8 +187,7 @@ for (const [engineName, engine] of engines) {
 
       if ((await families.count()) > 1) {
         await families.nth(1).locator(":scope > summary").click();
-        await page.waitForTimeout(250);
-        await settle(page);
+        await settleChevronTransitions(page);
         const state = await familyState(page);
         assert(
           state.openCount === 2,
