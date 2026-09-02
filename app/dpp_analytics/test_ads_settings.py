@@ -28,8 +28,8 @@ class AmazonAdsSettingsTests(unittest.TestCase):
         )
         return int(result.stdout.strip())
 
-    def test_ads_report_timeout_defaults_to_fifteen_minutes(self) -> None:
-        self.assertEqual(self._read_timeout(None), 900)
+    def test_ads_report_timeout_defaults_to_one_hour(self) -> None:
+        self.assertEqual(self._read_timeout(None), 3600)
 
     def test_ads_report_timeout_remains_operator_configurable(self) -> None:
         self.assertEqual(self._read_timeout("1200"), 1200)
