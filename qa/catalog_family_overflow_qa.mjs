@@ -167,6 +167,7 @@ for (const [engineName, engine] of engines) {
 
       if ((await families.count()) > 1) {
         await families.nth(1).locator(":scope > summary").click();
+        await page.waitForTimeout(250);
         await settle(page);
         const state = await familyState(page);
         assert(
