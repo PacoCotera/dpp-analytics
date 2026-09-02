@@ -501,9 +501,12 @@ check(
 check(
   /\.finance-overview-disclosure\s*>\s*summary\s*\{[^}]*padding:[^}]*border:[^}]*border-radius:[^}]*background:/s.test(
     financeCss,
-  ),
+  ) &&
+    /\.finance-mobile-disclosure\.finance-overview-disclosure\s*>\s*summary\s*\{[^}]*padding:\s*12px\s+13px/s.test(
+      financeCss,
+    ),
   'finance.css',
-  'Finance accounting overview must use the same bounded disclosure treatment as settlement evidence',
+  'Finance accounting overview must retain bounded desktop and mobile disclosure treatment',
 );
 for (const [page, html] of [
   ['home.html', homeHtml],
