@@ -960,6 +960,10 @@ main {
     list-style: none;
   }
 
+  .finance-mobile-disclosure.finance-overview-disclosure > summary {
+    padding: 12px 13px;
+  }
+
   .finance-mobile-disclosure > summary::-webkit-details-marker {
     display: none;
   }
