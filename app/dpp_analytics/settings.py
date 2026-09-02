@@ -41,7 +41,10 @@ class Settings:
     # Sponsored Products advertised-product reporting currently exposes a 90-day lookback.
     ads_backfill_days: int = int(os.getenv("AMAZON_ADS_BACKFILL_DAYS", "90"))
     ads_report_poll_seconds: int = int(os.getenv("AMAZON_ADS_REPORT_POLL_SECONDS", "5"))
-    ads_report_poll_timeout_seconds: int = int(os.getenv("AMAZON_ADS_REPORT_POLL_TIMEOUT_SECONDS", "300"))
+    # Reporting v3 jobs are asynchronous and can remain queued for more than five
+    # minutes during Amazon-side load. Allow a production-safe wait while keeping
+    # the worker's upper bound explicit and operator-configurable.
+    ads_report_poll_timeout_seconds: int = int(os.getenv("AMAZON_ADS_REPORT_POLL_TIMEOUT_SECONDS", "900"))
 
     # Production is deliberately two-stage. We first prove the production credentials
     # and authorized roles with read-only calls. Historical/live ingestion is enabled
