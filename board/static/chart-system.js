@@ -186,8 +186,16 @@
     const firstDate = data[0].date;
     const latest = data[data.length - 1];
     const yearStart = new Date(Date.UTC(latest.date.getUTCFullYear(), 0, 1));
-    const domainStart = options.window === 'ytd' ? yearStart : d3.utcDay.floor(firstDate);
-    const domainEnd = d3.utcDay.offset(d3.utcDay.floor(latest.date), 1);
+    const veryShortWindow = data.length <= 3;
+    const halfDay = 12 * 60 * 60 * 1000;
+    const domainStart = veryShortWindow
+      ? new Date(firstDate.getTime() - halfDay)
+      : options.window === 'ytd'
+        ? yearStart
+        : d3.utcDay.floor(firstDate);
+    const domainEnd = veryShortWindow
+      ? new Date(latest.date.getTime() + halfDay)
+      : d3.utcDay.offset(d3.utcDay.floor(latest.date), 1);
     const x = d3.scaleUtc().domain([domainStart, domainEnd]).range([0, ctx.innerW]);
     const y = d3
       .scaleLinear()
@@ -228,7 +236,10 @@
     grid(ctx, y, 3);
     const daySlot = data.length > 1 ? Math.abs(x(data[1].date) - x(data[0].date)) : ctx.innerW;
     const barOccupancy = data.length <= 14 ? 0.5 : data.length <= 45 ? 0.52 : 0.72;
-    const barW = Math.max(2, Math.min(44, daySlot * barOccupancy));
+    const barW = Math.max(
+      2,
+      veryShortWindow ? Math.min(360, daySlot * barOccupancy) : Math.min(44, daySlot * barOccupancy),
+    );
     const bars = ctx.plot
       .selectAll('.dpp-bar')
       .data(data)

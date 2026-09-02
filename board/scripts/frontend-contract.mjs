@@ -514,11 +514,17 @@ check(
 );
 check(
   /if \(!data\.length\) return empty\(selector, 'Not enough sales history yet\.'\)/.test(chartSystem) &&
-    /const barOccupancy = data\.length <= 14 \? 0\.5 : data\.length <= 45 \? 0\.52 : 0\.72/.test(chartSystem) &&
-    /options\.window === 'ytd' \? yearStart : d3\.utcDay\.floor\(firstDate\)/.test(chartSystem) &&
+    /const veryShortWindow = data\.length <= 3/.test(chartSystem) &&
+    /new Date\(firstDate\.getTime\(\) - halfDay\)/.test(chartSystem) &&
+    /new Date\(latest\.date\.getTime\(\) \+ halfDay\)/.test(chartSystem) &&
+    /const barOccupancy = data\.length <= 14 \? 0\.5 : data\.length <= 45 \? 0\.52 : 0\.72/.test(
+      chartSystem,
+    ) &&
+    /Math\.min\(360, daySlot \* barOccupancy\)/.test(chartSystem) &&
+    /options\.window === 'ytd'\s*\? yearStart/.test(chartSystem) &&
     /curveCatmullRom\.alpha\(0\.5\)/.test(chartSystem),
   'chart-system.js',
-  'shared demand rhythm must support a one-day window and preserve adaptive density, calendar YTD, and the smooth trend curve',
+  'shared demand rhythm must support short windows and preserve adaptive density, calendar YTD, and the smooth trend curve',
 );
 check(
   /\.demand-rhythm__line\s*\{[^}]*stroke:\s*var\(--dpp-data3\)/s.test(chartCss),
