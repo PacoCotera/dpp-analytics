@@ -101,7 +101,10 @@ export function setText(id, value) {
   return element;
 }
 
-export function revealActiveChoice(group) {
+const activeChoiceGroups = new Set();
+let activeChoiceProfileListenerBound = false;
+
+function scrollActiveChoice(group) {
   const active = group?.querySelector('[aria-pressed="true"], [aria-selected="true"]');
   if (!active) return;
 
@@ -114,6 +117,20 @@ export function revealActiveChoice(group) {
     if (activeRect.left < groupRect.left + inset) delta = activeRect.left - groupRect.left - inset;
     else if (activeRect.right > groupRect.right - inset) delta = activeRect.right - groupRect.right + inset;
     if (delta) group.scrollTo({ left: group.scrollLeft + delta, behavior: 'auto' });
+  });
+}
+
+export function revealActiveChoice(group) {
+  if (!group) return;
+  activeChoiceGroups.add(group);
+  scrollActiveChoice(group);
+  if (activeChoiceProfileListenerBound) return;
+  activeChoiceProfileListenerBound = true;
+  window.addEventListener('dpp:presentationchange', () => {
+    activeChoiceGroups.forEach((choiceGroup) => {
+      if (!choiceGroup.isConnected) activeChoiceGroups.delete(choiceGroup);
+      else scrollActiveChoice(choiceGroup);
+    });
   });
 }
 

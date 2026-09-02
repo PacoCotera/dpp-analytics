@@ -69,8 +69,9 @@ surrounding spacing preserves a 24 × 24 CSS-pixel target; those exceptions rema
 documented in the route's browser QA.
 
 Horizontally scrollable choice groups use the shared `revealActiveChoice` behavior after initial URL restoration,
-history restoration, and selection. The selected control must be fully visible without changing the page's
-vertical position or creating document-level horizontal overflow.
+history restoration, selection, and presentation-profile changes that can alter control widths. The selected
+control must be fully visible without changing the page's vertical position or creating document-level horizontal
+overflow.
 
 Compact waterfall charts reserve a dedicated annotation band above the plot. Value labels alternate between two
 lanes in that band so they do not sit on bars, connector rules, axes, or neighboring annotations. Responsive data
