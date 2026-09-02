@@ -35,6 +35,7 @@ def _num(row: dict[str, Any], *names: str) -> float:
 
 def _int(row: dict[str, Any], *names: str) -> int: return int(round(_num(row, *names)))
 def _json(value: Any) -> str: return json.dumps(value, default=str, separators=(",", ":"))
+def _target_key(row: dict[str, Any]) -> str: return str(row.get("keywordId") or row.get("targeting") or row.get("keyword") or "")
 
 
 class AmazonAdsClient:
@@ -63,8 +64,8 @@ class AmazonAdsClient:
         configs={
           "campaign": {"groupBy":["campaign"],"columns":common[:3]+["campaignStatus"]+common[3:]+conv,"reportTypeId":"spCampaigns"},
           "product": {"groupBy":["advertiser"],"columns":common[:3]+["adGroupId","advertisedSku","advertisedAsin"]+common[3:]+conv,"reportTypeId":"spAdvertisedProduct"},
-          "target": {"groupBy":["targeting"],"columns":common[:3]+["adGroupId","targetingId","keywordType","targetingExpression","matchType"]+common[3:]+conv,"reportTypeId":"spTargeting"},
-          "search_term": {"groupBy":["searchTerm"],"columns":common[:3]+["adGroupId","targetingId","searchTerm","matchType"]+common[3:]+conv,"reportTypeId":"spSearchTerm"},
+          "target": {"groupBy":["targeting"],"columns":common[:3]+["adGroupId","keywordId","keyword","keywordType","targeting","matchType"]+common[3:]+conv,"reportTypeId":"spTargeting"},
+          "search_term": {"groupBy":["searchTerm"],"columns":common[:3]+["adGroupId","keywordId","keyword","keywordType","targeting","searchTerm","matchType"]+common[3:]+conv,"reportTypeId":"spSearchTerm"},
         }
         if grain not in configs: raise ValueError(f"unsupported Ads report grain: {grain}")
         cfg={"adProduct":AD_PRODUCT,**configs[grain],"timeUnit":"DAILY","format":"GZIP_JSON"}
@@ -209,9 +210,9 @@ def _write_target_rows(scope,rows,report_id):
     written=0
     with db.connect() as conn,conn.cursor() as cur:
         for row in rows:
-            day=row.get("date");cid=str(row.get("campaignId") or "");tid=str(row.get("targetingId") or row.get("keywordId") or "")
+            day=row.get("date");cid=str(row.get("campaignId") or "");tid=_target_key(row)
             if not day or not cid or not tid:continue
-            cur.execute("""INSERT INTO ads.daily_target(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,target_type,target_expression,match_type,impressions,clicks,spend,attributed_sales,purchases,units,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id) DO UPDATE SET target_type=EXCLUDED.target_type,target_expression=EXCLUDED.target_expression,match_type=EXCLUDED.match_type,impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,units=EXCLUDED.units,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,AD_PRODUCT,cid,str(row.get("adGroupId") or ""),tid,row.get("keywordType") or row.get("targetingType"),row.get("targetingExpression") or row.get("keyword"),row.get("matchType"),_int(row,"impressions"),_int(row,"clicks"),_num(row,"cost","spend"),_num(row,"sales7d","sales"),_int(row,"purchases7d","purchases"),_int(row,"unitsSoldClicks7d","units"),ATTRIBUTION_WINDOW,report_id));written+=1
+            cur.execute("""INSERT INTO ads.daily_target(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,target_type,target_expression,match_type,impressions,clicks,spend,attributed_sales,purchases,units,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id) DO UPDATE SET target_type=EXCLUDED.target_type,target_expression=EXCLUDED.target_expression,match_type=EXCLUDED.match_type,impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,units=EXCLUDED.units,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,AD_PRODUCT,cid,str(row.get("adGroupId") or ""),tid,row.get("keywordType") or row.get("targetingType"),row.get("targeting") or row.get("keyword"),row.get("matchType"),_int(row,"impressions"),_int(row,"clicks"),_num(row,"cost","spend"),_num(row,"sales7d","sales"),_int(row,"purchases7d","purchases"),_int(row,"unitsSoldClicks7d","units"),ATTRIBUTION_WINDOW,report_id));written+=1
         conn.commit()
     return written
 
@@ -222,7 +223,7 @@ def _write_search_term_rows(scope,rows,report_id):
         for row in rows:
             day=row.get("date");cid=str(row.get("campaignId") or "");term=str(row.get("searchTerm") or "").strip()
             if not day or not cid or not term:continue
-            cur.execute("""INSERT INTO ads.daily_search_term(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,search_term,match_type,impressions,clicks,spend,attributed_sales,purchases,units,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,search_term) DO UPDATE SET match_type=EXCLUDED.match_type,impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,units=EXCLUDED.units,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,AD_PRODUCT,cid,str(row.get("adGroupId") or ""),str(row.get("targetingId") or row.get("keywordId") or ""),term,row.get("matchType"),_int(row,"impressions"),_int(row,"clicks"),_num(row,"cost","spend"),_num(row,"sales7d","sales"),_int(row,"purchases7d","purchases"),_int(row,"unitsSoldClicks7d","units"),ATTRIBUTION_WINDOW,report_id));written+=1
+            cur.execute("""INSERT INTO ads.daily_search_term(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,search_term,match_type,impressions,clicks,spend,attributed_sales,purchases,units,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,search_term) DO UPDATE SET match_type=EXCLUDED.match_type,impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,units=EXCLUDED.units,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,AD_PRODUCT,cid,str(row.get("adGroupId") or ""),_target_key(row),term,row.get("matchType"),_int(row,"impressions"),_int(row,"clicks"),_num(row,"cost","spend"),_num(row,"sales7d","sales"),_int(row,"purchases7d","purchases"),_int(row,"unitsSoldClicks7d","units"),ATTRIBUTION_WINDOW,report_id));written+=1
         conn.commit()
     return written
 

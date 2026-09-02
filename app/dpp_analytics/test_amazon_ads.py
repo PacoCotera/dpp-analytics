@@ -6,7 +6,7 @@ from datetime import date
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from .amazon_ads import AmazonAdsClient
+from .amazon_ads import AmazonAdsClient, _target_key
 
 
 def _response(status_code: int, body: dict[str, object]):
@@ -23,12 +23,12 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
         self.ads.base = "https://ads.example"
         self.ads.client = MagicMock()
 
-    def _create(self) -> str:
+    def _create(self, grain: str = "campaign") -> str:
         return self.ads.create_report(
             "profile-1",
             date(2026, 8, 1),
             date(2026, 8, 31),
-            grain="campaign",
+            grain=grain,
         )
 
     @patch.object(AmazonAdsClient, "headers", return_value={})
@@ -50,6 +50,37 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
             "grain=campaign.*targetingId is not supported",
         ):
             self._create()
+
+    @patch.object(AmazonAdsClient, "headers", return_value={})
+    def test_target_reports_use_supported_sponsored_products_columns(self, _headers) -> None:
+        self.ads.client.post.return_value = _response(202, {"reportId": "target-report"})
+
+        self.assertEqual(self._create("target"), "target-report")
+        columns = self.ads.client.post.call_args.kwargs["json"]["configuration"]["columns"]
+        self.assertNotIn("targetingId", columns)
+        self.assertNotIn("targetingExpression", columns)
+        self.assertIn("keywordId", columns)
+        self.assertIn("targeting", columns)
+
+    def test_target_key_uses_expression_when_keyword_id_is_absent(self) -> None:
+        self.assertEqual(
+            _target_key({"keywordId": "", "targeting": "asin=B012345678"}),
+            "asin=B012345678",
+        )
+        self.assertEqual(
+            _target_key({"keywordId": "keyword-1", "targeting": "asin=B012345678"}),
+            "keyword-1",
+        )
+
+    @patch.object(AmazonAdsClient, "headers", return_value={})
+    def test_search_term_reports_use_supported_sponsored_products_columns(self, _headers) -> None:
+        self.ads.client.post.return_value = _response(202, {"reportId": "search-report"})
+
+        self.assertEqual(self._create("search_term"), "search-report")
+        columns = self.ads.client.post.call_args.kwargs["json"]["configuration"]["columns"]
+        self.assertNotIn("targetingId", columns)
+        self.assertIn("keywordId", columns)
+        self.assertIn("targeting", columns)
 
     @patch.object(AmazonAdsClient, "headers", return_value={})
     @patch("dpp_analytics.amazon_ads.time.sleep")
