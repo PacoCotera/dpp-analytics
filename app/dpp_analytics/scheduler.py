@@ -7,7 +7,7 @@ import time
 from collections.abc import Callable
 
 from . import db
-from .amazon_ads import ingest_ads, probe_ads
+from .amazon_ads import ads_backfill_complete, ingest_ads, probe_ads
 from .catalog import ingest_catalog
 from .data_kiosk import ingest_sales_traffic
 from .finance_close_tax_corrected import close_ready_months
@@ -56,16 +56,44 @@ def _run(name: str, fn: Callable[[], dict]) -> dict | None:
         return None
 
 
-def _start_background_job(name: str, fn: Callable[[], dict]) -> threading.Thread:
+def _start_background_job(
+    name: str,
+    fn: Callable[[], dict],
+    *,
+    outcome: dict[str, dict | None] | None = None,
+) -> threading.Thread:
     """Run a slow optional collector without delaying core ingestion cadence."""
+
+    def run() -> None:
+        result = _run(name, fn)
+        if outcome is not None:
+            outcome["result"] = result
+
     thread = threading.Thread(
-        target=_run,
-        args=(name, fn),
+        target=run,
         name=f"dpp-{name}",
         daemon=True,
     )
     thread.start()
     return thread
+
+
+def _initial_ads_due() -> float:
+    if not ads_backfill_complete():
+        log.info("Amazon Ads initial history is incomplete; scheduling the next window immediately")
+        return 0.0
+    return _next_due(
+        "amazon_ads",
+        "sponsored_products_reporting_v3",
+        settings.ads_reporting_interval_seconds,
+    )
+
+
+def _ads_delay_after_result(result: dict | None) -> int:
+    if result and result.get("status") == "success" and result.get("backfill_complete") is False:
+        log.info("Amazon Ads history remains incomplete; continuing with the next window immediately")
+        return 0
+    return settings.ads_reporting_interval_seconds
 
 
 def _refresh_catalog_cache_if_written(result: dict | None, kind: str) -> None:
@@ -329,22 +357,20 @@ def main() -> None:
         settings.data_kiosk_interval_seconds,
     )
     next_ads = (
-        _next_due(
-            "amazon_ads",
-            "sponsored_products_reporting_v3",
-            settings.ads_reporting_interval_seconds,
-        )
+        _initial_ads_due()
         if settings.ads_enabled and settings.ads_credentials_present
         else float("inf")
     )
     ads_thread: threading.Thread | None = None
+    ads_outcome: dict[str, dict | None] = {}
 
     while not STOP:
         now = time.monotonic()
 
         if ads_thread is not None and not ads_thread.is_alive():
             ads_thread = None
-            next_ads = time.monotonic() + settings.ads_reporting_interval_seconds
+            next_ads = time.monotonic() + _ads_delay_after_result(ads_outcome.get("result"))
+            ads_outcome = {}
 
         manual_job = _run_manual_sync()
         if manual_job:
@@ -426,7 +452,7 @@ def main() -> None:
             next_data_kiosk = time.monotonic() + settings.data_kiosk_interval_seconds
 
         if now >= next_ads and ads_thread is None:
-            ads_thread = _start_background_job("amazon_ads", ingest_ads)
+            ads_thread = _start_background_job("amazon_ads", ingest_ads, outcome=ads_outcome)
             next_ads = float("inf")
 
         time.sleep(settings.scheduler_tick_seconds)
