@@ -145,7 +145,7 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
             {"date": "2026-08-01", "campaignId": "campaign-1", "keywordId": "keyword-1"},
         )
         self.assertIn(
-            "ON CONFLICT(account_id,business_date,ad_product,campaign_id,ad_group_id,target_id,search_term)",
+            "ON CONFLICT(account_id,target_id,business_date)",
             sql,
         )
 
