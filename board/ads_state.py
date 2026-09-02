@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 
 ADS_CONNECTION_STATES = (
     "NOT_CONNECTED",
@@ -49,17 +51,39 @@ def connection_contract(
     *,
     detail_code: str | None = None,
     updated_at=None,
+    report_progress: dict | None = None,
 ) -> dict:
     normalized = str(state or "").strip().upper()
     if normalized not in ADS_CONNECTION_STATES:
         normalized = "FAILED"
         detail_code = detail_code or "INVALID_RECORDED_STATE"
-    return {
+    result = {
         "state": normalized,
         **_PRESENTATION[normalized],
         "detail_code": detail_code,
         "updated_at": updated_at,
     }
+    if report_progress:
+        result["report_progress"] = report_progress
+    return result
+
+
+def _report_progress(metadata: dict) -> dict | None:
+    if not isinstance(metadata, dict) or not metadata.get("report_id"):
+        return None
+    allowed = (
+        "account_id", "grain", "report_id", "vendor_status", "start_date",
+        "end_date", "report_started_at", "last_polled_at",
+    )
+    progress = {key: metadata.get(key) for key in allowed}
+    try:
+        started = datetime.fromisoformat(str(progress["report_started_at"]).replace("Z", "+00:00"))
+        progress["elapsed_seconds"] = max(
+            0, int((datetime.now(timezone.utc) - started.astimezone(timezone.utc)).total_seconds())
+        )
+    except (TypeError, ValueError):
+        progress["elapsed_seconds"] = None
+    return progress
 
 
 def ads_connection_state(cur) -> dict:
@@ -68,7 +92,7 @@ def ads_connection_state(cur) -> dict:
         return connection_contract("NOT_CONNECTED", detail_code="STATE_OWNER_NOT_DEPLOYED")
     cur.execute(
         """
-        SELECT state,detail_code,updated_at
+        SELECT state,detail_code,metadata,updated_at
         FROM ops.integration_state
         WHERE integration='amazon_ads'
         """
@@ -80,4 +104,5 @@ def ads_connection_state(cur) -> dict:
         row.get("state"),
         detail_code=row.get("detail_code"),
         updated_at=row.get("updated_at"),
+        report_progress=_report_progress(row.get("metadata") or {}),
     )

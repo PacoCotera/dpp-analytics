@@ -34,6 +34,30 @@ class AdsStateContractTest(unittest.TestCase):
         self.assertEqual(state["headline"], "Amazon Ads history is backfilling.")
         self.assertEqual(state["detail_code"], "INITIAL_HISTORY_PENDING")
 
+    def test_current_vendor_report_progress_is_exposed_without_credentials(self):
+        state = ads_connection_state(
+            FakeCursor(row={
+                "state": "BACKFILL_RUNNING",
+                "detail_code": "REPORT_VENDOR_PROCESSING",
+                "metadata": {
+                    "account_id": "profile-1",
+                    "grain": "campaign",
+                    "report_id": "report-1",
+                    "vendor_status": "PROCESSING",
+                    "start_date": "2026-06-01",
+                    "end_date": "2026-06-30",
+                    "report_started_at": "2026-09-02T20:00:00+00:00",
+                    "last_polled_at": "2026-09-02T20:01:00+00:00",
+                    "client_secret": "must-not-leak",
+                },
+            })
+        )
+        progress = state["report_progress"]
+        self.assertEqual(progress["report_id"], "report-1")
+        self.assertEqual(progress["vendor_status"], "PROCESSING")
+        self.assertGreaterEqual(progress["elapsed_seconds"], 0)
+        self.assertNotIn("client_secret", progress)
+
     def test_missing_or_invalid_worker_state_fails_safe(self):
         missing = ads_connection_state(FakeCursor(relation=False))
         invalid = connection_contract("invented")

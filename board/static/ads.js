@@ -235,8 +235,12 @@ function renderUnavailable(p) {
   const connection = p.connection || {};
   byId('emptyState').querySelector('h2').textContent =
     connection.headline || 'Amazon Ads state is unavailable.';
+  const progress = connection.report_progress;
+  const progressDetail = progress?.report_id
+    ? ` Current API report: ${String(progress.grain || 'report').replace('_', ' ')} · ${progress.vendor_status || 'UNKNOWN'} · ${Math.max(0, Math.floor(Number(progress.elapsed_seconds || 0) / 60))}m elapsed.`
+    : '';
   byId('emptyState').querySelector('p').textContent =
-    connection.detail || 'The current Amazon Ads connection state could not be read.';
+    `${connection.detail || 'The current Amazon Ads connection state could not be read.'}${progressDetail}`;
   byId('adsViewAvailability').hidden = false;
   byId('adsViewAvailability').textContent =
     'Only Overview is available in the current Advertising connection state.';
