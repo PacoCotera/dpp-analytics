@@ -1027,6 +1027,36 @@
     border-radius: 0;
   }
 
+  .sales-reference[open] .sales-momentum-card {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    padding: 8px 13px 0;
+  }
+
+  .sales-reference[open] .sales-momentum-title {
+    padding: 4px 0 8px;
+  }
+
+  .sales-reference[open] .sales-momentum-row {
+    min-width: 0;
+    grid-template-areas:
+      'label value'
+      'volume volume'
+      'note note';
+    padding: 10px 0;
+    border-top: var(--border-width) solid var(--line);
+    border-left: 0;
+  }
+
+  .sales-reference[open] .sales-momentum-row .sales-volume,
+  .sales-reference[open] .sales-momentum-row .sales-signal-note {
+    white-space: normal;
+  }
+
+  .sales-reference[open] .sales-momentum-row .sales-signal-note {
+    text-align: left;
+  }
+
   .sales-reference .sales-utility-ytd {
     margin: 0 13px;
   }

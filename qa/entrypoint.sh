@@ -32,6 +32,8 @@ node /qa/data_health_disclosure_qa.mjs "$base_url" "$work_dir"
 data_health_disclosure_rc=$?
 node /qa/sales_driver_units_qa.mjs "$base_url" "$work_dir"
 sales_driver_units_rc=$?
+node /qa/sales_momentum_qa.mjs "$base_url" "$work_dir"
+sales_momentum_rc=$?
 node /qa/percentage_format_qa.mjs "$base_url" "$work_dir"
 percentage_format_rc=$?
 node /qa/shared_control_targets_qa.mjs "$base_url" "$work_dir"
@@ -91,6 +93,7 @@ if [ "$trajectory_lead_caption_rc" -ne 0 ]; then exit "$trajectory_lead_caption_
 if [ "$trajectory_axis_ticks_rc" -ne 0 ]; then exit "$trajectory_axis_ticks_rc"; fi
 if [ "$data_health_disclosure_rc" -ne 0 ]; then exit "$data_health_disclosure_rc"; fi
 if [ "$sales_driver_units_rc" -ne 0 ]; then exit "$sales_driver_units_rc"; fi
+if [ "$sales_momentum_rc" -ne 0 ]; then exit "$sales_momentum_rc"; fi
 if [ "$percentage_format_rc" -ne 0 ]; then exit "$percentage_format_rc"; fi
 if [ "$shared_control_targets_rc" -ne 0 ]; then exit "$shared_control_targets_rc"; fi
 if [ "$numeric_rc" -ne 0 ]; then exit "$numeric_rc"; fi
