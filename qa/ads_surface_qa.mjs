@@ -88,6 +88,7 @@ try{
       check('Ads ready state loads every chart dependency',new Set(chartState.paths).size===3,chartState.paths.join(', '));
       check('Ads ready chart dependencies retain the page revision',chartState.revisions.every(revision=>revision===chartState.pageRevision),chartState.revisions.join(', '));
       check('Ads ready state initializes chart runtime',chartState.runtime,String(chartState.runtime));
+      check('Ads ready state hides the connection placeholder',!await page.locator('#emptyState').isVisible(),String(await page.locator('#emptyState').isVisible()));
       check('Ads ready drill-down tabs are enabled',enabledTabs,String(enabledTabs));
       check('Ads operating queue renders only API reasons',JSON.stringify(actionReasons)===JSON.stringify(apiReasons),JSON.stringify({actionReasons,apiReasons}));
     }
@@ -118,6 +119,7 @@ try{
     check('Chart-bearing state retains one asset revision',readyChartState.revisions.every(revision=>revision===readyChartState.pageRevision),readyChartState.revisions.join(', '));
     check('Chart-bearing state marks three dynamic dependency nodes',readyChartState.dependencyNodes===3,String(readyChartState.dependencyNodes));
     check('Chart-bearing state renders after dependency load',await readyPage.locator('#readyState').isVisible(),String(await readyPage.locator('#readyState').isVisible()));
+    check('Chart-bearing state hides the connection placeholder',!await readyPage.locator('#emptyState').isVisible(),String(await readyPage.locator('#emptyState').isVisible()));
     check('Ready tabs expose all report grains',await readyPage.locator('[data-ads-view]').evaluateAll(tabs=>tabs.every(tab=>!tab.disabled&&tab.getAttribute('aria-disabled')==='false')));
     check('Ready operating queue uses the API reason',((await readyPage.locator('#actionQueue .ads-action-body p').textContent())||'').trim()==='API-owned review reason.');
     await readyPage.locator('[data-ads-view="targets"]').click();
