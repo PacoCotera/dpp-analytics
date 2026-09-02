@@ -52,7 +52,7 @@ Seller taxonomy is a separate responsibility layered on top of Amazon source rea
 
 ## Decision-surface truth policy
 
-Operating timestamps are rendered in the marketplace business timezone, `America/Mexico_City`, through the shared UI time formatter. Header clocks and absolute freshness/sync timestamps carry the visible `Mexico City` label; browser or host timezone is never used as an implicit fallback. Relative ages remain elapsed-time values.
+Operating timestamps are rendered in the marketplace business timezone through the shared UI time formatter. Historical instants use `America/Mexico_City`, preserving the DST rules that applied through Mexico City's final transition on October 30, 2022; later instants use fixed UTC−6 (`Etc/GMT+6`) so browser ICU versions cannot reintroduce the abolished DST offset. Header clocks and absolute freshness/sync timestamps carry the visible `Mexico City` label; browser or host timezone is never used as an implicit fallback. Relative ages remain elapsed-time values.
 
 Interpretive labels are API-owned evaluations of named, versioned rules in `board/interpretation_rules.py`. Each affected payload exposes the relevant `interpretation_rules` definitions plus the current evaluation's `rule_id`, `rule_version`, inputs, eligibility result and label. The shared in-page Rule control displays the window, eligibility, thresholds and current operands without navigating away. Browsers may format the explanation, but must not independently classify the inputs.
 
