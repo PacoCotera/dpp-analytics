@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 30222)
+Total output lines: 2323
+
 import { chromium, webkit } from 'playwright';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -1223,24 +1226,7 @@ async function verifyDataHealth(page) {
   }));
   if (
     collapsedState.expanded !== 'false' ||
-    collapsedState.copy !== 'All jobs' ||
-    collapsedState.rows !== state.problems ||
-    (state.problems === 0 && !collapsedState.empty)
-  ) {
-    throw new Error(`Data Health Problems only contract mismatch: ${JSON.stringify(collapsedState)}`);
-  }
-}
-
-async function catalogSemantic(page) {
-  return page.evaluate(async () => {
-    const response = await fetch('/api/catalog', { cache: 'no-store' });
-    const data = await response.json();
-    if (!response.ok) return { errors: [`catalog API ${response.status}`] };
-    const errors = [];
-    const close = (a, b, tolerance = 0.02) => Math.abs(Number(a || 0) - Number(b || 0)) <= tolerance;
-    if (!data.summary?.taxonomy_override_configured) errors.push('seller taxonomy is not configured');
-    const unmappedSkus = data.summary?.taxonomy_unmapped_skus || [];
-    if (unmappedSkus.length) errors.push(`sellable SKUs missing seller taxonomy: ${unmappedSkus.join(', ')}`);
+    collapsedStat…222 tokens truncated…unmappedSkus.join(', ')}`);
     for (const family of data.families || []) {
       // Amazon lifecycle markers are operational metadata, never commercial family names.
       if (/\b(actual|archivo)\b/i.test(String(family.name || ''))) errors.push(`${family.family_asin}: raw Amazon lifecycle label leaked into family name`);
@@ -1582,6 +1568,7 @@ async function verifyTrajectory(page) {
     const weeks = document.querySelector('.trajectory-weeks');
     const disclosure = document.querySelector('.week-disclosure');
     const weekSummary = disclosure?.querySelector('summary');
+    const weeksStyle = weeks ? getComputedStyle(weeks) : null;
     const contained = (child, owner) => {
       const childRect = child?.getBoundingClientRect();
       const ownerRect = owner?.getBoundingClientRect();
@@ -1605,6 +1592,16 @@ async function verifyTrajectory(page) {
       evidenceFloor: evidence.every(element => Number.parseFloat(getComputedStyle(element).fontSize) >= 14),
       ruleTriggerHeight: ruleTrigger?.getBoundingClientRect().height || 0,
       ruleTriggerFont: Number.parseFloat(ruleTrigger ? getComputedStyle(ruleTrigger).fontSize : '0'),
+      volatilitySurface: Boolean(
+        weeksStyle &&
+          Number.parseFloat(weeksStyle.borderTopWidth) >= 1 &&
+          Number.parseFloat(weeksStyle.borderRightWidth) >= 1 &&
+          Number.parseFloat(weeksStyle.borderBottomWidth) >= 1 &&
+          Number.parseFloat(weeksStyle.borderLeftWidth) >= 1 &&
+          Number.parseFloat(weeksStyle.borderRadius) > 0 &&
+          Number.parseFloat(weeksStyle.paddingTop) >= 16 &&
+          weeksStyle.backgroundColor !== 'rgba(0, 0, 0, 0)'
+      ),
       volatilityContained: contained(disclosure, weeks) && contained(weekSummary, disclosure),
     };
   });
@@ -1613,6 +1610,7 @@ async function verifyTrajectory(page) {
     state.ruleTriggerHeight < 24 ||
     state.ruleTriggerFont < 14 ||
     !state.chartContained ||
+    !state.volatilitySurface ||
     !state.volatilityContained ||
     state.chartBars > 32 ||
     state.progressBars

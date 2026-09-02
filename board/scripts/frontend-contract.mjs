@@ -577,6 +577,17 @@ check(
   'Trajectory chart must not force a fixed pixel width',
 );
 check(
+  /class="page-section panel trajectory-weeks"[^>]*data-dpp-qa="trajectory-weeks"/.test(
+    trajectoryHtml,
+  ) &&
+    /\.trajectory-weeks\s*\{[^}]*padding:\s*var\(--space-4\)[^}]*background-color:\s*var\(--dpp-surface-subtle\)/s.test(
+      trajectoryCss,
+    ) &&
+    /\.trajectory-main\s*>\s*\.page-section:not\(\.trajectory-weeks\)/.test(trajectoryCss),
+  'trajectory.html',
+  'Trajectory weekly volatility must remain one bounded panel instead of inheriting the section divider',
+);
+check(
   /aggregateSeriesByWeek/.test(chartSystem) && />\s*120/.test(chartSystem),
   'chart-system.js',
   'long trajectory windows must aggregate daily bars for readable density',
