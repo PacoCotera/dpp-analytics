@@ -69,9 +69,24 @@ class AmazonAdsClient:
         if grain not in configs: raise ValueError(f"unsupported Ads report grain: {grain}")
         cfg={"adProduct":AD_PRODUCT,**configs[grain],"timeUnit":"DAILY","format":"GZIP_JSON"}
         stamp=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        r=self.client.post(f"{self.base}/reporting/reports",headers=self.headers(scope,content_type="application/vnd.createasyncreportrequest.v3+json",accept="application/vnd.createasyncreportresponse.v3+json"),json={"name":f"dpp-{grain}-{start}-{end}-{stamp}","startDate":start.isoformat(),"endDate":end.isoformat(),"configuration":cfg});r.raise_for_status();b=r.json();rid=b.get("reportId") or b.get("report_id")
-        if not rid: raise RuntimeError(f"Amazon Ads createReport returned no reportId: {b}")
-        return str(rid)
+        payload={"name":f"dpp-{grain}-{start}-{end}-{stamp}","startDate":start.isoformat(),"endDate":end.isoformat(),"configuration":cfg}
+        deadline=time.monotonic()+settings.ads_report_poll_timeout_seconds
+        while True:
+            r=self.client.post(f"{self.base}/reporting/reports",headers=self.headers(scope,content_type="application/vnd.createasyncreportrequest.v3+json",accept="application/vnd.createasyncreportresponse.v3+json"),json=payload)
+            try:b=r.json()
+            except ValueError:b={}
+            rid=b.get("reportId") or b.get("report_id")
+            if r.status_code==425:
+                # Reporting v3 returns 425 while an identical request is already
+                # processing. Some responses expose the memorized report ID; older
+                # variants do not, so retry the same request until Amazon can return it.
+                if rid:return str(rid)
+                if time.monotonic()>=deadline:raise TimeoutError(f"Amazon Ads duplicate {grain} report did not become available within timeout")
+                time.sleep(settings.ads_report_poll_seconds)
+                continue
+            r.raise_for_status()
+            if not rid: raise RuntimeError(f"Amazon Ads createReport returned no reportId: {b}")
+            return str(rid)
     def wait_for_report(self,scope,report_id):
         deadline=time.monotonic()+settings.ads_report_poll_timeout_seconds
         while time.monotonic()<deadline:

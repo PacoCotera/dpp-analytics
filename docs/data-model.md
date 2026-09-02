@@ -25,7 +25,7 @@ The Python ingestion worker lives in `app/dpp_analytics/`. Source enablement and
 | Finances API | Released/deferred financial events, fees, refunds, transfers and advertising postings | `FINANCES_INTERVAL_SECONDS`, default 14400s |
 | Amazon Ads reporting | Campaign/product/target/search-term attributed performance | `AMAZON_ADS_REPORTING_INTERVAL_SECONDS`, default 21600s |
 
-Backfill start dates and polling timeouts are also environment-controlled in `compose.yml`. Amazon Ads Reporting v3 waits up to 900 seconds by default because asynchronous reports can remain queued for more than five minutes; operators can override that bound with `AMAZON_ADS_REPORT_POLL_TIMEOUT_SECONDS`.
+Backfill start dates and polling timeouts are also environment-controlled in `compose.yml`. Amazon Ads Reporting v3 waits up to 900 seconds by default because asynchronous reports can remain queued for more than five minutes; operators can override that bound with `AMAZON_ADS_REPORT_POLL_TIMEOUT_SECONDS`. A 425 duplicate-processing response is resumable: the collector reuses Amazon's memorized report ID when supplied, or retries the identical create request until that report becomes available.
 
 ### Seller catalog discovery and onboarding rule
 
