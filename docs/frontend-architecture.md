@@ -77,6 +77,11 @@ lanes in that band so they do not sit on bars, connector rules, axes, or neighbo
 tables that replace their column headers with per-cell labels remove the desktop header from layout and preserve
 the standard inner gutter on every mobile row.
 
+Rule-definition dialogs treat API rule IDs, schema keys, enum values, and formula notation as implementation
+details. The rule catalog supplies an explicit business label for every input, the shared dialog formats each value
+by measure type, and decision bands use plain operational language. IDs and versions remain available in payloads
+for traceability but are not rendered as interface copy.
+
 Disclosure state and action copy belong to real DOM text and the owning runtime. CSS must not inject “Show” or
 “Hide” semantics with generated content or suppress stale state text visually. Data Health's warehouse reference
 keeps its visible action and exact summary accessible name synchronized on the native `details` toggle event.
