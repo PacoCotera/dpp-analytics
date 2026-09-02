@@ -92,10 +92,11 @@ class AmazonAdsClient:
             r.raise_for_status()
             if not rid: raise RuntimeError(f"Amazon Ads createReport returned no reportId: {b}")
             return str(rid)
-    def wait_for_report(self,scope,report_id):
+    def wait_for_report(self,scope,report_id,*,on_status=None):
         deadline=time.monotonic()+settings.ads_report_poll_timeout_seconds
         while time.monotonic()<deadline:
             r=self.client.get(f"{self.base}/reporting/reports/{report_id}",headers=self.headers(scope,accept="application/vnd.getasyncreportresponse.v3+json"));r.raise_for_status();b=r.json();status=str(b.get("status") or "").upper()
+            if on_status:on_status(status,b)
             if status in {"COMPLETED","SUCCESS"}:return b
             if status in {"FAILURE","FAILED","CANCELLED"}:raise RuntimeError(f"Amazon Ads report {report_id} ended with status={status}: {b}")
             time.sleep(settings.ads_report_poll_seconds)
@@ -244,6 +245,32 @@ def _publish_state(state, detail_code, **metadata):
     db.set_integration_state("amazon_ads", state, detail_code, metadata)
 
 
+def _report_progress_callback(scope, grain, report_id, start, end):
+    report_started_at=datetime.now(timezone.utc).isoformat()
+    last_status=None
+    last_published_at=0.0
+
+    def publish(vendor_status, _payload):
+        nonlocal last_status,last_published_at
+        now=time.monotonic()
+        if vendor_status==last_status and now-last_published_at<30:return
+        last_status=vendor_status;last_published_at=now
+        _publish_state(
+            "BACKFILL_RUNNING",
+            "REPORT_VENDOR_PROCESSING",
+            account_id=str(scope),
+            grain=grain,
+            report_id=report_id,
+            vendor_status=vendor_status or "UNKNOWN",
+            start_date=start.isoformat(),
+            end_date=end.isoformat(),
+            report_started_at=report_started_at,
+            last_polled_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    return publish
+
+
 def _backfill_complete():
     cursor = db.get_cursor(SOURCE, JOB, "through_date")
     if not cursor:
@@ -296,7 +323,7 @@ def ingest_ads():
             for scope in scopes:
                 _ensure_account(scope);_ensure_required_grains(scope,start)
                 for grain,writer in grains.items():
-                    rid=client.create_report(scope,start,end,grain=grain);report_ids.append(rid);status=client.wait_for_report(scope,rid);location=status.get("url") or status.get("location")
+                    rid=client.create_report(scope,start,end,grain=grain);report_ids.append(rid);progress=_report_progress_callback(scope,grain,rid,start,end);progress("REQUESTED",{});status=client.wait_for_report(scope,rid,on_status=progress);location=status.get("url") or status.get("location")
                     if not location:raise RuntimeError(f"Amazon Ads report {rid} completed without download URL: {status}")
                     rows=client.download_report(str(location));total_read+=len(rows);written=writer(scope,rows,rid);total_written+=written
                     _record_report_run(scope,rid,grain,start,end,len(rows),status)
