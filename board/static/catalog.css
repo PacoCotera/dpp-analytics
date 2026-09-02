@@ -197,6 +197,13 @@
   transition: transform var(--motion-duration) ease;
 }
 
+.chev {
+  width: 40px;
+  height: 40px;
+  align-self: center;
+  justify-self: center;
+}
+
 .analysis-open:hover {
   color: var(--accent-ink);
 }
