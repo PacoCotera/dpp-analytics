@@ -30,7 +30,8 @@ try{
   check('Catalog exposes paid-support context',String(basis||'').includes('Paid support'),String(basis||''));
   const summary=catalog.summary||{};
   if(Number(summary.ad_spend_t28||0)>0){
-    check('Catalog paid-support summary uses canonical spend',Math.abs((numberFromText(String(basis).split('Paid support')[1])||0)-Math.round(Number(summary.ad_spend_t28)))<=1,String(basis||''));
+    const paidSupportAmount=String(basis||'').split('Paid support')[1]?.split('·')[0]||'';
+    check('Catalog paid-support summary uses canonical spend',Math.abs((numberFromText(paidSupportAmount)||0)-Math.round(Number(summary.ad_spend_t28)))<=1,String(basis||''));
     check('Catalog paid-support summary exposes TACOS',String(basis||'').includes('TACOS'),String(basis||''));
     check('Catalog paid-support summary exposes attributed ROAS',String(basis||'').includes('attributed ROAS'),String(basis||''));
   }else{
