@@ -8,6 +8,10 @@ from collections.abc import Callable
 
 from . import db
 from .amazon_ads import ads_backfill_complete, ingest_ads, probe_ads
+from .brand_analytics_search_query import (
+    ingest_search_query_performance,
+    search_query_backfill_complete,
+)
 from .catalog import ingest_catalog
 from .data_kiosk import ingest_sales_traffic
 from .finance_close_tax_corrected import close_ready_months
@@ -33,6 +37,7 @@ ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS = 86400
 CATALOG_ONBOARDING_RETRY_SECONDS = 1800
 GEOGRAPHY_JOB = "orders_geography_state_v2026"
 ADS_FAILURE_RETRY_SECONDS = 300
+BRAND_ANALYTICS_FAILURE_RETRY_SECONDS = 300
 
 
 def _stop(signum: int, frame: object) -> None:
@@ -98,6 +103,37 @@ def _ads_delay_after_result(result: dict | None) -> int:
         log.info("Amazon Ads refresh failed; retrying in %ss", ADS_FAILURE_RETRY_SECONDS)
         return min(settings.ads_reporting_interval_seconds, ADS_FAILURE_RETRY_SECONDS)
     return settings.ads_reporting_interval_seconds
+
+
+def _initial_brand_analytics_due() -> float:
+    if not search_query_backfill_complete():
+        log.info(
+            "Brand Analytics Search Query history is incomplete; scheduling the next month immediately"
+        )
+        return 0.0
+    return _next_due(
+        "amazon_brand_analytics",
+        "search_query_performance",
+        settings.brand_analytics_search_query_interval_seconds,
+    )
+
+
+def _brand_analytics_delay_after_result(result: dict | None) -> int:
+    if result and result.get("status") == "success" and result.get("backfill_complete") is False:
+        log.info(
+            "Brand Analytics Search Query history remains incomplete; continuing with the next month immediately"
+        )
+        return 0
+    if result is None:
+        log.info(
+            "Brand Analytics Search Query refresh failed; retrying in %ss",
+            BRAND_ANALYTICS_FAILURE_RETRY_SECONDS,
+        )
+        return min(
+            settings.brand_analytics_search_query_interval_seconds,
+            BRAND_ANALYTICS_FAILURE_RETRY_SECONDS,
+        )
+    return settings.brand_analytics_search_query_interval_seconds
 
 
 def _refresh_catalog_cache_if_written(result: dict | None, kind: str) -> None:
@@ -233,6 +269,7 @@ def _run_manual_sync() -> str | None:
         "finances_v2024": ingest_finances,
         "settlement_reports_v2": ingest_settlement_reports,
         "sales_traffic_2024_04_24": ingest_sales_traffic,
+        "search_query_performance": ingest_search_query_performance,
         "merchant_listings_all_data": ingest_listings_report,
         "catalog_items_2022_04_01": ingest_catalog,
         GEOGRAPHY_JOB: backfill_order_geography,
@@ -360,6 +397,7 @@ def main() -> None:
         "sales_traffic_2024_04_24",
         settings.data_kiosk_interval_seconds,
     )
+    next_brand_analytics = _initial_brand_analytics_due()
     next_ads = (
         _initial_ads_due()
         if settings.ads_enabled and settings.ads_credentials_present
@@ -367,6 +405,8 @@ def main() -> None:
     )
     ads_thread: threading.Thread | None = None
     ads_outcome: dict[str, dict | None] = {}
+    brand_analytics_thread: threading.Thread | None = None
+    brand_analytics_outcome: dict[str, dict | None] = {}
 
     while not STOP:
         now = time.monotonic()
@@ -376,6 +416,13 @@ def main() -> None:
             next_ads = time.monotonic() + _ads_delay_after_result(ads_outcome.get("result"))
             ads_outcome = {}
 
+        if brand_analytics_thread is not None and not brand_analytics_thread.is_alive():
+            brand_analytics_thread = None
+            next_brand_analytics = time.monotonic() + _brand_analytics_delay_after_result(
+                brand_analytics_outcome.get("result")
+            )
+            brand_analytics_outcome = {}
+
         manual_job = _run_manual_sync()
         if manual_job:
             now = time.monotonic()
@@ -384,6 +431,7 @@ def main() -> None:
             elif manual_job == "finances_v2024": next_finances = now + settings.finances_interval_seconds
             elif manual_job == "settlement_reports_v2": next_settlements = now + settings.settlement_reports_interval_seconds
             elif manual_job == "sales_traffic_2024_04_24": next_data_kiosk = now + settings.data_kiosk_interval_seconds
+            elif manual_job == "search_query_performance": next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == "merchant_listings_all_data": next_listings_report = now + settings.listings_report_interval_seconds
             elif manual_job == "catalog_items_2022_04_01": next_catalog = now + settings.catalog_interval_seconds
             elif manual_job == GEOGRAPHY_JOB: next_geography = now + ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS
@@ -454,6 +502,14 @@ def main() -> None:
             data_kiosk_result = _run("data_kiosk", ingest_sales_traffic)
             _refresh_catalog_cache_if_written(data_kiosk_result, "traffic")
             next_data_kiosk = time.monotonic() + settings.data_kiosk_interval_seconds
+
+        if now >= next_brand_analytics and brand_analytics_thread is None:
+            brand_analytics_thread = _start_background_job(
+                "brand_analytics_search_query",
+                ingest_search_query_performance,
+                outcome=brand_analytics_outcome,
+            )
+            next_brand_analytics = float("inf")
 
         if now >= next_ads and ads_thread is None:
             ads_thread = _start_background_job("amazon_ads", ingest_ads, outcome=ads_outcome)

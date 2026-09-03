@@ -118,6 +118,10 @@ Catalog family cover uses the same pooled rule as portfolio inventory cover: `(s
 
 Amazon Ads metrics are attribution data. ACOS and ROAS use Amazon-attributed sales; TACOS uses an independent total-seller-sales denominator.
 
+Amazon Brand Analytics Search Query Performance is separate, inclusive marketplace-search evidence. `brand.search_query_performance` stores the exact marketplace, calendar period, ASIN, and source-query grain returned by Amazon, including Amazon-wide query volume/funnel totals and the selected ASIN's counts and shares. The source query is preserved verbatim while `search_query_key` supplies an NFKC-normalized, whitespace-collapsed, case-folded join key. Share and rate fields are stored as ratios without percentage scaling. Current seller offers define which ASINs are requested; raw report documents remain in `raw.api_payload`.
+
+Search Query Performance can diagnose discoverability, engagement, cart, and purchase leakage. It does not identify paid versus organic activity, advertising incrementality, profitability, or causality. Join it to Ads search terms only as query-level context, with marketplace and time-window compatibility made explicit.
+
 `mart.ads_product_business_t28` is the primary Advertising operating grain. Each SKU carries total seller sales,
 ad spend, impressions, clicks, Amazon-attributed purchases/units/sales, conversion, ROAS, ACOS, TACOS, report
 coverage and attribution maturity together. Ratios require a positive authoritative denominator; a missing or zero

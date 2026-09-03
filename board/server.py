@@ -582,6 +582,7 @@ class Handler(BaseHTTPRequestHandler):
             allowed = {
                 "orders_v2026", "fba_inventory_v1", "finances_v2024",
                 "settlement_reports_v2", "sales_traffic_2024_04_24",
+                "search_query_performance",
                 "merchant_listings_all_data", "catalog_items_2022_04_01",
                 "orders_geography_state_v2026", "month_close",
             }
