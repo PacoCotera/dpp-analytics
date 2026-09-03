@@ -134,12 +134,26 @@ function renderReadiness(payload) {
   const quality = payload.quality || {};
   const freshness = payload.freshness || {};
   const readiness = payload.readiness || {};
+  const connection = payload.connection || {};
   const trusted = Boolean(quality.trusted_for_operating_decisions);
   const badge = byId('qualityBadge');
   const line = byId('qualityBand');
   badge.className = `ads-quality-badge ${trusted ? 'trusted' : quality.state === 'ATTENTION' ? 'attention' : 'nodata'}`;
   line.dataset.state = trusted ? 'trusted' : quality.state === 'ATTENTION' ? 'attention' : 'nodata';
-  if (trusted) {
+  if (trusted && connection.degraded) {
+    badge.textContent = connection.badge || 'Refresh delayed';
+    badge.className = 'ads-quality-badge attention';
+    line.dataset.state = 'attention';
+    byId('qualityTitle').textContent = 'Stored reporting remains available.';
+    byId('qualityCopy').textContent =
+      connection.detail || 'The latest refresh failed; the worker will retry.';
+  } else if (trusted && connection.refreshing) {
+    badge.textContent = connection.badge || 'Refresh running';
+    badge.className = 'ads-quality-badge trusted';
+    line.dataset.state = 'trusted';
+    byId('qualityTitle').textContent = 'The latest report window is refreshing.';
+    byId('qualityCopy').textContent = connection.detail || 'Previously ingested reporting remains available.';
+  } else if (trusted) {
     badge.textContent = 'Ready for review';
     byId('qualityTitle').textContent = 'Reporting is reconciled.';
     byId('qualityCopy').textContent =

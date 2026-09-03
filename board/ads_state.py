@@ -45,6 +45,25 @@ _PRESENTATION = {
     },
 }
 
+_DETAIL_PRESENTATION = {
+    "REPORT_REFRESH_RUNNING": {
+        "badge": "Ads refresh running",
+        "headline": "Amazon Ads reporting is refreshing.",
+        "detail": "Previously ingested reporting remains available while Amazon prepares the latest report window.",
+        "note": "stored reporting available; refresh running",
+        "refreshing": True,
+        "degraded": False,
+    },
+    "REPORT_REFRESH_FAILED": {
+        "badge": "Ads refresh delayed",
+        "headline": "Latest Amazon Ads refresh needs attention.",
+        "detail": "Previously ingested reporting remains available. The latest refresh failed; Data Health has the technical error and the worker will retry.",
+        "note": "stored reporting available; refresh delayed",
+        "refreshing": False,
+        "degraded": True,
+    },
+}
+
 
 def connection_contract(
     state: str,
@@ -57,11 +76,14 @@ def connection_contract(
     if normalized not in ADS_CONNECTION_STATES:
         normalized = "FAILED"
         detail_code = detail_code or "INVALID_RECORDED_STATE"
+    presentation = {**_PRESENTATION[normalized], **_DETAIL_PRESENTATION.get(detail_code, {})}
     result = {
         "state": normalized,
-        **_PRESENTATION[normalized],
+        **presentation,
         "detail_code": detail_code,
         "updated_at": updated_at,
+        "refreshing": bool(presentation.get("refreshing")),
+        "degraded": bool(presentation.get("degraded")),
     }
     if report_progress:
         result["report_progress"] = report_progress
