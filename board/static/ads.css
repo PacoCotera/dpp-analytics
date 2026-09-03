@@ -1024,6 +1024,7 @@ main {
   }
 
   .ads-query-card__identity,
+  .ads-query-card__decision,
   .ads-query-card__action,
   .ads-query-card__evidence,
   .ads-query-card__paid {
