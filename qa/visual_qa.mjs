@@ -976,7 +976,7 @@ async function verifyBusiness(page) {
         .includes('seven-day signal'),
       productDriversRemoved: !document.querySelector('.drivers, #movers, .driver'),
       adsVisible: Boolean(ads && !ads.hidden && getComputedStyle(ads).display !== 'none'),
-      adsExpected: Boolean(payload.ads?.through_date),
+      adsExpected: Boolean((payload.ads?.business || payload.ads)?.through_date),
       adsAfterHealth: !ads || ads.hidden || top(health) < top(ads),
       footerGap: footer && secondary
         ? footer.getBoundingClientRect().top - secondary.getBoundingClientRect().bottom
@@ -1404,7 +1404,8 @@ async function verifyProductWorkspace(page) {
     const adsState = (await page.locator('#adsState').textContent() || '').trim();
     const adsDecision = (await page.locator('#adsDecision').textContent() || '').trim();
     const connection = payload.ads?.connection || {};
-    if (adsState !== connection.badge || adsDecision !== connection.headline)
+    const expectedDecision = payload.ads?.recommendation?.label || connection.headline;
+    if (adsState !== connection.badge || adsDecision !== expectedDecision)
       throw new Error(`Product Ads state-machine mismatch: ${adsState} / ${adsDecision}`);
   }
 
