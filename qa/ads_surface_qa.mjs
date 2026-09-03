@@ -140,7 +140,7 @@ const product = {
   recommendation: {
     state: "OPPORTUNITY_TEST",
     label: "Opportunity to test",
-    title: "Review converting demand for Daily planning notebook",
+    title: "Review converting demand",
     explanation:
       "Amazon reports 3 attributed purchases. Identify which demand signals are contributing, then verify product economics before changing support.",
     rule_key: "ADS_PRODUCT_DEMAND_REVIEW",
@@ -307,10 +307,12 @@ const readyPayload = {
     basis:
       "Latest 28 Ads dates aligned to independently reconciled seller sales. Amazon-attributed conversions can revise; attribution is not incrementality.",
   },
-  daily: [
-    { business_date: "2026-08-27", spend: 10, attributed_sales: 30 },
-    { business_date: "2026-08-28", spend: 20, attributed_sales: 60 },
-  ],
+  daily: Array.from({ length: 28 }, (_, index) => ({
+    business_date: new Date(Date.UTC(2026, 7, index + 1)).toISOString().slice(0, 10),
+    spend: 30 / 28,
+    attributed_sales: 90 / 28,
+    total_business_sales: 300 / 28,
+  })),
   campaigns: [
     {
       campaign_id: "campaign-one",
@@ -427,6 +429,7 @@ try {
     const ruleValues = Object.values(payload.interpretation_rules || {});
     const actions = payload.actions || [];
     const text = await page.locator("main").innerText();
+    const semanticText = await page.locator("main").textContent();
     const prohibitedClaim =
       /\b(profitable|scale winners?|reduce spend)\b/i.test(text);
     check(
@@ -510,8 +513,8 @@ try {
     );
     check(
       "Production UI rejects attribution-as-incrementality",
-      text.includes("not incrementality") ||
-        text.includes("attribution is not incrementality"),
+      semanticText.includes("not incrementality") ||
+        semanticText.includes("attribution is not incrementality"),
     );
     check(
       "Production ready state loads one revision of every chart dependency",
@@ -569,23 +572,25 @@ try {
       null,
       { timeout: 10000 },
     );
-    const renderedRationales = await readyPage
-      .locator(".ads-action-body > p")
+    const renderedProductActions = await readyPage
+      .locator(".ads-action-body > h3")
       .allTextContents();
     check(
-      "Ready actions render only API-owned rationales",
-      JSON.stringify(renderedRationales) ===
-        JSON.stringify(readyPayload.actions.map((action) => action.rationale)),
-      JSON.stringify(renderedRationales),
+      "Ready overview keeps the API-owned product decisions concise",
+      JSON.stringify(renderedProductActions) ===
+        JSON.stringify(
+          readyPayload.actions
+            .filter((action) => action.action_type === "PRODUCT_REVIEW")
+            .map((action) => action.title),
+        ),
+      JSON.stringify(renderedProductActions),
     );
     check(
-      "Ready overview keeps SKU and total seller sales visible",
-      (await readyPage.locator("#portfolioList").innerText()).includes(
-        product.sku,
-      ) &&
-        (await readyPage.locator("#portfolioList").innerText()).includes(
-          "seller sales",
-        ),
+      "Ready overview names the product and its seller-sales basis",
+      (await readyPage.locator("#portfolioChart").textContent()).includes(product.product) &&
+        (await readyPage.locator("#portfolioChart").getAttribute("aria-label"))
+          .toLowerCase()
+          .includes("seller sales"),
     );
     check(
       "Ready chart marks expose keyboard-accessible names",
@@ -599,6 +604,26 @@ try {
               Boolean(mark.getAttribute("aria-label")),
           ),
         ),
+    );
+    const decisionArchitecture = await readyPage.evaluate(() => ({
+      legacyQualityBanner: Boolean(document.getElementById("qualityBand")),
+      duplicatePortfolioList: Boolean(document.getElementById("portfolioList")),
+      portfolioBars: document.querySelectorAll("#portfolioChart rect.ads-portfolio-mark").length,
+      portfolioValues: document.querySelectorAll("#portfolioChart .ads-portfolio-value").length,
+      weeklyBars: document.querySelectorAll("#chart .ads-week-mark").length,
+      weeklyValues: document.querySelectorAll("#chart .ads-week-value").length,
+      demandPulse: document.getElementById("demandPulse")?.textContent || "",
+    }));
+    check(
+      "Ready overview uses the compact decision architecture",
+      !decisionArchitecture.legacyQualityBanner &&
+        !decisionArchitecture.duplicatePortfolioList &&
+        decisionArchitecture.portfolioBars === readyPayload.products.length &&
+        decisionArchitecture.portfolioValues === decisionArchitecture.portfolioBars &&
+        decisionArchitecture.weeklyBars === 4 &&
+        decisionArchitecture.weeklyValues === 4 &&
+        decisionArchitecture.demandPulse.includes("signals worth testing"),
+      JSON.stringify(decisionArchitecture),
     );
     const visualContract = await readyPage.evaluate(() => {
       const root = getComputedStyle(document.documentElement);
@@ -614,7 +639,7 @@ try {
     check(
       "Ready disclosures and portfolio marks retain control and contrast floors",
       visualContract.summaries.every((height) => height >= 40) &&
-        visualContract.markStroke === "var(--dpp-data2)" &&
+        visualContract.markStroke === "var(--dpp-data4)" &&
         Boolean(visualContract.dataStroke),
       JSON.stringify(visualContract),
     );
@@ -653,7 +678,7 @@ try {
     const detailText = await readyPage.locator("#detail").innerText();
     check(
       "Campaign comparison is explicitly neutral",
-      detailText.includes("neutral comparison") &&
+      detailText.includes("This is not profitability") &&
         !/Scale winners|Efficient support|Low-risk tests/.test(detailText),
       detailText,
     );
@@ -696,9 +721,8 @@ try {
       tabsEnabled: [...document.querySelectorAll("[data-ads-view]")].every(
         (tab) => !tab.disabled && tab.getAttribute("aria-disabled") === "false",
       ),
-      badge: document.getElementById("qualityBadge").textContent.trim(),
-      title: document.getElementById("qualityTitle").textContent.trim(),
-      copy: document.getElementById("qualityCopy").textContent.trim(),
+      status: document.getElementById("readinessLabel").textContent.trim(),
+      topbar: document.getElementById("asof").textContent.trim(),
       readiness: document.getElementById("readinessLine").textContent.trim(),
       products: document.querySelectorAll("#productRows tr").length,
       actionsVisible: !document.getElementById("actionSection").hidden,
@@ -713,10 +737,9 @@ try {
     );
     check(
       "Failed incremental refresh is disclosed without claiming a data outage",
-      degraded.badge === "Ads refresh delayed" &&
-        degraded.title === "Stored reporting remains available." &&
-        degraded.copy.includes("latest refresh failed") &&
-        degraded.readiness.includes("Stored data through"),
+      degraded.status === "Stored data ready" &&
+        degraded.topbar.includes("Ads refresh delayed") &&
+        degraded.readiness.includes("Through 2026-08-28"),
       JSON.stringify(degraded),
     );
   } finally {

@@ -29,7 +29,6 @@ let searchTimer = 0;
 
 const ratioPercent = (value) => percent(value, { scale: 100, sign: false });
 const deltaPercent = (value) => percent(value);
-const deltaPoints = (value) => (value == null ? '—' : percent(value).replace('%', ' pts'));
 const multiple = (value) => (value == null ? '—' : `${Number(value).toFixed(2)}×`);
 const safeText = (value, fallback = '—') =>
   value === null || value === undefined || value === '' ? fallback : value;
@@ -111,69 +110,28 @@ function queryForApi() {
   return params.size ? `/api/ads?${params}` : '/api/ads';
 }
 
-function issueLabel(value) {
-  const labels = {
-    ACCOUNT_MARKETPLACE_MISSING: 'account marketplace mapping',
-    CURRENCY_MISMATCH: 'currency mismatch',
-    CAMPAIGN_GRAIN_MISSING: 'campaign report missing',
-    PRODUCT_GRAIN_MISSING: 'advertised-product report missing',
-    ACCOUNT_ROLLUP_INCONSISTENT: 'account rollup inconsistency',
-    INDEPENDENT_REPORT_VALUE_MISMATCH: 'campaign/product value mismatch',
-    ATTRIBUTION_CONTRACT_MISMATCH: 'attribution contract mismatch',
-    SELLER_SALES_DENOMINATOR_MISSING: 'seller-sales denominator missing',
-  };
-  return (
-    labels[value] ||
-    String(value || '')
-      .toLowerCase()
-      .replaceAll('_', ' ')
-  );
-}
-
 function renderReadiness(payload) {
   const quality = payload.quality || {};
   const freshness = payload.freshness || {};
   const readiness = payload.readiness || {};
   const connection = payload.connection || {};
   const trusted = Boolean(quality.trusted_for_operating_decisions);
-  const badge = byId('qualityBadge');
-  const line = byId('qualityBand');
-  badge.className = `ads-quality-badge ${trusted ? 'trusted' : quality.state === 'ATTENTION' ? 'attention' : 'nodata'}`;
-  line.dataset.state = trusted ? 'trusted' : quality.state === 'ATTENTION' ? 'attention' : 'nodata';
+  let label = readiness.label || 'Reporting state unavailable';
   if (trusted && connection.degraded) {
-    badge.textContent = connection.badge || 'Refresh delayed';
-    badge.className = 'ads-quality-badge attention';
-    line.dataset.state = 'attention';
-    byId('qualityTitle').textContent = 'Stored reporting remains available.';
-    byId('qualityCopy').textContent =
-      connection.detail || 'The latest refresh failed; the worker will retry.';
+    label = 'Stored data ready';
   } else if (trusted && connection.refreshing) {
-    badge.textContent = connection.badge || 'Refresh running';
-    badge.className = 'ads-quality-badge trusted';
-    line.dataset.state = 'trusted';
-    byId('qualityTitle').textContent = 'The latest report window is refreshing.';
-    byId('qualityCopy').textContent = connection.detail || 'Previously ingested reporting remains available.';
+    label = 'Decision-grade';
   } else if (trusted) {
-    badge.textContent = 'Ready for review';
-    byId('qualityTitle').textContent = 'Reporting is reconciled.';
-    byId('qualityCopy').textContent =
-      'Recent Amazon-attributed conversions remain provisional until their lookback window closes.';
+    label = 'Decision-grade';
   } else if (quality.state === 'ATTENTION') {
-    badge.textContent = 'Use with caution';
-    byId('qualityTitle').textContent = 'Reporting needs verification.';
-    const issues = (quality.issues || [])
-      .slice(0, 3)
-      .map((issue) => `${issueLabel(issue.quality_state)} (${integer(issue.days)}d)`)
-      .join(', ');
-    byId('qualityCopy').textContent = issues || 'Actions are suppressed until reconciliation is healthy.';
+    label = 'Use with caution';
   } else {
-    badge.textContent = 'Still validating';
-    byId('qualityTitle').textContent = 'The operating window is not ready.';
-    byId('qualityCopy').textContent =
-      'Actions are suppressed until coverage and reconciliation are complete.';
+    label = 'Still validating';
   }
-  byId('readinessLabel').textContent = readiness.label || badge.textContent;
-  byId('readinessLine').textContent = readiness.summary || 'Reporting readiness unavailable';
+  byId('readinessLabel').textContent = label;
+  byId('readinessLine').textContent = trusted
+    ? `Through ${freshness.through_date || 'latest window'} · ${Number(freshness.period_observed_days || 0)}/${Number(freshness.period_expected_days || 28)} days`
+    : readiness.summary || 'Reporting readiness unavailable';
   setMetric(
     'coverageRead',
     `${Number(freshness.period_observed_days || 0)}/${formatCount(Number(freshness.period_expected_days || 28), 'day')}`,
@@ -191,46 +149,45 @@ function renderReadiness(payload) {
 function actionMetricText(action) {
   const metrics = action.metrics || {};
   return [
-    metrics.spend != null ? `${money(metrics.spend)} spend` : '',
-    metrics.clicks != null ? `${integer(metrics.clicks)} clicks` : '',
-    metrics.purchases != null ? `${integer(metrics.purchases)} attributed purchases` : '',
     metrics.tacos != null ? `${ratioPercent(metrics.tacos)} TACOS` : '',
+    metrics.spend != null ? `${money(metrics.spend)} spend` : '',
+    metrics.purchases != null ? `${integer(metrics.purchases)} attributed purchases` : '',
   ]
     .filter(Boolean)
     .join(' · ');
 }
 
 function renderAction(action) {
-  const maturity = action.maturity || {};
   const product = action.product || action.sku || 'Advertising evidence';
   const image = action.image_url
     ? `<span class="product-thumb-well"><img class="product-thumb" src="${escapeHtml(action.image_url)}" alt="" loading="lazy"></span>`
     : '';
-  const steps = (action.review_steps || []).map((step) => `<li>${escapeHtml(step)}</li>`).join('');
   return `<article class="ads-action-card" data-action-id="${escapeHtml(action.id)}">
-    <div class="ads-action-product">${image}<div><span class="ads-state-label">${escapeHtml(action.label || 'Review')}</span><strong>${escapeHtml(product)}</strong>${action.sku ? `<span>${escapeHtml(action.sku)}</span>` : ''}</div></div>
-    <div class="ads-action-body"><h3>${escapeHtml(action.title || 'Review advertising evidence')}</h3><p>${escapeHtml(action.rationale || '')}</p><div class="ads-action-metrics">${escapeHtml(actionMetricText(action))}</div>${steps ? `<details><summary>Review steps</summary><ol>${steps}</ol></details>` : ''}<div class="ads-action-qualification">${escapeHtml(action.qualification || '')}</div></div>
-    <button class="ads-action-open" type="button" data-review-action="${escapeHtml(action.id)}">Review</button>
+    <div class="ads-action-product">${image}<div><strong>${escapeHtml(product)}</strong>${action.sku ? `<span>${escapeHtml(action.sku)}</span>` : ''}</div></div>
+    <div class="ads-action-body"><h3>${escapeHtml(action.title || 'Review advertising evidence')}</h3><div class="ads-action-metrics">${escapeHtml(actionMetricText(action))}</div></div>
+    <button class="ads-action-open" type="button" data-review-action="${escapeHtml(action.id)}" aria-label="Open ${escapeHtml(product)} review">Open</button>
   </article>`;
 }
 
 function renderActions(payload) {
   const section = byId('actionSection');
   const host = byId('actionGroups');
-  const groups = (payload.action_groups || []).filter((group) => (group.actions || []).length);
-  if (!groups.length) {
+  const groups = payload.action_groups || [];
+  const productGroup = groups.find((group) => group.key === 'PRODUCT');
+  const productActions = productGroup?.actions || [];
+  if (!productActions.length) {
     section.hidden = true;
     host.innerHTML = '';
-    return;
+  } else {
+    section.hidden = false;
+    byId('actionCount').textContent = `${productActions.length} of ${productGroup.total}`;
+    host.innerHTML = productActions.map(renderAction).join('');
   }
-  section.hidden = false;
-  byId('actionCount').textContent = String((payload.actions || []).length);
-  host.innerHTML = groups
-    .map(
-      (group) =>
-        `<section class="ads-action-lane" aria-labelledby="lane-${escapeHtml(group.key)}"><div class="ads-action-lane-head"><h3 id="lane-${escapeHtml(group.key)}">${escapeHtml(group.label)}</h3><span>${group.shown} of ${group.total}</span></div>${(group.actions || []).map(renderAction).join('')}</section>`,
-    )
-    .join('');
+  const opportunityCount = Number(groups.find((group) => group.key === 'DEMAND_OPPORTUNITY')?.total || 0);
+  const attentionCount = Number(groups.find((group) => group.key === 'NON_CONVERTING_DEMAND')?.total || 0);
+  byId('demandPulse').hidden = opportunityCount + attentionCount === 0;
+  byId('demandOpportunityCount').textContent = integer(opportunityCount);
+  byId('demandAttentionCount').textContent = integer(attentionCount);
   host.querySelectorAll('[data-review-action]').forEach((button) => {
     button.addEventListener('click', () => {
       const action = (payload.actions || []).find((item) => item.id === button.dataset.reviewAction);
@@ -252,19 +209,6 @@ function renderActions(payload) {
   });
 }
 
-function renderPortfolio(products) {
-  const host = byId('portfolioList');
-  host.innerHTML = products.length
-    ? products
-        .slice(0, 5)
-        .map(
-          (product) =>
-            `<a href="/product?sku=${encodeURIComponent(product.sku)}"><span><strong>${escapeHtml(product.product || product.sku)}</strong><small>${escapeHtml(product.sku || '')}</small></span><span>${money(product.total_business_sales)} seller sales</span><span>${money(product.spend)} spend</span><span>${ratioPercent(product.tacos)} TACOS</span><span class="ads-state-label">${escapeHtml(product.recommendation?.label || 'Monitor')}</span></a>`,
-        )
-        .join('')
-    : '<p>No advertised products are available for this window.</p>';
-}
-
 function renderFunnel(summary) {
   const stages = [
     ['Impressions', integer(summary.impressions)],
@@ -272,9 +216,8 @@ function renderFunnel(summary) {
     [
       'Attributed purchases',
       integer(summary.purchases),
-      `Conversion ${ratioPercent(summary.conversion_rate)}`,
+      `Conversion ${ratioPercent(summary.conversion_rate)} · ${integer(summary.units)} units`,
     ],
-    ['Attributed units', integer(summary.units)],
   ];
   byId('funnel').innerHTML = `<ol>${stages
     .map(
@@ -346,20 +289,12 @@ function renderProducts() {
             <td data-label="Ad spend" class="ads-num">${money(product.spend)}</td>
             <td data-label="TACOS" class="ads-num">${ratioPercent(product.tacos)}</td>
             <td data-label="Attributed sales" class="ads-num">${money(product.attributed_sales)}</td>
-            <td data-label="Attributed share" data-record-secondary class="ads-num">${ratioPercent(product.attributed_sales_share)}</td>
-            <td data-label="Impressions" data-record-secondary class="ads-num">${integer(product.impressions)}</td>
-            <td data-label="Clicks" data-record-secondary class="ads-num">${integer(product.clicks)}</td>
-            <td data-label="CTR" data-record-secondary class="ads-num">${ratioPercent(product.ctr)}</td>
-            <td data-label="CPC" data-record-secondary class="ads-num">${money(product.cpc)}</td>
-            <td data-label="Purchases / units" data-record-secondary class="ads-num">${integer(product.purchases)} / ${integer(product.units)}</td>
-            <td data-label="Conversion" data-record-secondary class="ads-num">${ratioPercent(product.conversion_rate)}</td>
-            <td data-label="ROAS / ACOS" data-record-secondary class="ads-num">${multiple(product.roas)} / ${ratioPercent(product.acos)}</td>
-            <td data-label="Maturity" data-record-secondary class="ads-num">${integer(product.mature_ads_days)} / ${integer(product.observed_ads_days)} days</td>
+            <td data-label="Purchases" class="ads-num">${integer(product.purchases)}</td>
             <td data-record-disclosure class="data-record-disclosure">${productEvidence(product)}</td>
           </tr>`;
         })
         .join('')
-    : '<tr class="data-table__empty-row"><td colspan="15">No products match the current filters.</td></tr>';
+    : '<tr class="data-table__empty-row"><td colspan="7">No products match the current filters.</td></tr>';
 }
 
 function productReference(signal) {
@@ -562,8 +497,13 @@ function renderReady(payload) {
   setMetric('spendDelta', deltaPercent(summary.spend_delta_pct));
   setMetric('attributed', money(summary.attributed_sales));
   setMetric('salesDelta', deltaPercent(summary.attributed_sales_delta_pct));
-  setMetric('tacos', ratioPercent(summary.tacos));
-  setMetric('tacosDelta', deltaPoints(summary.tacos_delta_points));
+  setMetric('impactCost', money(Number(summary.tacos || 0) * 100));
+  setMetric(
+    'impactChange',
+    summary.tacos_delta_points == null
+      ? 'No prior-period comparison.'
+      : `${Number(summary.tacos_delta_points) >= 0 ? 'Up' : 'Down'} ${money(Math.abs(Number(summary.tacos_delta_points)))} from the prior 28 days.`,
+  );
   setMetric('roas', multiple(summary.roas));
   setMetric('acos', ratioPercent(summary.acos));
   setMetric('ctr', ratioPercent(summary.ctr));
@@ -571,12 +511,11 @@ function renderReady(payload) {
   setMetric('conversion', ratioPercent(summary.conversion_rate));
   setMetric('totalSales', money(summary.total_business_sales));
   byId('chartSub').textContent =
-    `Daily spend and Amazon-attributed sales · ${summary.period_start || ''} → ${summary.period_end || ''}`;
+    `Four weekly periods · ${summary.period_start || ''} to ${summary.period_end || ''}`;
   byId('basisCopy').textContent = summary.basis || 'Advertising metric basis unavailable.';
   byId('economicsCopy').textContent = payload.economics?.basis || 'Product economics are unavailable.';
   byId('economicsNotice').textContent = payload.economics?.basis || 'Product economics are unavailable.';
   renderActions(payload);
-  renderPortfolio(payload.products || []);
   renderFunnel(summary);
   renderProducts();
   renderDemand();
@@ -687,6 +626,7 @@ function bindInteractions() {
     });
   });
   byId('openProducts').addEventListener('click', () => changeView('products'));
+  byId('openDemand').addEventListener('click', () => changeView('demand'));
   byId('productFilter').addEventListener('change', (event) => {
     changeState(
       { filter: event.target.value === 'all' ? '' : event.target.value, page: 1 },
