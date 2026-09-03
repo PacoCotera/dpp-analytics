@@ -1242,6 +1242,17 @@ html.wall-mode .today-section {
 }
 
 @media (max-width: 1120px) {
+  .today-lead__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+
+  .day-picker {
+    width: 100%;
+    max-width: 560px;
+  }
+
   .today-overview-grid,
   .today-operations-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -1407,17 +1418,6 @@ html.wall-mode .today-section {
 }
 
 @media (max-width: 900px) {
-  .today-lead__head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    justify-content: stretch;
-  }
-
-  .day-picker {
-    width: 100%;
-    max-width: 100%;
-  }
-
   .today-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
