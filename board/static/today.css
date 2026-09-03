@@ -470,6 +470,12 @@
   gap: 18px;
 }
 
+.today-panel__head > a {
+  display: inline-flex;
+  min-height: var(--control-height);
+  align-items: center;
+}
+
 .today-panel__title {
   font-size: 20px;
 }

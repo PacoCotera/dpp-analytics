@@ -7,6 +7,7 @@ import {
   integer,
   money,
   percent,
+  revealActiveChoice,
 } from './ui-utils.js';
 import { loadAdsChartDependencies } from './ads-chart-loader.js';
 
@@ -299,6 +300,23 @@ function filteredProducts() {
   return products;
 }
 
+function productEvidence(product) {
+  const items = [
+    ['Attributed share', ratioPercent(product.attributed_sales_share)],
+    ['Impressions', integer(product.impressions)],
+    ['Clicks', integer(product.clicks)],
+    ['CTR', ratioPercent(product.ctr)],
+    ['CPC', money(product.cpc)],
+    ['Purchases / units', `${integer(product.purchases)} / ${integer(product.units)}`],
+    ['Conversion', ratioPercent(product.conversion_rate)],
+    ['ROAS / ACOS', `${multiple(product.roas)} / ${ratioPercent(product.acos)}`],
+    ['Maturity', `${integer(product.mature_ads_days)} / ${integer(product.observed_ads_days)} days`],
+  ];
+  return `<details class="record-disclosure"><summary>More performance evidence</summary><dl class="record-evidence-grid">${items
+    .map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`)
+    .join('')}</dl></details>`;
+}
+
 function renderProducts() {
   const products = filteredProducts();
   byId('productCount').textContent = formatCount(products.length, 'product');
@@ -307,25 +325,27 @@ function renderProducts() {
         .map((product) => {
           const recommendation = product.recommendation || {};
           const highlighted = stateFromUrl().sku === String(product.sku || '');
+          const recommendationDetail = recommendation.title || recommendation.suppression_reason;
           return `<tr data-sku="${escapeHtml(product.sku || '')}"${highlighted ? ' class="is-highlighted"' : ''}>
-            <th scope="row"><div class="ads-product-primary">${productIdentity(product)}<span class="ads-state-label">${escapeHtml(recommendation.label || 'Monitor')}</span><span>${escapeHtml(recommendation.title || '')}</span>${recommendation.suppression_reason ? `<small>${escapeHtml(recommendation.suppression_reason)}</small>` : ''}</div></th>
+            <th scope="row"><div class="ads-product-primary">${productIdentity(product)}<span class="ads-state-label">${escapeHtml(recommendation.label || 'Monitor')}</span>${recommendationDetail ? `<details class="ads-row-context"><summary>Why this state</summary>${recommendation.title ? `<p>${escapeHtml(recommendation.title)}</p>` : ''}${recommendation.suppression_reason ? `<small>${escapeHtml(recommendation.suppression_reason)}</small>` : ''}</details>` : ''}</div></th>
             <td data-label="Seller sales" class="ads-num">${money(product.total_business_sales)}</td>
             <td data-label="Ad spend" class="ads-num">${money(product.spend)}</td>
             <td data-label="TACOS" class="ads-num">${ratioPercent(product.tacos)}</td>
             <td data-label="Attributed sales" class="ads-num">${money(product.attributed_sales)}</td>
-            <td data-label="Attributed share" class="ads-num">${ratioPercent(product.attributed_sales_share)}</td>
-            <td data-label="Impressions" class="ads-num">${integer(product.impressions)}</td>
-            <td data-label="Clicks" class="ads-num">${integer(product.clicks)}</td>
-            <td data-label="CTR" class="ads-num">${ratioPercent(product.ctr)}</td>
-            <td data-label="CPC" class="ads-num">${money(product.cpc)}</td>
-            <td data-label="Purchases / units" class="ads-num">${integer(product.purchases)} / ${integer(product.units)}</td>
-            <td data-label="Conversion" class="ads-num">${ratioPercent(product.conversion_rate)}</td>
-            <td data-label="ROAS / ACOS" class="ads-num">${multiple(product.roas)} / ${ratioPercent(product.acos)}</td>
-            <td data-label="Maturity" class="ads-num">${integer(product.mature_ads_days)} / ${integer(product.observed_ads_days)} days</td>
+            <td data-label="Attributed share" data-record-secondary class="ads-num">${ratioPercent(product.attributed_sales_share)}</td>
+            <td data-label="Impressions" data-record-secondary class="ads-num">${integer(product.impressions)}</td>
+            <td data-label="Clicks" data-record-secondary class="ads-num">${integer(product.clicks)}</td>
+            <td data-label="CTR" data-record-secondary class="ads-num">${ratioPercent(product.ctr)}</td>
+            <td data-label="CPC" data-record-secondary class="ads-num">${money(product.cpc)}</td>
+            <td data-label="Purchases / units" data-record-secondary class="ads-num">${integer(product.purchases)} / ${integer(product.units)}</td>
+            <td data-label="Conversion" data-record-secondary class="ads-num">${ratioPercent(product.conversion_rate)}</td>
+            <td data-label="ROAS / ACOS" data-record-secondary class="ads-num">${multiple(product.roas)} / ${ratioPercent(product.acos)}</td>
+            <td data-label="Maturity" data-record-secondary class="ads-num">${integer(product.mature_ads_days)} / ${integer(product.observed_ads_days)} days</td>
+            <td data-record-disclosure class="data-record-disclosure">${productEvidence(product)}</td>
           </tr>`;
         })
         .join('')
-    : '<tr><td colspan="14">No products match the current filters.</td></tr>';
+    : '<tr class="data-table__empty-row"><td colspan="15">No products match the current filters.</td></tr>';
 }
 
 function productReference(signal) {
@@ -365,9 +385,9 @@ function renderDemand() {
           const recommendation = signal.recommendation || {};
           const highlighted = state.signal === signal.signal_id;
           return `<tr data-signal-id="${escapeHtml(signal.signal_id)}"${highlighted ? ' class="is-highlighted"' : ''}>
-            <td data-label="Product">${productReference(signal)}</td>
+            <td data-label="Product" data-record-wide>${productReference(signal)}</td>
             <th scope="row"><div class="ads-signal"><span>${escapeHtml(signal.signal_type_label || 'Demand signal')}</span><strong>${escapeHtml(signal.signal || 'Unnamed signal')}</strong><small>${escapeHtml(signal.match_label || '')} · ${escapeHtml(signal.campaign_name || 'Campaign unavailable')}</small>${technicalDetails(signal)}</div></th>
-            <td data-label="Review state"><span class="ads-state-label">${escapeHtml(recommendation.label || 'Monitor')}</span><span>${escapeHtml(recommendation.explanation || '')}</span></td>
+            <td data-label="Review state"><span class="ads-state-label">${escapeHtml(recommendation.label || 'Monitor')}</span>${recommendation.explanation ? `<details class="ads-row-context"><summary>Why this state</summary><p>${escapeHtml(recommendation.explanation)}</p></details>` : ''}</td>
             <td data-label="Spend" class="ads-num">${money(signal.spend)}</td>
             <td data-label="Clicks" class="ads-num">${integer(signal.clicks)}</td>
             <td data-label="Purchases" class="ads-num">${integer(signal.purchases)}</td>
@@ -377,7 +397,7 @@ function renderDemand() {
           </tr>`;
         })
         .join('')
-    : '<tr><td colspan="9">No demand signals match the current filters.</td></tr>';
+    : '<tr class="data-table__empty-row"><td colspan="9">No demand signals match the current filters.</td></tr>';
   byId('demandRows')
     .querySelectorAll('[data-inspect-signal]')
     .forEach((button) => {
@@ -411,7 +431,7 @@ function renderCampaigns() {
           </tr>`;
         })
         .join('')
-    : '<tr><td colspan="7">No campaign data is available.</td></tr>';
+    : '<tr class="data-table__empty-row"><td colspan="7">No campaign data is available.</td></tr>';
   byId('campaignRows')
     .querySelectorAll('[data-campaign-demand]')
     .forEach((button) => {
@@ -452,6 +472,7 @@ function syncControls() {
 
 function activateView(view, { focus = false } = {}) {
   const selected = VIEWS.has(view) ? view : 'impact';
+  const tablist = document.querySelector('[aria-label="Advertising views"]');
   document.querySelectorAll('[data-ads-view]').forEach((button) => {
     const active = button.dataset.adsView === selected;
     button.classList.toggle('active', active);
@@ -459,6 +480,7 @@ function activateView(view, { focus = false } = {}) {
     button.tabIndex = active ? 0 : -1;
     if (active && focus) button.focus({ preventScroll: true });
   });
+  revealActiveChoice(tablist);
   document.querySelectorAll('.ads-view').forEach((panel) => {
     const active = panel.id === selected;
     panel.classList.toggle('active', active);

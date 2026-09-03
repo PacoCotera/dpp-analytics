@@ -48,6 +48,11 @@ def _classify_inventory_rows(rows: list[dict], current_offers: list[dict], retir
     return classified
 
 
+def _decorate_inventory_rows(rows, current_offers, retired_skus, decorate_products):
+    """Resolve lifecycle first, then apply the canonical user-facing identity."""
+    return decorate_products(_classify_inventory_rows(rows, current_offers, retired_skus))
+
+
 def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
     with connect() as conn, conn.cursor() as cur:
         summary = _one(
@@ -193,7 +198,7 @@ def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
                 "products": [],
             }
 
-    rows = _classify_inventory_rows(rows, current_offers, retired_skus)
+    rows = _decorate_inventory_rows(rows, current_offers, retired_skus, decorate_products)
     ads_by_sku = {
         str(product.get("sku") or ""): product
         for product in ads_context.get("products", [])
@@ -239,7 +244,7 @@ def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
             )
     return {
         "summary": summary,
-        "rows": decorate_products(rows),
+        "rows": rows,
         "record_scope": {
             "default": "current stock-bearing offers",
             "current_offers": len(current_offers),

@@ -16,6 +16,8 @@ node /qa/accessibility_qa.mjs "$base_url" "$work_dir"
 accessibility_rc=$?
 node /qa/audit_batch1_qa.mjs "$base_url" "$work_dir"
 audit_batch1_rc=$?
+node /qa/audit_422_qa.mjs "$base_url" "$work_dir"
+audit_422_rc=$?
 node /qa/analysis_state_qa.mjs "$base_url" "$work_dir"
 analysis_state_rc=$?
 node /qa/manual_sync_qa.mjs "$base_url" "$work_dir"
@@ -95,6 +97,7 @@ if [ "$sidebar_subtitle_rc" -ne 0 ]; then exit "$sidebar_subtitle_rc"; fi
 if [ "$presentation_profiles_rc" -ne 0 ]; then exit "$presentation_profiles_rc"; fi
 if [ "$accessibility_rc" -ne 0 ]; then exit "$accessibility_rc"; fi
 if [ "$audit_batch1_rc" -ne 0 ]; then exit "$audit_batch1_rc"; fi
+if [ "$audit_422_rc" -ne 0 ]; then exit "$audit_422_rc"; fi
 if [ "$analysis_state_rc" -ne 0 ]; then exit "$analysis_state_rc"; fi
 if [ "$manual_sync_rc" -ne 0 ]; then exit "$manual_sync_rc"; fi
 if [ "$today_day_picker_rc" -ne 0 ]; then exit "$today_day_picker_rc"; fi

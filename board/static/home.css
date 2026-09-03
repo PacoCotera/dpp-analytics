@@ -79,11 +79,9 @@
 .home-kpi-rail .kpi__note {
   display: block;
   margin-top: 3px;
-  overflow: hidden;
   font-size: var(--dpp-metadata-size, 14px);
   line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .home-surface {
@@ -452,7 +450,7 @@
 
 .ads-read__head a {
   display: inline-flex;
-  min-height: 32px;
+  min-height: var(--control-height);
   align-items: center;
   color: var(--dpp-interaction);
   font-size: var(--dpp-metadata-size, 14px);
@@ -625,10 +623,6 @@
   .home-kpi-rail .kpi__label {
     margin-top: 4px;
     line-height: 1.15;
-  }
-
-  .home-kpi-rail .kpi__note {
-    display: none;
   }
 
   .home-surface {

@@ -220,7 +220,7 @@ body.shell-drawer-open {
 
 .appearance-trigger {
   display: grid;
-  min-height: 40px;
+  min-height: var(--control-height);
   grid-template-columns: 14px auto;
   align-items: center;
   gap: 2px 8px;

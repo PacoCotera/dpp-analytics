@@ -45,7 +45,7 @@
 .admin-search input,
 .taxonomy-row input {
   width: 100%;
-  min-height: 43px;
+  min-height: var(--control-height);
   padding: 9px 11px;
   border: var(--border-width) solid var(--line);
   border-radius: 11px;
@@ -68,7 +68,7 @@
 .admin-secondary,
 .taxonomy-add,
 .taxonomy-remove {
-  min-height: 42px;
+  min-height: var(--control-height);
   border: 0;
   border-radius: 11px;
   background: var(--dpp-interaction, var(--ink));
