@@ -201,6 +201,42 @@ for (const [engineName, engine] of engines) {
         path: path.join(outDir, `${prefix}-sales-geography.png`),
       });
 
+      await open(page, "/catalog?mode=deleted", "#portfolio .analysis-row");
+      for (const profile of profiles) {
+        await applyProfile(page, profile);
+        const catalog = await page.evaluate(() => {
+          const targets = [
+            ...document.querySelectorAll(
+              "#portfolio a.analysis-link, #portfolio a.analysis-open",
+            ),
+          ].map((node) => {
+            const rect = node.getBoundingClientRect();
+            return {
+              label:
+                node.getAttribute("aria-label") ||
+                node.textContent.trim().slice(0, 80),
+              width: rect.width,
+              height: rect.height,
+            };
+          });
+          return {
+            targets,
+            documentOverflow:
+              document.documentElement.scrollWidth -
+              document.documentElement.clientWidth,
+          };
+        });
+        record(
+          catalog.targets.length > 0 &&
+            catalog.targets.every(
+              (target) => target.width >= 44 && target.height >= 44,
+            ) &&
+            catalog.documentOverflow <= 1,
+          `${prefix}/${profile}: Catalog product links meet the touch-target contract`,
+          catalog,
+        );
+      }
+
       await open(page, "/inventory", "#rows tr");
       const inventory = await page.evaluate(() => {
         const scroller = document.querySelector(

@@ -125,10 +125,13 @@ function scrollActiveChoice(group) {
     const groupRect = group.getBoundingClientRect();
     const activeRect = active.getBoundingClientRect();
     const inset = 6;
-    let delta = 0;
-    if (activeRect.left < groupRect.left + inset) delta = activeRect.left - groupRect.left - inset;
-    else if (activeRect.right > groupRect.right - inset) delta = activeRect.right - groupRect.right + inset;
-    if (delta) group.scrollTo({ left: group.scrollLeft + delta, behavior: 'auto' });
+    const clippedLeft = activeRect.left < groupRect.left + inset;
+    const clippedRight = activeRect.right > groupRect.right - inset;
+    if (clippedLeft || clippedRight) {
+      const activeCenter = activeRect.left + activeRect.width / 2;
+      const groupCenter = groupRect.left + groupRect.width / 2;
+      group.scrollTo({ left: group.scrollLeft + activeCenter - groupCenter, behavior: 'auto' });
+    }
   });
 }
 
