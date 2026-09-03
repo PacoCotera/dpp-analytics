@@ -589,6 +589,46 @@ async function verifyToday(page) {
       throw new Error(`Today ${period} chart hierarchy is underweighted: ${JSON.stringify(signature)}`);
     }
   }
+  if ((page.viewportSize()?.width || 0) > 640) {
+    const tooltipBounds = await page.evaluate(async () => {
+      const host = document.querySelector('.rhythm-host');
+      const bars = [...document.querySelectorAll('#rhythm .demand-rhythm__bar')];
+      const largest = bars.reduce(
+        (best, bar) =>
+          Number(bar.__data__?.value || 0) > Number(best?.__data__?.value || 0) ? bar : best,
+        bars[0],
+      );
+      const samples = [bars[0], largest, bars.at(-1)].filter(
+        (bar, index, all) => bar && all.indexOf(bar) === index,
+      );
+      const hostRect = host.getBoundingClientRect();
+      const results = [];
+      for (const bar of samples) {
+        bar.focus();
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        const tip = host.querySelector('.dpp-chart-tooltip');
+        const tipRect = tip.getBoundingClientRect();
+        results.push({
+          date: bar.__data__?.business_date,
+          placement: tip.dataset.placement,
+          top: tipRect.top,
+          right: tipRect.right,
+          bottom: tipRect.bottom,
+          left: tipRect.left,
+          contained:
+            tipRect.top >= hostRect.top - 1 &&
+            tipRect.right <= hostRect.right + 1 &&
+            tipRect.bottom <= hostRect.bottom + 1 &&
+            tipRect.left >= hostRect.left - 1,
+        });
+      }
+      samples.at(-1)?.blur();
+      return results;
+    });
+    if (!tooltipBounds.length || tooltipBounds.some((sample) => !sample.contained)) {
+      throw new Error(`Today tooltips leave the visible chart: ${JSON.stringify(tooltipBounds)}`);
+    }
+  }
   await page.locator('button[data-period="30"]').click();
   const dayDates = await page.locator('#dayPicker .day-choice').evaluateAll(buttons =>
     buttons.map(button => button.dataset.date)
@@ -672,6 +712,7 @@ async function verifyToday(page) {
     const rhythm = document.querySelector('[data-dpp-qa="today-rhythm"]');
     const operations = document.querySelector('.today-operations');
     const primary = document.querySelector('.workspace-grid--today-primary');
+    const paidSupport = document.getElementById('paidSupportWatch');
     const evidenceSection = document.querySelector('.today-evidence');
     const evidence = document.getElementById('todayBusinessEvidence');
     const reference = document.getElementById('todayProductsReference');
@@ -706,9 +747,9 @@ async function verifyToday(page) {
       recipeMatch: Boolean(
         main &&
           [...main.children].every(
-            (child, index) => child === [overview, primary, evidenceSection][index]
+            (child, index) => child === [overview, primary, paidSupport, evidenceSection][index]
           ) &&
-          main.children.length === 3 &&
+          main.children.length === 4 &&
           primary?.children[0] === rhythm &&
           primary?.children[1] === operations
       ),

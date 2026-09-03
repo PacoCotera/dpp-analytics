@@ -502,6 +502,8 @@ function renderPaidSupportWatch(ads = {}, live = false) {
   const actionNode = byId('paidSupportAction');
   const open = byId('paidSupportOpen');
   const title = byId('paidSupportWatchTitle');
+  const summary = byId('paidSupportSummary');
+  const availability = ads.decision_availability || {};
   if (action) {
     const adsHref = adsDestination(action.destination);
     actionNode.hidden = false;
@@ -509,15 +511,27 @@ function renderPaidSupportWatch(ads = {}, live = false) {
       <span>${escapeHtml(action.label || 'Review')}</span>
       <strong>${escapeHtml(action.product || action.sku || 'Product')}</strong>`;
     title.textContent = action.title || 'Review paid support';
+    summary.textContent = 'One product needs review before changing paid support.';
     open.href = adsHref;
+    open.innerHTML = 'Review in Ads <span aria-hidden="true">→</span>';
+    panel.dataset.decisionState = 'action';
   } else {
     actionNode.hidden = true;
     actionNode.innerHTML = '';
-    title.textContent = 'No paid-support review is ready';
-    open.href = '/ads?view=products';
+    title.textContent = availability.headline || 'Advertising recommendations are unavailable';
+    summary.textContent = availability.detail || 'Open Advertising to review the completed reporting window.';
+    open.href = adsDestination(availability.destination);
+    open.innerHTML = `${escapeHtml(availability.action_label || 'Open Advertising')} <span aria-hidden="true">→</span>`;
+    panel.dataset.decisionState = String(availability.code || 'unavailable').toLowerCase();
   }
+  const observedDays = Number(business.observed_ads_days || 0);
+  const finalizedDays = Number(business.mature_ads_days || 0);
+  const updatingDays = Math.max(0, observedDays - finalizedDays);
+  const attributionTiming = updatingDays
+    ? `${integer(finalizedDays)} days finalized · latest ${integer(updatingDays)} still receiving attribution`
+    : `${integer(finalizedDays)} days finalized`;
   byId('paidSupportNote').textContent =
-    `Through ${String(business.through_date).slice(0, 10)} · ${integer(business.mature_ads_days)}/${integer(business.observed_ads_days)} mature days · attributed sales do not measure incremental sales.`;
+    `Through ${String(business.through_date).slice(0, 10)} · ${attributionTiming} · attributed sales are not incremental sales.`;
 }
 
 function renderSelectedOrders(payload) {

@@ -238,9 +238,13 @@
   line-height: 1.4;
   pointer-events: none;
   opacity: 0;
-  transform: translate(-50%, -100%) translateY(-10px);
+  transform: translate(-50%, -100%);
   transition: opacity var(--dpp-motion-duration, 160ms) ease;
   white-space: normal;
+}
+
+.dpp-chart-tooltip[data-placement='below'] {
+  transform: translate(-50%, 0);
 }
 
 .dpp-chart-tooltip.show {

@@ -83,7 +83,7 @@ All operational tables share one contract:
 
 | Route | Business question | Lead and summary | Dominant surface | Supporting detail |
 | --- | --- | --- | --- | --- |
-| Today `/` | What is happening today and what should I watch next? | live operating state plus three rhythm KPIs | intraday/order rhythm | priority queue and concise reference disclosure |
+| Today `/` | What is happening today and what should I watch next? | live operating state plus three rhythm KPIs | intraday/order rhythm | priority queue, completed-window paid-support watch and concise reference disclosure |
 | Business `/business` | What changed and what needs a decision? | API-owned business pulse plus four KPIs | 13-week demand pulse | inventory decisions; Finance, Inventory and Data confidence health cards |
 | Sales `/sales` | How is demand performing and what explains it? | selected view/range plus comparable KPIs | sales trend or ranked driver view | product and geography detail appropriate to the selected view |
 | Products `/catalog` | Which products need attention or investigation? | portfolio count, window and compact filters | sortable product table | family or status summaries only when they change prioritization |

@@ -89,28 +89,6 @@
           </div>
         </section>
 
-        <section
-          class="panel page-section today-section paid-support-watch"
-          id="paidSupportWatch"
-          aria-labelledby="paidSupportWatchTitle"
-          hidden
-        >
-          <div class="panel__header today-section-header today-panel__head">
-            <div>
-              <div class="section-label">Paid support · completed 28-day window</div>
-              <h2 class="today-panel__title" id="paidSupportWatchTitle">Reading paid support…</h2>
-            </div>
-            <a id="paidSupportOpen" href="/ads">Review in Ads <span aria-hidden="true">→</span></a>
-          </div>
-          <div class="panel__body">
-            <div class="paid-support-watch__body">
-              <div class="paid-support-watch__action" id="paidSupportAction"></div>
-              <div class="paid-support-watch__metrics" id="paidSupportMetrics"></div>
-            </div>
-            <p class="paid-support-watch__note" id="paidSupportNote"></p>
-          </div>
-        </section>
-
         <div class="workspace-grid workspace-grid--today-primary">
           <section
             class="panel panel--chart page-section today-section today-demand"
@@ -196,6 +174,30 @@
             </div>
           </section>
         </div>
+
+        <section
+          class="panel page-section today-section paid-support-watch"
+          id="paidSupportWatch"
+          aria-labelledby="paidSupportWatchTitle"
+          aria-describedby="paidSupportSummary paidSupportNote"
+          hidden
+        >
+          <div class="panel__header today-section-header today-panel__head">
+            <div>
+              <div class="section-label">Paid support · completed 28-day window</div>
+              <h2 class="today-panel__title" id="paidSupportWatchTitle">Reading paid support…</h2>
+              <p class="paid-support-watch__summary" id="paidSupportSummary"></p>
+            </div>
+            <a id="paidSupportOpen" href="/ads">Open Advertising <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="panel__body">
+            <div class="paid-support-watch__body">
+              <div class="paid-support-watch__action" id="paidSupportAction" hidden></div>
+              <div class="paid-support-watch__metrics" id="paidSupportMetrics"></div>
+            </div>
+            <p class="paid-support-watch__note" id="paidSupportNote"></p>
+          </div>
+        </section>
 
         <section class="panel page-section today-section today-evidence" aria-labelledby="todayEvidenceTitle">
           <div class="panel__header today-section-header">

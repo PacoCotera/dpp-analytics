@@ -495,10 +495,16 @@ try {
           action.rule_key &&
           action.rule_version &&
           action.destination,
-      ) && actions.some((action) => action.action_type === "PRODUCT_REVIEW"),
-      JSON.stringify(
-        actions.map((action) => [action.action_type, action.rule_key]),
-      ),
+      ) &&
+        (payload.quality?.trusted_for_operating_decisions
+          ? actions.some((action) => action.action_type === "PRODUCT_REVIEW")
+          : actions.length === 0 &&
+            (payload.products || []).length > 0),
+      JSON.stringify({
+        trusted: payload.quality?.trusted_for_operating_decisions,
+        actions: actions.map((action) => [action.action_type, action.rule_key]),
+        products: (payload.products || []).length,
+      }),
     );
     check(
       "Production declares economics unavailable",

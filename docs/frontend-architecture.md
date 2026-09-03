@@ -102,7 +102,7 @@ letting the shared lead's overflow boundary clip it.
 
 - axes and tick typography
 - semantic colors
-- tooltips
+- tooltips that choose an above/below placement and remain inside the visible chart host
 - legends
 - current/partial period treatment
 - month/year boundaries
