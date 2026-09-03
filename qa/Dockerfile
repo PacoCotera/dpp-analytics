@@ -8,6 +8,7 @@ COPY sidebar_subtitle_qa.mjs ./
 COPY presentation_profiles_qa.mjs ./
 COPY accessibility_qa.mjs ./
 COPY audit_batch1_qa.mjs ./
+COPY audit_422_qa.mjs ./
 COPY analysis_state_qa.mjs ./
 COPY manual_sync_qa.mjs ./
 COPY today_day_picker_qa.mjs ./

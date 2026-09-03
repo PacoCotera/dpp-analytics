@@ -132,6 +132,35 @@ async function loadRoute(page, route) {
   await settle(page);
 }
 
+async function trajectoryRatioState(page) {
+  return page.evaluate(async () => {
+    const response = await fetch("/api/trajectory");
+    const payload = await response.json();
+    const asset = document.querySelector(
+      'meta[name="dpp-asset-revision"]',
+    )?.content;
+    const suffix = asset ? `?v=${asset}` : "";
+    const { percent } = await import(`/assets/ui-utils.js${suffix}`);
+    const metrics = Object.fromEntries(
+      [...document.querySelectorAll("#paidMetrics > div")].map((node) => [
+        node.querySelector("span")?.textContent.trim(),
+        node.querySelector("strong")?.textContent.trim(),
+      ]),
+    );
+    const ready =
+      payload.ads?.status === "ready" && Number(payload.ads?.spend || 0) > 0;
+    return {
+      ready,
+      actual: { ACOS: metrics.ACOS, TACOS: metrics.TACOS },
+      expected: {
+        ACOS: percent(payload.ads?.acos, { scale: 100, sign: false }),
+        TACOS: percent(payload.ads?.tacos, { scale: 100, sign: false }),
+      },
+      story: document.querySelector("#storyCopy")?.textContent || "",
+    };
+  });
+}
+
 if (engines.length) {
   for (const [engineName, engine] of engines) {
     const browser = await engine.launch({ headless: true });
@@ -193,6 +222,23 @@ if (engines.length) {
             );
             checkCount += 1;
           }
+        }
+
+        await loadRoute(page, "/trajectory");
+        const trajectoryRatios = await trajectoryRatioState(page);
+        if (trajectoryRatios.ready) {
+          assert(
+            JSON.stringify(trajectoryRatios.actual) ===
+              JSON.stringify(trajectoryRatios.expected),
+            `${engineName} ${scenario.label} trajectory ratio mismatch: ${JSON.stringify(trajectoryRatios)}`,
+          );
+          assert(
+            trajectoryRatios.story.includes(
+              `TACOS is ${trajectoryRatios.expected.TACOS}`,
+            ),
+            `${engineName} ${scenario.label} trajectory story ratio mismatch: ${JSON.stringify(trajectoryRatios)}`,
+          );
+          checkCount += 2;
         }
 
         await loadRoute(page, "/sales?view=products");

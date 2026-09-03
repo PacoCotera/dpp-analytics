@@ -377,6 +377,7 @@
   display: inline-flex;
   width: 100%;
   min-width: 0;
+  min-height: var(--control-height);
   align-items: center;
   gap: 3px;
   padding: 9px 0 8px;
@@ -609,6 +610,7 @@
     background: var(--dpp-surface-subtle);
   }
 
+  .geo-table tbody th,
   .geo-table td {
     display: block;
     min-width: 0;
@@ -617,10 +619,13 @@
     white-space: normal;
   }
 
-  .geo-table .geo-area-cell {
+  .geo-table tbody .geo-area-cell {
     grid-column: 1 / -1;
     padding-bottom: 9px;
     border-bottom: var(--border-width) solid var(--line);
+    background: transparent;
+    text-align: left;
+    white-space: normal;
   }
 
   .geo-table td.num {
@@ -710,7 +715,7 @@
 }
 .sales-page .geo-sort-direction {
   min-height: var(--control-height);
-  min-width: 34px;
+  min-width: var(--control-height);
   padding: 0 9px;
   border: var(--border-width) solid var(--dpp-border);
   border-radius: var(--dpp-radius-small);
@@ -782,7 +787,7 @@
 }
 .sales-page .geo-map-zoom button {
   display: grid;
-  width: 32px;
+  width: var(--control-height);
   height: var(--control-height);
   place-items: center;
   padding: 0;
@@ -848,7 +853,7 @@
     gap: 5px;
   }
   .geo-map-zoom button {
-    width: 30px;
+    width: var(--control-height);
     height: var(--control-height);
   }
   .geo-map-zoom .geo-map-reset {

@@ -312,10 +312,35 @@ main {
 }
 
 .ads-action-body summary,
-.ads-provenance > summary {
+.ads-provenance > summary,
+.ads-technical summary,
+.ads-row-context summary {
   display: flex;
   align-items: center;
-  min-height: 40px;
+  min-height: var(--control-height);
+}
+
+.ads-row-context {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.ads-row-context summary {
+  width: max-content;
+  max-width: 100%;
+  color: var(--accent-ink);
+  cursor: pointer;
+  font-weight: 760;
+}
+
+.ads-row-context p,
+.ads-row-context small {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .ads-action-body ol {
@@ -405,6 +430,8 @@ main {
 
 .ads-portfolio-list small {
   color: var(--muted);
+  font-size: var(--dpp-metadata-size, 14px);
+  line-height: 1.35;
 }
 
 .ads-support-grid {
@@ -539,15 +566,38 @@ main {
 }
 
 .ads-product-table .data-table {
-  min-width: 1540px;
+  min-width: 1400px;
+  table-layout: fixed;
 }
 
 .ads-demand-table .data-table {
-  min-width: 1230px;
+  min-width: 1120px;
+  table-layout: fixed;
 }
 
 .ads-campaign-table .data-table {
-  min-width: 990px;
+  min-width: 960px;
+  table-layout: fixed;
+}
+
+.ads-product-table thead th:first-child {
+  width: 290px;
+}
+
+.ads-demand-table thead th:first-child {
+  width: 220px;
+}
+
+.ads-demand-table thead th:nth-child(2) {
+  width: 250px;
+}
+
+.ads-demand-table thead th:nth-child(3) {
+  width: 190px;
+}
+
+.ads-campaign-table thead th:first-child {
+  width: 300px;
 }
 
 .data-table caption {
@@ -572,10 +622,11 @@ main {
   z-index: 2;
   top: 0;
   background: var(--surface);
+  white-space: normal;
 }
 
 .ads-product-primary {
-  width: 270px;
+  width: auto;
 }
 
 .ads-product-primary .product-line {
@@ -773,13 +824,38 @@ main {
   .ads-product-table .data-table,
   .ads-demand-table .data-table,
   .ads-campaign-table .data-table {
-    display: table;
+    width: 100%;
+    min-width: 0;
+    table-layout: auto;
   }
 
   .ads-product-table .data-table-scroll,
   .ads-demand-table .data-table-scroll,
   .ads-campaign-table .data-table-scroll {
     max-height: min(68vh, 620px);
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .ads-product-table .data-table tbody,
+  .ads-demand-table .data-table tbody,
+  .ads-campaign-table .data-table tbody {
+    min-width: 0;
+  }
+
+  .ads-product-table .data-table tbody tr,
+  .ads-demand-table .data-table tbody tr,
+  .ads-campaign-table .data-table tbody tr {
+    height: auto;
+  }
+
+  .ads-product-table .ads-product-primary,
+  .ads-demand-table .ads-signal,
+  .ads-demand-table .ads-multi-product {
+    width: auto;
+  }
+
+  .ads-demand-table td[data-record-wide] {
+    background: var(--surface);
   }
 }

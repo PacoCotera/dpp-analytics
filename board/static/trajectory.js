@@ -50,13 +50,13 @@ function toneClass(value) {
   return '';
 }
 function share(value) {
-  return percent(value, { sign: false });
+  return percent(value, { sign: false, scale: 100 });
 }
 function renderStory(read = {}, rules = {}, ads = {}) {
   const title = read.label || 'Trajectory unavailable';
   let copy = read.explanation || 'Not enough reconciled history is available to interpret trajectory.';
   if (ads.status === 'ready' && Number(ads.spend || 0) > 0) {
-    const efficiency = ads.tacos == null ? '' : ` TACOS is ${percent(ads.tacos, { sign: false })}.`;
+    const efficiency = ads.tacos == null ? '' : ` TACOS is ${share(ads.tacos)}.`;
     copy += ` Paid media supported the latest 28-day period with ${money(ads.spend)} of spend.${efficiency} Read this as context, not proof that advertising caused the sales movement.`;
   }
   byId('storyTitle').textContent = title;

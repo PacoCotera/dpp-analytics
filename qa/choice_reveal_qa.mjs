@@ -26,7 +26,10 @@ async function waitForChoice(page, groupSelector, valueSelector) {
   await page.waitForFunction(
     ([group, value]) => {
       const active = document.querySelector(`${group} ${value}`);
-      return active?.getAttribute("aria-pressed") === "true";
+      return (
+        active?.getAttribute("aria-pressed") === "true" ||
+        active?.getAttribute("aria-selected") === "true"
+      );
     },
     [groupSelector, valueSelector],
   );
@@ -47,7 +50,9 @@ async function choiceState(page, groupSelector, valueSelector) {
       const activeRect = active?.getBoundingClientRect();
       return {
         profile: window.dppPresentation?.getProfileId(),
-        selected: active?.getAttribute("aria-pressed"),
+        selected:
+          active?.getAttribute("aria-pressed") ||
+          active?.getAttribute("aria-selected"),
         group: groupRect && {
           left: groupRect.left,
           right: groupRect.right,
@@ -73,9 +78,9 @@ async function choiceState(page, groupSelector, valueSelector) {
 function fullyVisible(state) {
   return Boolean(
     state.active &&
-    state.group &&
-    state.active.left >= state.group.left - 1 &&
-    state.active.right <= state.group.right + 1,
+      state.group &&
+      state.active.left >= state.group.left - 1 &&
+      state.active.right <= state.group.right + 1,
   );
 }
 
@@ -233,6 +238,36 @@ for (const [engineName, engine] of [
     record(
       fullyVisible(inventoryHistory),
       `${prefix}/inventory-history: restored choice is visible`,
+    );
+
+    await page.goto(`${baseUrl}/ads?view=demand`, {
+      waitUntil: "networkidle",
+    });
+    const adsGroup = '[aria-label="Advertising views"]';
+    const adsDemand = '[data-ads-view="demand"]';
+    await waitForChoice(page, adsGroup, adsDemand);
+    await assertProfiles(
+      page,
+      `${prefix}/ads-demand-direct`,
+      adsGroup,
+      adsDemand,
+      viewport.width === 360 ? `${prefix}-ads-demand` : "",
+    );
+    await page.reload({ waitUntil: "networkidle" });
+    await waitForChoice(page, adsGroup, adsDemand);
+    const adsRefresh = await choiceState(page, adsGroup, adsDemand);
+    record(
+      fullyVisible(adsRefresh),
+      `${prefix}/ads-demand-refresh: active choice is visible`,
+    );
+    await page.locator('[data-ads-view="products"]').click();
+    await waitForChoice(page, adsGroup, '[data-ads-view="products"]');
+    await page.goBack({ waitUntil: "networkidle" });
+    await waitForChoice(page, adsGroup, adsDemand);
+    const adsHistory = await choiceState(page, adsGroup, adsDemand);
+    record(
+      fullyVisible(adsHistory),
+      `${prefix}/ads-demand-history: restored choice is visible`,
     );
 
     await browser.close();

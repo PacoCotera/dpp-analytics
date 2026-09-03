@@ -113,8 +113,10 @@
 }
 
 .product-paid-support {
-  display: block;
+  display: grid;
+  min-height: var(--control-height);
   min-width: 132px;
+  align-content: center;
   color: var(--dpp-interaction);
 }
 

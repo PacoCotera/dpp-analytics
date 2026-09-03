@@ -51,7 +51,8 @@ import { formatCount, money, percent } from './format-core.js';
   };
   const GEO_RANGES = new Set(['30d', '90d', 'ytd', 'all']);
   const GEO_METRICS = new Set(['sales', 'orders', 'units', 'aov']);
-  const RANKED_ROW_LIMIT = 20;
+  const DESKTOP_RANKED_ROW_LIMIT = 20;
+  const MOBILE_RANKED_ROW_LIMIT = 6;
   const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   const esc = (s) =>
     String(s ?? '').replace(
@@ -558,6 +559,12 @@ import { formatCount, money, percent } from './format-core.js';
     });
   }
 
+  function rankedRowLimit() {
+    return window.matchMedia('(max-width: 720px)').matches
+      ? MOBILE_RANKED_ROW_LIMIT
+      : DESKTOP_RANKED_ROW_LIMIT;
+  }
+
   function updateSortUi(totalRows, visibleRows) {
     document.querySelectorAll('.geo-table th[data-geo-sort]').forEach((header) => {
       const active = header.dataset.geoSort === SORT_FIELD;
@@ -581,17 +588,18 @@ import { formatCount, money, percent } from './format-core.js';
     const title = document.getElementById('geoRankedTitle');
     if (!out || !title) return;
     const rows = sortedRankRows();
-    const visibleRows = SHOW_ALL_RANKED ? rows : rows.slice(0, RANKED_ROW_LIMIT);
+    const rowLimit = rankedRowLimit();
+    const visibleRows = SHOW_ALL_RANKED ? rows : rows.slice(0, rowLimit);
     title.textContent = SELECTED_STATE
       ? `Postal codes · ${META_BY_CODE.get(SELECTED_STATE)?.name || ''}`
       : 'States';
     updateSortUi(rows.length, visibleRows.length);
     const showAll = document.getElementById('geoShowAll');
     if (showAll) {
-      const limited = rows.length > RANKED_ROW_LIMIT;
+      const limited = rows.length > rowLimit;
       showAll.hidden = !limited;
       showAll.setAttribute('aria-expanded', String(limited && SHOW_ALL_RANKED));
-      showAll.textContent = SHOW_ALL_RANKED ? `Show top ${RANKED_ROW_LIMIT}` : `Show all ${rows.length}`;
+      showAll.textContent = SHOW_ALL_RANKED ? `Show top ${rowLimit}` : `Show all ${rows.length}`;
     }
     out.innerHTML = visibleRows
       .map((r) => {
@@ -599,7 +607,7 @@ import { formatCount, money, percent } from './format-core.js';
         const area = SELECTED_STATE
           ? `<strong>CP ${esc(r.postal_code)} · ${esc(postalLabel(r.postal_code))}</strong><small>${esc(postalDetail(r.postal_code))}</small>`
           : `<strong>${esc(r.label)}</strong>`;
-        return `<tr${click}><td class="geo-area-cell">${area}</td><td class="num" data-label="Spend" data-value="${Number(r.sales || 0)}">${money(r.sales)}</td><td class="num" data-label="Orders" data-value="${Number(r.orders || 0)}">${nf.format(r.orders)}</td><td class="num" data-label="Units" data-value="${Number(r.units || 0)}">${nf.format(r.units)}</td><td class="num" data-label="AOV" data-value="${Number(r.aov || 0)}">${money(r.aov)}</td></tr>`;
+        return `<tr${click}><th scope="row" class="geo-area-cell">${area}</th><td class="num" data-label="Spend" data-value="${Number(r.sales || 0)}">${money(r.sales)}</td><td class="num" data-label="Orders" data-value="${Number(r.orders || 0)}">${nf.format(r.orders)}</td><td class="num" data-label="Units" data-value="${Number(r.units || 0)}">${nf.format(r.units)}</td><td class="num" data-label="AOV" data-value="${Number(r.aov || 0)}">${money(r.aov)}</td></tr>`;
       })
       .join('');
     out.querySelectorAll('[data-state]').forEach((row) => {
@@ -796,7 +804,10 @@ import { formatCount, money, percent } from './format-core.js';
       () => {
         if (!document.getElementById('geography')?.classList.contains('active')) return;
         clearTimeout(timer);
-        timer = setTimeout(renderMap, 160);
+        timer = setTimeout(() => {
+          renderMap();
+          if (!SHOW_ALL_RANKED) renderRanked();
+        }, 160);
       },
       { passive: true },
     );

@@ -23,6 +23,20 @@ def _all(cur, sql: str, params=()):
     return list(cur.fetchall())
 
 
+def _ads_product_identity(decorate_products, sku, asin, product, image_url):
+    """Give cross-route Ads decisions the same canonical identity as the page."""
+    return decorate_products(
+        [
+            {
+                'sku': sku,
+                'asin': asin,
+                'product': product,
+                'image_url': image_url,
+            }
+        ]
+    )[0]
+
+
 def product_payload(connect, decorate_products, marketplace: str, sku: str) -> dict:
     sku = (sku or '').strip()
     if not sku:
@@ -118,12 +132,19 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
             WHERE marketplace_id=%s AND asin=%s AND business_date BETWEEN c.d-27 AND c.d
         """,(cutoff,marketplace,asin)) if cutoff and asin else {}
 
+        ads_identity = _ads_product_identity(
+            decorate_products,
+            sku,
+            asin,
+            commercial.get('product') or profile.get('product'),
+            commercial.get('image_url') or profile.get('image_url'),
+        )
         ads = product_t28(
             cur,
             marketplace,
             sku,
-            product=commercial.get('product') or profile.get('product'),
-            image_url=commercial.get('image_url') or profile.get('image_url'),
+            product=ads_identity.get('product'),
+            image_url=ads_identity.get('image_url'),
         )
 
         series = _all(cur,"""
