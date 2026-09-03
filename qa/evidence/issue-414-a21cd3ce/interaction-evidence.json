@@ -1,0 +1,89 @@
+{
+  "issue": 414,
+  "production_url": "http://95.217.100.5:8088/ads",
+  "verified_commit": "a21cd3cee8e36859a67601f045eedfe21ac4b181",
+  "browser_meta_revision": "a21cd3ce",
+  "asset_revision": "06affb372439",
+  "verified_at_utc": "2026-09-03T02:04:00Z",
+  "sessions": [
+    {
+      "engine": "chromium",
+      "mode": "desktop",
+      "viewport": "1440x900"
+    },
+    {
+      "engine": "chromium",
+      "mode": "mobile",
+      "viewport": "393x727"
+    },
+    {
+      "engine": "webkit",
+      "mode": "desktop",
+      "viewport": "1440x900"
+    },
+    {
+      "engine": "webkit",
+      "mode": "mobile",
+      "viewport": "390x664"
+    },
+    {
+      "engine": "firefox",
+      "mode": "desktop",
+      "viewport": "1440x900"
+    }
+  ],
+  "structural_results": {
+    "all_ready": true,
+    "all_exact_build_prefix": true,
+    "all_asset_revision": true,
+    "all_zero_document_overflow": true,
+    "all_one_h1": true,
+    "all_four_tabs_enabled": true,
+    "all_accessible_portfolio_marks": true,
+    "all_disclosures_at_least_40px": true,
+    "all_target_ids_secondary": true,
+    "all_prescriptive_quadrants_absent": true,
+    "all_economics_unavailable": true,
+    "all_attribution_nonincremental": true
+  },
+  "production_values": {
+    "spend": "$8,918",
+    "total_seller_sales": "$16,603",
+    "tacos": "53.7%",
+    "amazon_attributed_sales": "$11,486",
+    "actions": 8,
+    "products": 8,
+    "demand_total": 1000,
+    "demand_page_size": 20
+  },
+  "interactions": [
+    "Demand discovery tab opened in every engine/device session and restored ?view=demand.",
+    "Mobile demand tables remained document-contained, horizontally scrollable, and below 70% of viewport height.",
+    "Direct product action URL restored SKU PNC-001, opportunity filter, highlighted row, keyboard focus, action ID, and unrelated trace parameter.",
+    "Product Workspace navigation and browser Back returned to the exact Ads SKU/action URL and focused row.",
+    "Direct demand URL restored SKU, campaign, signal, action state, type, sort, highlighted row, focus, and unrelated trace parameter.",
+    "Back restored spend-desc plus the exact signal; Forward restored sales-desc.",
+    "ArrowRight from Demand discovery selected and focused Advertising detail.",
+    "Advertising detail rendered four accessible campaign marks and no prescriptive median quadrant labels."
+  ],
+  "diagnostics": {
+    "console_entries_each": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "response_statuses": [
+      "200",
+      "304 cache validation"
+    ],
+    "failed_responses_each": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}
