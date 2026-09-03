@@ -521,10 +521,16 @@
 
 .paid-support-watch__metrics span,
 .paid-support-watch__action span,
+.paid-support-watch__summary,
 .paid-support-watch__note {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.45;
+}
+
+.paid-support-watch__summary {
+  max-width: 62ch;
+  margin: 4px 0 0;
 }
 
 .paid-support-watch__action {
@@ -1597,7 +1603,7 @@ html.wall-mode .today-section {
     gap: 0;
   }
 
-  .paid-support-watch__action {
+  .paid-support-watch__action:not([hidden]) {
     display: flex;
     flex-direction: column;
     justify-content: center;

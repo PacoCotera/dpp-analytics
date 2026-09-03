@@ -95,8 +95,25 @@
       y = mark.top - rect.top;
     }
     ctx.tip.innerHTML = `<strong>${title}</strong>${lines.map((line) => `<span>${line}</span>`).join('')}`;
-    ctx.tip.style.left = `${Math.max(70, Math.min(rect.width - 70, x))}px`;
-    ctx.tip.style.top = `${Math.max(56, y)}px`;
+    ctx.tip.dataset.placement = 'above';
+    const tipWidth = ctx.tip.offsetWidth;
+    const tipHeight = ctx.tip.offsetHeight;
+    const inset = 8;
+    const gap = 10;
+    const halfWidth = tipWidth / 2;
+    const minimumX = Math.min(rect.width / 2, inset + halfWidth);
+    const maximumX = Math.max(rect.width / 2, rect.width - inset - halfWidth);
+    const roomAbove = y - inset;
+    const roomBelow = rect.height - y - inset;
+    const placeBelow = roomAbove < tipHeight + gap && roomBelow >= roomAbove;
+    const placement = placeBelow ? 'below' : 'above';
+    const maximumTop = Math.max(inset, rect.height - inset - tipHeight);
+    const tooltipTop = placeBelow
+      ? Math.min(maximumTop, Math.max(inset, y + gap))
+      : Math.min(rect.height - inset, Math.max(inset + tipHeight, y - gap));
+    ctx.tip.dataset.placement = placement;
+    ctx.tip.style.left = `${Math.max(minimumX, Math.min(maximumX, x))}px`;
+    ctx.tip.style.top = `${tooltipTop}px`;
     ctx.tip.classList.add('show');
   }
   function hideTip(ctx) {

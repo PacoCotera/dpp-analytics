@@ -73,7 +73,39 @@ try {
     check(
       "Today keeps one paid-support destination",
       (await page.locator("#paidSupportWatch a").count()) === 1 &&
-        (await page.locator("#paidSupportOpen").innerText()).includes("Review in Ads"),
+        Boolean((await page.locator("#paidSupportOpen").innerText()).trim()),
+    );
+    const todayPaidSupport = await page.locator("#paidSupportWatch").evaluate((panel) => {
+      const action = panel.querySelector("#paidSupportAction");
+      return {
+        state: panel.dataset.decisionState,
+        title: panel.querySelector("#paidSupportWatchTitle")?.textContent.trim(),
+        summary: panel.querySelector("#paidSupportSummary")?.textContent.trim(),
+        note: panel.querySelector("#paidSupportNote")?.textContent.trim(),
+        actionHidden: action.hidden,
+        actionDisplay: getComputedStyle(action).display,
+        actionHeight: action.getBoundingClientRect().height,
+      };
+    });
+    check(
+      "Today renders the server-owned recommendation state",
+      Boolean(today.ads?.primary_action) ||
+        (Boolean(today.ads?.decision_availability?.headline) &&
+          todayPaidSupport.title === today.ads.decision_availability.headline &&
+          todayPaidSupport.summary === today.ads.decision_availability.detail),
+      JSON.stringify(todayPaidSupport),
+    );
+    check(
+      "Today explains attribution timing without Ads jargon",
+      todayPaidSupport.note.includes("days finalized") &&
+        !todayPaidSupport.note.toLowerCase().includes("mature"),
+      todayPaidSupport.note,
+    );
+    check(
+      "Today does not render an empty paid-support callout",
+      !todayPaidSupport.actionHidden ||
+        (todayPaidSupport.actionDisplay === "none" && todayPaidSupport.actionHeight === 0),
+      JSON.stringify(todayPaidSupport),
     );
 
     const wide = await browser.newContext({ viewport: { width: 2048, height: 1111 }, reducedMotion: "reduce" });
@@ -97,13 +129,14 @@ try {
           documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           nestedInOperations: Boolean(panel.closest(".today-operations")),
           nestedInPrimaryGrid: Boolean(panel.closest(".workspace-grid--today-primary")),
-          precedesPrimaryGrid: panel.nextElementSibling?.matches(".workspace-grid--today-primary") || false,
+          followsPrimaryGrid: panel.previousElementSibling?.matches(".workspace-grid--today-primary") || false,
+          precedesEvidence: panel.nextElementSibling?.matches(".today-evidence") || false,
         };
       });
       check("Today gives paid support its own sibling panel", !layout.nestedInOperations, JSON.stringify(layout));
       check(
-        "Today keeps paid support outside the chart and driver grid",
-        !layout.nestedInPrimaryGrid && layout.precedesPrimaryGrid,
+        "Today places completed paid support after the live workspace",
+        !layout.nestedInPrimaryGrid && layout.followsPrimaryGrid && layout.precedesEvidence,
         JSON.stringify(layout),
       );
       check("Today wide paid-support card is contained", layout.panelOverflow <= 1, JSON.stringify(layout));

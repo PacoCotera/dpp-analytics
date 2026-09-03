@@ -93,6 +93,92 @@ def _finalize_context(row: dict, expected_days: int | None = None, quality: dict
     return row
 
 
+def decision_availability(business: dict, connection: dict) -> dict:
+    """Explain whether the completed Ads window can produce recommendations.
+
+    This is server-owned interpretation. Cross-route browser code should render
+    this contract rather than infer business meaning from quality codes.
+    """
+    destination = {"view": "impact"}
+    if not business.get("through_date"):
+        return {
+            "state": "UNAVAILABLE",
+            "code": "NO_REPORTING_WINDOW",
+            "headline": "Advertising history is not available yet",
+            "detail": "A completed reporting window is required before paid-support metrics or recommendations can appear.",
+            "action_label": "Open Advertising",
+            "destination": destination,
+        }
+
+    if connection.get("state") != "READY":
+        return {
+            "state": "BLOCKED",
+            "code": "CONNECTION_NOT_READY",
+            "headline": connection.get("headline") or "Advertising reporting needs attention",
+            "detail": connection.get("detail") or "Product recommendations are paused until Amazon Ads reporting is ready.",
+            "action_label": "Review Ads status",
+            "destination": destination,
+        }
+
+    observed = int(business.get("observed_ads_days") or 0)
+    expected = int(business.get("expected_ads_days") or 0)
+    missing = int(business.get("missing_ads_days") or max(0, expected - observed))
+    if business.get("coverage_state") != "COMPLETE":
+        missing_label = f"{missing} reporting day" + ("s" if missing != 1 else "")
+        verb = "is" if missing == 1 else "are"
+        return {
+            "state": "BLOCKED",
+            "code": "REPORTING_INCOMPLETE",
+            "headline": "Advertising reporting is incomplete",
+            "detail": f"{missing_label.capitalize()} {verb} missing from the completed window, so product recommendations are paused.",
+            "action_label": "Review Ads data",
+            "destination": destination,
+        }
+
+    quality = business.get("quality") or {}
+    if not quality.get("trusted"):
+        issue_days = int(quality.get("issue_days") or 0)
+        issue_label = f"{issue_days} data issue" + ("s" if issue_days != 1 else "") if issue_days else "Data checks"
+        issue_verb = "is" if issue_days == 1 else "are"
+        issues = quality.get("issues") or {}
+        denominator_days = int(issues.get("SELLER_SALES_DENOMINATOR_MISSING") or 0)
+        if denominator_days:
+            day_label = f"{denominator_days} day" + ("s" if denominator_days != 1 else "")
+            detail = (
+                f"Seller-sales data is missing for {day_label}. Metrics remain visible, "
+                "but product recommendations are paused until it is reconciled."
+            )
+        else:
+            detail = "Advertising metrics remain visible, but product recommendations are paused until the data issue is reconciled."
+        return {
+            "state": "BLOCKED",
+            "code": "DATA_QUALITY_BLOCKED",
+            "headline": f"{issue_label.capitalize()} {issue_verb} blocking recommendations",
+            "detail": detail,
+            "action_label": "Review Ads data",
+            "destination": destination,
+        }
+
+    if not business.get("trusted_for_operating_decisions"):
+        return {
+            "state": "BLOCKED",
+            "code": "DECISION_INPUTS_NOT_READY",
+            "headline": "Advertising recommendations are paused",
+            "detail": "The completed window does not yet meet the reporting checks required for product recommendations.",
+            "action_label": "Review Ads data",
+            "destination": destination,
+        }
+
+    return {
+        "state": "READY",
+        "code": "READY",
+        "headline": "No advertising action needs review",
+        "detail": "No product crossed the current review thresholds in this completed window.",
+        "action_label": "Open Advertising",
+        "destination": destination,
+    }
+
+
 def business_t28(cur, marketplace: str) -> dict:
     """Canonical rolling Ads context. Finance must use its monthly accounting mart."""
     cur.execute(
@@ -168,6 +254,7 @@ def cross_route_t28(cur, marketplace: str, decorate_products=None, *, limit: int
             "products": [],
             "actions": [],
             "primary_action": None,
+            "decision_availability": decision_availability(business, connection),
             "economics": ECONOMICS_CONTRACT,
             "interpretation_rules": INTERPRETATION_RULES,
         }
@@ -217,6 +304,7 @@ def cross_route_t28(cur, marketplace: str, decorate_products=None, *, limit: int
         "actions": actions,
         "action_groups": groups,
         "primary_action": actions[0] if actions else None,
+        "decision_availability": decision_availability(business, connection),
         "attribution_lookback_days": lookback_days,
         "economics": ECONOMICS_CONTRACT,
         "interpretation_rules": INTERPRETATION_RULES,

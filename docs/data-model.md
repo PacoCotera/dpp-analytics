@@ -129,7 +129,9 @@ qualification, recommendation rule and stable destination that `/api/ads` uses. 
 the primary eligible product review; Sales also receives at most 20 product rows. Inventory joins at most 60 product
 contexts to canonical current offers and applies the named `ADS_INVENTORY_EXPOSURE_REVIEW` rule only after its own
 stock action is known. Product Workspace uses the single-SKU projection. These are API-owned interpretations, not
-browser joins or a second Ads metric definition.
+browser joins or a second Ads metric definition. The same projection owns `decision_availability`, which distinguishes
+a recommendation-ready window with no qualifying action from reporting, connection or reconciliation blockers and
+supplies plain-language cross-route copy for that state.
 
 Campaign/ad-group advertised-product facts associate target and search-term evidence back to one or more products.
 The API normalizes that evidence as shopper queries, matched products or configured targets and keeps raw Amazon
