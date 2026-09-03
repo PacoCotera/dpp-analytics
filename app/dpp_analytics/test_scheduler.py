@@ -4,7 +4,13 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from .scheduler import _ads_delay_after_result, _initial_ads_due, _start_background_job
+from .scheduler import (
+    _ads_delay_after_result,
+    _brand_analytics_delay_after_result,
+    _initial_ads_due,
+    _initial_brand_analytics_due,
+    _start_background_job,
+)
 from .settings import settings
 
 
@@ -48,6 +54,31 @@ class BackgroundSchedulerTests(unittest.TestCase):
         self.assertEqual(
             _ads_delay_after_result({"status": "success", "backfill_complete": True}),
             settings.ads_reporting_interval_seconds,
+        )
+
+    @patch("dpp_analytics.scheduler.search_query_backfill_complete", return_value=False)
+    def test_incomplete_brand_analytics_backfill_is_due_immediately(
+        self, _complete
+    ) -> None:
+        self.assertEqual(_initial_brand_analytics_due(), 0.0)
+
+    def test_successful_incomplete_brand_analytics_month_chains_immediately(self) -> None:
+        self.assertEqual(
+            _brand_analytics_delay_after_result(
+                {"status": "success", "backfill_complete": False}
+            ),
+            0,
+        )
+
+    def test_failed_brand_analytics_run_retries_in_five_minutes(self) -> None:
+        self.assertEqual(_brand_analytics_delay_after_result(None), 300)
+
+    def test_current_brand_analytics_run_keeps_normal_interval(self) -> None:
+        self.assertEqual(
+            _brand_analytics_delay_after_result(
+                {"status": "success", "backfill_complete": True}
+            ),
+            settings.brand_analytics_search_query_interval_seconds,
         )
 
 

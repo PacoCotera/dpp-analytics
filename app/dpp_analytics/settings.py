@@ -58,6 +58,16 @@ class Settings:
     finances_interval_seconds: int = int(os.getenv("FINANCES_INTERVAL_SECONDS", "14400"))
     settlement_reports_interval_seconds: int = int(os.getenv("SETTLEMENT_REPORTS_INTERVAL_SECONDS", "21600"))
     data_kiosk_interval_seconds: int = int(os.getenv("DATA_KIOSK_INTERVAL_SECONDS", "43200"))
+    brand_analytics_search_query_interval_seconds: int = int(
+        os.getenv("BRAND_ANALYTICS_SEARCH_QUERY_INTERVAL_SECONDS", "86400")
+    )
+    brand_analytics_search_query_backfill_months: int = max(
+        1,
+        min(
+            17,
+            int(os.getenv("BRAND_ANALYTICS_SEARCH_QUERY_BACKFILL_MONTHS", "17")),
+        ),
+    )
     listings_report_interval_seconds: int = int(os.getenv("LISTINGS_REPORT_INTERVAL_SECONDS", "21600"))
     reports_poll_seconds: int = int(os.getenv("REPORTS_POLL_SECONDS", "5"))
     reports_poll_timeout_seconds: int = int(os.getenv("REPORTS_POLL_TIMEOUT_SECONDS", "300"))

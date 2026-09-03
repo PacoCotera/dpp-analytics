@@ -63,6 +63,16 @@ JOB_DEFINITIONS = {
         "interval_seconds": lambda: _seconds("DATA_KIOSK_INTERVAL_SECONDS", 43200),
         "grace_seconds": 21600,
     },
+    ("amazon_brand_analytics", "search_query_performance"): {
+        "label": "Search Query Performance",
+        "operation": "Amazon Brand Analytics · ASIN query funnel",
+        "purpose": "Provides query demand, funnel conversion and ASIN share evidence.",
+        "domain": "Advertising",
+        "interval_seconds": lambda: _seconds(
+            "BRAND_ANALYTICS_SEARCH_QUERY_INTERVAL_SECONDS", 86400
+        ),
+        "grace_seconds": 86400,
+    },
     ("amazon_reports", "merchant_listings_all_data"): {
         "label": "Seller listings",
         "operation": "Amazon SP-API · Merchant Listings report",
