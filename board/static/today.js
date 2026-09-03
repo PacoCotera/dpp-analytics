@@ -494,28 +494,30 @@ function renderPaidSupportWatch(ads = {}, live = false) {
 
   panel.hidden = false;
   byId('paidSupportMetrics').innerHTML = `
-    <div><strong>${money(business.spend)}</strong><span>28-day spend</span></div>
-    <div><strong>${percent(business.tacos, { sign: false, scale: 100 })}</strong><span>TACOS</span></div>
-    <div><strong>${money(business.attributed_sales)}</strong><span>Attributed sales</span></div>`;
+    <div class="paid-support-watch__metric--primary"><strong>${percent(business.tacos, { sign: false, scale: 100 })}</strong><span>ad spend / seller sales</span></div>
+    <div><strong>${money(business.spend)}</strong><span>ad spend</span></div>
+    <div><strong>${money(business.attributed_sales)}</strong><span>attributed sales</span></div>`;
 
   const action = ads.primary_action;
   const actionNode = byId('paidSupportAction');
   const open = byId('paidSupportOpen');
+  const title = byId('paidSupportWatchTitle');
   if (action) {
-    const productHref = `/product?sku=${encodeURIComponent(action.sku || '')}`;
     const adsHref = adsDestination(action.destination);
     actionNode.hidden = false;
     actionNode.innerHTML = `
-      <div><span>${escapeHtml(action.label || 'Review')}</span><strong>${escapeHtml(action.title || action.product || action.sku || 'Paid-support review')}</strong><p>${escapeHtml(action.rationale || '')}</p></div>
-      <div class="paid-support-watch__links"><a href="${productHref}">Open product</a><a href="${adsHref}">Review in Advertising</a></div>`;
+      <span>${escapeHtml(action.label || 'Review')}</span>
+      <strong>${escapeHtml(action.product || action.sku || 'Product')}</strong>`;
+    title.textContent = action.title || 'Review paid support';
     open.href = adsHref;
   } else {
     actionNode.hidden = true;
     actionNode.innerHTML = '';
+    title.textContent = 'No paid-support review is ready';
     open.href = '/ads?view=products';
   }
   byId('paidSupportNote').textContent =
-    `${integer(business.observed_ads_days)} observed · ${integer(business.mature_ads_days)} mature · through ${String(business.through_date).slice(0, 10)}. Latest completed Ads window, not today’s advertising. Attributed sales are not incremental sales.`;
+    `Through ${String(business.through_date).slice(0, 10)} · ${integer(business.mature_ads_days)}/${integer(business.observed_ads_days)} mature days · attributed sales do not measure incremental sales.`;
 }
 
 function renderSelectedOrders(payload) {
