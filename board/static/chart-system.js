@@ -151,6 +151,35 @@
       .text(message);
   }
 
+  function wrapChartLabels(selection, value, maxCharacters = 30) {
+    selection.each(function (datum) {
+      const words = String(value(datum) || '')
+        .split(/\s+/)
+        .filter(Boolean);
+      const lines = [''];
+      for (const word of words) {
+        const current = lines.at(-1);
+        const candidate = current ? `${current} ${word}` : word;
+        if (candidate.length <= maxCharacters || !current) lines[lines.length - 1] = candidate;
+        else if (lines.length === 1) lines.push(word);
+        else lines[1] = `${lines[1]} ${word}`;
+      }
+      if (lines[1]?.length > maxCharacters + 7) {
+        lines[1] = `${lines[1].slice(0, maxCharacters + 4).trimEnd()}…`;
+      }
+      const label = d3.select(this);
+      const y = Number(label.attr('y')) - (lines.length - 1) * 7;
+      label.attr('y', y).text(null);
+      label
+        .selectAll('tspan')
+        .data(lines)
+        .join('tspan')
+        .attr('x', label.attr('x'))
+        .attr('dy', (line, index) => (index ? 15 : 0))
+        .text((line) => line);
+    });
+  }
+
   function demandRhythm(selector, rows, options = {}) {
     const data = (rows || [])
       .map((d) => ({
@@ -481,138 +510,176 @@
         key: String(d.business_date || '').slice(0, 10),
         spend: Number(d.spend || 0),
         attributed: Number(d.attributed_sales || 0),
+        sellerSales: Number(d.total_business_sales || 0),
       }))
       .filter((d) => d.key)
       .sort((a, b) => d3.ascending(a.key, b.key));
     if (!data.length) return empty(selector, 'No advertising history yet.');
-    const compact = window.innerWidth <= 640;
+    const weekly = [];
+    for (let index = 0; index < data.length; index += 7) {
+      const days = data.slice(index, index + 7);
+      const start = parseDate(days[0].key);
+      const end = parseDate(days.at(-1).key);
+      const startLabel = d3.utcFormat('%b %-d')(start);
+      const endLabel =
+        start.getUTCMonth() === end.getUTCMonth() ? d3.utcFormat('%-d')(end) : d3.utcFormat('%b %-d')(end);
+      const compactLabel =
+        index === 0 ? `${startLabel}–${endLabel}` : `${d3.utcFormat('%-d')(start)}–${endLabel}`;
+      const spend = d3.sum(days, (d) => d.spend);
+      const sellerSales = d3.sum(days, (d) => d.sellerSales);
+      weekly.push({
+        label: compactLabel,
+        fullLabel: `${startLabel}–${endLabel}`,
+        spend,
+        sellerSales,
+        attributed: d3.sum(days, (d) => d.attributed),
+        tacos: sellerSales > 0 ? (spend / sellerSales) * 100 : null,
+      });
+    }
+    const comparable = weekly.filter((week) => Number.isFinite(week.tacos));
+    if (!comparable.length)
+      return empty(selector, 'Seller sales are unavailable for the current Ads window.');
+    const hostWidth = Math.round(
+      document.querySelector(selector)?.parentElement?.getBoundingClientRect().width || 760,
+    );
+    const width = Math.max(340, hostWidth);
     const ctx = shell(
       selector,
-      320,
-      'Daily advertising spend and attributed sales',
-      { top: 34, bottom: 44, left: compact ? 52 : 62 },
-      compact ? 620 : 960,
+      270,
+      'Weekly advertising spend per 100 dollars of total seller sales',
+      { top: 28, right: 20, bottom: 46, left: 54 },
+      width,
     );
     const x = d3
       .scaleBand()
-      .domain(data.map((d) => d.key))
+      .domain(comparable.map((d) => d.label))
       .range([0, ctx.innerW])
-      .padding(0.22);
-    const subgroup = d3.scaleBand().domain(['spend', 'attributed']).range([0, x.bandwidth()]).padding(0.12);
+      .padding(0.42);
     const y = d3
       .scaleLinear()
-      .domain([0, d3.max(data, (d) => Math.max(d.spend, d.attributed)) || 1])
+      .domain([0, d3.max(comparable, (d) => d.tacos) || 1])
       .nice(4)
       .range([ctx.innerH, 0]);
-    grid(ctx, y, 4);
-    const groups = ctx.plot
-      .selectAll('.dpp-day')
-      .data(data)
-      .join('g')
-      .attr('transform', (d) => `translate(${x(d.key)},0)`);
-    const series = [
-      { key: 'spend', label: 'Spend', color: COLORS.spend },
-      { key: 'attributed', label: 'Attributed sales', color: COLORS.attributed },
-    ];
-    const bars = groups
-      .selectAll('.dpp-bar')
-      .data((d) => series.map((s) => ({ ...s, day: d, value: d[s.key] })))
+    grid(ctx, y, 4, (value) => `${MONEY_PREFIX}${Math.round(Number(value))}`);
+    const bars = ctx.plot
+      .selectAll('.ads-week-mark')
+      .data(comparable)
       .join('rect')
-      .attr('class', 'dpp-bar')
-      .attr('x', (d) => subgroup(d.key))
-      .attr('width', subgroup.bandwidth())
-      .attr('y', (d) => y(d.value))
-      .attr('height', (d) => Math.max(1, ctx.innerH - y(d.value)))
-      .attr('rx', 2)
-      .style('--dpp-mark-color', (d) => d.color)
-      .attr('fill', 'var(--dpp-mark-color)');
-    bottomAxis(ctx, x, (d, i) => {
-      const step = Math.max(1, Math.floor(data.length / 4));
-      return i % step === 0 || i === data.length - 1 ? d.slice(5) : '';
-    });
-    const legend = ctx.plot.append('g').attr('class', 'dpp-legend').attr('transform', 'translate(0,-20)');
-    series.forEach((s, i) => {
-      const item = legend.append('g').attr('transform', `translate(${i * 130},0)`);
-      item.append('rect').attr('width', 9).attr('height', 9).attr('rx', 2).attr('fill', s.color);
-      item.append('text').attr('x', 15).attr('y', 8).text(s.label);
-    });
-    interactive(bars, ctx, (d) => ({ title: d.day.key, lines: [`${d.label} ${fullMoney(d.value)}`] }));
+      .attr('class', 'dpp-bar ads-week-mark')
+      .attr('x', (d) => x(d.label))
+      .attr('width', x.bandwidth())
+      .attr('y', (d) => y(d.tacos))
+      .attr('height', (d) => Math.max(1, ctx.innerH - y(d.tacos)))
+      .attr('rx', 5)
+      .style('--dpp-mark-color', COLORS.spend)
+      .attr('fill', 'var(--dpp-mark-color)')
+      .attr('stroke', COLORS.spend);
+    ctx.plot
+      .selectAll('.ads-week-value')
+      .data(comparable)
+      .join('text')
+      .attr('class', 'dpp-value ads-week-value')
+      .attr('x', (d) => x(d.label) + x.bandwidth() / 2)
+      .attr('y', (d) => Math.max(14, y(d.tacos) - 8))
+      .attr('text-anchor', 'middle')
+      .text((d) => `${MONEY_PREFIX}${Math.round(d.tacos)}`);
+    bottomAxis(ctx, x, (value) => value);
+    interactive(bars, ctx, (d) => ({
+      title: d.fullLabel,
+      lines: [
+        `${MONEY_PREFIX}${d.tacos.toFixed(1)} ad spend per $100 seller sales`,
+        `Ad spend ${fullMoney(d.spend)}`,
+        `Total seller sales ${fullMoney(d.sellerSales)}`,
+        `Amazon-attributed sales ${fullMoney(d.attributed)}`,
+      ],
+    }));
   }
 
   function adsPortfolio(selector, rows) {
     const data = (rows || [])
       .map((d) => ({
         ...d,
-        name: d.product_name || d.sku || 'Product',
+        name: d.product || d.product_name || d.sku || 'Product',
         sellerSales: Number(d.total_business_sales || 0),
         spend: Number(d.spend || 0),
         attributed: Number(d.attributed_sales || 0),
-        tacos: d.tacos == null ? null : Number(d.tacos),
+        tacos: d.tacos == null ? null : Number(d.tacos) * 100,
       }))
-      .filter((d) => d.sellerSales > 0 && Number.isFinite(d.tacos));
+      .filter((d) => d.sellerSales > 0 && Number.isFinite(d.tacos))
+      .sort((a, b) => d3.descending(a.tacos, b.tacos));
     if (!data.length) return empty(selector, 'No reconciled product portfolio data yet.');
     const hostWidth = Math.round(
       document.querySelector(selector)?.parentElement?.getBoundingClientRect().width || 960,
     );
     const compact = hostWidth < 640;
-    const width = compact ? 620 : Math.max(620, hostWidth);
+    const width = compact ? Math.max(320, hostWidth) : Math.max(680, hostWidth);
+    const height = Math.max(300, data.length * (compact ? 58 : 48) + (compact ? 52 : 70));
     const ctx = shell(
       selector,
-      compact ? 300 : 340,
-      'Product portfolio comparison of total seller sales, TACOS, and advertising spend',
-      { top: 26, right: 28, bottom: 56, left: compact ? 58 : 68 },
+      height,
+      'Products ranked by advertising spend per 100 dollars of total seller sales',
+      { top: compact ? 10 : 18, right: compact ? 50 : 72, bottom: 44, left: compact ? 12 : 240 },
       width,
     );
     const x = d3
       .scaleLinear()
-      .domain([0, d3.max(data, (d) => d.sellerSales) || 1])
-      .nice(4)
+      .domain([0, (d3.max(data, (d) => d.tacos) || 1) * 1.12])
       .range([0, ctx.innerW]);
     const y = d3
-      .scaleLinear()
-      .domain([0, d3.max(data, (d) => d.tacos) || 1])
-      .nice(4)
-      .range([ctx.innerH, 0]);
-    const radius = d3
-      .scaleSqrt()
-      .domain([0, d3.max(data, (d) => d.spend) || 1])
-      .range([6, 19]);
-    grid(ctx, y, 4, (value) => `${Math.round(Number(value) * 100)}%`);
-    bottomAxis(ctx, x, shortMoney, 4);
+      .scaleBand()
+      .domain(data.map((d) => d.sku || d.name))
+      .range([0, ctx.innerH])
+      .padding(compact ? 0.34 : 0.48);
+    const ticks = x.ticks(4);
+    ctx.plot
+      .append('g')
+      .attr('class', 'dpp-grid')
+      .selectAll('line')
+      .data(ticks)
+      .join('line')
+      .attr('x1', (value) => x(value))
+      .attr('x2', (value) => x(value))
+      .attr('y1', 0)
+      .attr('y2', ctx.innerH);
+    bottomAxis(ctx, x, (value) => `${MONEY_PREFIX}${Math.round(Number(value))}`, 4);
     const marks = ctx.plot
       .selectAll('.ads-portfolio-mark')
       .data(data)
-      .join('circle')
-      .attr('class', 'dpp-bar dpp-bubble ads-portfolio-mark')
-      .attr('cx', (d) => x(d.sellerSales))
-      .attr('cy', (d) => y(d.tacos))
-      .attr('r', (d) => radius(d.spend))
-      .style('--dpp-mark-color', COLORS.accent)
+      .join('rect')
+      .attr('class', 'dpp-bar ads-portfolio-mark')
+      .attr('x', 0)
+      .attr('y', (d) => y(d.sku || d.name) + (compact ? 21 : 0))
+      .attr('width', (d) => Math.max(1, x(d.tacos)))
+      .attr('height', compact ? Math.min(16, y.bandwidth() - 21) : y.bandwidth())
+      .attr('rx', compact ? 8 : y.bandwidth() / 2)
+      .style('--dpp-mark-color', COLORS.spend)
       .attr('fill', 'var(--dpp-mark-color)')
-      .attr('fill-opacity', 0.78)
-      .attr('stroke', COLORS.accent)
-      .attr('stroke-width', 2);
+      .attr('fill-opacity', 0.86)
+      .attr('stroke', COLORS.spend);
+    const productLabels = ctx.plot
+      .selectAll('.ads-portfolio-label')
+      .data(data)
+      .join('text')
+      .attr('class', 'dpp-label ads-portfolio-label')
+      .attr('x', compact ? 0 : -12)
+      .attr('y', (d) => y(d.sku || d.name) + (compact ? 14 : y.bandwidth() / 2 + 5))
+      .attr('text-anchor', compact ? 'start' : 'end');
+    if (compact) productLabels.text((d) => d.name);
+    else wrapChartLabels(productLabels, (d) => d.name);
     ctx.plot
-      .append('text')
-      .attr('class', 'dpp-muted')
-      .attr('x', ctx.innerW)
-      .attr('y', ctx.innerH + 45)
-      .attr('text-anchor', 'end')
-      .text('Total seller sales →');
-    ctx.plot
-      .append('text')
-      .attr('class', 'dpp-muted')
-      .attr('transform', 'rotate(-90)')
-      .attr('x', -4)
-      .attr('y', -50)
-      .attr('text-anchor', 'end')
-      .text('TACOS →');
+      .selectAll('.ads-portfolio-value')
+      .data(data)
+      .join('text')
+      .attr('class', 'dpp-value ads-portfolio-value')
+      .attr('x', (d) => x(d.tacos) + 9)
+      .attr('y', (d) => y(d.sku || d.name) + (compact ? 35 : y.bandwidth() / 2 + 5))
+      .text((d) => `${MONEY_PREFIX}${Math.round(d.tacos)}`);
     interactive(marks, ctx, (d) => ({
       title: `${d.name} · ${d.sku || 'SKU unavailable'}`,
       lines: [
+        `${MONEY_PREFIX}${d.tacos.toFixed(1)} ad spend per $100 seller sales`,
         `Total seller sales ${fullMoney(d.sellerSales)}`,
         `Ad spend ${fullMoney(d.spend)}`,
-        `TACOS ${(d.tacos * 100).toFixed(1)}%`,
         `Amazon-attributed sales ${fullMoney(d.attributed)}`,
       ],
     }));
@@ -632,59 +699,73 @@
       d.roas = d.attributed / d.spend;
     });
     if (data.length < 2) return empty(selector, 'More campaign data is needed for comparison.');
-    const compact = window.innerWidth <= 640;
+    data.sort((a, b) => d3.descending(a.roas, b.roas));
+    const hostWidth = Math.round(
+      document.querySelector(selector)?.parentElement?.getBoundingClientRect().width || 960,
+    );
+    const compact = hostWidth < 640;
+    const width = compact ? 680 : Math.max(680, hostWidth);
+    const height = Math.max(300, data.length * 46 + 70);
     const ctx = shell(
       selector,
-      350,
-      'Neutral campaign comparison of spend and Amazon-attributed ROAS',
-      { top: 35, right: 28, bottom: 52, left: compact ? 54 : 66 },
-      compact ? 620 : 960,
+      height,
+      'Campaigns ranked by Amazon-attributed sales per dollar of advertising spend',
+      { top: 18, right: 68, bottom: 44, left: compact ? 210 : 240 },
+      width,
     );
     const x = d3
       .scaleLinear()
-      .domain([0, d3.max(data, (d) => d.spend) || 1])
-      .nice(4)
+      .domain([0, (d3.max(data, (d) => d.roas) || 1) * 1.14])
       .range([0, ctx.innerW]);
     const y = d3
-      .scaleLinear()
-      .domain([0, d3.max(data, (d) => d.roas) || 1])
-      .nice(4)
-      .range([ctx.innerH, 0]);
-    const r = d3
-      .scaleSqrt()
-      .domain([0, d3.max(data, (d) => d.clicks) || 1])
-      .range([5, 17]);
-    grid(ctx, y, 4, (v) => `${Number(v).toFixed(1)}×`);
-    bottomAxis(ctx, x, shortMoney, 4);
-    const dots = ctx.plot
-      .selectAll('.dpp-bubble')
+      .scaleBand()
+      .domain(data.map((d) => d.campaign_id || d.name))
+      .range([0, ctx.innerH])
+      .padding(0.48);
+    const ticks = x.ticks(4);
+    ctx.plot
+      .append('g')
+      .attr('class', 'dpp-grid')
+      .selectAll('line')
+      .data(ticks)
+      .join('line')
+      .attr('x1', (value) => x(value))
+      .attr('x2', (value) => x(value))
+      .attr('y1', 0)
+      .attr('y2', ctx.innerH);
+    bottomAxis(ctx, x, (value) => `${Number(value).toFixed(1)}×`, 4);
+    const bars = ctx.plot
+      .selectAll('.ads-campaign-mark')
       .data(data)
-      .join('circle')
-      .attr('class', 'dpp-bar dpp-bubble')
-      .attr('cx', (d) => x(d.spend))
-      .attr('cy', (d) => y(d.roas))
-      .attr('r', (d) => r(d.clicks))
-      .style('--dpp-mark-color', COLORS.accent)
+      .join('rect')
+      .attr('class', 'dpp-bar ads-campaign-mark')
+      .attr('x', 0)
+      .attr('y', (d) => y(d.campaign_id || d.name))
+      .attr('width', (d) => Math.max(1, x(d.roas)))
+      .attr('height', y.bandwidth())
+      .attr('rx', y.bandwidth() / 2)
+      .style('--dpp-mark-color', COLORS.attributed)
       .attr('fill', 'var(--dpp-mark-color)')
-      .attr('fill-opacity', 0.78)
-      .attr('stroke', COLORS.surface)
-      .attr('stroke-width', 2);
+      .attr('fill-opacity', 0.86)
+      .attr('stroke', COLORS.attributed);
+    const campaignLabels = ctx.plot
+      .selectAll('.ads-campaign-label')
+      .data(data)
+      .join('text')
+      .attr('class', 'dpp-label ads-campaign-label')
+      .attr('x', -12)
+      .attr('y', (d) => y(d.campaign_id || d.name) + y.bandwidth() / 2 + 5)
+      .attr('text-anchor', 'end');
+    wrapChartLabels(campaignLabels, (d) => d.name);
     ctx.plot
-      .append('text')
-      .attr('class', 'dpp-muted')
-      .attr('x', ctx.innerW)
-      .attr('y', ctx.innerH + 42)
-      .attr('text-anchor', 'end')
-      .text('Spend →');
-    ctx.plot
-      .append('text')
-      .attr('class', 'dpp-muted')
-      .attr('transform', 'rotate(-90)')
-      .attr('x', -4)
-      .attr('y', -48)
-      .attr('text-anchor', 'end')
-      .text('ROAS →');
-    interactive(dots, ctx, (d) => ({
+      .selectAll('.ads-campaign-value')
+      .data(data)
+      .join('text')
+      .attr('class', 'dpp-value ads-campaign-value')
+      .attr('x', (d) => x(d.roas) + 9)
+      .attr('y', (d) => y(d.campaign_id || d.name) + y.bandwidth() / 2 + 5)
+      .text((d) => `${d.roas.toFixed(2)}×`);
+    interactive(bars, ctx, (d) => ({
       title: d.name,
       lines: [
         `Spend ${fullMoney(d.spend)}`,

@@ -211,7 +211,7 @@ def product_recommendation(
     if evidence_ready and clicks >= MIN_SIGNAL_CLICKS and purchases == 0:
         state = "NEEDS_ATTENTION"
         rule_key = "ADS_PRODUCT_CONVERSION_REVIEW"
-        title = f"Review listing relevance for {row.get('product') or row.get('sku') or 'this product'}"
+        title = "Review listing relevance"
         explanation = (
             f"Amazon reports {clicks} clicks and no attributed purchase in the current window. "
             "Inspect the listing, query fit and campaign intent before changing bids."
@@ -219,7 +219,7 @@ def product_recommendation(
     elif evidence_ready and purchases >= MIN_REPEAT_PURCHASES:
         state = "OPPORTUNITY_TEST"
         rule_key = "ADS_PRODUCT_DEMAND_REVIEW"
-        title = f"Review converting demand for {row.get('product') or row.get('sku') or 'this product'}"
+        title = "Review converting demand"
         explanation = (
             f"Amazon reports {purchases} attributed purchases. Identify which demand signals are contributing, "
             "then verify product economics before changing support."
@@ -227,7 +227,7 @@ def product_recommendation(
     elif spend > 0:
         state = "SUPPORTED_MONITOR"
         rule_key = "ADS_SUPPORTED_MONITOR"
-        title = f"Monitor paid support for {row.get('product') or row.get('sku') or 'this product'}"
+        title = "Monitor paid support"
         explanation = suppression or "Paid support is active without a stronger eligible review signal."
     else:
         state = "NO_CURRENT_ACTION"

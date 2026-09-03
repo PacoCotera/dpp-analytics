@@ -96,6 +96,9 @@ class AdsDecisionContractTests(unittest.TestCase):
         self.assertEqual(rows[0]["recommendation"]["state"], "NEEDS_ATTENTION")
         self.assertEqual(rows[1]["recommendation"]["state"], "OPPORTUNITY_TEST")
         self.assertEqual(rows[2]["recommendation"]["state"], "SUPPORTED_MONITOR")
+        self.assertEqual(rows[0]["recommendation"]["title"], "Review listing relevance")
+        self.assertEqual(rows[1]["recommendation"]["title"], "Review converting demand")
+        self.assertEqual(rows[2]["recommendation"]["title"], "Monitor paid support")
         self.assertFalse(rows[2]["recommendation"]["eligible"])
         self.assertIn("observed", rows[2]["recommendation"]["suppression_reason"])
 

@@ -250,19 +250,20 @@ async function verifyAds(page, view = 'impact') {
     await page.waitForFunction(selected => !document.getElementById(selected).hidden, view);
   }
   if (view === 'impact') await wait(page, '#portfolioChart .ads-portfolio-mark');
-  if (view === 'detail') await wait(page, '#campaignComparison .dpp-bubble');
+  if (view === 'detail') await wait(page, '#campaignComparison .ads-campaign-mark');
   const state = await page.evaluate(({ apiActions, selectedView }) => {
     const visible = element => element && element.getClientRects().length > 0;
     const tabs = document.querySelector('.ads-page .subnav');
     const tabsRect = tabs?.getBoundingClientRect();
     const evidence = [...document.querySelectorAll(
-      '.ads-page .kicker,.ads-page .section-header__description,.ads-page .kpi__label,.ads-page .kpi__note,.ads-page .data-table th,.ads-page .data-table td,.ads-quality-line,.ads-action-body p'
+      '.ads-page .kicker,.ads-page .section-header__description,.ads-page .ads-impact-read__metrics span,.ads-page .ads-impact-read__metrics small,.ads-page .data-table th,.ads-page .data-table td,.ads-action-body h3,.ads-action-metrics'
     )].filter(visible);
     const controls = [...document.querySelectorAll('.ads-page .subnav__item,.ads-action-open,.ads-row-action,.ads-toolbar input,.ads-toolbar select,.ads-pagination button')].filter(visible);
-    const reasonsMatch = apiActions.every(action => {
+    const productActions = apiActions.filter(action => action.action_type === 'PRODUCT_REVIEW');
+    const decisionsMatch = productActions.every(action => {
       const article = document.querySelector(`[data-action-id="${CSS.escape(action.id)}"]`);
-      return article?.querySelector('.ads-action-body > p')?.textContent.trim() === String(action.rationale || '');
-    });
+      return article?.querySelector('.ads-action-body > h3')?.textContent.trim() === String(action.title || '');
+    }) && document.querySelectorAll('.ads-action-card').length === productActions.length;
     const activePanel = document.getElementById(selectedView);
     const tableScroll = activePanel?.querySelector('.data-table-scroll');
     const chartScroll = activePanel?.querySelector('.dpp-chart-scroll');
@@ -274,7 +275,7 @@ async function verifyAds(page, view = 'impact') {
         document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
       evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
       controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
-      apiReasons: reasonsMatch,
+      apiDecisions: decisionsMatch,
       panelVisible: Boolean(activePanel && !activePanel.hidden && visible(activePanel)),
       tableContained: !tableScroll || tableScroll.getBoundingClientRect().right <= window.innerWidth + 2,
       tableBounded: !tableScroll || window.innerWidth > 640 || tableScroll.getBoundingClientRect().height <= window.innerHeight * .7,
@@ -285,7 +286,7 @@ async function verifyAds(page, view = 'impact') {
   }, { apiActions: payload.actions || [], selectedView: view });
   if (
     !state.tabsEnabled || !state.tabsContained || !state.evidenceFloor || !state.controlFloor ||
-    !state.apiReasons || !state.panelVisible || !state.tableContained || !state.tableBounded ||
+    !state.apiDecisions || !state.panelVisible || !state.tableContained || !state.tableBounded ||
     !state.chartScrollable || !state.noQuadrantPrescription || !state.demandRowsBounded
   ) {
     throw new Error(`Ads evidence/control presentation mismatch: ${JSON.stringify(state)}`);
