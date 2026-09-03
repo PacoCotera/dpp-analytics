@@ -398,7 +398,7 @@
 
 .inventory-table {
   width: 100%;
-  min-width: 1125px;
+  min-width: 1220px;
   table-layout: fixed;
 }
 
@@ -418,7 +418,7 @@
 }
 
 .inventory-table col.lifecyclec {
-  width: 90px;
+  width: 100px;
 }
 
 .inventory-table col.canonicalc {
@@ -430,7 +430,7 @@
 }
 
 .inventory-table col.numc {
-  width: 75px;
+  width: 100px;
 }
 
 .inventory-table col.coverc {
@@ -449,6 +449,7 @@
   background: var(--dpp-surface-subtle, var(--paper-2));
   font-size: 14px;
   line-height: 1.35;
+  white-space: normal;
 }
 
 .inventory-table tbody th,
@@ -914,8 +915,8 @@ main {
   }
 
   .inventory-table {
-    width: 1125px;
-    min-width: 1125px;
+    width: 1220px;
+    min-width: 1220px;
     table-layout: fixed;
   }
 
@@ -928,7 +929,7 @@ main {
   }
 
   .inventory-table col.lifecyclec {
-    width: 90px;
+    width: 100px;
   }
 
   .inventory-table col.canonicalc {
@@ -940,7 +941,7 @@ main {
   }
 
   .inventory-table col.numc {
-    width: 75px;
+    width: 100px;
   }
 
   .inventory-table col.coverc {

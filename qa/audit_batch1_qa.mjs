@@ -149,7 +149,10 @@ async function verifyGeography(browser, engine, width, height) {
         `${label} leaves the mobile table in its shrink-to-fit table formatting context: ${JSON.stringify(geometry)}`,
       );
     }
-    if (geometry.bodyWidth < geometry.tableWidth * 0.97 || geometry.rowWidth < geometry.tableWidth * 0.97) {
+    if (
+      geometry.bodyWidth < geometry.tableWidth * 0.97 ||
+      geometry.rowWidth < geometry.bodyWidth - 20
+    ) {
       throw new Error(`${label} result cards do not own the table width: ${JSON.stringify(geometry)}`);
     }
     if (geometry.documentOverflow > 1) throw new Error(`${label} document overflow: ${JSON.stringify(geometry)}`);

@@ -308,9 +308,17 @@
 }
 
 .analysis-link {
-  display: block;
+  display: flex;
+  min-height: var(--control-height);
+  flex-direction: column;
+  justify-content: center;
   color: inherit;
   text-decoration: none;
+}
+
+.analysis-open {
+  min-width: var(--control-height);
+  min-height: var(--control-height);
 }
 
 .analysis-identity {

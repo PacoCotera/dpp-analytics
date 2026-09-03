@@ -680,6 +680,14 @@ try {
           .scrollWidth >
         document.querySelector(".ads-demand-table .data-table-scroll")
           .clientWidth,
+      tableFits:
+        document
+          .querySelector(".ads-demand-table .data-table")
+          .getBoundingClientRect().width <=
+        document
+          .querySelector(".ads-demand-table .data-table-scroll")
+          .clientWidth +
+          1,
       tableBounded:
         document
           .querySelector(".ads-demand-table .data-table-scroll")
@@ -687,10 +695,11 @@ try {
         window.innerHeight * 0.69,
     }));
     check(
-      "Mobile demand keeps a contained bounded twenty-row table",
+      "Mobile demand keeps contained bounded semantic records",
       mobile.viewportContained &&
         mobile.rows <= 20 &&
-        mobile.tableScrollable &&
+        !mobile.tableScrollable &&
+        mobile.tableFits &&
         mobile.tableBounded,
       JSON.stringify(mobile),
     );

@@ -322,7 +322,7 @@ for (const route of routes) {
           `Ads product table caption is ${productTable.caption}`,
         );
         assert(
-          productTable.columns === 14 &&
+          productTable.columns === 15 &&
             productTable.rows > 0 &&
             productTable.rows === productTable.rowHeaders,
           `Ads product table relationships are incomplete: ${JSON.stringify(productTable)}`,
