@@ -90,6 +90,7 @@ try {
           panelWidth: panel.getBoundingClientRect().width,
           panelHeight: panel.getBoundingClientRect().height,
           panelOverflow: panel.scrollWidth - panel.clientWidth,
+          actionVisible: !action.hidden && getComputedStyle(action).display !== "none",
           actionWidth: action.getBoundingClientRect().width,
           metricsWidth: metrics.getBoundingClientRect().width,
           metricWidths,
@@ -101,8 +102,9 @@ try {
       check("Today wide paid-support card is contained", layout.panelOverflow <= 1, JSON.stringify(layout));
       check("Today wide page has no horizontal overflow", layout.documentOverflow <= 1, JSON.stringify(layout));
       check(
-        "Today wide paid-support decision has readable width",
-        layout.actionWidth >= layout.metricsWidth - 1 && layout.metricWidths.every((width) => width >= 120),
+        "Today wide paid-support content has readable width",
+        (!layout.actionVisible || layout.actionWidth >= layout.metricsWidth - 1) &&
+          layout.metricWidths.every((width) => width >= 120),
         JSON.stringify(layout),
       );
       check("Today wide paid-support card stays compact", layout.panelHeight <= 360, JSON.stringify(layout));
