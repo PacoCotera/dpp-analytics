@@ -78,7 +78,7 @@ def _empty(status: str, connection: dict, freshness=None) -> dict:
     }
 
 
-def _search_opportunities_contract(cur, marketplace: str, ready: dict) -> dict:
+def _search_opportunities_contract(cur, marketplace: str, ready: dict, decorate_products=None) -> dict:
     contract = {
         "status": "UNAVAILABLE",
         "period": None,
@@ -133,6 +133,8 @@ def _search_opportunities_contract(cur, marketplace: str, ready: dict) -> dict:
     if not rows:
         contract["status"] = "NO_DATA"
         return contract
+    if decorate_products:
+        rows = decorate_products(rows)
     end_date = max(row["end_date"] for row in rows)
     paid_rows = []
     if ready.get("search_term_rel"):
@@ -487,7 +489,9 @@ def ads_payload(connect, marketplace: str, decorate_products=None, query: dict[s
             if _one(cur, "SELECT to_regclass('mart.ads_search_term_daily') rel").get("rel")
             else []
         )
-        search_opportunities = _search_opportunities_contract(cur, marketplace, ready)
+        search_opportunities = _search_opportunities_contract(
+            cur, marketplace, ready, decorate_products
+        )
 
     trusted = bool(quality.get("trusted_for_operating_decisions"))
     observed_days = int(freshness.get("period_observed_days") or 0)

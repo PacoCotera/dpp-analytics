@@ -45,7 +45,9 @@ SEARCH_OPPORTUNITY_RULES = {
         "label": "Click gap",
         "minimum_evidence": {"asin_impressions": SEARCH_QUERY_MIN_IMPRESSIONS},
         "comparison": "ASIN clicks per impression are below 75% of the Amazon-wide query rate.",
-        "review": "Review title, main image, price and delivery promise for this query.",
+        "review": (
+            "Confirm query-product relevance first. If it fits, review title, main image, price and delivery promise."
+        ),
     },
     "SQP_VISIBILITY_REVIEW": {
         "key": "SQP_VISIBILITY_REVIEW",

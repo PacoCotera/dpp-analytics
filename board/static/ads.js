@@ -355,7 +355,7 @@ function renderSearchOpportunities() {
           image_url: item.image_url,
         };
         const paidRead = paid.exact_query_match
-          ? `${money(paid.spend)} same-month Ads spend · ${integer(paid.clicks)} clicks · ${integer(paid.attributed_purchases)} attributed purchases`
+          ? `${money(paid.spend)} same-month Ads spend · ${formatCount(paid.clicks, 'click')} · ${formatCount(paid.attributed_purchases, 'attributed purchase')}`
           : 'No exact same-month paid-query match found';
         return `<article class="ads-query-card" data-query-opportunity="${escapeHtml(item.id)}">
           <div class="ads-query-card__identity">${productIdentity(product)}</div>
