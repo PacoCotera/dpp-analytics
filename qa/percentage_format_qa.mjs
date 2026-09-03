@@ -125,7 +125,10 @@ async function loadRoute(page, route) {
   });
   const status = response?.status();
   assert(response?.ok() || status === 304, `${route} returned ${status}`);
-  await page.waitForTimeout(900);
+  // This suite reuses one page across many routes. Wait for each route's API
+  // work to finish before navigating again so a slower response is not aborted
+  // by the next page load and misreported as a browser error.
+  await page.waitForLoadState("networkidle", { timeout: 15_000 });
   await settle(page);
 }
 

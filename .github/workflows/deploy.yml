@@ -298,7 +298,10 @@ jobs:
           sudo chmod 0600 /tmp/dpp-admin-qa.env
 
           set +e
-          timeout --signal=TERM --kill-after=30s 20m \
+          # The complete browser gate now includes the cross-route Ads contract.
+          # Keep the wrapper below the 30-minute job limit while leaving enough
+          # time for the final admin and artifact-copy steps on the shared runner.
+          timeout --signal=TERM --kill-after=30s 25m \
             sudo docker run --rm \
               --name "$qa_container" \
               --label com.dpp-analytics.role=production-browser-qa \
