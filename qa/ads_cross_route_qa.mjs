@@ -91,15 +91,18 @@ try {
           panelHeight: panel.getBoundingClientRect().height,
           panelOverflow: panel.scrollWidth - panel.clientWidth,
           actionWidth: action.getBoundingClientRect().width,
+          metricsWidth: metrics.getBoundingClientRect().width,
           metricWidths,
           documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          nestedInOperations: Boolean(panel.closest(".today-operations")),
         };
       });
+      check("Today gives paid support its own sibling panel", !layout.nestedInOperations, JSON.stringify(layout));
       check("Today wide paid-support card is contained", layout.panelOverflow <= 1, JSON.stringify(layout));
       check("Today wide page has no horizontal overflow", layout.documentOverflow <= 1, JSON.stringify(layout));
       check(
         "Today wide paid-support decision has readable width",
-        layout.actionWidth >= layout.panelWidth - 1 && layout.metricWidths.every((width) => width >= 120),
+        layout.actionWidth >= layout.metricsWidth - 1 && layout.metricWidths.every((width) => width >= 120),
         JSON.stringify(layout),
       );
       check("Today wide paid-support card stays compact", layout.panelHeight <= 360, JSON.stringify(layout));

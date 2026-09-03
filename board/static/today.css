@@ -480,19 +480,14 @@
   font-size: 20px;
 }
 
-.today-operations-grid > .paid-support-watch {
-  grid-column: 1 / -1;
-  margin-top: 18px;
-  padding: 18px 0 0;
-  border-top: var(--border-width) solid var(--line);
-  border-left: 0;
+.workspace-grid--today-primary > .paid-support-watch {
+  grid-column: 1;
 }
 
 .paid-support-watch__body {
   display: grid;
   grid-template-columns: minmax(280px, 1.1fr) minmax(420px, 0.9fr);
   gap: 14px;
-  margin-top: 14px;
 }
 
 .paid-support-watch__metrics {
@@ -1565,6 +1560,10 @@ html.wall-mode .today-section {
 }
 
 @media (min-width: 1800px) {
+  .workspace-grid--today-primary > .paid-support-watch {
+    grid-column: 2;
+  }
+
   .paid-support-watch__body {
     grid-template-columns: minmax(0, 1fr);
   }
