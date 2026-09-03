@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+from ads_context import cross_route_t28
+
 
 def _one(cur, sql: str, params=()):
     cur.execute(sql, params)
@@ -259,6 +261,11 @@ def _closed_day_payload(cur, decorate_products, marketplace: str, target: date, 
         "sku_today": sku_day,
         "daily_history": daily_history,
         "recent_daily": recent_daily,
+        "ads": {
+            "status": "historical_day",
+            "primary_action": None,
+            "note": "Paid-support watch is available only on the live Today workspace.",
+        },
     }
 
 
@@ -410,6 +417,17 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
         )
         recent_daily = daily_history[-30:]
 
+        try:
+            with conn.transaction():
+                ads = cross_route_t28(cur, marketplace, decorate_products, limit=4)
+        except Exception as exc:
+            print(f"today ads context degraded: {exc}", flush=True)
+            ads = {
+                "status": "unavailable",
+                "reason": "ads_context_error",
+                "primary_action": None,
+            }
+
     recent_orders = decorate_products(recent_orders)
     sku_today = decorate_products(sku_today)
     return {
@@ -424,4 +442,5 @@ def today_payload(connect, decorate_products, marketplace: str, selected_date: s
         "sku_today": sku_today,
         "daily_history": daily_history,
         "recent_daily": recent_daily,
+        "ads": ads,
     }

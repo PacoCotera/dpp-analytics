@@ -98,6 +98,24 @@
               </div>
             </details>
           </div>
+          <section
+            class="inventory-ads-watch"
+            id="inventoryAdsWatch"
+            aria-labelledby="inventoryAdsTitle"
+            hidden
+          >
+            <div class="inventory-ads-watch__head">
+              <div>
+                <div class="section-label">Fulfillment-readiness review</div>
+                <h3 id="inventoryAdsTitle">Paid-support exposure</h3>
+              </div>
+              <a id="inventoryAdsOpen" href="/ads?view=products"
+                >Open Advertising <span aria-hidden="true">→</span></a
+              >
+            </div>
+            <ul class="inventory-ads-watch__list" id="inventoryAdsActions"></ul>
+            <p class="inventory-ads-watch__note" id="inventoryAdsNote"></p>
+          </section>
         </section>
 
         <section class="page-section inventory-records" id="all" data-dpp-qa="inventory-records">
@@ -198,6 +216,7 @@
                   <col class="numc" />
                   <col class="numc" />
                   <col class="coverc" />
+                  <col class="adsc" />
                   <col class="coverc" />
                 </colgroup>
                 <thead>
@@ -211,6 +230,7 @@
                     <th class="num" scope="col">Reserved</th>
                     <th class="num" scope="col">28D order units</th>
                     <th class="num" scope="col">Days cover</th>
+                    <th scope="col">Paid support</th>
                     <th scope="col">Status</th>
                   </tr>
                 </thead>

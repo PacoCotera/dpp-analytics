@@ -1,5 +1,16 @@
 from __future__ import annotations
 
+import re
+
+from ads_decisions import (
+    ECONOMICS_CONTRACT,
+    INTERPRETATION_RULES,
+    build_action_groups,
+    build_product_action,
+    enrich_products,
+    metric_contract,
+    product_recommendation,
+)
 from ads_state import ads_connection_state
 
 
@@ -8,6 +19,25 @@ _INTERPRETATION = {
     "tacos": "Ad spend divided by independently reconciled seller sales.",
     "organic_sales": "Do not derive exact organic sales by subtraction.",
 }
+
+
+def _attribution_lookback_days(value) -> int:
+    match = re.search(r"(\d+)", str(value or ""))
+    return max(0, int(match.group(1))) if match else 7
+
+
+def _lookback_for_period(cur, marketplace: str, through_date) -> int:
+    if not through_date:
+        return 7
+    cur.execute(
+        """
+        SELECT max(attribution_window) AS attribution_window
+        FROM mart.ads_business_daily
+        WHERE marketplace_id=%s AND business_date=%s::date
+        """,
+        (marketplace, through_date),
+    )
+    return _attribution_lookback_days((cur.fetchone() or {}).get("attribution_window"))
 
 
 def _quality_for_period(cur, marketplace: str, start, end) -> dict:
@@ -78,7 +108,14 @@ def business_t28(cur, marketplace: str) -> dict:
     return _finalize_context(row, expected_days=28, quality=quality)
 
 
-def product_t28(cur, marketplace: str, sku: str) -> dict:
+def product_t28(
+    cur,
+    marketplace: str,
+    sku: str,
+    *,
+    product: str | None = None,
+    image_url: str | None = None,
+) -> dict:
     """Canonical 28-day Ads context for one sellable SKU.
 
     Product advertising is legitimately sparse: a SKU need not be advertised on
@@ -97,7 +134,93 @@ def product_t28(cur, marketplace: str, sku: str) -> dict:
     quality = _quality_for_period(cur, marketplace, row.get("period_start"), row.get("through_date"))
     context = _finalize_context(row, expected_days=28, quality=quality, require_complete=False)
     context["connection"] = ads_connection_state(cur)
+    if context.get("through_date"):
+        context["product"] = product or sku
+        context["image_url"] = image_url
+        context["purchases"] = context.get("attributed_purchases")
+        context["units"] = context.get("attributed_units")
+        context = metric_contract(context)
+        lookback_days = _lookback_for_period(cur, marketplace, context.get("through_date"))
+        context["attribution_lookback_days"] = lookback_days
+        decision_ready = bool(
+            context.get("trusted_for_operating_decisions")
+            and context["connection"].get("state") == "READY"
+        )
+        context["recommendation"] = product_recommendation(
+            context,
+            trusted=decision_ready,
+            attribution_lookback_days=lookback_days,
+        )
+        context["economics"] = ECONOMICS_CONTRACT
+        context["action"] = build_product_action(context)
     return context
+
+
+def cross_route_t28(cur, marketplace: str, decorate_products=None, *, limit: int = 8) -> dict:
+    """Return one bounded Ads business/product/action projection for other routes."""
+    connection = ads_connection_state(cur)
+    business = business_t28(cur, marketplace)
+    if not business.get("through_date"):
+        return {
+            "status": business.get("status") or "awaiting_ads_data",
+            "connection": connection,
+            "business": business,
+            "products": [],
+            "actions": [],
+            "primary_action": None,
+            "economics": ECONOMICS_CONTRACT,
+            "interpretation_rules": INTERPRETATION_RULES,
+        }
+
+    cur.execute(
+        """
+        SELECT p.sku,p.asin,coalesce(sl.item_name,ci.title,s.title,p.sku,p.asin) product,
+          coalesce(sl.image_url,ci.image_url) image_url,p.spend,p.attributed_sales,p.impressions,
+          p.clicks,p.attributed_purchases AS purchases,p.attributed_units AS units,
+          p.total_business_sales,p.total_business_orders,p.total_business_units,p.ctr,p.cpc,p.roas,
+          p.acos,p.tacos,p.attributed_sales_share,p.observed_ads_days,p.mature_ads_days,
+          p.through_date,p.period_start
+        FROM mart.ads_product_business_t28 p
+        LEFT JOIN core.sku s ON s.sku=p.sku
+        LEFT JOIN core.seller_listing sl ON sl.marketplace_id=p.marketplace_id AND sl.seller_sku=p.sku
+        LEFT JOIN core.catalog_item ci
+          ON ci.marketplace_id=p.marketplace_id AND ci.asin=coalesce(p.asin,s.asin)
+        WHERE p.marketplace_id=%s
+        ORDER BY p.spend DESC
+        LIMIT 60
+        """,
+        (marketplace,),
+    )
+    products = list(cur.fetchall())
+    if decorate_products:
+        products = decorate_products(products)
+    lookback_days = _lookback_for_period(cur, marketplace, business.get("through_date"))
+    decision_ready = bool(
+        business.get("trusted_for_operating_decisions")
+        and connection.get("state") == "READY"
+    )
+    products = enrich_products(
+        products,
+        trusted=decision_ready,
+        attribution_lookback_days=lookback_days,
+    )
+    actions, groups = (
+        build_action_groups(products, [])
+        if decision_ready
+        else ([], [])
+    )
+    return {
+        "status": business.get("status"),
+        "connection": connection,
+        "business": business,
+        "products": products[: max(1, min(int(limit), 60))],
+        "actions": actions,
+        "action_groups": groups,
+        "primary_action": actions[0] if actions else None,
+        "attribution_lookback_days": lookback_days,
+        "economics": ECONOMICS_CONTRACT,
+        "interpretation_rules": INTERPRETATION_RULES,
+    }
 
 
 def business_daily(cur, marketplace: str, days: int = 90) -> list[dict]:

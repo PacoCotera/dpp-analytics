@@ -18,6 +18,122 @@
   min-width: 0;
 }
 
+.sales-ads-context {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--surface);
+}
+
+.sales-ads-context[hidden],
+.sales-ads-context__action[hidden] {
+  display: none;
+}
+
+.sales-ads-context__head,
+.sales-ads-context__action {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.sales-ads-context__head h2 {
+  margin-top: 3px;
+  font-size: 20px;
+}
+
+.sales-ads-context__head a,
+.sales-ads-context__action a {
+  display: inline-flex;
+  min-height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  color: var(--dpp-interaction);
+  font-size: var(--dpp-metadata-size, 14px);
+  font-weight: 780;
+}
+
+.sales-ads-context__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 12px;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--panel-radius);
+  overflow: hidden;
+}
+
+.sales-ads-context__metrics > div {
+  min-width: 0;
+  padding: 11px 13px;
+  border-left: var(--border-width) solid var(--line);
+}
+
+.sales-ads-context__metrics > div:first-child {
+  border-left: 0;
+}
+
+.sales-ads-context__metrics span,
+.sales-ads-context__metrics strong,
+.sales-ads-context__action span,
+.sales-ads-context__action strong {
+  display: block;
+}
+
+.sales-ads-context__metrics span,
+.sales-ads-context__action span,
+.sales-ads-context__action p,
+.sales-ads-context__note {
+  color: var(--muted);
+  font-size: var(--dpp-metadata-size, 14px);
+  line-height: 1.4;
+}
+
+.sales-ads-context__metrics strong {
+  margin-top: 3px;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sales-ads-context__read {
+  margin-top: 12px;
+  font-weight: 760;
+}
+
+.sales-ads-context__action {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: var(--border-width) solid var(--line);
+}
+
+.sales-ads-context__action p,
+.sales-ads-context__note {
+  margin: 4px 0 0;
+}
+
+.product-paid-support {
+  display: block;
+  min-width: 132px;
+  color: var(--dpp-interaction);
+}
+
+.product-paid-support strong,
+.product-paid-support span {
+  display: block;
+}
+
+.product-paid-support span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--dpp-metadata-size, 14px);
+}
+
+.product-paid-support--none {
+  color: var(--muted);
+  font-size: var(--dpp-metadata-size, 14px);
+}
+
 .sales-chart-card {
   display: flex;
   height: 100%;
@@ -986,6 +1102,30 @@
 }
 
 @media (max-width: 720px) {
+  .sales-ads-context {
+    padding: 14px;
+  }
+
+  .sales-ads-context__head,
+  .sales-ads-context__action {
+    display: block;
+  }
+
+  .sales-ads-context__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-ads-context__metrics > div:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .sales-ads-context__metrics > div:nth-child(n + 3) {
+    border-top: var(--border-width) solid var(--line);
+  }
+
+  .sales-ads-context__action a {
+    margin-top: 8px;
+  }
   .sales-main {
     order: 1;
   }
@@ -1182,7 +1322,8 @@
       'product product'
       'sales share'
       'change movement'
-      'units state';
+      'units state'
+      'paid paid';
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 5px 12px;
     padding: 13px 14px;
@@ -1266,6 +1407,12 @@
   }
 
   #skuRows td:nth-child(7) {
+    grid-area: paid;
+    padding-top: 7px;
+    border-top: var(--border-width) solid var(--line);
+  }
+
+  #skuRows td:nth-child(8) {
     grid-area: state;
     justify-self: end;
   }

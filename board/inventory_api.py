@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ads_context import cross_route_t28
+from ads_decisions import INTERPRETATION_RULES, inventory_exposure_recommendation
 from metric_windows import INVENTORY_ORDER_VELOCITY_T28, load_metric_windows
 
 
@@ -179,8 +181,62 @@ def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
             (INVENTORY_ORDER_VELOCITY_T28,),
             timezone="America/Mexico_City",
         )
+        try:
+            with conn.transaction():
+                ads_context = cross_route_t28(cur, marketplace, decorate_products, limit=60)
+        except Exception as exc:
+            print(f"inventory ads context degraded: {exc}", flush=True)
+            ads_context = {
+                "status": "unavailable",
+                "reason": "ads_context_error",
+                "business": {},
+                "products": [],
+            }
 
     rows = _classify_inventory_rows(rows, current_offers, retired_skus)
+    ads_by_sku = {
+        str(product.get("sku") or ""): product
+        for product in ads_context.get("products", [])
+        if product.get("sku")
+    }
+    trusted = bool(
+        ads_context.get("business", {}).get("trusted_for_operating_decisions")
+        and ads_context.get("connection", {}).get("state") == "READY"
+    )
+    lookback_days = int(ads_context.get("attribution_lookback_days") or 7)
+    inventory_ads_actions = []
+    for row in rows:
+        product_ads = ads_by_sku.get(str(row.get("sku") or ""), {})
+        row.update(
+            {
+                "ad_spend_t28": product_ads.get("spend"),
+                "ad_attributed_sales_t28": product_ads.get("attributed_sales"),
+                "ad_impressions_t28": product_ads.get("impressions"),
+                "ad_clicks_t28": product_ads.get("clicks"),
+                "ad_purchases_t28": product_ads.get("purchases"),
+                "ad_tacos_t28": product_ads.get("tacos"),
+                "ad_roas_t28": product_ads.get("roas"),
+                "ad_observed_days": product_ads.get("observed_ads_days"),
+                "ad_mature_days": product_ads.get("mature_ads_days"),
+                "ads_through_date": product_ads.get("through_date"),
+            }
+        )
+        recommendation = inventory_exposure_recommendation(
+            row,
+            trusted=trusted,
+            attribution_lookback_days=lookback_days,
+        )
+        row["ads_recommendation"] = recommendation
+        if recommendation["eligible"]:
+            inventory_ads_actions.append(
+                {
+                    "sku": row.get("sku"),
+                    "asin": row.get("asin"),
+                    "product": row.get("product"),
+                    "image_url": row.get("image_url"),
+                    **recommendation,
+                }
+            )
     return {
         "summary": summary,
         "rows": decorate_products(rows),
@@ -196,4 +252,13 @@ def inventory_payload(connect, decorate_products, marketplace: str) -> dict:
         "bands": bands,
         "local_time": local_clock.get("local_time"),
         "metric_windows": metric_windows,
+        "ads": {
+            "status": ads_context.get("status"),
+            "connection": ads_context.get("connection"),
+            "business": ads_context.get("business", {}),
+            "review_count": len(inventory_ads_actions),
+            "actions": inventory_ads_actions,
+            "rule": INTERPRETATION_RULES["ADS_INVENTORY_EXPOSURE_REVIEW"],
+            "economics": ads_context.get("economics"),
+        },
     }

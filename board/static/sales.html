@@ -210,6 +210,30 @@
             </details>
           </aside>
         </section>
+        <section class="sales-ads-context" id="salesAdsContext" aria-labelledby="salesAdsTitle" hidden>
+          <div class="sales-ads-context__head">
+            <div>
+              <div class="section-label">Aligned 28-day context</div>
+              <h2 id="salesAdsTitle">Paid support and seller sales</h2>
+            </div>
+            <a id="salesAdsOpen" href="/ads?view=products"
+              >Open Advertising <span aria-hidden="true">→</span></a
+            >
+          </div>
+          <div
+            class="sales-ads-context__metrics"
+            id="salesAdsMetrics"
+            aria-label="Advertising and seller-sales metrics"
+          >
+            <div><span>Seller sales</span><strong id="salesAdsSellerSales">—</strong></div>
+            <div><span>Ad spend</span><strong id="salesAdsSpend">—</strong></div>
+            <div><span>TACOS</span><strong id="salesAdsTacos">—</strong></div>
+            <div><span>Attributed sales</span><strong id="salesAdsAttributed">—</strong></div>
+          </div>
+          <div class="sales-ads-context__read" id="salesAdsRead"></div>
+          <div class="sales-ads-context__action" id="salesAdsAction" hidden></div>
+          <p class="sales-ads-context__note" id="salesAdsNote"></p>
+        </section>
       </main>
 
       <main id="products" class="view" role="tabpanel" tabindex="0" aria-labelledby="salesProductsTab" hidden>
@@ -262,18 +286,20 @@
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Product</th>
+                    <th scope="col">Product</th>
                     <th
                       class="num"
+                      scope="col"
                       title="Amazon orderedProductSales from Sales &amp; Traffic. Shopper spend including IVA; not settlement proceeds or Finance net revenue."
                     >
                       28D shopper spend incl. IVA
                     </th>
-                    <th class="num">Share</th>
-                    <th class="num">Change</th>
-                    <th class="num">Movement</th>
-                    <th class="num">Units</th>
-                    <th>State</th>
+                    <th class="num" scope="col">Share</th>
+                    <th class="num" scope="col">Change</th>
+                    <th class="num" scope="col">Movement</th>
+                    <th class="num" scope="col">Units</th>
+                    <th scope="col">Paid support</th>
+                    <th scope="col">State</th>
                   </tr>
                 </thead>
                 <tbody id="skuRows"></tbody>
@@ -299,15 +325,16 @@
                 <table class="data-table">
                   <thead>
                     <tr>
-                      <th>Order</th>
-                      <th>Items</th>
+                      <th scope="col">Order</th>
+                      <th scope="col">Items</th>
                       <th
                         class="num"
+                        scope="col"
                         title="Customer-facing order amount including IVA. Settlement/proceeds amounts are excluded."
                       >
                         Shopper spend incl. IVA
                       </th>
-                      <th>Fulfillment</th>
+                      <th scope="col">Fulfillment</th>
                     </tr>
                   </thead>
                   <tbody id="orderRows"></tbody>

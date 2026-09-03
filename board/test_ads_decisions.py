@@ -8,6 +8,7 @@ from ads_decisions import (
     build_action_groups,
     demand_page,
     enrich_products,
+    inventory_exposure_recommendation,
     metric_contract,
     normalize_demand_signal,
     safe_ratio,
@@ -97,6 +98,70 @@ class AdsDecisionContractTests(unittest.TestCase):
         self.assertEqual(rows[2]["recommendation"]["state"], "SUPPORTED_MONITOR")
         self.assertFalse(rows[2]["recommendation"]["eligible"])
         self.assertIn("observed", rows[2]["recommendation"]["suppression_reason"])
+
+    def test_inventory_exposure_requires_current_constrained_offer_and_mature_ads(self):
+        base = {
+            "sku": "PNC-001",
+            "product": "Pocket Notebook",
+            "is_current_offer": True,
+            "inventory_action": "PRODUCE",
+            "available": 4,
+            "inbound": 0,
+            "days_cover_with_inbound": 9,
+            "ad_spend_t28": 120,
+            "ad_attributed_sales_t28": 180,
+            "ad_tacos_t28": 0.3,
+            "ad_observed_days": 28,
+            "ad_mature_days": 21,
+        }
+        decision = inventory_exposure_recommendation(
+            base,
+            trusted=True,
+            attribution_lookback_days=7,
+        )
+        self.assertTrue(decision["eligible"])
+        self.assertEqual(decision["state"], "NEEDS_ATTENTION")
+        self.assertEqual(decision["rule_key"], "ADS_INVENTORY_EXPOSURE_REVIEW")
+        self.assertEqual(decision["destination"]["sku"], "PNC-001")
+        self.assertIn("not a recommendation", decision["qualification"])
+
+        for field, value, expected in (
+            ("is_current_offer", False, "canonical current offer"),
+            ("inventory_action", "OK", "has not assigned"),
+            ("ad_spend_t28", 0, "No paid support"),
+            ("ad_mature_days", 20, "eligible attribution days"),
+        ):
+            row = dict(base)
+            row[field] = value
+            suppressed = inventory_exposure_recommendation(
+                row,
+                trusted=True,
+                attribution_lookback_days=7,
+            )
+            self.assertFalse(suppressed["eligible"], field)
+            self.assertIn(expected, suppressed["suppression_reason"], field)
+
+    def test_inventory_exposure_action_id_is_stable_and_non_prescriptive(self):
+        row = {
+            "sku": "PNC-004",
+            "product": "Pocket Notebook",
+            "is_current_offer": True,
+            "inventory_action": "PLAN",
+            "available": 10,
+            "inbound": 0,
+            "days_cover_with_inbound": 26,
+            "ad_spend_t28": 50,
+            "ad_observed_days": 28,
+            "ad_mature_days": 21,
+        }
+        first = inventory_exposure_recommendation(row, trusted=True)
+        second = inventory_exposure_recommendation(dict(row), trusted=True)
+        self.assertEqual(first["action_id"], second["action_id"])
+        combined = " ".join(
+            [first["title"], first["explanation"], *first["review_steps"]]
+        ).lower()
+        for prohibited in ("pause campaigns", "reduce spend", "increase budget", "scale"):
+            self.assertNotIn(prohibited, combined)
 
     def test_signal_normalization_separates_queries_products_and_raw_evidence(self):
         query = normalize_demand_signal(

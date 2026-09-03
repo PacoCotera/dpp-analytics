@@ -31,6 +31,98 @@
   margin-top: 0;
 }
 
+.inventory-ads-watch {
+  margin-top: 12px;
+  padding: 14px;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--dpp-surface-subtle, var(--paper-2));
+}
+
+.inventory-ads-watch[hidden] {
+  display: none;
+}
+
+.inventory-ads-watch__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.inventory-ads-watch__head h3 {
+  margin-top: 3px;
+  font-size: 18px;
+}
+
+.inventory-ads-watch__head a,
+.inventory-ads-action__links a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--dpp-interaction);
+  font-size: 14px;
+  font-weight: 780;
+}
+
+.inventory-ads-watch__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inventory-ads-action {
+  height: 100%;
+  padding: 12px;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.inventory-ads-action span,
+.inventory-ads-action strong,
+.inventory-ads-action p {
+  display: block;
+}
+
+.inventory-ads-action > div:first-child > span,
+.inventory-ads-action p,
+.inventory-ads-watch__note,
+.inventory-ads-action__evidence {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.inventory-ads-action p,
+.inventory-ads-watch__note {
+  margin: 5px 0 0;
+}
+
+.inventory-ads-action__evidence,
+.inventory-ads-action__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: var(--border-width) solid var(--line);
+}
+
+.inventory-paid-support strong,
+.inventory-paid-support span {
+  display: block;
+}
+
+.inventory-paid-support span,
+.inventory-paid-support--none {
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .section-header__action {
   display: inline-flex;
   min-height: var(--control-height);
@@ -315,12 +407,12 @@
 }
 
 .inventory-table col.product {
-  width: 25%;
+  width: 21%;
 }
 
 .inventory-table col.lifecyclec,
 .inventory-table col.canonicalc {
-  width: 10%;
+  width: 9%;
 }
 
 .inventory-table col.actionc {
@@ -328,11 +420,15 @@
 }
 
 .inventory-table col.numc {
-  width: 7%;
+  width: 6%;
 }
 
 .inventory-table col.coverc {
-  width: 9%;
+  width: 8%;
+}
+
+.inventory-table col.adsc {
+  width: 13%;
 }
 
 .inventory-table thead th {
@@ -688,6 +784,13 @@ main {
 }
 
 @media (max-width: 640px) {
+  .inventory-ads-watch__head {
+    display: block;
+  }
+
+  .inventory-ads-watch__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .queue-clear {
     display: grid;
     gap: 2px;
@@ -797,8 +900,8 @@ main {
   }
 
   .inventory-table {
-    width: 1172px;
-    min-width: 1172px;
+    width: 1304px;
+    min-width: 1304px;
     table-layout: fixed;
   }
 
@@ -825,6 +928,10 @@ main {
 
   .inventory-table col.coverc {
     width: 110px;
+  }
+
+  .inventory-table col.adsc {
+    width: 132px;
   }
 
   .inventory-table thead th:first-child,

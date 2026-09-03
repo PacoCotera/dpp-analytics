@@ -1,4 +1,5 @@
 import {
+  adsDestination,
   formatBusinessClock,
   formatCount,
   formatMetricWindow,
@@ -218,6 +219,7 @@ import {
     const out = document.getElementById('skuRows'),
       control = document.getElementById('productsMore'),
       rows = DATA?.skus || [],
+      adsBySku = new Map((DATA?.ads?.products || []).map((product) => [String(product.sku || ''), product])),
       hiddenCount = Math.max(0, rows.length - PRODUCT_MOBILE_LIMIT);
     if (!out) return;
     out.innerHTML = rows
@@ -225,7 +227,11 @@ import {
         const img = r.image_url
           ? `<img class="product-thumb" src="${esc(r.image_url)}" alt="" loading="lazy">`
           : '';
-        return `<tr${index >= PRODUCT_MOBILE_LIMIT ? ' class="product-reference-row"' : ''}><td><a class="product-line" href="/product?sku=${encodeURIComponent(r.sku)}">${img}<div class="product-line__copy"><div class="product-sku">${esc(r.sku)}</div><div class="product-name">${esc(r.product || r.sku)}</div></div></a></td><td class="num product-sales"><strong>${money(r.sales_t28)}</strong></td><td class="num product-share">${percent(r.share_t28_pct, { sign: false })}</td><td class="num product-change ${cls(r.sales_change_t28)}"><strong>${r.sales_change_t28 == null ? '—' : shortMoney(r.sales_change_t28)}</strong><small>${percent(r.delta28_pct)}</small></td><td class="num product-movement">${percent(r.movement_contribution_pct, { sign: false })}</td><td class="num product-units">${formatCount(r.units_t28 || 0, 'unit')} / 28D</td><td class="product-state"><span class="state ${esc(r.state)}">${esc(r.state)}</span></td></tr>`;
+        const paid = adsBySku.get(String(r.sku || ''));
+        const paidSupport = paid
+          ? `<a class="product-paid-support" href="${adsDestination({ view: 'products', sku: r.sku })}"><strong>${money(paid.spend)}</strong><span>${percent(paid.tacos, { sign: false, scale: 100 })} TACOS · ${esc(paid.recommendation?.label || 'Monitor')}</span></a>`
+          : '<span class="product-paid-support product-paid-support--none">No paid support</span>';
+        return `<tr${index >= PRODUCT_MOBILE_LIMIT ? ' class="product-reference-row"' : ''}><td><a class="product-line" href="/product?sku=${encodeURIComponent(r.sku)}">${img}<div class="product-line__copy"><div class="product-sku">${esc(r.sku)}</div><div class="product-name">${esc(r.product || r.sku)}</div></div></a></td><td class="num product-sales"><strong>${money(r.sales_t28)}</strong></td><td class="num product-share">${percent(r.share_t28_pct, { sign: false })}</td><td class="num product-change ${cls(r.sales_change_t28)}"><strong>${r.sales_change_t28 == null ? '—' : shortMoney(r.sales_change_t28)}</strong><small>${percent(r.delta28_pct)}</small></td><td class="num product-movement">${percent(r.movement_contribution_pct, { sign: false })}</td><td class="num product-units">${formatCount(r.units_t28 || 0, 'unit')} / 28D</td><td>${paidSupport}</td><td class="product-state"><span class="state ${esc(r.state)}">${esc(r.state)}</span></td></tr>`;
       })
       .join('');
     document.getElementById('products')?.classList.toggle('products-expanded', PRODUCTS_EXPANDED);
@@ -237,6 +243,44 @@ import {
       'productsMoreCount',
       PRODUCTS_EXPANDED ? `${nf.format(rows.length)} shown` : `${nf.format(hiddenCount)} more`,
     );
+  }
+
+  function renderAdsContext() {
+    const context = DATA?.ads || {};
+    const business = context.business || {};
+    const panel = document.getElementById('salesAdsContext');
+    if (!panel || !business.through_date) {
+      if (panel) panel.hidden = true;
+      return;
+    }
+    panel.hidden = false;
+    set('salesAdsSellerSales', money(business.total_business_sales));
+    set('salesAdsSpend', money(business.spend));
+    set('salesAdsTacos', percent(business.tacos, { sign: false, scale: 100 }));
+    set('salesAdsAttributed', money(business.attributed_sales));
+    set(
+      'salesAdsRead',
+      business.trusted_for_operating_decisions
+        ? 'Paid-support context is reconciled for operating review.'
+        : 'Paid-support context is provisional; keep seller demand as the decision anchor.',
+    );
+    set(
+      'salesAdsNote',
+      `${nf.format(business.observed_ads_days || 0)} observed · ${nf.format(business.mature_ads_days || 0)} mature · through ${String(business.through_date).slice(0, 10)}. Amazon-attributed sales are not incremental sales, and seller sales minus attributed sales is not exact organic sales.`,
+    );
+    const action = context.primary_action;
+    const actionNode = document.getElementById('salesAdsAction');
+    const open = document.getElementById('salesAdsOpen');
+    if (action) {
+      const href = adsDestination(action.destination);
+      actionNode.hidden = false;
+      actionNode.innerHTML = `<div><span>${esc(action.label || 'Review')}</span><strong>${esc(action.title || action.product || action.sku || 'Paid-support review')}</strong><p>${esc(action.rationale || '')}</p></div><a href="${href}">Open action <span aria-hidden="true">→</span></a>`;
+      open.href = href;
+    } else {
+      actionNode.hidden = true;
+      actionNode.innerHTML = '';
+      open.href = '/ads?view=products';
+    }
   }
   function renderOrders() {
     const out = document.getElementById('orderRows'),
@@ -958,6 +1002,7 @@ import {
     set('salesBusinessWindow', formatMetricWindow(DATA.metric_windows?.RECONCILED_BUSINESS_T28));
     set('salesProductWindow', formatMetricWindow(DATA.metric_windows?.RECONCILED_PRODUCT_T28));
     renderSignals();
+    renderAdsContext();
     renderProductRead();
     renderProducts();
     renderOrders();

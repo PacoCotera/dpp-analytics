@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from ads_context import cross_route_t28
 from catalog_onboarding import catalog_onboarding_snapshot
 from health_api import ads_health_summary, load_ads_quality, load_health_jobs
 from health_contract import CORE_STREAMS, build_health_contract
@@ -50,14 +51,16 @@ def home_payload(connect, decorate_products, marketplace: str) -> dict:
             (RECONCILED_BUSINESS_T28,),
             timezone=timezone,
         )
-        ads = {"status":"pending_access","trusted":False,"note":"Amazon Ads access pending. Business performance is shown without paid-media interpretation."}
-        if _one(cur,"SELECT to_regclass('mart.ads_business_t28') rel").get('rel'):
-            a = _one(cur,"SELECT through_date,spend,attributed_sales,total_business_sales,roas,acos,tacos,observed_ads_days,expected_ads_days,missing_ads_days,mature_ads_days FROM mart.ads_business_t28 WHERE marketplace_id=%s",(marketplace,))
-            if a.get('through_date'):
-                q = _one(cur,"SELECT count(*) FILTER(WHERE quality_state<>'OK')::int issues,count(*)::int account_days FROM mart.ads_ingestion_quality WHERE marketplace_id=%s AND business_date BETWEEN %s::date-27 AND %s::date",(marketplace,a['through_date'],a['through_date'])) if _one(cur,"SELECT to_regclass('mart.ads_ingestion_quality') rel").get('rel') else {}
-                complete = int(a.get('missing_ads_days') or 0)==0 and int(a.get('observed_ads_days') or 0)>=int(a.get('expected_ads_days') or 28)
-                trusted = complete and int(q.get('issues') or 0)==0 and int(q.get('account_days') or 0)>0
-                ads={"status":"ready","trusted":trusted,"through_date":a['through_date'],"spend":a.get('spend'),"attributed_sales":a.get('attributed_sales'),"total_business_sales":a.get('total_business_sales'),"roas":a.get('roas'),"acos":a.get('acos'),"tacos":a.get('tacos'),"mature_days":a.get('mature_ads_days'),"observed_days":a.get('observed_ads_days'),"expected_days":a.get('expected_ads_days'),"note":"Attributed sales can revise and are not exact incremental sales. Total sales minus attributed sales is not exact organic sales."}
+        try:
+            with conn.transaction():
+                ads = cross_route_t28(cur, marketplace, decorate_products, limit=4)
+        except Exception as exc:
+            print(f"business ads context degraded: {exc}", flush=True)
+            ads = {
+                "status": "unavailable",
+                "reason": "ads_context_error",
+                "primary_action": None,
+            }
     catalog = catalog_onboarding_snapshot(connect, marketplace)
     health_contract = build_health_contract(health_jobs, catalog["summary"], ads_health)
     core_keys = {(item["source"], item["job_name"]) for item in CORE_STREAMS}

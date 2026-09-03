@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ads_context import business_t28
+from ads_context import cross_route_t28
 
 
 def _query_label(sql: str) -> str:
@@ -215,7 +215,7 @@ def sales_payload(connect, decorate_products, marketplace: str, *, include_geogr
             # Isolate optional Ads context from the core Sales transaction. A bad
             # Ads mart/permission/data contract rolls back only this savepoint.
             with conn.transaction():
-                ads = business_t28(cur, marketplace)
+                ads = cross_route_t28(cur, marketplace, decorate_products, limit=20)
         except Exception as exc:
             print(f"sales ads context degraded: {exc}", flush=True)
             ads = {
@@ -226,12 +226,17 @@ def sales_payload(connect, decorate_products, marketplace: str, *, include_geogr
 
         # Compatibility aliases for the current Sales renderer while canonical names
         # remain available to all new consumers.
-        if ads.get("status") == "ready":
+        if ads.get("business", {}).get("through_date"):
+            business = ads["business"]
             ads.update({
-                "spend_t28": ads.get("spend"), "attributed_sales_t28": ads.get("attributed_sales"),
-                "acos_t28": ads.get("acos"), "roas_t28": ads.get("roas"), "tacos_t28": ads.get("tacos"),
-                "total_sales_aligned": ads.get("total_business_sales"), "spend_delta28_pct": ads.get("spend_delta_pct"),
-                "tacos_delta_points": ads.get("tacos_delta_points"),
+                "spend_t28": business.get("spend"),
+                "attributed_sales_t28": business.get("attributed_sales"),
+                "acos_t28": business.get("acos"),
+                "roas_t28": business.get("roas"),
+                "tacos_t28": business.get("tacos"),
+                "total_sales_aligned": business.get("total_business_sales"),
+                "spend_delta28_pct": business.get("spend_delta_pct"),
+                "tacos_delta_points": business.get("tacos_delta_points"),
             })
 
     payload = {

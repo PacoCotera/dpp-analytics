@@ -474,6 +474,86 @@
   font-size: 20px;
 }
 
+.today-operations-grid > .paid-support-watch {
+  grid-column: 1 / -1;
+  margin-top: 18px;
+  padding: 18px 0 0;
+  border-top: var(--border-width) solid var(--line);
+  border-left: 0;
+}
+
+.paid-support-watch__body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.paid-support-watch__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--panel-radius);
+  overflow: hidden;
+}
+
+.paid-support-watch__metrics > div {
+  min-width: 0;
+  padding: 12px;
+  border-left: var(--border-width) solid var(--line);
+}
+
+.paid-support-watch__metrics > div:first-child {
+  border-left: 0;
+}
+
+.paid-support-watch__metrics strong,
+.paid-support-watch__metrics span {
+  display: block;
+}
+
+.paid-support-watch__metrics strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.paid-support-watch__metrics span,
+.paid-support-watch__action span,
+.paid-support-watch__action p,
+.paid-support-watch__note {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.paid-support-watch__action {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.paid-support-watch__action strong,
+.paid-support-watch__action p {
+  display: block;
+  margin-top: 4px;
+}
+
+.paid-support-watch__links {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.paid-support-watch__links a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+}
+
+.paid-support-watch__note {
+  margin-top: 10px;
+}
+
 .order-flow-grid {
   margin-top: 16px;
 }
@@ -1172,6 +1252,28 @@ html.wall-mode .today-section {
     padding-left: 0;
     border-top: var(--border-width) solid var(--line);
     border-left: 0;
+  }
+
+  .paid-support-watch__body,
+  .paid-support-watch__metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .paid-support-watch__metrics > div {
+    border-top: var(--border-width) solid var(--line);
+    border-left: 0;
+  }
+
+  .paid-support-watch__metrics > div:first-child {
+    border-top: 0;
+  }
+
+  .paid-support-watch__action {
+    display: block;
+  }
+
+  .paid-support-watch__links {
+    margin-top: 10px;
   }
 }
 

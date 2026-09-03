@@ -1,4 +1,5 @@
 import {
+  adsDestination,
   escapeHtml,
   fetchJson,
   formatBusinessClock,
@@ -63,11 +64,14 @@ function bindDemandWindow() {
 }
 
 function renderAds(ads) {
-  const a = ads || {},
+  const context = ads || {},
+    a = context.business || context,
     panel = document.getElementById('adsRead'),
     metrics = document.getElementById('adsMetrics'),
     headline = document.getElementById('adsHeadline'),
-    note = document.getElementById('adsNote');
+    note = document.getElementById('adsNote'),
+    actionNode = document.getElementById('adsAction'),
+    open = document.getElementById('adsOpen');
   if (!a.through_date) {
     panel.hidden = true;
     metrics.hidden = true;
@@ -80,13 +84,24 @@ function renderAds(ads) {
   metrics.hidden = false;
   document.getElementById('adsSpend').textContent = money(a.spend);
   document.getElementById('adsRoas').textContent = a.roas == null ? '—' : `${Number(a.roas).toFixed(2)}×`;
-  document.getElementById('adsAcos').textContent = percent(a.acos, { sign: false });
-  document.getElementById('adsTacos').textContent = percent(a.tacos, { sign: false });
-  headline.textContent = a.trusted
+  document.getElementById('adsAcos').textContent = percent(a.acos, { sign: false, scale: 100 });
+  document.getElementById('adsTacos').textContent = percent(a.tacos, { sign: false, scale: 100 });
+  headline.textContent = a.trusted_for_operating_decisions
     ? 'Advertising context is decision-grade'
     : 'Advertising context is still provisional';
-  const coverage = `${integer(a.observed_days)} of ${integer(a.expected_days)} days observed`;
+  const coverage = `${integer(a.observed_ads_days)} of ${integer(a.expected_ads_days)} days observed`;
   note.textContent = `${coverage} · through ${String(a.through_date).slice(0, 10)}. Amazon-attributed sales can revise and are not incremental sales. Residual sales are not exact organic sales.`;
+  const action = context.primary_action;
+  if (action) {
+    const href = adsDestination(action.destination);
+    actionNode.hidden = false;
+    actionNode.innerHTML = `<div><span>${escapeHtml(action.label || 'Review')}</span><strong>${escapeHtml(action.title || action.product || action.sku || 'Paid-support review')}</strong><p>${escapeHtml(action.rationale || '')}</p></div><a href="${href}">Open action <span aria-hidden="true">→</span></a>`;
+    open.href = href;
+  } else {
+    actionNode.hidden = true;
+    actionNode.innerHTML = '';
+    open.href = '/ads?view=products';
+  }
 }
 
 function exceptionRead(item) {

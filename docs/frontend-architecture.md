@@ -191,6 +191,9 @@ Advertising owns `view`, `sku`, `campaign`, `signal`, `action`, `filter`, `sort`
 `signal_type`. Business impact, decision ordering, page 1 and empty filters/search are omitted defaults. Ads
 action destinations write the exact product or demand evidence into that state; Product Workspace links leave the
 full Ads URL in browser history so Back restores the originating analysis.
+Today, Business, Sales, Product Workspace and Inventory construct those links with the shared
+`ui-utils.js::adsDestination()` helper and the server-owned destination object. They may add a direct demand link
+for the current SKU, but may not translate a generic route prompt into a browser-owned recommendation.
 Default values are omitted, invalid values normalize to documented defaults, and unrelated parameters are
 preserved. Changing a stable choice pushes browser history; direct load, refresh, Back, and Forward must render
 the same state.

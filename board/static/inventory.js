@@ -1,10 +1,13 @@
 import {
+  adsDestination,
   byId,
   escapeHtml,
   fetchJson,
   formatBusinessClock,
   formatMetricWindow,
   integer,
+  money,
+  percent,
   revealActiveChoice,
   setText,
 } from './ui-utils.js';
@@ -134,6 +137,11 @@ function renderRows() {
     ? rows
         .map((row) => {
           const [status, kind] = statusInfo(row.action);
+          const spend = Number(row.ad_spend_t28 || 0);
+          const paidSupport =
+            spend > 0
+              ? `<a class="inventory-paid-support" href="${adsDestination({ view: 'products', sku: row.sku })}"><strong>${money(spend)}</strong><span>${percent(row.ad_tacos_t28, { sign: false, scale: 100 })} TACOS</span></a>`
+              : '<span class="inventory-paid-support inventory-paid-support--none">None</span>';
           return `<tr>
             <th scope="row"><a class="stock-product" href="/product?sku=${encodeURIComponent(row.sku)}">${productMarkup(row)}</a></th>
             <td data-label="Lifecycle">${escapeHtml(LIFECYCLE_LABELS[row.inventory_lifecycle] || row.inventory_lifecycle)}</td>
@@ -144,11 +152,39 @@ function renderRows() {
             <td class="num" data-label="Reserved">${integer(row.reserved)}</td>
             <td class="num" data-label="28D order units">${integer(row.units_t28)}</td>
             <td class="num cover ${kind}" data-label="Days cover">${daysCover(row)}</td>
+            <td data-label="Paid support">${paidSupport}</td>
             <td data-label="Status"><span class="status-dot ${kind}">${status}</span></td>
           </tr>`;
         })
         .join('')
-    : '<tr><td colspan="10"><div class="empty"><strong>No matching SKUs.</strong> Try another filter.</div></td></tr>';
+    : '<tr><td colspan="11"><div class="empty"><strong>No matching SKUs.</strong> Try another filter.</div></td></tr>';
+}
+
+function renderAdsExposure(ads = {}) {
+  const panel = byId('inventoryAdsWatch');
+  const actions = ads.actions || [];
+  const business = ads.business || {};
+  if (!panel || !business.through_date || !actions.length) {
+    if (panel) panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  byId('inventoryAdsActions').innerHTML = actions
+    .slice(0, 4)
+    .map((action) => {
+      const evidence = action.evidence || {};
+      const href = adsDestination(action.destination);
+      return `<li><article class="inventory-ads-action">
+        <div><span>${escapeHtml(action.label || 'Review paid support')}</span><strong>${escapeHtml(action.product || action.sku || 'Product')}</strong><p>${escapeHtml(action.explanation || '')}</p></div>
+        <div class="inventory-ads-action__evidence"><span>${escapeHtml(String(evidence.inventory_action || 'Review'))} inventory</span><span>${money(evidence.spend)} spend</span><span>${daysCover({ days_cover_with_inbound: evidence.days_cover_with_inbound })} days cover</span></div>
+        <div class="inventory-ads-action__links"><a href="/product?sku=${encodeURIComponent(action.sku || '')}">Open product</a><a href="${href}">Review in Advertising</a></div>
+      </article></li>`;
+    })
+    .join('');
+  const hidden = Math.max(0, actions.length - 4);
+  byId('inventoryAdsNote').textContent =
+    `${actions.length} reconciled ${actions.length === 1 ? 'SKU has' : 'SKUs have'} both an inventory constraint and active paid support${hidden ? `; ${hidden} more are available in Advertising` : ''}. Through ${String(business.through_date).slice(0, 10)}. This is a fulfillment-readiness review, not a recommendation to pause, reduce, bid or scale.`;
+  byId('inventoryAdsOpen').href = adsDestination(actions[0].destination);
 }
 
 function renderQueue() {
@@ -226,6 +262,7 @@ function render(data) {
   setText('reserved', integer(summary.reserved));
 
   renderQueue();
+  renderAdsExposure(data.ads || {});
   renderBands(data.bands || []);
   renderRows();
 }
