@@ -441,10 +441,15 @@ try {
       "Production demand is server-bounded and normalized",
       Number(payload.demand?.page_size) === 20 &&
         (payload.demand?.items || []).length <= 20 &&
-        (payload.demand?.items || []).every((row) =>
-          ["SHOPPER_QUERY", "MATCHED_PRODUCT", "TARGET"].includes(
-            row.signal_type,
-          ),
+        (payload.demand?.items || []).every(
+          (row) =>
+            ["SHOPPER_QUERY", "MATCHED_PRODUCT", "TARGET"].includes(
+              row.signal_type,
+            ) &&
+            !(
+              row.signal_type === "TARGET" &&
+              row.signal === row.technical?.target_id
+            ),
         ),
       JSON.stringify({
         pageSize: payload.demand?.page_size,

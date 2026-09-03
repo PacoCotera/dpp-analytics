@@ -143,6 +143,34 @@ class AdsDecisionContractTests(unittest.TestCase):
         self.assertEqual(product["signal"], "B07K4XY6PT")
         self.assertEqual(query["technical"]["target_id"], "t")
         self.assertEqual(query["recommendation"]["evidence"]["required_mature_days"], 21)
+        configured_target = normalize_demand_signal(
+            {
+                "account_id": "a",
+                "campaign_id": "c",
+                "target_id": "429271729326675",
+                "target_expression": None,
+                "target_type": "close_match",
+                "clicks": 2,
+                "purchases": 0,
+                "spend": 4,
+                "attributed_sales": 0,
+                "impressions": 100,
+            },
+            source="target",
+            product_refs=[],
+            trusted=True,
+            mature_days=21,
+            observed_days=28,
+        )
+        self.assertEqual(configured_target["signal_type"], "TARGET")
+        self.assertEqual(
+            configured_target["signal"],
+            "Configured target (expression unavailable)",
+        )
+        self.assertNotEqual(
+            configured_target["signal"], configured_target["technical"]["target_id"]
+        )
+        self.assertIsNone(configured_target["technical"]["raw_value"])
         still_learning = normalize_demand_signal(
             {
                 "account_id": "a",
