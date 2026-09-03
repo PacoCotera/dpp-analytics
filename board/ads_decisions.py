@@ -4,6 +4,7 @@ from collections import defaultdict
 from hashlib import sha256
 import math
 import re
+import unicodedata
 from typing import Any, Iterable
 
 
@@ -11,6 +12,53 @@ WINDOW_DAYS = 28
 MIN_SIGNAL_CLICKS = 8
 MIN_REPEAT_PURCHASES = 2
 MIN_PRODUCT_OBSERVED_DAYS = 14
+SEARCH_QUERY_LIMIT = 8
+SEARCH_QUERY_MIN_IMPRESSIONS = 100
+SEARCH_QUERY_MIN_CLICKS = 8
+SEARCH_QUERY_MIN_CART_ADDS = 3
+SEARCH_QUERY_MIN_VOLUME = 1000
+SEARCH_QUERY_MAX_VISIBILITY_SHARE = 0.01
+SEARCH_QUERY_RATE_RATIO = 0.75
+SEARCH_QUERY_SCENARIO_LOW = 0.25
+SEARCH_QUERY_SCENARIO_HIGH = 0.50
+
+SEARCH_OPPORTUNITY_RULES = {
+    "SQP_PURCHASE_GAP": {
+        "key": "SQP_PURCHASE_GAP",
+        "version": 1,
+        "label": "Purchase gap",
+        "minimum_evidence": {"asin_cart_adds": SEARCH_QUERY_MIN_CART_ADDS},
+        "comparison": "ASIN purchases per cart add are below 75% of the Amazon-wide query rate.",
+        "review": "Review offer availability, price, delivery promise and purchase friction.",
+    },
+    "SQP_CART_GAP": {
+        "key": "SQP_CART_GAP",
+        "version": 1,
+        "label": "Cart gap",
+        "minimum_evidence": {"asin_clicks": SEARCH_QUERY_MIN_CLICKS},
+        "comparison": "ASIN cart adds per click are below 75% of the Amazon-wide query rate.",
+        "review": "Review product-page fit, value communication, price and query promise.",
+    },
+    "SQP_CLICK_GAP": {
+        "key": "SQP_CLICK_GAP",
+        "version": 1,
+        "label": "Click gap",
+        "minimum_evidence": {"asin_impressions": SEARCH_QUERY_MIN_IMPRESSIONS},
+        "comparison": "ASIN clicks per impression are below 75% of the Amazon-wide query rate.",
+        "review": "Review title, main image, price and delivery promise for this query.",
+    },
+    "SQP_VISIBILITY_REVIEW": {
+        "key": "SQP_VISIBILITY_REVIEW",
+        "version": 1,
+        "label": "Visibility review",
+        "minimum_evidence": {
+            "search_query_volume": SEARCH_QUERY_MIN_VOLUME,
+            "total_query_impressions": SEARCH_QUERY_MIN_VOLUME,
+        },
+        "comparison": "ASIN impression share is below 1% for a query with meaningful demand.",
+        "review": "Check relevance and indexing, then consider a controlled paid-search test if the query fits.",
+    },
+}
 
 ECONOMICS_CONTRACT = {
     "state": "UNAVAILABLE",
@@ -159,6 +207,244 @@ def safe_ratio(numerator: Any, denominator: Any) -> float | None:
     if denominator_value <= 0:
         return None
     return _number(numerator) / denominator_value
+
+
+def normalize_search_query_key(value: Any) -> str:
+    """Match the canonical Brand Analytics query-key contract."""
+    normalized = unicodedata.normalize("NFKC", str(value or ""))
+    return " ".join(normalized.split()).casefold()
+
+
+def paid_support_by_query(rows: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Aggregate exact same-month Ads evidence without assigning it to an ASIN."""
+    grouped: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = normalize_search_query_key(row.get("search_term"))
+        if not key:
+            continue
+        item = grouped.setdefault(
+            key,
+            {
+                "exact_query_match": True,
+                "spend": 0.0,
+                "clicks": 0,
+                "attributed_purchases": 0,
+                "attributed_sales": 0.0,
+                "campaign_ids": set(),
+            },
+        )
+        item["spend"] += _number(row.get("spend"))
+        item["clicks"] += int(row.get("clicks") or 0)
+        item["attributed_purchases"] += int(row.get("purchases") or 0)
+        item["attributed_sales"] += _number(row.get("attributed_sales"))
+        if row.get("campaign_id"):
+            item["campaign_ids"].add(str(row["campaign_id"]))
+    for item in grouped.values():
+        item["campaign_count"] = len(item.pop("campaign_ids"))
+        item["basis"] = (
+            "Exact normalized query in Amazon Ads for the same calendar month. "
+            "This evidence is query-level and is not assigned to the selected ASIN."
+        )
+    return grouped
+
+
+def _search_confidence(evidence: int, minimum: int) -> dict[str, str]:
+    if evidence >= minimum * 4:
+        return {"state": "HIGH", "label": "High evidence"}
+    if evidence >= minimum * 2:
+        return {"state": "MEDIUM", "label": "Moderate evidence"}
+    return {"state": "LOW", "label": "Directional"}
+
+
+def _scenario_range(full_gap_purchases: float) -> dict[str, Any]:
+    full_gap = max(0.0, full_gap_purchases)
+    return {
+        "metric": "additional_purchases",
+        "low": round(full_gap * SEARCH_QUERY_SCENARIO_LOW, 2),
+        "high": round(full_gap * SEARCH_QUERY_SCENARIO_HIGH, 2),
+        "low_gap_closure": SEARCH_QUERY_SCENARIO_LOW,
+        "high_gap_closure": SEARCH_QUERY_SCENARIO_HIGH,
+        "basis": (
+            "Arithmetic sensitivity if 25% to 50% of the measured gap closes while the query's "
+            "Amazon-wide downstream rates hold. This is a scenario, not a forecast or causal lift estimate."
+        ),
+    }
+
+
+def search_query_opportunity(
+    row: dict[str, Any], paid_support: dict[str, Any] | None = None
+) -> dict[str, Any] | None:
+    """Convert one ASIN/query funnel into one bounded operational review."""
+    total_impressions = int(row.get("total_query_impression_count") or 0)
+    asin_impressions = int(row.get("asin_impression_count") or 0)
+    total_clicks = int(row.get("total_click_count") or 0)
+    asin_clicks = int(row.get("asin_click_count") or 0)
+    total_carts = int(row.get("total_cart_add_count") or 0)
+    asin_carts = int(row.get("asin_cart_add_count") or 0)
+    total_purchases = int(row.get("total_purchase_count") or 0)
+    asin_purchases = int(row.get("asin_purchase_count") or 0)
+    volume = int(row.get("search_query_volume") or 0)
+    impression_share = _number(row.get("asin_impression_share"))
+
+    market_click_rate = safe_ratio(total_clicks, total_impressions)
+    asin_click_rate = safe_ratio(asin_clicks, asin_impressions)
+    market_cart_rate = safe_ratio(total_carts, total_clicks)
+    asin_cart_rate = safe_ratio(asin_carts, asin_clicks)
+    market_purchase_rate = safe_ratio(total_purchases, total_carts)
+    asin_purchase_rate = safe_ratio(asin_purchases, asin_carts)
+
+    rule_key = None
+    evidence_count = 0
+    minimum = 1
+    full_gap_purchases = 0.0
+    market_rate = None
+    asin_rate = None
+    evidence_label = ""
+
+    if (
+        asin_carts >= SEARCH_QUERY_MIN_CART_ADDS
+        and market_purchase_rate is not None
+        and asin_purchase_rate is not None
+        and asin_purchase_rate < market_purchase_rate * SEARCH_QUERY_RATE_RATIO
+    ):
+        rule_key = "SQP_PURCHASE_GAP"
+        evidence_count = asin_carts
+        minimum = SEARCH_QUERY_MIN_CART_ADDS
+        market_rate = market_purchase_rate
+        asin_rate = asin_purchase_rate
+        evidence_label = "ASIN cart adds"
+        full_gap_purchases = asin_carts * (market_purchase_rate - asin_purchase_rate)
+    elif (
+        asin_clicks >= SEARCH_QUERY_MIN_CLICKS
+        and market_cart_rate is not None
+        and asin_cart_rate is not None
+        and market_cart_rate > 0
+        and market_purchase_rate is not None
+        and asin_cart_rate < market_cart_rate * SEARCH_QUERY_RATE_RATIO
+    ):
+        rule_key = "SQP_CART_GAP"
+        evidence_count = asin_clicks
+        minimum = SEARCH_QUERY_MIN_CLICKS
+        market_rate = market_cart_rate
+        asin_rate = asin_cart_rate
+        evidence_label = "ASIN clicks"
+        full_gap_purchases = asin_clicks * (market_cart_rate - asin_cart_rate) * market_purchase_rate
+    elif (
+        asin_impressions >= SEARCH_QUERY_MIN_IMPRESSIONS
+        and market_click_rate is not None
+        and asin_click_rate is not None
+        and market_click_rate > 0
+        and market_cart_rate is not None
+        and market_purchase_rate is not None
+        and asin_click_rate < market_click_rate * SEARCH_QUERY_RATE_RATIO
+    ):
+        rule_key = "SQP_CLICK_GAP"
+        evidence_count = asin_impressions
+        minimum = SEARCH_QUERY_MIN_IMPRESSIONS
+        market_rate = market_click_rate
+        asin_rate = asin_click_rate
+        evidence_label = "ASIN impressions"
+        full_gap_purchases = (
+            asin_impressions
+            * (market_click_rate - asin_click_rate)
+            * market_cart_rate
+            * market_purchase_rate
+        )
+    elif (
+        volume >= SEARCH_QUERY_MIN_VOLUME
+        and total_impressions >= SEARCH_QUERY_MIN_VOLUME
+        and impression_share < SEARCH_QUERY_MAX_VISIBILITY_SHARE
+        and market_click_rate is not None
+        and market_cart_rate is not None
+        and market_purchase_rate is not None
+    ):
+        rule_key = "SQP_VISIBILITY_REVIEW"
+        evidence_count = volume
+        minimum = SEARCH_QUERY_MIN_VOLUME
+        market_rate = SEARCH_QUERY_MAX_VISIBILITY_SHARE
+        asin_rate = impression_share
+        evidence_label = "query volume"
+        full_gap_purchases = (
+            total_impressions
+            * (SEARCH_QUERY_MAX_VISIBILITY_SHARE - impression_share)
+            * market_click_rate
+            * market_cart_rate
+            * market_purchase_rate
+        )
+    if not rule_key:
+        return None
+
+    rule = SEARCH_OPPORTUNITY_RULES[rule_key]
+    query = str(row.get("search_query") or "").strip()
+    query_key = str(row.get("search_query_key") or normalize_search_query_key(query))
+    paid = paid_support or {
+        "exact_query_match": False,
+        "spend": 0.0,
+        "clicks": 0,
+        "attributed_purchases": 0,
+        "attributed_sales": 0.0,
+        "campaign_count": 0,
+        "basis": (
+            "No exact normalized query match was found in the available Amazon Ads report for the same month. "
+            "This does not prove that paid advertising had no influence."
+        ),
+    }
+    scenario = _scenario_range(full_gap_purchases)
+    opportunity = {
+        "id": _stable_id("sqp-opportunity", row.get("asin"), query_key, row.get("start_date"), rule_key),
+        "rule_key": rule_key,
+        "rule_version": rule["version"],
+        "stage": rule_key.removeprefix("SQP_").removesuffix("_GAP").removesuffix("_REVIEW"),
+        "label": rule["label"],
+        "query": query,
+        "query_key": query_key,
+        "asin": row.get("asin"),
+        "sku": row.get("sku"),
+        "product": row.get("product") or row.get("sku") or row.get("asin"),
+        "image_url": row.get("image_url"),
+        "product_url": f"/product?sku={row.get('sku')}" if row.get("sku") else None,
+        "diagnosis": rule["comparison"],
+        "review": rule["review"],
+        "confidence": _search_confidence(evidence_count, minimum),
+        "scenario": scenario,
+        "evidence": {
+            "search_query_volume": volume,
+            "evidence_count": evidence_count,
+            "evidence_label": evidence_label,
+            "asin_rate": asin_rate,
+            "query_rate": market_rate,
+            "asin_impression_share": impression_share,
+            "asin_impressions": asin_impressions,
+            "asin_clicks": asin_clicks,
+            "asin_cart_adds": asin_carts,
+            "asin_purchases": asin_purchases,
+        },
+        "paid_support": paid,
+    }
+    depth = {"SQP_PURCHASE_GAP": 3, "SQP_CART_GAP": 2, "SQP_CLICK_GAP": 1, "SQP_VISIBILITY_REVIEW": 0}
+    measured_funnel_gap = rule_key != "SQP_VISIBILITY_REVIEW"
+    opportunity["rank_score"] = round(
+        int(measured_funnel_gap) * 1_000_000_000
+        + scenario["high"] * 1_000_000
+        + depth[rule_key] * 1_000
+        + math.log1p(evidence_count),
+        6,
+    )
+    return opportunity
+
+
+def build_search_query_opportunities(
+    rows: Iterable[dict[str, Any]], paid_rows: Iterable[dict[str, Any]], limit: int = SEARCH_QUERY_LIMIT
+) -> list[dict[str, Any]]:
+    paid = paid_support_by_query(paid_rows)
+    opportunities = []
+    for row in rows:
+        key = str(row.get("search_query_key") or normalize_search_query_key(row.get("search_query")))
+        opportunity = search_query_opportunity(row, paid.get(key))
+        if opportunity:
+            opportunities.append(opportunity)
+    opportunities.sort(key=lambda item: (-item["rank_score"], item["query"], str(item.get("sku") or "")))
+    return opportunities[: max(0, limit)]
 
 
 def metric_contract(row: dict[str, Any]) -> dict[str, Any]:

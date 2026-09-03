@@ -47,6 +47,13 @@ spend / Amazon-attributed sales`, `TACOS = spend / independently reconciled sell
 Amazon-attributed sales / independently reconciled seller sales. A non-positive denominator makes the ratio
 unavailable. These attribution ratios do not establish incrementality or profitability.
 
+Search Query Performance funnel comparisons use source counts at stage-appropriate denominators: query/ASIN
+clicks per impression, cart adds per click and purchases per cart add. Amazon's exported click, cart-add and
+purchase rate columns use search-query volume as their denominator and are not substituted for these stage rates.
+The displayed purchase range closes 25% to 50% of one observed stage gap and carries the same query's Amazon-wide
+downstream rates forward. It is a sensitivity scenario, not a forecast, incremental-sales claim or paid/organic
+split.
+
 ## Live Mexico order-money rule
 
 Amazon Orders v2026 can expose the same MX item at different completeness states. In production we observed a finalized MX$279 sale as ITEM MX$240.52 + TAX MX$38.48, while another same-price live order temporarily had only the MX$240.52 tax-exclusive item amount. Summing those fields naively mixes tax bases.

@@ -209,6 +209,55 @@ const signal = {
   },
 };
 
+const searchOpportunity = {
+  id: "sqp-opportunity-one",
+  rule_key: "SQP_CLICK_GAP",
+  rule_version: 1,
+  stage: "CLICK",
+  label: "Click gap",
+  query: "daily planner",
+  query_key: "daily planner",
+  asin: product.asin,
+  sku: product.sku,
+  product: product.product,
+  image_url: null,
+  product_url: "/product?sku=SKU-ONE",
+  diagnosis:
+    "ASIN clicks per impression are below 75% of the Amazon-wide query rate.",
+  review:
+    "Review title, main image, price and delivery promise for this query.",
+  confidence: { state: "HIGH", label: "High evidence" },
+  scenario: {
+    metric: "additional_purchases",
+    low: 1.5,
+    high: 3,
+    low_gap_closure: 0.25,
+    high_gap_closure: 0.5,
+    basis: "Arithmetic sensitivity, not a forecast or causal lift estimate.",
+  },
+  evidence: {
+    search_query_volume: 5000,
+    evidence_count: 400,
+    evidence_label: "ASIN impressions",
+    asin_rate: 0.025,
+    query_rate: 0.1,
+    asin_impression_share: 0.04,
+    asin_impressions: 400,
+    asin_clicks: 10,
+    asin_cart_adds: 4,
+    asin_purchases: 2,
+  },
+  paid_support: {
+    exact_query_match: true,
+    spend: 10,
+    clicks: 10,
+    attributed_purchases: 2,
+    attributed_sales: 36,
+    campaign_count: 1,
+    basis: "Same-month query-level Ads evidence, not assigned to this ASIN.",
+  },
+};
+
 const productAction = {
   id: "ads-action-product",
   action_type: "PRODUCT_REVIEW",
@@ -344,6 +393,28 @@ const readyPayload = {
   products: [product],
   demand: { items: [signal], total: 1, page: 1, page_size: 20, page_count: 1 },
   demand_totals: { targets: 0, search_terms: 1 },
+  search_opportunities: {
+    status: "READY",
+    period: { start_date: "2026-08-01", end_date: "2026-08-31" },
+    items: [searchOpportunity],
+    shown: 1,
+    qualified: 3,
+    source_rows: 100,
+    rules: {
+      SQP_CLICK_GAP: {
+        key: "SQP_CLICK_GAP",
+        version: 1,
+        label: "Click gap",
+        minimum_evidence: { asin_impressions: 100 },
+      },
+    },
+    basis:
+      "Inclusive marketplace-search evidence. It does not separate organic and paid activity or prove advertising incrementality.",
+    scenario_basis:
+      "Purchase ranges are arithmetic sensitivities, not forecasts or causal lift estimates.",
+    paid_support_basis:
+      "Exact normalized Ads query evidence uses the same calendar month and remains query-level.",
+  },
   actions: [productAction, demandAction],
   action_groups: [
     {
@@ -485,6 +556,26 @@ try {
       JSON.stringify({
         pageSize: payload.demand?.page_size,
         rows: payload.demand?.items?.length,
+      }),
+    );
+    const searchContract = payload.search_opportunities || {};
+    check(
+      "Production search opportunities are bounded and interpretation-safe",
+      ["READY", "NO_DATA", "UNAVAILABLE"].includes(searchContract.status) &&
+        (searchContract.items || []).length <= 8 &&
+        (searchContract.items || []).every(
+          (item) =>
+            item.id &&
+            item.rule_key &&
+            item.rule_version &&
+            item.confidence?.state &&
+            item.scenario?.basis?.includes("not a forecast") &&
+            item.paid_support?.basis,
+        ),
+      JSON.stringify({
+        status: searchContract.status,
+        shown: searchContract.items?.length,
+        qualified: searchContract.qualified,
       }),
     );
     check(
@@ -695,7 +786,36 @@ try {
         0 &&
         (await readyPage
           .locator("#campaignRows details.ads-technical[open]")
-          .count()) === 0,
+        .count()) === 0,
+    );
+    await readyPage.locator('[data-ads-view="demand"]').click();
+    await readyPage.waitForFunction(() => !document.getElementById("demand").hidden);
+    const searchDecision = await readyPage.evaluate(() => ({
+      cards: document.querySelectorAll("[data-query-opportunity]").length,
+      text: document.getElementById("searchOpportunityList")?.textContent || "",
+      detailsOpen: document.getElementById("searchOpportunityBasis")?.open,
+    }));
+    check(
+      "Demand leads with compact Search Query Performance decisions",
+      searchDecision.cards === 1 &&
+        searchDecision.text.includes("Click gap") &&
+        searchDecision.text.includes("Scenario purchases") &&
+        searchDecision.text.includes("same-month Ads spend") &&
+        !searchDecision.detailsOpen,
+      JSON.stringify(searchDecision),
+    );
+    await readyPage.screenshot({
+      path: path.join(outDir, "ads-search-opportunities-desktop.png"),
+      fullPage: true,
+    });
+    await readyPage.locator('[data-query-demand="daily planner"]').click();
+    await readyPage.waitForURL(/q=daily\+planner/);
+    check(
+      "Search opportunity opens exact paid-query investigation state",
+      new URL(readyPage.url()).searchParams.get("view") === "demand" &&
+        new URL(readyPage.url()).searchParams.get("q") === "daily planner" &&
+        new URL(readyPage.url()).searchParams.get("signal_type") === "shopper_query",
+      readyPage.url(),
     );
   } finally {
     await readyContext.close();
@@ -796,6 +916,13 @@ try {
           .querySelector(".ads-demand-table .data-table-scroll")
           .getBoundingClientRect().height <=
         window.innerHeight * 0.69,
+      opportunityCards: document.querySelectorAll("[data-query-opportunity]").length,
+      opportunityTop:
+        document.getElementById("searchOpportunityList").getBoundingClientRect().top +
+        window.scrollY,
+      opportunityButtonHeight: document
+        .querySelector("[data-query-demand]")
+        .getBoundingClientRect().height,
     }));
     check(
       "Mobile demand keeps contained bounded semantic records",
@@ -804,6 +931,13 @@ try {
         !mobile.tableScrollable &&
         mobile.tableFits &&
         mobile.tableBounded,
+      JSON.stringify(mobile),
+    );
+    check(
+      "Mobile search decision is early, contained and touch-reachable",
+      mobile.opportunityCards === 1 &&
+        mobile.opportunityTop <= 760 &&
+        mobile.opportunityButtonHeight >= 44,
       JSON.stringify(mobile),
     );
     await mobilePage.screenshot({

@@ -5,17 +5,44 @@ import unittest
 from ads_decisions import (
     ECONOMICS_CONTRACT,
     INTERPRETATION_RULES,
+    SEARCH_OPPORTUNITY_RULES,
+    build_search_query_opportunities,
     build_action_groups,
     demand_page,
     enrich_products,
     inventory_exposure_recommendation,
     metric_contract,
+    normalize_search_query_key,
     normalize_demand_signal,
+    paid_support_by_query,
     safe_ratio,
+    search_query_opportunity,
 )
 
 
 class AdsDecisionContractTests(unittest.TestCase):
+    def _search_row(self, **overrides):
+        row = {
+            "start_date": "2026-08-01",
+            "asin": "B012345678",
+            "sku": "SKU-ONE",
+            "product": "Daily planning notebook",
+            "search_query": "daily planner",
+            "search_query_key": "daily planner",
+            "search_query_volume": 5000,
+            "total_query_impression_count": 10000,
+            "asin_impression_count": 400,
+            "asin_impression_share": 0.04,
+            "total_click_count": 1000,
+            "asin_click_count": 10,
+            "total_cart_add_count": 400,
+            "asin_cart_add_count": 4,
+            "total_purchase_count": 200,
+            "asin_purchase_count": 2,
+        }
+        row.update(overrides)
+        return row
+
     def test_ratios_require_a_valid_denominator(self):
         self.assertIsNone(safe_ratio(10, 0))
         self.assertIsNone(safe_ratio(10, None))
@@ -33,6 +60,105 @@ class AdsDecisionContractTests(unittest.TestCase):
         for key in ("ctr", "cpc", "acos", "tacos", "attributed_sales_share", "conversion_rate"):
             self.assertIsNone(row[key], key)
         self.assertEqual(row["roas"], 0)
+
+    def test_search_query_keys_follow_nfkc_whitespace_and_case_contract(self):
+        self.assertEqual(normalize_search_query_key("  FIELD\u3000Notes  "), "field notes")
+        self.assertEqual(normalize_search_query_key("Ｆｉｅｌｄ Notes"), "field notes")
+
+    def test_same_month_paid_support_is_query_level_and_aggregated(self):
+        grouped = paid_support_by_query(
+            [
+                {
+                    "search_term": " Field  Notes ",
+                    "campaign_id": "one",
+                    "spend": 12,
+                    "clicks": 3,
+                    "purchases": 1,
+                    "attributed_sales": 20,
+                },
+                {
+                    "search_term": "field notes",
+                    "campaign_id": "two",
+                    "spend": 8,
+                    "clicks": 2,
+                    "purchases": 0,
+                    "attributed_sales": 0,
+                },
+            ]
+        )["field notes"]
+        self.assertEqual(grouped["spend"], 20)
+        self.assertEqual(grouped["clicks"], 5)
+        self.assertEqual(grouped["campaign_count"], 2)
+        self.assertIn("query-level", grouped["basis"])
+
+    def test_search_funnel_uses_deepest_qualified_gap_and_scenario_math(self):
+        purchase = search_query_opportunity(
+            self._search_row(
+                asin_impression_count=500,
+                asin_click_count=50,
+                asin_cart_add_count=10,
+                asin_purchase_count=2,
+            )
+        )
+        self.assertEqual(purchase["rule_key"], "SQP_PURCHASE_GAP")
+        self.assertEqual(purchase["scenario"]["low"], 0.75)
+        self.assertEqual(purchase["scenario"]["high"], 1.5)
+
+        cart = search_query_opportunity(
+            self._search_row(
+                asin_impression_count=200,
+                asin_click_count=20,
+                asin_cart_add_count=2,
+                asin_purchase_count=1,
+            )
+        )
+        self.assertEqual(cart["rule_key"], "SQP_CART_GAP")
+        self.assertEqual(cart["scenario"]["low"], 0.75)
+        self.assertEqual(cart["scenario"]["high"], 1.5)
+
+        click = search_query_opportunity(self._search_row())
+        self.assertEqual(click["rule_key"], "SQP_CLICK_GAP")
+        self.assertEqual(click["scenario"]["low"], 1.5)
+        self.assertEqual(click["scenario"]["high"], 3.0)
+        self.assertIn("not a forecast", click["scenario"]["basis"])
+
+    def test_sparse_rows_are_suppressed_and_visibility_is_lower_priority(self):
+        sparse = search_query_opportunity(
+            self._search_row(
+                search_query_volume=50,
+                total_query_impression_count=500,
+                asin_impression_count=99,
+                asin_click_count=0,
+                asin_cart_add_count=0,
+                asin_purchase_count=0,
+            )
+        )
+        self.assertIsNone(sparse)
+        visibility_row = self._search_row(
+            asin_impression_count=50,
+            asin_impression_share=0.005,
+            asin_click_count=5,
+            asin_cart_add_count=2,
+            asin_purchase_count=1,
+            search_query="broad notebook",
+            search_query_key="broad notebook",
+        )
+        click_row = self._search_row(search_query="specific notebook", search_query_key="specific notebook")
+        ranked = build_search_query_opportunities([visibility_row, click_row], [])
+        self.assertEqual(ranked[0]["rule_key"], "SQP_CLICK_GAP")
+        self.assertEqual(ranked[1]["rule_key"], "SQP_VISIBILITY_REVIEW")
+        self.assertEqual(ranked[1]["confidence"]["state"], "HIGH")
+        self.assertFalse(ranked[1]["paid_support"]["exact_query_match"])
+
+    def test_search_rules_are_versioned_and_non_prescriptive(self):
+        self.assertEqual(set(SEARCH_OPPORTUNITY_RULES), {
+            "SQP_PURCHASE_GAP", "SQP_CART_GAP", "SQP_CLICK_GAP", "SQP_VISIBILITY_REVIEW"
+        })
+        combined = " ".join(
+            f"{rule['comparison']} {rule['review']}" for rule in SEARCH_OPPORTUNITY_RULES.values()
+        ).lower()
+        for prohibited in ("increase bid", "decrease bid", "increase budget", "organic sales", "incremental"):
+            self.assertNotIn(prohibited, combined)
 
     def test_rules_are_named_versioned_maturity_aware_and_non_economic(self):
         self.assertTrue(INTERPRETATION_RULES)

@@ -4,6 +4,7 @@ import {
   fetchJson,
   formatBusinessClock,
   formatCount,
+  formatMonthYear,
   integer,
   money,
   percent,
@@ -321,6 +322,73 @@ function technicalDetails(signal) {
   </dl></details>`;
 }
 
+function scenarioPurchases(value) {
+  const number = Number(value || 0);
+  if (number > 0 && number < 0.1) return '<0.1';
+  return number.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+function renderSearchOpportunities() {
+  const contract = DATA?.search_opportunities || {};
+  const host = byId('searchOpportunityList');
+  const basis = byId('searchOpportunityBasis');
+  const items = contract.items || [];
+  const periodLabel = contract.period?.start_date ? formatMonthYear(contract.period.start_date) : '';
+  byId('searchOpportunityCount').textContent =
+    contract.status === 'READY'
+      ? `${periodLabel ? `${periodLabel} · ` : ''}${integer(contract.shown || items.length)} ranked · ${integer(contract.qualified || 0)} qualified`
+      : contract.status === 'NO_DATA'
+        ? 'Awaiting completed month'
+        : 'Search data unavailable';
+  if (!items.length) {
+    host.innerHTML = `<div class="ads-query-empty"><strong>${contract.status === 'NO_DATA' ? 'No completed Search Query Performance month is available yet.' : 'No evidence-qualified search review is available.'}</strong><span>The advertising evidence below remains available.</span></div>`;
+  } else {
+    host.innerHTML = items
+      .map((item) => {
+        const evidence = item.evidence || {};
+        const scenario = item.scenario || {};
+        const paid = item.paid_support || {};
+        const product = {
+          sku: item.sku,
+          asin: item.asin,
+          product: item.product,
+          image_url: item.image_url,
+        };
+        const paidRead = paid.exact_query_match
+          ? `${money(paid.spend)} same-month Ads spend · ${integer(paid.clicks)} clicks · ${integer(paid.attributed_purchases)} attributed purchases`
+          : 'No exact same-month paid-query match found';
+        return `<article class="ads-query-card" data-query-opportunity="${escapeHtml(item.id)}">
+          <div class="ads-query-card__identity">${productIdentity(product)}</div>
+          <div class="ads-query-card__decision">
+            <div class="ads-query-card__labels"><span class="ads-state-label">${escapeHtml(item.label)}</span><span>${escapeHtml(item.confidence?.label || 'Directional')}</span></div>
+            <h3>“${escapeHtml(item.query)}”</h3>
+            <p>${escapeHtml(item.diagnosis)}</p>
+          </div>
+          <dl class="ads-query-card__evidence">
+            <div><dt>ASIN vs benchmark</dt><dd>${ratioPercent(evidence.asin_rate)} vs ${ratioPercent(evidence.query_rate)}</dd></div>
+            <div><dt>Evidence</dt><dd>${integer(evidence.evidence_count)} ${escapeHtml(evidence.evidence_label || 'observations')}</dd></div>
+            <div><dt>Scenario purchases</dt><dd>+${scenarioPurchases(scenario.low)} to +${scenarioPurchases(scenario.high)}</dd></div>
+          </dl>
+          <div class="ads-query-card__action"><strong>Review</strong><span>${escapeHtml(item.review)}</span></div>
+          <div class="ads-query-card__paid"><span>${escapeHtml(paidRead)}</span>${paid.exact_query_match ? `<button type="button" class="ads-row-action" data-query-demand="${escapeHtml(item.query)}">Open paid matches</button>` : ''}</div>
+        </article>`;
+      })
+      .join('');
+  }
+  basis.hidden = contract.status === 'UNAVAILABLE';
+  byId('searchOpportunityBasisCopy').textContent = contract.basis || '';
+  byId('searchOpportunityScenarioCopy').textContent = contract.scenario_basis || '';
+  byId('searchOpportunityPaidCopy').textContent = contract.paid_support_basis || '';
+  host.querySelectorAll('[data-query-demand]').forEach((button) => {
+    button.addEventListener('click', () => {
+      changeState(
+        { view: 'demand', q: button.dataset.queryDemand, signalType: 'shopper_query', page: 1 },
+        { clear: ['sku', 'campaign', 'signal', 'action', 'filter', 'sort'] },
+      );
+    });
+  });
+}
+
 function renderDemand() {
   const demand = DATA?.demand || { items: [], total: 0, page: 1, page_count: 1 };
   const state = stateFromUrl();
@@ -518,6 +586,7 @@ function renderReady(payload) {
   renderActions(payload);
   renderFunnel(summary);
   renderProducts();
+  renderSearchOpportunities();
   renderDemand();
   renderCampaigns();
   syncControls();
