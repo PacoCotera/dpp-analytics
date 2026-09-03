@@ -145,7 +145,7 @@ for (const [engineName, engine] of engines) {
         }
       }
     };
-    await page.route("**/api/ads", (route) =>
+    await page.route("**/api/ads*", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",

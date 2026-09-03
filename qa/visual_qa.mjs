@@ -242,6 +242,7 @@ async function verifyAds(page, view = 'impact') {
     }
     return;
   }
+  await page.locator('#readyState:not([hidden])').waitFor({ state: 'visible', timeout: 20_000 });
   await assertWorkspaceLandmarks(page, ['ads-workspace-header', 'ads-operating-evidence']);
   await verifyCompactLead(page, '[data-dpp-qa="ads-overview"]');
   if (view !== 'impact') {
@@ -258,7 +259,10 @@ async function verifyAds(page, view = 'impact') {
       '.ads-page .kicker,.ads-page .section-header__description,.ads-page .kpi__label,.ads-page .kpi__note,.ads-page .data-table th,.ads-page .data-table td,.ads-quality-line,.ads-action-body p'
     )].filter(visible);
     const controls = [...document.querySelectorAll('.ads-page .subnav__item,.ads-action-open,.ads-row-action,.ads-toolbar input,.ads-toolbar select,.ads-pagination button')].filter(visible);
-    const reasons = [...document.querySelectorAll('.ads-action-body > p')].map(node => node.textContent.trim());
+    const reasonsMatch = apiActions.every(action => {
+      const article = document.querySelector(`[data-action-id="${CSS.escape(action.id)}"]`);
+      return article?.querySelector('.ads-action-body > p')?.textContent.trim() === String(action.rationale || '');
+    });
     const activePanel = document.getElementById(selectedView);
     const tableScroll = activePanel?.querySelector('.data-table-scroll');
     const chartScroll = activePanel?.querySelector('.dpp-chart-scroll');
@@ -270,7 +274,7 @@ async function verifyAds(page, view = 'impact') {
         document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
       evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
       controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
-      apiReasons: JSON.stringify(reasons) === JSON.stringify(apiActions.map(action => String(action.rationale || ''))),
+      apiReasons: reasonsMatch,
       panelVisible: Boolean(activePanel && !activePanel.hidden && visible(activePanel)),
       tableContained: !tableScroll || tableScroll.getBoundingClientRect().right <= window.innerWidth + 2,
       tableBounded: !tableScroll || window.innerWidth > 640 || tableScroll.getBoundingClientRect().height <= window.innerHeight * .7,

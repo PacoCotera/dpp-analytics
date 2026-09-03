@@ -385,8 +385,16 @@ try {
     timeout: 20000,
   });
   const payload = await api(page, "/api/ads");
-  await page.waitForTimeout(800);
   const connection = payload.connection || {};
+  await page.waitForFunction(
+    (ready) =>
+      ready
+        ? !document.getElementById("readyState").hidden &&
+          Boolean(window.DPPCharts)
+        : !document.getElementById("emptyState").hidden,
+    connection.state === "READY" && payload.status === "ready",
+    { timeout: 20_000 },
+  );
   const chartState = await chartAssetState(page);
   const tabs = await page.locator("[data-ads-view]").evaluateAll((items) =>
     items.map((item) => ({
@@ -571,6 +579,24 @@ try {
               Boolean(mark.getAttribute("aria-label")),
           ),
         ),
+    );
+    const visualContract = await readyPage.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      const mark = document.querySelector(".ads-portfolio-mark");
+      return {
+        summaries: [...document.querySelectorAll("main summary")]
+          .filter((node) => node.getClientRects().length)
+          .map((node) => node.getBoundingClientRect().height),
+        markStroke: mark?.getAttribute("stroke") || "",
+        dataStroke: root.getPropertyValue("--dpp-data2").trim(),
+      };
+    });
+    check(
+      "Ready disclosures and portfolio marks retain control and contrast floors",
+      visualContract.summaries.every((height) => height >= 40) &&
+        visualContract.markStroke === "var(--dpp-data2)" &&
+        Boolean(visualContract.dataStroke),
+      JSON.stringify(visualContract),
     );
     await readyPage
       .locator('[data-review-action="ads-action-product"]')
