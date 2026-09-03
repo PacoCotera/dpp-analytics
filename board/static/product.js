@@ -267,8 +267,13 @@ function renderListingAndInventory(profile, commercial, ads) {
     byId('adsNote').textContent = 'not a current offer';
   } else {
     byId('adsState').textContent = connection.badge || 'Ads state unavailable';
-    byId('adsState').className =
-      connection.state === 'READY' ? 'good' : connection.state === 'FAILED' ? 'bad' : 'warn';
+    byId('adsState').className = connection.degraded
+      ? 'warn'
+      : connection.state === 'READY'
+        ? 'good'
+        : connection.state === 'FAILED'
+          ? 'bad'
+          : 'warn';
     byId('adsNote').textContent = connection.note || 'connection state unavailable';
   }
 }

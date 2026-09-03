@@ -32,6 +32,7 @@ FINANCE_CLOSE_INTERVAL_SECONDS = 3600
 ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS = 86400
 CATALOG_ONBOARDING_RETRY_SECONDS = 1800
 GEOGRAPHY_JOB = "orders_geography_state_v2026"
+ADS_FAILURE_RETRY_SECONDS = 300
 
 
 def _stop(signum: int, frame: object) -> None:
@@ -93,6 +94,9 @@ def _ads_delay_after_result(result: dict | None) -> int:
     if result and result.get("status") == "success" and result.get("backfill_complete") is False:
         log.info("Amazon Ads history remains incomplete; continuing with the next window immediately")
         return 0
+    if result is None:
+        log.info("Amazon Ads refresh failed; retrying in %ss", ADS_FAILURE_RETRY_SECONDS)
+        return min(settings.ads_reporting_interval_seconds, ADS_FAILURE_RETRY_SECONDS)
     return settings.ads_reporting_interval_seconds
 
 

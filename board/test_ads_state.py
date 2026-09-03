@@ -69,6 +69,23 @@ class AdsStateContractTest(unittest.TestCase):
         self.assertEqual(invalid["state"], "FAILED")
         self.assertEqual(invalid["detail_code"], "INVALID_RECORDED_STATE")
 
+    def test_failed_incremental_refresh_keeps_stored_reporting_available(self):
+        state = connection_contract("READY", detail_code="REPORT_REFRESH_FAILED")
+
+        self.assertEqual(state["state"], "READY")
+        self.assertEqual(state["badge"], "Ads refresh delayed")
+        self.assertTrue(state["degraded"])
+        self.assertFalse(state["refreshing"])
+        self.assertIn("Previously ingested reporting remains available", state["detail"])
+
+    def test_incremental_refresh_reports_active_without_restarting_backfill(self):
+        state = connection_contract("READY", detail_code="REPORT_REFRESH_RUNNING")
+
+        self.assertEqual(state["state"], "READY")
+        self.assertEqual(state["badge"], "Ads refresh running")
+        self.assertTrue(state["refreshing"])
+        self.assertFalse(state["degraded"])
+
 
 if __name__ == "__main__":
     unittest.main()

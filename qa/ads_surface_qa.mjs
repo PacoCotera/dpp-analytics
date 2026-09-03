@@ -363,6 +363,26 @@ const readyPayload = {
   economics,
 };
 
+const degradedPayload = structuredClone(readyPayload);
+degradedPayload.connection = {
+  state: "READY",
+  badge: "Ads refresh delayed",
+  headline: "Latest Amazon Ads refresh needs attention.",
+  detail:
+    "Previously ingested reporting remains available. The latest refresh failed; Data Health has the technical error and the worker will retry.",
+  note: "stored reporting available; refresh delayed",
+  detail_code: "REPORT_REFRESH_FAILED",
+  degraded: true,
+  refreshing: false,
+};
+degradedPayload.readiness = {
+  ...readyPayload.readiness,
+  state: "DEGRADED",
+  label: "Ads refresh delayed",
+  summary:
+    "Stored data through 2026-08-28 · 28/28 days observed · 21 mature · 0 quality issues",
+};
+
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({
   viewport: { width: 1440, height: 1000 },
@@ -649,6 +669,60 @@ try {
     await readyContext.close();
   }
 
+  const degradedContext = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+  });
+  const degradedPage = await degradedContext.newPage();
+  try {
+    await degradedPage.route("**/api/ads*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(degradedPayload),
+      }),
+    );
+    await degradedPage.goto(`${baseUrl}/ads?view=products`, {
+      waitUntil: "domcontentloaded",
+      timeout: 20000,
+    });
+    await degradedPage.waitForFunction(
+      () =>
+        !document.getElementById("readyState").hidden &&
+        !document.getElementById("products").hidden &&
+        Boolean(window.DPPCharts),
+    );
+    const degraded = await degradedPage.evaluate(() => ({
+      emptyHidden: document.getElementById("emptyState").hidden,
+      tabsEnabled: [...document.querySelectorAll("[data-ads-view]")].every(
+        (tab) => !tab.disabled && tab.getAttribute("aria-disabled") === "false",
+      ),
+      badge: document.getElementById("qualityBadge").textContent.trim(),
+      title: document.getElementById("qualityTitle").textContent.trim(),
+      copy: document.getElementById("qualityCopy").textContent.trim(),
+      readiness: document.getElementById("readinessLine").textContent.trim(),
+      products: document.querySelectorAll("#productRows tr").length,
+      actionsVisible: !document.getElementById("actionSection").hidden,
+    }));
+    check(
+      "Failed incremental refresh keeps healthy stored reporting available",
+      degraded.emptyHidden &&
+        degraded.tabsEnabled &&
+        degraded.products > 0 &&
+        degraded.actionsVisible,
+      JSON.stringify(degraded),
+    );
+    check(
+      "Failed incremental refresh is disclosed without claiming a data outage",
+      degraded.badge === "Ads refresh delayed" &&
+        degraded.title === "Stored reporting remains available." &&
+        degraded.copy.includes("latest refresh failed") &&
+        degraded.readiness.includes("Stored data through"),
+      JSON.stringify(degraded),
+    );
+  } finally {
+    await degradedContext.close();
+  }
+
   const mobileContext = await browser.newContext({
     viewport: { width: 412, height: 915 },
     isMobile: true,
@@ -684,8 +758,7 @@ try {
         document
           .querySelector(".ads-demand-table .data-table")
           .getBoundingClientRect().width <=
-        document
-          .querySelector(".ads-demand-table .data-table-scroll")
+        document.querySelector(".ads-demand-table .data-table-scroll")
           .clientWidth +
           1,
       tableBounded:

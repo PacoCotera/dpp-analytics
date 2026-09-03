@@ -65,6 +65,31 @@ def _empty(status: str, connection: dict, freshness=None) -> dict:
     }
 
 
+def _readiness_contract(connection: dict, quality: dict, freshness: dict, through) -> dict:
+    trusted = bool(quality.get("trusted_for_operating_decisions"))
+    summary = (
+        f"{freshness['period_observed_days']}/{freshness['period_expected_days']} days observed · "
+        f"{freshness['mature_days']} mature · {quality.get('issue_days') or 0} quality issues"
+    )
+    if trusted and connection.get("degraded"):
+        state = "DEGRADED"
+        label = connection.get("badge") or "Ads refresh delayed"
+        summary = f"Stored data through {through} · {summary}"
+    elif trusted and connection.get("refreshing"):
+        state = "REFRESHING"
+        label = connection.get("badge") or "Ads refresh running"
+        summary = f"Stored data through {through} · {summary}"
+    else:
+        state = "READY" if trusted else "ATTENTION"
+        label = "Ready for review" if trusted else "Use with caution"
+    return {
+        "state": state,
+        "label": label,
+        "summary": summary,
+        "methodology": quality.get("basis"),
+    }
+
+
 def _quality(cur, marketplace: str, through, summary: dict, ready: dict) -> tuple[dict, dict]:
     quality = {
         "state": "NO_DATA",
@@ -389,15 +414,7 @@ def ads_payload(connect, marketplace: str, decorate_products=None, query: dict[s
         for row in search_terms
     ]
     actions, action_groups = build_action_groups(products, demand_signals) if trusted else ([], [])
-    readiness = {
-        "state": "READY" if trusted else "ATTENTION",
-        "label": "Ready for review" if trusted else "Use with caution",
-        "summary": (
-            f"{freshness['period_observed_days']}/{freshness['period_expected_days']} days observed · "
-            f"{freshness['mature_days']} mature · {quality.get('issue_days') or 0} quality issues"
-        ),
-        "methodology": quality.get("basis"),
-    }
+    readiness = _readiness_contract(connection, quality, freshness, through)
     return {
         "status": "ready",
         "connection": connection,

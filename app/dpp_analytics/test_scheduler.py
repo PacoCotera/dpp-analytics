@@ -41,8 +41,10 @@ class BackgroundSchedulerTests(unittest.TestCase):
             0,
         )
 
-    def test_failed_or_current_ads_run_keeps_normal_interval(self) -> None:
-        self.assertEqual(_ads_delay_after_result(None), settings.ads_reporting_interval_seconds)
+    def test_failed_ads_run_retries_in_five_minutes(self) -> None:
+        self.assertEqual(_ads_delay_after_result(None), 300)
+
+    def test_current_ads_run_keeps_normal_interval(self) -> None:
         self.assertEqual(
             _ads_delay_after_result({"status": "success", "backfill_complete": True}),
             settings.ads_reporting_interval_seconds,

@@ -22,6 +22,9 @@ ATTRIBUTION_WINDOW = "7d_seller_click"
 REPORT_TRANSPORT = "reporting_v3"
 MAX_BACKFILL_DAYS = 90
 REQUIRED_GRAINS = ("campaign", "product", "target", "search_term")
+TOKEN_REFRESH_SAFETY_SECONDS = 60
+DEFAULT_TOKEN_LIFETIME_SECONDS = 3600
+INITIAL_HISTORY_CURSOR = "initial_history_complete"
 
 
 def _num(row: dict[str, Any], *names: str) -> float:
@@ -42,22 +45,37 @@ class AmazonAdsClient:
     """Read-only Amazon Ads client. Reporting facts are warehouse-neutral so the
     transport can move to unified reporting without changing product semantics."""
     def __init__(self) -> None:
-        self.base=settings.ads_api_endpoint; self.client=httpx.Client(timeout=45.0,follow_redirects=True); self._token=None
+        self.base=settings.ads_api_endpoint; self.client=httpx.Client(timeout=45.0,follow_redirects=True); self._token=None; self._token_expires_at=0.0
     def close(self)->None: self.client.close()
+    def _invalidate_access_token(self)->None:
+        self._token=None;self._token_expires_at=0.0
     def access_token(self)->str:
-        if self._token:return self._token
+        now=time.monotonic()
+        if self._token and now < getattr(self,"_token_expires_at",0.0):return self._token
         r=self.client.post(LWA_TOKEN_URL,data={"grant_type":"refresh_token","refresh_token":settings.ads_refresh_token,"client_id":settings.ads_client_id,"client_secret":settings.ads_client_secret});r.raise_for_status()
-        token=r.json().get("access_token")
+        payload=r.json();token=payload.get("access_token")
         if not token: raise RuntimeError("Amazon Ads LWA response did not contain access_token")
-        self._token=str(token);return self._token
+        try:lifetime=max(1,int(payload.get("expires_in") or DEFAULT_TOKEN_LIFETIME_SECONDS))
+        except (TypeError,ValueError):lifetime=DEFAULT_TOKEN_LIFETIME_SECONDS
+        self._token=str(token);self._token_expires_at=now+max(1,lifetime-TOKEN_REFRESH_SAFETY_SECONDS);return self._token
     def headers(self,scope=None,*,content_type="application/json",accept="application/json"):
         h={"Authorization":f"Bearer {self.access_token()}","Amazon-Advertising-API-ClientId":settings.ads_client_id,"Content-Type":content_type,"Accept":accept}
         if scope:h["Amazon-Advertising-API-Scope"]=str(scope)
         return h
+    def authenticated_request(self,method,url,scope=None,*,content_type="application/json",accept="application/json",**kwargs):
+        request=getattr(self.client,str(method).lower())
+        response=request(url,headers=self.headers(scope,content_type=content_type,accept=accept),**kwargs)
+        if response.status_code!=401:return response
+        # A Reporting v3 job may outlive the one-hour LWA token. Renew the
+        # access token and retry the same authenticated operation once. A poll
+        # remains a GET for the existing report ID, so this cannot create a
+        # duplicate report while recovering an in-flight job.
+        self._invalidate_access_token()
+        return request(url,headers=self.headers(scope,content_type=content_type,accept=accept),**kwargs)
     def discover_advertiser_accounts(self):
-        r=self.client.post(f"{self.base}/adsApi/v1/query/advertiserAccounts",headers=self.headers(),json={});r.raise_for_status();return r.json()
+        r=self.authenticated_request("post",f"{self.base}/adsApi/v1/query/advertiserAccounts",json={});r.raise_for_status();return r.json()
     def discover_legacy_profiles(self):
-        r=self.client.get(f"{self.base}/v2/profiles",headers=self.headers());r.raise_for_status();b=r.json();return [x for x in b if isinstance(x,dict)] if isinstance(b,list) else []
+        r=self.authenticated_request("get",f"{self.base}/v2/profiles");r.raise_for_status();b=r.json();return [x for x in b if isinstance(x,dict)] if isinstance(b,list) else []
     def create_report(self,scope,start,end,*,grain):
         common=["date","campaignId","campaignName","impressions","clicks","cost"]
         conv=["purchases7d","sales7d","unitsSoldClicks7d"]
@@ -73,7 +91,7 @@ class AmazonAdsClient:
         payload={"name":f"dpp-{grain}-{start}-{end}-{stamp}","startDate":start.isoformat(),"endDate":end.isoformat(),"configuration":cfg}
         deadline=time.monotonic()+settings.ads_report_poll_timeout_seconds
         while True:
-            r=self.client.post(f"{self.base}/reporting/reports",headers=self.headers(scope,content_type="application/vnd.createasyncreportrequest.v3+json",accept="application/vnd.createasyncreportresponse.v3+json"),json=payload)
+            r=self.authenticated_request("post",f"{self.base}/reporting/reports",scope,content_type="application/vnd.createasyncreportrequest.v3+json",accept="application/vnd.createasyncreportresponse.v3+json",json=payload)
             try:b=r.json()
             except ValueError:b={}
             rid=b.get("reportId") or b.get("report_id")
@@ -95,7 +113,7 @@ class AmazonAdsClient:
     def wait_for_report(self,scope,report_id,*,on_status=None):
         deadline=time.monotonic()+settings.ads_report_poll_timeout_seconds
         while time.monotonic()<deadline:
-            r=self.client.get(f"{self.base}/reporting/reports/{report_id}",headers=self.headers(scope,accept="application/vnd.getasyncreportresponse.v3+json"));r.raise_for_status();b=r.json();status=str(b.get("status") or "").upper()
+            r=self.authenticated_request("get",f"{self.base}/reporting/reports/{report_id}",scope,accept="application/vnd.getasyncreportresponse.v3+json");r.raise_for_status();b=r.json();status=str(b.get("status") or "").upper()
             if on_status:on_status(status,b)
             if status in {"COMPLETED","SUCCESS"}:return b
             if status in {"FAILURE","FAILED","CANCELLED"}:raise RuntimeError(f"Amazon Ads report {report_id} ended with status={status}: {b}")
@@ -245,7 +263,7 @@ def _publish_state(state, detail_code, **metadata):
     db.set_integration_state("amazon_ads", state, detail_code, metadata)
 
 
-def _report_progress_callback(scope, grain, report_id, start, end, report_number, report_total):
+def _report_progress_callback(scope, grain, report_id, start, end, report_number, report_total, *, history_available=False):
     metadata={
         "account_id":str(scope),
         "grain":grain,
@@ -268,7 +286,11 @@ def _report_progress_callback(scope, grain, report_id, start, end, report_number
         last_status=vendor_status;last_published_at=now
         metadata["vendor_status"]=vendor_status or "UNKNOWN"
         metadata["last_polled_at"]=datetime.now(timezone.utc).isoformat()
-        _publish_state("BACKFILL_RUNNING","REPORT_VENDOR_PROCESSING",**metadata)
+        _publish_state(
+            "READY" if history_available else "BACKFILL_RUNNING",
+            "REPORT_REFRESH_RUNNING" if history_available else "REPORT_VENDOR_PROCESSING",
+            **metadata,
+        )
 
     return publish,metadata
 
@@ -279,6 +301,25 @@ def ads_backfill_complete():
         return False
     try:
         return date.fromisoformat(cursor) >= date.today() - timedelta(days=1)
+    except ValueError:
+        return False
+
+
+def ads_initial_history_complete():
+    """Return whether the one-time history load has ever reached current data.
+
+    The durable marker prevents each new reporting day from turning an ordinary
+    incremental refresh back into an initial-backfill state. The date fallback
+    upgrades installations that completed their backfill before the marker was
+    introduced.
+    """
+    if db.get_cursor(SOURCE, JOB, INITIAL_HISTORY_CURSOR):
+        return True
+    cursor = db.get_cursor(SOURCE, JOB, "through_date")
+    if not cursor:
+        return False
+    try:
+        return date.fromisoformat(cursor) >= date.today() - timedelta(days=2)
     except ValueError:
         return False
 
@@ -295,7 +336,7 @@ def probe_ads():
         scopes,meta=discover_scopes(client)
         if not scopes:
             _publish_state("AUTHORIZATION_PENDING", "NO_MX_ADVERTISER_PROFILE")
-        elif ads_backfill_complete():
+        elif ads_initial_history_complete():
             _publish_state("READY", "REPORTING_CURRENT", accounts=len(scopes))
         else:
             _publish_state("BACKFILL_RUNNING", "INITIAL_HISTORY_PENDING", accounts=len(scopes))
@@ -313,9 +354,9 @@ def ingest_ads():
     if not settings.ads_credentials_present:
         _publish_state("AUTHORIZATION_PENDING", "CREDENTIALS_INCOMPLETE")
         return {"status":"missing_credentials"}
-    start,end=_next_window();client=AmazonAdsClient();failure_context={"start_date":start.isoformat(),"end_date":end.isoformat()}
+    start,end=_next_window();client=AmazonAdsClient();history_available=ads_initial_history_complete();failure_context={"start_date":start.isoformat(),"end_date":end.isoformat()}
     try:
-        _publish_state("BACKFILL_RUNNING", "REPORT_WINDOW_RUNNING", start=start.isoformat(), end=end.isoformat())
+        _publish_state("READY" if history_available else "BACKFILL_RUNNING", "REPORT_REFRESH_RUNNING" if history_available else "REPORT_WINDOW_RUNNING", start=start.isoformat(), end=end.isoformat())
         scopes,discovery=discover_scopes(client)
         if not scopes:
             _publish_state("AUTHORIZATION_PENDING", "NO_MX_ADVERTISER_PROFILE")
@@ -325,7 +366,7 @@ def ingest_ads():
             for scope in scopes:
                 _ensure_account(scope);_ensure_required_grains(scope,start)
                 for report_number,(grain,writer) in enumerate(grains.items(),start=1):
-                    rid=client.create_report(scope,start,end,grain=grain);report_ids.append(rid);progress,failure_context=_report_progress_callback(scope,grain,rid,start,end,report_number,len(grains));progress("REQUESTED",{});status=client.wait_for_report(scope,rid,on_status=progress);location=status.get("url") or status.get("location")
+                    rid=client.create_report(scope,start,end,grain=grain);report_ids.append(rid);progress,failure_context=_report_progress_callback(scope,grain,rid,start,end,report_number,len(grains),history_available=history_available);progress("REQUESTED",{});status=client.wait_for_report(scope,rid,on_status=progress);location=status.get("url") or status.get("location")
                     if not location:raise RuntimeError(f"Amazon Ads report {rid} completed without download URL: {status}")
                     rows=client.download_report(str(location));total_read+=len(rows)
                     try:written=writer(scope,rows,rid)
@@ -337,11 +378,14 @@ def ingest_ads():
         db.set_cursor(SOURCE,JOB,end.isoformat(),"through_date")
         backfill_complete = end >= date.today()-timedelta(days=1)
         if backfill_complete:
+            db.set_cursor(SOURCE,JOB,end.isoformat(),INITIAL_HISTORY_CURSOR)
             _publish_state("READY", "REPORTING_CURRENT", accounts=len(scopes), through_date=end.isoformat())
+        elif history_available:
+            _publish_state("READY", "REPORT_REFRESH_RUNNING", accounts=len(scopes), through_date=end.isoformat())
         else:
             _publish_state("BACKFILL_RUNNING", "INITIAL_HISTORY_PENDING", accounts=len(scopes), through_date=end.isoformat())
         return {"status":"success","start":start.isoformat(),"end":end.isoformat(),"backfill_complete":backfill_complete,"accounts":len(scopes),"records_read":total_read,"records_written":total_written,"report_ids":report_ids,"grains":list(grains),"transport":REPORT_TRANSPORT,"attribution_window":ATTRIBUTION_WINDOW}
     except Exception:
-        _publish_state("FAILED", "REPORT_INGESTION_FAILED", **failure_context)
+        _publish_state("READY" if history_available else "FAILED", "REPORT_REFRESH_FAILED" if history_available else "REPORT_INGESTION_FAILED", **failure_context)
         raise
     finally:client.close()

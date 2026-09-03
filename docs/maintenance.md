@@ -126,13 +126,15 @@ views expose explicit table, row-group, row-header, column-header, and cell rela
 
 Ads reports Amazon-attributed performance plus an independent total-seller-sales denominator for TACOS. Never compute “organic sales” as total seller sales minus Amazon-attributed ad sales; attribution windows overlap and can restate.
 
-Amazon Ads connection lifecycle is separate from reporting quality. The worker publishes one non-secret state in `ops.integration_state`: `NOT_CONNECTED`, `AUTHORIZATION_PENDING`, `BACKFILL_RUNNING`, `READY`, or `FAILED`. `board/ads_state.py` owns the matching badge, headline and detail contract consumed by both Product and Ads APIs. Page runtimes render that contract and must not infer authorization or backfill state from missing report rows.
+Amazon Ads connection lifecycle is separate from reporting quality. The worker publishes one non-secret state in `ops.integration_state`: `NOT_CONNECTED`, `AUTHORIZATION_PENDING`, `BACKFILL_RUNNING`, `READY`, or `FAILED`. `board/ads_state.py` owns the matching badge, headline and detail contract consumed by both Product and Ads APIs. Page runtimes render that contract and must not infer authorization or backfill state from missing report rows. Once the initial history has completed, the worker keeps the connection in `READY` while a current window is running or when its latest refresh fails; the detail code distinguishes `REPORT_REFRESH_RUNNING` and `REPORT_REFRESH_FAILED`. Data Health remains the owner of the failed-attempt diagnostic. A failed incremental refresh does not invalidate an already complete and reconciled reporting window.
 
 The Advertising document loads only its shell, page styles and lightweight runtime before the connection payload is
 known. `ads.js` calls `ads-chart-loader.js` only for the API-owned `READY` connection plus `ready` reporting
 status; that loader then requests shared chart CSS, D3 and `chart-system.js` with the current asset revision.
-Disconnected, authorization-pending, backfill and failure states must render without downloading or parsing
-chart dependencies they cannot use.
+An established `READY` connection may carry a refreshing or degraded detail code: all reporting views remain
+available from the stored healthy window and the page presents the API-owned refresh notice. Disconnected,
+authorization-pending, initial-backfill and no-data states render without downloading or parsing chart dependencies
+they cannot use.
 
 Only Business impact remains enabled before that ready state; Products & actions, Demand discovery and Advertising detail are disabled with an adjacent API-derived explanation. Once ready, the four views keep SKU and business impact primary while campaigns, targets, terms and IDs remain supporting evidence.
 
