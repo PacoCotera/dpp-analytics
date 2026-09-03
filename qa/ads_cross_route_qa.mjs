@@ -96,18 +96,25 @@ try {
           metricWidths,
           documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           nestedInOperations: Boolean(panel.closest(".today-operations")),
+          nestedInPrimaryGrid: Boolean(panel.closest(".workspace-grid--today-primary")),
+          precedesPrimaryGrid: panel.nextElementSibling?.matches(".workspace-grid--today-primary") || false,
         };
       });
       check("Today gives paid support its own sibling panel", !layout.nestedInOperations, JSON.stringify(layout));
+      check(
+        "Today keeps paid support outside the chart and driver grid",
+        !layout.nestedInPrimaryGrid && layout.precedesPrimaryGrid,
+        JSON.stringify(layout),
+      );
       check("Today wide paid-support card is contained", layout.panelOverflow <= 1, JSON.stringify(layout));
       check("Today wide page has no horizontal overflow", layout.documentOverflow <= 1, JSON.stringify(layout));
       check(
         "Today wide paid-support content has readable width",
-        (!layout.actionVisible || layout.actionWidth >= layout.metricsWidth - 1) &&
+        (!layout.actionVisible || layout.actionWidth >= 280) &&
           layout.metricWidths.every((width) => width >= 120),
         JSON.stringify(layout),
       );
-      check("Today wide paid-support card stays compact", layout.panelHeight <= 360, JSON.stringify(layout));
+      check("Today wide paid-support strip stays compact", layout.panelHeight <= 200, JSON.stringify(layout));
     } finally {
       await wide.close();
     }
