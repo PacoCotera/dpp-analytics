@@ -283,7 +283,11 @@ async function verifyAds(page, view = 'impact') {
       noQuadrantPrescription: !/Scale winners|Efficient support|Low-risk tests|Review spend/.test(mainText),
       demandRowsBounded: selectedView !== 'demand' || document.querySelectorAll('#demandRows tr').length <= 20,
     };
-  }, { apiActions: payload.actions || [], selectedView: view });
+  }, {
+    apiActions:
+      (payload.action_groups || []).find(group => group.key === 'PRODUCT')?.actions || [],
+    selectedView: view,
+  });
   if (
     !state.tabsEnabled || !state.tabsContained || !state.evidenceFloor || !state.controlFloor ||
     !state.apiDecisions || !state.panelVisible || !state.tableContained || !state.tableBounded ||

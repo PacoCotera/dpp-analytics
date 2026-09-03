@@ -156,7 +156,9 @@ for (const [engineName, engine] of engines) {
           );
         } else {
           record(
-            state.scrollerOverflow > 0 && state.headerCount === state.cellCount,
+            state.scrollerOverflow <= 1 &&
+              state.tableWidth <= state.scrollerWidth + 1 &&
+              state.headerCount === state.cellCount,
             `${prefix}/${profile}: desktop product table remains aligned and bounded`,
             state,
           );
