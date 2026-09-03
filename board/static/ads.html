@@ -276,12 +276,31 @@
 
         <section id="demand" class="ads-view" role="tabpanel" aria-label="Demand discovery" hidden>
           <section class="page-section">
-            <div class="section-header">
+            <div class="section-header ads-query-heading">
               <div>
-                <div class="kicker">Demand discovery</div>
-                <h2 class="section-header__title">What shoppers respond to</h2>
+                <div class="kicker">Search opportunities</div>
+                <h2 class="section-header__title">Where shoppers drop off</h2>
                 <div class="section-header__description">
-                  Queries and targets, connected to their products.
+                  Evidence-qualified product and query reviews from the latest completed month.
+                </div>
+              </div>
+              <span id="searchOpportunityCount" class="ads-result-count" role="status"
+                >Checking search data</span
+              >
+            </div>
+            <div id="searchOpportunityList" class="ads-query-opportunities"></div>
+            <details id="searchOpportunityBasis" class="ads-provenance ads-query-basis">
+              <summary>How these reviews are ranked</summary>
+              <p id="searchOpportunityBasisCopy"></p>
+              <p id="searchOpportunityScenarioCopy"></p>
+              <p id="searchOpportunityPaidCopy"></p>
+            </details>
+            <div class="section-header ads-demand-evidence-heading">
+              <div>
+                <div class="kicker">Advertising evidence</div>
+                <h2 class="section-header__title">Queries and targets</h2>
+                <div class="section-header__description">
+                  Paid-support signals for investigation, connected to their products.
                 </div>
               </div>
               <span id="demandCount" class="ads-result-count" role="status">0 signals</span>

@@ -122,6 +122,15 @@ Amazon Brand Analytics Search Query Performance is separate, inclusive marketpla
 
 Search Query Performance can diagnose discoverability, engagement, cart, and purchase leakage. It does not identify paid versus organic activity, advertising incrementality, profitability, or causality. Join it to Ads search terms only as query-level context, with marketplace and time-window compatibility made explicit.
 
+Advertising's Search opportunities queue reads only the latest completed monthly period and joins each ASIN to
+the canonical current offer owner. Its named, versioned rules compare click per impression, cart add per click and
+purchase per cart add against the Amazon-wide rate for the same query. Minimum ASIN evidence is 100 impressions,
+8 clicks or 3 cart adds respectively. A lower-priority visibility review requires at least 1,000 query volume and
+1,000 total impressions with ASIN impression share below 1%. The scenario range is 25% to 50% closure of the
+measured gap while the query's Amazon-wide downstream rates hold; it is an arithmetic sensitivity, not a forecast.
+Exact normalized Ads search-term matches use the same calendar month and remain query-level rather than being
+assigned to the selected ASIN.
+
 `mart.ads_product_business_t28` is the primary Advertising operating grain. Each SKU carries total seller sales,
 ad spend, impressions, clicks, Amazon-attributed purchases/units/sales, conversion, ROAS, ACOS, TACOS, report
 coverage and attribution maturity together. Ratios require a positive authoritative denominator; a missing or zero

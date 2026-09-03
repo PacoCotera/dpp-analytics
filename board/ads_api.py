@@ -6,6 +6,9 @@ from typing import Any
 from ads_decisions import (
     ECONOMICS_CONTRACT,
     INTERPRETATION_RULES,
+    SEARCH_OPPORTUNITY_RULES,
+    SEARCH_QUERY_LIMIT,
+    build_search_query_opportunities,
     build_action_groups,
     demand_page,
     enrich_products,
@@ -58,11 +61,107 @@ def _empty(status: str, connection: dict, freshness=None) -> dict:
         "products": [],
         "demand": {"items": [], "total": 0, "page": 1, "page_size": 20, "page_count": 1},
         "demand_totals": {"targets": 0, "search_terms": 0},
+        "search_opportunities": {
+            "status": "UNAVAILABLE",
+            "period": None,
+            "items": [],
+            "shown": 0,
+            "qualified": 0,
+            "source_rows": 0,
+            "rules": SEARCH_OPPORTUNITY_RULES,
+            "basis": "Brand Analytics Search Query Performance is not available in this response.",
+        },
         "actions": [],
         "action_groups": [],
         "interpretation_rules": INTERPRETATION_RULES,
         "economics": ECONOMICS_CONTRACT,
     }
+
+
+def _search_opportunities_contract(cur, marketplace: str, ready: dict) -> dict:
+    contract = {
+        "status": "UNAVAILABLE",
+        "period": None,
+        "items": [],
+        "shown": 0,
+        "qualified": 0,
+        "source_rows": 0,
+        "rules": SEARCH_OPPORTUNITY_RULES,
+        "basis": (
+            "Amazon Brand Analytics Search Query Performance is inclusive marketplace-search evidence. "
+            "It does not separate organic and paid activity or prove advertising incrementality."
+        ),
+        "scenario_basis": (
+            "Purchase ranges are arithmetic sensitivities for closing 25% to 50% of an observed funnel gap, "
+            "not forecasts or causal lift estimates."
+        ),
+        "paid_support_basis": (
+            "Exact normalized Ads query evidence uses the same calendar month and remains query-level, "
+            "not attributable to the selected ASIN."
+        ),
+    }
+    if not ready.get("search_query_rel"):
+        return contract
+    period = _one(
+        cur,
+        """
+        SELECT max(start_date) start_date
+        FROM brand.search_query_performance
+        WHERE marketplace_id=%s AND report_period='MONTH'
+        """,
+        (marketplace,),
+    )
+    start_date = period.get("start_date")
+    if not start_date:
+        contract["status"] = "NO_DATA"
+        return contract
+    rows = _all(
+        cur,
+        """
+        SELECT q.start_date,q.end_date,q.asin,q.search_query,q.search_query_key,
+          q.search_query_score,q.search_query_volume,q.total_query_impression_count,
+          q.asin_impression_count,q.asin_impression_share,q.total_click_count,q.asin_click_count,
+          q.total_cart_add_count,q.asin_cart_add_count,q.total_purchase_count,q.asin_purchase_count,
+          p.seller_sku sku,coalesce(p.title,p.seller_sku,q.asin) product,p.image_url
+        FROM brand.search_query_performance q
+        JOIN mart.catalog_portfolio_product p
+          ON p.marketplace_id=q.marketplace_id AND p.asin=q.asin AND p.is_offer_owner
+        WHERE q.marketplace_id=%s AND q.report_period='MONTH' AND q.start_date=%s
+        """,
+        (marketplace, start_date),
+    )
+    if not rows:
+        contract["status"] = "NO_DATA"
+        return contract
+    end_date = max(row["end_date"] for row in rows)
+    paid_rows = []
+    if ready.get("search_term_rel"):
+        paid_rows = _all(
+            cur,
+            """
+            SELECT d.search_term,d.campaign_id,max(c.campaign_name) campaign_name,
+              sum(d.spend) spend,sum(d.clicks)::bigint clicks,sum(d.purchases)::bigint purchases,
+              sum(d.attributed_sales) attributed_sales
+            FROM mart.ads_search_term_daily d
+            LEFT JOIN ads.campaign c ON c.account_id=d.account_id AND c.campaign_id=d.campaign_id
+            WHERE d.marketplace_id=%s AND d.business_date BETWEEN %s AND %s
+            GROUP BY d.search_term,d.campaign_id
+            """,
+            (marketplace, start_date, end_date),
+        )
+    all_items = build_search_query_opportunities(rows, paid_rows, limit=len(rows))
+    items = all_items[:SEARCH_QUERY_LIMIT]
+    contract.update(
+        {
+            "status": "READY",
+            "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
+            "items": items,
+            "shown": len(items),
+            "qualified": len(all_items),
+            "source_rows": len(rows),
+        }
+    )
+    return contract
 
 
 def _readiness_contract(connection: dict, quality: dict, freshness: dict, through) -> dict:
@@ -194,7 +293,9 @@ def ads_payload(connect, marketplace: str, decorate_products=None, query: dict[s
             SELECT to_regclass('mart.ads_business_t28') business_rel,
               to_regclass('mart.ads_product_business_t28') product_rel,
               to_regclass('mart.ads_ingestion_quality') quality_rel,
-              to_regclass('mart.ads_ingestion_quality_summary') quality_summary_rel
+              to_regclass('mart.ads_ingestion_quality_summary') quality_summary_rel,
+              to_regclass('mart.ads_search_term_daily') search_term_rel,
+              to_regclass('brand.search_query_performance') search_query_rel
             """,
         )
         if not ready.get("business_rel"):
@@ -386,6 +487,7 @@ def ads_payload(connect, marketplace: str, decorate_products=None, query: dict[s
             if _one(cur, "SELECT to_regclass('mart.ads_search_term_daily') rel").get("rel")
             else []
         )
+        search_opportunities = _search_opportunities_contract(cur, marketplace, ready)
 
     trusted = bool(quality.get("trusted_for_operating_decisions"))
     observed_days = int(freshness.get("period_observed_days") or 0)
@@ -427,6 +529,7 @@ def ads_payload(connect, marketplace: str, decorate_products=None, query: dict[s
         "products": products,
         "demand": demand_page(demand_signals, query_values),
         "demand_totals": {"targets": len(targets), "search_terms": len(search_terms)},
+        "search_opportunities": search_opportunities,
         "actions": actions,
         "action_groups": action_groups,
         "interpretation_rules": INTERPRETATION_RULES,
