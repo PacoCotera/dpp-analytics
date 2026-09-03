@@ -115,6 +115,10 @@ Do not add a second mobile renderer or omit lifecycle, canonical identity, stock
 `inventory.js` distinguishes only composition: zero API-owned exceptions collapse the action queue to a healthy
 confirmation with a closed, reachable coverage disclosure; one or more exceptions keep action cards first and
 open the same coverage disclosure. The browser does not recalculate the API-owned action state.
+`inventory_api.py` may combine that completed inventory action with the canonical Ads product projection. Only
+current offers with active paid support and reconciled, sufficiently mature evidence can enter the bounded
+paid-support exposure list. The resulting `ADS_INVENTORY_EXPOSURE_REVIEW` asks for a fulfillment-readiness review;
+it never instructs the seller to pause, reduce, bid or scale.
 Catalog family mode remains a hierarchical disclosure, while its flat dimension, combination, SKU, and deleted
 views expose explicit table, row-group, row-header, column-header, and cell relationships.
 
@@ -133,6 +137,13 @@ chart dependencies they cannot use.
 Only Business impact remains enabled before that ready state; Products & actions, Demand discovery and Advertising detail are disabled with an adjacent API-derived explanation. Once ready, the four views keep SKU and business impact primary while campaigns, targets, terms and IDs remain supporting evidence.
 
 `board/ads_decisions.py` owns Advertising's named, versioned and maturity-aware product/demand interpretations, stable action identifiers, action-lane allocation, product associations and demand pagination. `ads_api.py` supplies the integrated seller-sales, traffic, conversion, Amazon-attributed performance and TACOS operands. The browser may filter and format the returned product set, but it must not invent thresholds, profitability, scaling or bid instructions. Demand is filtered, sorted and paged by the API at 20 rows per page. Changing an Ads rule requires exact-boundary server tests plus production browser verification of its rule key, version, eligibility, suppression and destination.
+
+`board/ads_context.py` owns the reusable cross-route projection. Today shows it only on the live operating day and
+labels it as the latest completed Ads window. Business exposes the primary product review beside overall business
+impact. Sales aligns seller sales, spend, attributed performance and TACOS and adds product-level paid-support
+context to Drivers. Product Workspace renders the current SKU funnel and review steps. Inventory renders only the
+bounded server-qualified exposure list. Finance remains the sole accounting owner of advertising expense and Data
+Health remains the pipeline-quality owner; neither route imports operating recommendations.
 
 ### Finance
 
@@ -273,6 +284,10 @@ The same suite runs `qa/accessibility_qa.mjs` across every primary workspace. It
 headings, unnamed visible links, missing toggle-button state, broken native keyboard activation, and loss of the
 Finance monthly report's table relationships.
 `qa/visual_qa.mjs` additionally checks the 14px evidence floor, 40px control floor, rendered chart and non-text contrast, mobile Finance/Data Health table semantics, contained Advertising tabs and tables, mobile destination identity, and every primary route in all six presentation profiles at mobile and desktop widths. `qa/ads_surface_qa.mjs` deterministically covers ready and disconnected Advertising states, integrated product evidence, server-owned rules and action destinations, bounded demand pages, neutral campaign comparison and chart-free disconnected loading. Frontend tooling is pinned by `board/package-lock.json`; CI must use `npm ci`.
+
+`qa/ads_cross_route_qa.mjs` compares the Today, Business and Sales Ads business signatures, verifies exact
+server-owned drill-down destinations and Back restoration, checks the Product funnel/action contract and
+Inventory exposure eligibility, and enforces bounded mobile lists plus document containment.
 `qa/analysis_state_qa.mjs` exercises Sales and Catalog direct links, refresh, Back, and Forward. When adding a
 persistent view choice, document its URL key in `frontend-architecture.md` and extend this browser gate.
 `qa/presentation_profiles_qa.mjs` checks the six-profile registry and apply/persistence contract on the Business

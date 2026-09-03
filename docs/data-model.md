@@ -123,6 +123,14 @@ ad spend, impressions, clicks, Amazon-attributed purchases/units/sales, conversi
 coverage and attribution maturity together. Ratios require a positive authoritative denominator; a missing or zero
 denominator is unavailable, not zero performance.
 
+`board/ads_context.py::cross_route_t28` is the bounded server projection for non-Advertising workspaces. It reuses
+the same business and product marts, connection state, reconciliation quality, maturity calculation, economics
+qualification, recommendation rule and stable destination that `/api/ads` uses. Today, Business and Sales receive
+the primary eligible product review; Sales also receives at most 20 product rows. Inventory joins at most 60 product
+contexts to canonical current offers and applies the named `ADS_INVENTORY_EXPOSURE_REVIEW` rule only after its own
+stock action is known. Product Workspace uses the single-SKU projection. These are API-owned interpretations, not
+browser joins or a second Ads metric definition.
+
 Campaign/ad-group advertised-product facts associate target and search-term evidence back to one or more products.
 The API normalizes that evidence as shopper queries, matched products or configured targets and keeps raw Amazon
 IDs/expressions in a technical disclosure. `board/ads_decisions.py` owns the named/versioned interpretation,

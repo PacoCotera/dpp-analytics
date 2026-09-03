@@ -118,7 +118,13 @@ def product_payload(connect, decorate_products, marketplace: str, sku: str) -> d
             WHERE marketplace_id=%s AND asin=%s AND business_date BETWEEN c.d-27 AND c.d
         """,(cutoff,marketplace,asin)) if cutoff and asin else {}
 
-        ads = product_t28(cur, marketplace, sku)
+        ads = product_t28(
+            cur,
+            marketplace,
+            sku,
+            product=commercial.get('product') or profile.get('product'),
+            image_url=commercial.get('image_url') or profile.get('image_url'),
+        )
 
         series = _all(cur,"""
             WITH c AS (SELECT %s::date d), days AS (SELECT generate_series(c.d-89,c.d,interval '1 day')::date business_date FROM c),

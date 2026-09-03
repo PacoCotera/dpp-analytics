@@ -76,6 +76,18 @@ export function escapeHtml(value) {
   );
 }
 
+export function adsDestination(destination = {}) {
+  const url = new URL('/ads', window.location.origin);
+  const keys = ['view', 'sku', 'campaign', 'signal', 'action', 'filter', 'sort', 'page', 'q', 'signal_type'];
+  keys.forEach((key) => {
+    const value = destination?.[key];
+    if (value !== null && value !== undefined && String(value).trim()) {
+      url.searchParams.set(key, String(value));
+    }
+  });
+  return `${url.pathname}${url.search}`;
+}
+
 export function tone(value, { positive = 2, negative = -2 } = {}) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return '';

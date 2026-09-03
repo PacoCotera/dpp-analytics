@@ -158,6 +158,47 @@
             </div>
           </aside>
         </section>
+        <section
+          class="page-section product-ads"
+          id="productAdsModule"
+          aria-labelledby="productAdsTitle"
+          hidden
+        >
+          <div class="section-header product-ads__header">
+            <div>
+              <div class="section-label">Product operating context</div>
+              <h2 class="section-header__title" id="productAdsTitle">Demand &amp; advertising</h2>
+              <div class="section-header__description" id="productAdsWindow">
+                Latest completed 28-day advertising window
+              </div>
+            </div>
+            <div class="product-ads__links">
+              <a class="btn" id="productAdsDemandLink" href="/ads?view=demand">Review demand</a>
+              <a class="btn" id="productAdsActionLink" href="/ads?view=products">Open Advertising</a>
+            </div>
+          </div>
+          <div class="product-ads__funnel" aria-label="Paid-support funnel">
+            <div><span>Impressions</span><strong id="productAdsImpressions">—</strong></div>
+            <div><span>Clicks</span><strong id="productAdsClicks">—</strong></div>
+            <div><span>Attributed purchases</span><strong id="productAdsPurchases">—</strong></div>
+            <div><span>Attributed sales</span><strong id="productAdsAttributedSales">—</strong></div>
+          </div>
+          <div class="product-ads__body">
+            <div
+              class="product-ads__metrics"
+              id="productAdsMetrics"
+              aria-label="Product advertising and seller-sales metrics"
+            ></div>
+            <article class="product-ads__action" aria-labelledby="productAdsRecommendation">
+              <span id="productAdsActionLabel">Review</span>
+              <h3 id="productAdsRecommendation">Paid-support review</h3>
+              <p id="productAdsRecommendationRead"></p>
+              <ol id="productAdsSteps"></ol>
+              <p class="product-ads__qualification" id="productAdsQualification"></p>
+            </article>
+          </div>
+          <p class="product-ads__note" id="productAdsNote"></p>
+        </section>
         <details class="evidence" id="ordersPanel" data-dpp-qa="product-order-evidence">
           <summary>
             <span

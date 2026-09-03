@@ -144,12 +144,12 @@ All 28-day ranges are inclusive. If the through date is `2026-08-26`, the includ
 
 | Surface | Primary sales basis | Notes |
 | --- | --- | --- |
-| Today | Shopper spend incl. IVA from normalized Orders | Provisional live operating view |
-| Home | Reconciled Sales & Traffic shopper spend incl. IVA; Today KPI uses normalized Orders on the same basis | Historical series remains reconciled-only |
-| Sales | Shopper spend incl. IVA throughout | Historical periods/products = Sales & Traffic; Today/orders = Orders |
+| Today | Shopper spend incl. IVA from normalized Orders | Provisional live operating view; paid support is the latest completed Ads T28, never “today” |
+| Home | Reconciled Sales & Traffic shopper spend incl. IVA; Today KPI uses normalized Orders on the same basis | Historical series remains reconciled-only; paid support is a separately dated Ads T28 |
+| Sales | Shopper spend incl. IVA throughout | Historical periods/products = Sales & Traffic; Today/orders = Orders; Ads context uses its own stated cutoff |
 | Catalog | Reconciled CHILD-ASIN shopper spend incl. IVA attached once to canonical offer | Ads context remains separate |
-| Product Workspace | Reconciled CHILD-ASIN shopper spend incl. IVA | Recent orders use the same gross basis |
-| Inventory | Seller-SKU Orders units for velocity/cover | Replenishment is unit/cover-led |
+| Product Workspace | Reconciled CHILD-ASIN shopper spend incl. IVA | Recent orders use the same gross basis; paid support includes independently reconciled seller sales and TACOS |
+| Inventory | Seller-SKU Orders units for velocity/cover | Replenishment is unit/cover-led; Ads may trigger only a fulfillment-readiness review after the inventory action exists |
 | Trajectory | Reconciled Sales & Traffic shopper spend incl. IVA | Structural horizons are reconciled-only |
 | Finance | Net sales ex IVA + IVA withheld + gross customer spend; latest canonical settlement cash is separate | CLOSED/RESTATED months are immutable snapshots; settlement bridge is cash timing, not P&L |
 | Ads | Ads attributed sales + independent seller-sales denominator | Attribution basis, maturity, freshness and trust are mandatory |

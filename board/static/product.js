@@ -1,4 +1,5 @@
 import {
+  adsDestination,
   byId,
   escapeHtml,
   fetchJson,
@@ -382,6 +383,8 @@ function renderVariationContext(profile, commercial, familyVariations) {
 }
 
 function renderAds(ads, commercial) {
+  const module = byId('productAdsModule');
+  module.hidden = true;
   if (commercial.catalog_membership === 'DELETED') {
     byId('adsDecision').textContent = 'No current Ads decision';
     byId('adsRead').textContent =
@@ -401,10 +404,46 @@ function renderAds(ads, commercial) {
 
   const spend = Number(ads.spend || 0);
   const trusted = Boolean(ads.trusted_for_operating_decisions);
-  const trust = trusted ? 'Decision-grade' : 'Review';
   const attribution = ads.attribution_state || (mature >= observed ? 'MATURE' : 'PROVISIONAL');
+  const recommendation = ads.recommendation || {};
+  const action = ads.action || {};
+  byId('adsDecision').textContent =
+    recommendation.label || (trusted ? 'Paid-support context is ready' : 'Paid-support context needs review');
   byId('adsRead').textContent =
-    `${connection.detail} Current product read: ${money(spend)} spend · ${money(ads.attributed_sales || 0)} Amazon-attributed sales · ${formatCount(ads.clicks, 'click')} · ${ratioPercent(ads.ctr)} CTR · ${ads.cpc == null ? '—' : money(ads.cpc)} CPC · ${ratioPercent(ads.acos)} ACOS · ${decimal(ads.roas)}× ROAS · ${ratioPercent(ads.tacos)} TACOS · ${formatCount(observed, 'observed Ads day')}${mature < observed ? ` · ${mature} mature` : ''}. ${trust} ${String(attribution).toLowerCase()} attribution through ${ads.through_date}. Attributed sales are not exact incremental sales, and total seller sales minus attributed sales is not exact organic sales.`;
+    `${recommendation.title || 'Review this product’s paid support.'} ${recommendation.explanation || ''}`;
+
+  module.hidden = false;
+  byId('productAdsWindow').textContent =
+    `${String(ads.period_start || '').slice(0, 10)} to ${String(ads.through_date).slice(0, 10)} · ${String(attribution).toLowerCase()} attribution`;
+  byId('productAdsImpressions').textContent = integer(ads.impressions);
+  byId('productAdsClicks').textContent = integer(ads.clicks);
+  byId('productAdsPurchases').textContent = integer(ads.attributed_purchases);
+  byId('productAdsAttributedSales').textContent = money(ads.attributed_sales);
+  byId('productAdsMetrics').innerHTML = [
+    ['Seller sales', money(ads.total_business_sales)],
+    ['Ad spend', money(ads.spend)],
+    ['TACOS', ratioPercent(ads.tacos)],
+    ['CTR · CPC', `${ratioPercent(ads.ctr)} · ${ads.cpc == null ? '—' : money(ads.cpc)}`],
+    ['Conversion', ratioPercent(ads.conversion_rate)],
+    ['ROAS · ACOS', `${decimal(ads.roas)}× · ${ratioPercent(ads.acos)}`],
+  ]
+    .map(
+      ([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`,
+    )
+    .join('');
+  byId('productAdsActionLabel').textContent = recommendation.label || 'Review';
+  byId('productAdsRecommendation').textContent = recommendation.title || 'Review paid support';
+  byId('productAdsRecommendationRead').textContent = recommendation.explanation || '';
+  byId('productAdsSteps').innerHTML = (action.review_steps || [])
+    .map((step) => `<li>${escapeHtml(step)}</li>`)
+    .join('');
+  byId('productAdsQualification').textContent = action.qualification || ads.economics?.basis || '';
+  byId('productAdsActionLink').href = adsDestination(
+    action.destination || { view: 'products', sku: ads.sku },
+  );
+  byId('productAdsDemandLink').href = adsDestination({ view: 'demand', sku: ads.sku });
+  byId('productAdsNote').textContent =
+    `${formatCount(observed, 'observed Ads day')} · ${formatCount(mature, 'mature day')} · through ${String(ads.through_date).slice(0, 10)}. Amazon-attributed sales are not incremental sales. Seller sales minus attributed sales is not exact organic sales.`;
 
   const healthRead = byId('healthRead');
   if (healthRead && spend > 0 && !healthRead.textContent.includes('Paid support is active')) {

@@ -1,4 +1,5 @@
 import {
+  adsDestination,
   byId,
   escapeHtml,
   fetchJson,
@@ -483,6 +484,40 @@ function renderProducts(payload) {
   }
 }
 
+function renderPaidSupportWatch(ads = {}, live = false) {
+  const panel = byId('paidSupportWatch');
+  const business = ads.business || {};
+  if (!panel || !live || !business.through_date) {
+    if (panel) panel.hidden = true;
+    return;
+  }
+
+  panel.hidden = false;
+  byId('paidSupportMetrics').innerHTML = `
+    <div><strong>${money(business.spend)}</strong><span>28-day spend</span></div>
+    <div><strong>${percent(business.tacos, { sign: false, scale: 100 })}</strong><span>TACOS</span></div>
+    <div><strong>${money(business.attributed_sales)}</strong><span>Attributed sales</span></div>`;
+
+  const action = ads.primary_action;
+  const actionNode = byId('paidSupportAction');
+  const open = byId('paidSupportOpen');
+  if (action) {
+    const productHref = `/product?sku=${encodeURIComponent(action.sku || '')}`;
+    const adsHref = adsDestination(action.destination);
+    actionNode.hidden = false;
+    actionNode.innerHTML = `
+      <div><span>${escapeHtml(action.label || 'Review')}</span><strong>${escapeHtml(action.title || action.product || action.sku || 'Paid-support review')}</strong><p>${escapeHtml(action.rationale || '')}</p></div>
+      <div class="paid-support-watch__links"><a href="${productHref}">Open product</a><a href="${adsHref}">Review in Advertising</a></div>`;
+    open.href = adsHref;
+  } else {
+    actionNode.hidden = true;
+    actionNode.innerHTML = '';
+    open.href = '/ads?view=products';
+  }
+  byId('paidSupportNote').textContent =
+    `${integer(business.observed_ads_days)} observed · ${integer(business.mature_ads_days)} mature · through ${String(business.through_date).slice(0, 10)}. Latest completed Ads window, not today’s advertising. Attributed sales are not incremental sales.`;
+}
+
 function renderSelectedOrders(payload) {
   const orders = payload.recent_orders || [];
   const today = payload.today || {};
@@ -527,6 +562,7 @@ function render(payload) {
   renderLatestOrder(payload.latest_order, live);
   renderOrderFlow(payload);
   renderProducts(payload);
+  renderPaidSupportWatch(payload.ads || {}, live);
   renderSelectedOrders(payload);
   drawChart();
 

@@ -110,6 +110,37 @@ INTERPRETATION_RULES = {
         "plain_language": "Keep the product under observation while attribution matures or evidence remains limited.",
         "evidence_fields": ["spend", "clicks", "attributed_purchases", "observed_ads_days", "mature_ads_days"],
     },
+    "ADS_INVENTORY_EXPOSURE_REVIEW": {
+        "key": "ADS_INVENTORY_EXPOSURE_REVIEW",
+        "version": 1,
+        "title": "Paid-support inventory review",
+        "eligibility": (
+            "The record is a current commercial offer, Inventory has assigned STOCKOUT, PRODUCE or PLAN, "
+            "paid support is active, and the reporting window passes reconciliation and attribution maturity."
+        ),
+        "thresholds": {
+            "inventory_actions": ["STOCKOUT", "PRODUCE", "PLAN"],
+            "minimum_spend_exclusive": 0,
+            "minimum_observed_days": MIN_PRODUCT_OBSERVED_DAYS,
+        },
+        "observation_window": {"kind": "rolling", "days": WINDOW_DAYS},
+        "attribution_maturity": "All observed days outside the declared attribution lookback must be mature.",
+        "required_economic_inputs": [],
+        "economic_claims_allowed": False,
+        "plain_language": (
+            "Active paid support and a current inventory constraint require a fulfillment-readiness review. "
+            "The rule does not prescribe a bid, budget, pause or spend change."
+        ),
+        "evidence_fields": [
+            "inventory_action",
+            "available",
+            "inbound",
+            "days_cover_with_inbound",
+            "spend",
+            "observed_ads_days",
+            "mature_ads_days",
+        ],
+    },
 }
 
 _ASIN = re.compile(r"\bB0[A-Z0-9]{8}\b", re.IGNORECASE)
@@ -482,6 +513,96 @@ def _action_from_product(product: dict[str, Any]) -> dict[str, Any]:
         },
         "technical": {"asin": product.get("asin")},
         "qualification": recommendation.get("suppression_reason") or ECONOMICS_CONTRACT["basis"],
+    }
+
+
+def build_product_action(product: dict[str, Any]) -> dict[str, Any]:
+    """Expose the canonical product action for other server-owned workspaces."""
+    return _action_from_product(product)
+
+
+def inventory_exposure_recommendation(
+    row: dict[str, Any], *, trusted: bool, attribution_lookback_days: int = 7
+) -> dict[str, Any]:
+    """Combine API-owned inventory state with mature paid-support evidence.
+
+    This rule requests a review only. It deliberately does not prescribe a bid,
+    budget, pause or spend change and does not require profitability evidence.
+    """
+    action = str(row.get("inventory_action") or row.get("action") or "").upper()
+    current_offer = bool(row.get("is_current_offer"))
+    spend = _number(row.get("spend") or row.get("ad_spend_t28"))
+    observed = int(row.get("observed_ads_days") or row.get("ad_observed_days") or 0)
+    mature = int(row.get("mature_ads_days") or row.get("ad_mature_days") or 0)
+    required_mature = _expected_mature_days(observed, attribution_lookback_days)
+    constrained = action in {"STOCKOUT", "PRODUCE", "PLAN"}
+    eligible = bool(
+        current_offer
+        and constrained
+        and spend > 0
+        and trusted
+        and observed >= MIN_PRODUCT_OBSERVED_DAYS
+        and mature >= required_mature
+    )
+    suppression = None
+    if not current_offer:
+        suppression = "Only a canonical current offer can enter the inventory decision queue."
+    elif not constrained:
+        suppression = "Inventory has not assigned a current stockout, production or planning constraint."
+    elif spend <= 0:
+        suppression = "No paid support is recorded for this offer in the current advertising window."
+    elif not trusted:
+        suppression = "The advertising reporting window has not passed reconciliation."
+    elif observed < MIN_PRODUCT_OBSERVED_DAYS:
+        suppression = (
+            f"Only {observed} of {MIN_PRODUCT_OBSERVED_DAYS} required observed advertising days are available."
+        )
+    elif mature < required_mature:
+        suppression = f"Only {mature} of {required_mature} eligible attribution days are mature."
+
+    product = row.get("product") or row.get("sku") or "this product"
+    rule = INTERPRETATION_RULES["ADS_INVENTORY_EXPOSURE_REVIEW"]
+    action_id = _stable_id("ads-inventory-action", rule["key"], row.get("sku"), action)
+    return {
+        "state": "NEEDS_ATTENTION" if eligible else "NO_CURRENT_ACTION",
+        "label": "Review paid support" if eligible else "No paid-support inventory action",
+        "title": f"Review paid support while inventory is constrained for {product}",
+        "explanation": (
+            f"Inventory currently reports {action.lower()} while Amazon Ads records paid support. "
+            "Review fulfillment readiness and current campaign intent before making an advertising change."
+            if eligible
+            else suppression
+        ),
+        "rule_key": rule["key"],
+        "rule_version": rule["version"],
+        "eligible": eligible,
+        "suppression_reason": suppression,
+        "action_id": action_id,
+        "evidence": {
+            "inventory_action": action,
+            "available": row.get("available"),
+            "inbound": row.get("inbound"),
+            "days_cover_with_inbound": row.get("days_cover_with_inbound"),
+            "spend": spend,
+            "attributed_sales": row.get("attributed_sales") or row.get("ad_attributed_sales_t28"),
+            "tacos": row.get("tacos") or row.get("ad_tacos_t28"),
+            "observed_days": observed,
+            "mature_days": mature,
+        },
+        "review_steps": [
+            "Confirm available and inbound inventory against the current cover window.",
+            "Review the SKU's traffic, attributed conversion and campaign intent.",
+            "Make any campaign change only after checking fulfillment readiness and product economics.",
+        ],
+        "destination": {
+            "view": "products",
+            "sku": row.get("sku"),
+            "action": action_id,
+            "filter": "needs_attention",
+        },
+        "qualification": (
+            "This is a fulfillment-readiness review, not a recommendation to pause, reduce, bid or scale."
+        ),
     }
 
 

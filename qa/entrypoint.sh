@@ -60,6 +60,8 @@ node /qa/product_naming_qa.mjs "$base_url" "$work_dir"
 product_naming_rc=$?
 node /qa/ads_surface_qa.mjs "$base_url" "$work_dir"
 ads_surface_rc=$?
+node /qa/ads_cross_route_qa.mjs "$base_url" "$work_dir"
+ads_cross_route_rc=$?
 node /qa/footer_qa.mjs "$base_url" "$work_dir"
 footer_rc=$?
 node /qa/short_state_footer_qa.mjs "$base_url" "$work_dir"
@@ -115,6 +117,7 @@ if [ "$geography_zoom_rc" -ne 0 ]; then exit "$geography_zoom_rc"; fi
 if [ "$order_operations_rc" -ne 0 ]; then exit "$order_operations_rc"; fi
 if [ "$product_naming_rc" -ne 0 ]; then exit "$product_naming_rc"; fi
 if [ "$ads_surface_rc" -ne 0 ]; then exit "$ads_surface_rc"; fi
+if [ "$ads_cross_route_rc" -ne 0 ]; then exit "$ads_cross_route_rc"; fi
 if [ "$footer_rc" -ne 0 ]; then exit "$footer_rc"; fi
 if [ "$short_state_footer_rc" -ne 0 ]; then exit "$short_state_footer_rc"; fi
 if [ "$asset_revision_rc" -ne 0 ]; then exit "$asset_revision_rc"; fi
