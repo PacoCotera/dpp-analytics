@@ -188,7 +188,8 @@ def _create_report(
 
 
 def _wait_for_report(client: SpApiClient, report_id: str) -> dict[str, Any]:
-    deadline = time.monotonic() + settings.reports_poll_timeout_seconds
+    timeout_seconds = settings.brand_analytics_search_query_poll_timeout_seconds
+    deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
         report = _payload(client.get(f"/reports/2021-06-30/reports/{report_id}"))
         status = str(report.get("processingStatus") or "").upper()
@@ -210,7 +211,7 @@ def _wait_for_report(client: SpApiClient, report_id: str) -> dict[str, Any]:
         time.sleep(settings.reports_poll_seconds)
     raise TimeoutError(
         f"Brand Analytics report {report_id} did not finish within "
-        f"{settings.reports_poll_timeout_seconds}s"
+        f"{timeout_seconds}s"
     )
 
 

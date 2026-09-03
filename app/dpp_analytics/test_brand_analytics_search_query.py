@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import date
 from decimal import Decimal
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from .brand_analytics_search_query import (
     REPORT_TYPE,
@@ -13,6 +13,7 @@ from .brand_analytics_search_query import (
     completed_month_periods,
     normalize_query,
     report_rows,
+    _wait_for_report,
 )
 from .settings import settings
 
@@ -59,6 +60,18 @@ class BrandAnalyticsSearchQueryTests(unittest.TestCase):
         rows = [{"asin": "B000000001"}]
         self.assertEqual(report_rows({"dataByAsin": rows}), rows)
         self.assertEqual(report_rows({"payload": {"dataByAsin": rows}}), rows)
+
+    @patch("dpp_analytics.brand_analytics_search_query.time.monotonic")
+    @patch("dpp_analytics.brand_analytics_search_query.time.sleep")
+    def test_report_polling_uses_brand_analytics_timeout(
+        self, _sleep: MagicMock, monotonic: MagicMock
+    ) -> None:
+        monotonic.side_effect = [0, 0, 3601]
+        client = MagicMock()
+        client.get.return_value = {"processingStatus": "IN_QUEUE"}
+
+        with self.assertRaisesRegex(TimeoutError, "within 3600s"):
+            _wait_for_report(client, "report-1")
 
     def test_row_mapping_preserves_source_and_ratio_semantics(self) -> None:
         mapped = _row_values(
