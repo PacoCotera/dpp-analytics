@@ -271,6 +271,100 @@ for (const route of routes) {
       await assertPressedGroup(page, "[data-filter]");
     }
 
+    if (route.name === "ads") {
+      const payload = await page.evaluate(async () =>
+        (await fetch("/api/ads", { cache: "no-store" })).json(),
+      );
+      if (payload.connection?.state === "READY" && payload.status === "ready") {
+        await page
+          .locator("#portfolioChart .ads-portfolio-mark")
+          .first()
+          .waitFor({
+            timeout: 10000,
+          });
+        const tabs = await page.locator('[role="tab"]').evaluateAll((items) =>
+          items.map((item) => ({
+            controls: item.getAttribute("aria-controls"),
+            selected: item.getAttribute("aria-selected"),
+            tabIndex: item.tabIndex,
+          })),
+        );
+        assert(tabs.length === 4, `Ads exposes ${tabs.length} tabs`);
+        assert(
+          tabs.every((tab) => tab.controls),
+          `Ads tabs do not all own a panel: ${JSON.stringify(tabs)}`,
+        );
+        assert(
+          tabs.filter((tab) => tab.selected === "true").length === 1 &&
+            tabs.filter((tab) => tab.tabIndex === 0).length === 1,
+          `Ads tab selection is incomplete: ${JSON.stringify(tabs)}`,
+        );
+        await page.locator('[data-ads-view="impact"]').focus();
+        await page.keyboard.press("ArrowRight");
+        await page.waitForFunction(
+          () =>
+            document
+              .querySelector('[data-ads-view="products"]')
+              ?.getAttribute("aria-selected") === "true",
+        );
+        const productTable = await page
+          .locator(".ads-product-table table")
+          .evaluate((element) => ({
+            caption: element.querySelector("caption")?.textContent?.trim(),
+            columns: element.querySelectorAll('thead th[scope="col"]').length,
+            rows: element.querySelectorAll("tbody tr").length,
+            rowHeaders: element.querySelectorAll('tbody th[scope="row"]')
+              .length,
+          }));
+        assert(
+          productTable.caption ===
+            "Integrated product advertising and seller-sales performance",
+          `Ads product table caption is ${productTable.caption}`,
+        );
+        assert(
+          productTable.columns === 14 &&
+            productTable.rows > 0 &&
+            productTable.rows === productTable.rowHeaders,
+          `Ads product table relationships are incomplete: ${JSON.stringify(productTable)}`,
+        );
+        await page.locator('[data-ads-view="demand"]').click();
+        await page.waitForFunction(
+          () => !document.getElementById("demand").hidden,
+        );
+        const demandTable = await page
+          .locator(".ads-demand-table table")
+          .evaluate((element) => ({
+            caption: element.querySelector("caption")?.textContent?.trim(),
+            columns: element.querySelectorAll('thead th[scope="col"]').length,
+            rows: element.querySelectorAll("tbody tr").length,
+            rowHeaders: element.querySelectorAll('tbody th[scope="row"]')
+              .length,
+          }));
+        assert(
+          demandTable.caption ===
+            "Advertising demand signals with product and business context",
+          `Ads demand table caption is ${demandTable.caption}`,
+        );
+        assert(
+          demandTable.columns === 9 &&
+            demandTable.rows <= 20 &&
+            demandTable.rows === demandTable.rowHeaders,
+          `Ads demand table relationships are incomplete: ${JSON.stringify(demandTable)}`,
+        );
+        const chartMarks = await page
+          .locator("#portfolioChart .ads-portfolio-mark")
+          .evaluateAll((marks) =>
+            marks.every(
+              (mark) =>
+                mark.getAttribute("role") === "img" &&
+                mark.getAttribute("tabindex") === "0" &&
+                Boolean(mark.getAttribute("aria-label")),
+            ),
+          );
+        assert(chartMarks, "Ads portfolio chart marks lack accessible names");
+      }
+    }
+
     if (route.name === "finance") {
       await page
         .locator("#history tbody tr")

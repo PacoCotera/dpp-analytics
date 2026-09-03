@@ -74,7 +74,7 @@ INTERPRETATION_RULES = {
         "title": "Demand test opportunity",
         "eligibility": (
             "The business reporting window is reconciled, its eligible attribution days are mature, and the signal is a "
-            "recognizable shopper query or matched product."
+            "recognizable shopper query, matched product or configured target."
         ),
         "thresholds": {"minimum_attributed_purchases": MIN_REPEAT_PURCHASES},
         "observation_window": {"kind": "rolling", "days": WINDOW_DAYS},
@@ -274,6 +274,7 @@ def normalize_demand_signal(
     trusted: bool,
     mature_days: int,
     observed_days: int,
+    attribution_lookback_days: int = 7,
 ) -> dict[str, Any]:
     raw = row.get("search_term") if source == "search_term" else row.get("target_expression") or row.get("target_id")
     signal_type, signal_type_label, display = _signal_identity(raw, source)
@@ -307,7 +308,12 @@ def normalize_demand_signal(
             },
         }
     )
-    maturity_ready = bool(trusted and observed_days >= WINDOW_DAYS and mature_days >= 21)
+    required_mature_days = _expected_mature_days(observed_days, attribution_lookback_days)
+    maturity_ready = bool(
+        trusted
+        and observed_days >= WINDOW_DAYS
+        and mature_days >= required_mature_days
+    )
     purchases = int(result.get("purchases") or 0)
     clicks = int(result.get("clicks") or 0)
     if maturity_ready and purchases >= MIN_REPEAT_PURCHASES:
@@ -348,7 +354,21 @@ def normalize_demand_signal(
         "rule_key": rule_key,
         "rule_version": INTERPRETATION_RULES[rule_key]["version"],
         "eligible": maturity_ready,
-        "suppression_reason": None if maturity_ready else "The current decision window is not sufficiently mature.",
+        "suppression_reason": (
+            None
+            if maturity_ready
+            else (
+                f"Only {mature_days} of {required_mature_days} eligible attribution days are mature."
+                if trusted and observed_days >= WINDOW_DAYS
+                else "The current decision window is not sufficiently complete."
+            )
+        ),
+        "evidence": {
+            "observed_days": observed_days,
+            "mature_days": mature_days,
+            "required_mature_days": required_mature_days,
+            "attribution_lookback_days": attribution_lookback_days,
+        },
     }
     return result
 
@@ -479,7 +499,10 @@ def _action_from_signal(signal: dict[str, Any]) -> dict[str, Any]:
         "rationale": recommendation["explanation"],
         "metrics": {key: signal.get(key) for key in ("spend", "clicks", "purchases", "attributed_sales", "roas", "acos")},
         "observation_window": {"days": WINDOW_DAYS},
-        "maturity": {"ready": recommendation["eligible"]},
+        "maturity": {
+            "ready": recommendation["eligible"],
+            **recommendation.get("evidence", {}),
+        },
         "magnitude": {"spend": signal.get("spend"), "attributed_sales": signal.get("attributed_sales")},
         "review_steps": [
             "Review the associated product and listing relevance.",

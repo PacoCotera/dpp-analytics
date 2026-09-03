@@ -330,6 +330,8 @@ jobs:
             /tmp/dpp-production-visual-qa/report.md
             /tmp/dpp-production-visual-qa/summary.json
             /tmp/dpp-production-visual-qa/**/*-summary.json
+            /tmp/dpp-production-visual-qa/**/ads-business-impact-desktop.png
+            /tmp/dpp-production-visual-qa/**/ads-demand-mobile.png
             /tmp/dpp-production-visual-qa/performance-candidate-baseline.json
           if-no-files-found: warn
           retention-days: 3

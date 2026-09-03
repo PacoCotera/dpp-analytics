@@ -373,6 +373,7 @@ def ads_payload(connect, marketplace: str, decorate_products=None, query: dict[s
             trusted=trusted,
             mature_days=mature_days,
             observed_days=observed_days,
+            attribution_lookback_days=lookback_days,
         )
         for row in targets
     ] + [
@@ -383,6 +384,7 @@ def ads_payload(connect, marketplace: str, decorate_products=None, query: dict[s
             trusted=trusted,
             mature_days=mature_days,
             observed_days=observed_days,
+            attribution_lookback_days=lookback_days,
         )
         for row in search_terms
     ]

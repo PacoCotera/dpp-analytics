@@ -142,6 +142,30 @@ class AdsDecisionContractTests(unittest.TestCase):
         self.assertEqual(product["signal_type"], "MATCHED_PRODUCT")
         self.assertEqual(product["signal"], "B07K4XY6PT")
         self.assertEqual(query["technical"]["target_id"], "t")
+        self.assertEqual(query["recommendation"]["evidence"]["required_mature_days"], 21)
+        still_learning = normalize_demand_signal(
+            {
+                "account_id": "a",
+                "campaign_id": "c",
+                "target_id": "t3",
+                "search_term": "custom lookback",
+                "clicks": 8,
+                "purchases": 2,
+                "spend": 20,
+                "attributed_sales": 50,
+                "impressions": 100,
+            },
+            source="search_term",
+            product_refs=[],
+            trusted=True,
+            mature_days=21,
+            observed_days=28,
+            attribution_lookback_days=3,
+        )
+        self.assertFalse(still_learning["recommendation"]["eligible"])
+        self.assertEqual(
+            still_learning["recommendation"]["evidence"]["required_mature_days"], 25
+        )
 
     def test_group_allocation_keeps_product_actions_from_being_crowded_out(self):
         products = enrich_products(

@@ -202,9 +202,8 @@ async function verifyAdmin(page) {
   }
 }
 
-async function verifyAds(page, view = 'overview') {
-  await assertWorkspaceLandmarks(page, ['ads-workspace-header', 'ads-operating-evidence']);
-  await verifyCompactLead(page, '[data-dpp-qa="ads-overview"]');
+async function verifyAds(page, view = 'impact') {
+  const payload = await page.evaluate(async () => (await (await fetch('/api/ads', { cache: 'no-store' })).json()));
   const navigation = await page.evaluate(() => {
     const tabs = document.querySelector('.ads-page .subnav');
     return {
@@ -216,22 +215,21 @@ async function verifyAds(page, view = 'overview') {
   });
   if (
     navigation.mobile &&
-    (navigation.pageOverflow > 1 || navigation.tabCount !== 5 || !navigation.containedOverflow)
+    (navigation.pageOverflow > 1 || navigation.tabCount !== 4 || !navigation.containedOverflow)
   ) {
     throw new Error(`Ads mobile navigation mismatch: ${JSON.stringify(navigation)}`);
   }
-  const payload = await page.evaluate(async () => (await (await fetch('/api/ads', { cache: 'no-store' })).json()));
   if (payload.connection?.state !== 'READY' || payload.status !== 'ready') {
     await wait(page, '#emptyState');
     const disconnected = await page.evaluate(connectionDetail => {
       const tabs = [...document.querySelectorAll('[data-ads-view]')];
       const note = document.getElementById('adsViewAvailability');
       return {
-        overviewEnabled: tabs[0]?.dataset.adsView === 'overview' && !tabs[0].disabled,
+        overviewEnabled: tabs[0]?.dataset.adsView === 'impact' && !tabs[0].disabled,
         drillsDisabled: tabs.slice(1).every(tab => tab.disabled && tab.getAttribute('aria-disabled') === 'true'),
         explained: Boolean(
           note && !note.hidden &&
-          note.textContent.trim() === 'Only Overview is available in the current Advertising connection state.' &&
+          note.textContent.trim() === 'Only Business impact is available in the current Advertising connection state.' &&
           !note.textContent.includes(connectionDetail || 'missing connection detail')
         ),
         singleDetailOwner:
@@ -244,21 +242,27 @@ async function verifyAds(page, view = 'overview') {
     }
     return;
   }
-  if (view === 'campaigns') {
-    await page.locator('button[data-ads-view="campaigns"]').click();
-    await wait(page, '#campaignQuadrant .dpp-bubble');
-  } else {
-    await wait(page, '#chart .dpp-bar');
+  await assertWorkspaceLandmarks(page, ['ads-workspace-header', 'ads-operating-evidence']);
+  await verifyCompactLead(page, '[data-dpp-qa="ads-overview"]');
+  if (view !== 'impact') {
+    await page.locator(`button[data-ads-view="${view}"]`).click();
+    await page.waitForFunction(selected => !document.getElementById(selected).hidden, view);
   }
-  const state = await page.evaluate(apiActions => {
+  if (view === 'impact') await wait(page, '#portfolioChart .ads-portfolio-mark');
+  if (view === 'detail') await wait(page, '#campaignComparison .dpp-bubble');
+  const state = await page.evaluate(({ apiActions, selectedView }) => {
     const visible = element => element && element.getClientRects().length > 0;
     const tabs = document.querySelector('.ads-page .subnav');
     const tabsRect = tabs?.getBoundingClientRect();
     const evidence = [...document.querySelectorAll(
-      '.ads-page .kicker,.ads-page .page-header__description,.ads-page .section-header__description,.ads-page .kpi__label,.ads-page .kpi__note,.ads-page .data-table th,.ads-page .data-table td,.ads-quality p,.ads-action-body p'
+      '.ads-page .kicker,.ads-page .section-header__description,.ads-page .kpi__label,.ads-page .kpi__note,.ads-page .data-table th,.ads-page .data-table td,.ads-quality-line,.ads-action-body p'
     )].filter(visible);
-    const controls = [...document.querySelectorAll('.ads-page .subnav__item,.ads-action-open')].filter(visible);
-    const reasons = [...document.querySelectorAll('#actionQueue .ads-action-body p')].map(node => node.textContent.trim());
+    const controls = [...document.querySelectorAll('.ads-page .subnav__item,.ads-action-open,.ads-row-action,.ads-toolbar input,.ads-toolbar select,.ads-pagination button')].filter(visible);
+    const reasons = [...document.querySelectorAll('.ads-action-body > p')].map(node => node.textContent.trim());
+    const activePanel = document.getElementById(selectedView);
+    const tableScroll = activePanel?.querySelector('.data-table-scroll');
+    const chartScroll = activePanel?.querySelector('.dpp-chart-scroll');
+    const mainText = document.querySelector('main')?.textContent || '';
     return {
       tabsEnabled: [...document.querySelectorAll('[data-ads-view]')].every(tab => !tab.disabled && tab.getAttribute('aria-disabled') === 'false'),
       tabsContained:
@@ -266,11 +270,20 @@ async function verifyAds(page, view = 'overview') {
         document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
       evidenceFloor: evidence.every(node => Number.parseFloat(getComputedStyle(node).fontSize) >= 14),
       controlFloor: controls.every(node => node.getBoundingClientRect().height >= 40),
-      apiReasons: JSON.stringify(reasons) === JSON.stringify(apiActions.map(action => String(action.reason || ''))),
-      browserActionCells: document.querySelectorAll('#targetRows .ads-action,#searchTermRows .ads-action').length,
+      apiReasons: JSON.stringify(reasons) === JSON.stringify(apiActions.map(action => String(action.rationale || ''))),
+      panelVisible: Boolean(activePanel && !activePanel.hidden && visible(activePanel)),
+      tableContained: !tableScroll || tableScroll.getBoundingClientRect().right <= window.innerWidth + 2,
+      tableBounded: !tableScroll || window.innerWidth > 640 || tableScroll.getBoundingClientRect().height <= window.innerHeight * .7,
+      chartScrollable: !chartScroll || chartScroll.scrollWidth >= chartScroll.clientWidth,
+      noQuadrantPrescription: !/Scale winners|Efficient support|Low-risk tests|Review spend/.test(mainText),
+      demandRowsBounded: selectedView !== 'demand' || document.querySelectorAll('#demandRows tr').length <= 20,
     };
-  }, payload.actions || []);
-  if (!state.tabsEnabled || !state.tabsContained || !state.evidenceFloor || !state.controlFloor || !state.apiReasons || state.browserActionCells) {
+  }, { apiActions: payload.actions || [], selectedView: view });
+  if (
+    !state.tabsEnabled || !state.tabsContained || !state.evidenceFloor || !state.controlFloor ||
+    !state.apiReasons || !state.panelVisible || !state.tableContained || !state.tableBounded ||
+    !state.chartScrollable || !state.noQuadrantPrescription || !state.demandRowsBounded
+  ) {
     throw new Error(`Ads evidence/control presentation mismatch: ${JSON.stringify(state)}`);
   }
 }
@@ -2157,7 +2170,9 @@ const scenarios = [
   ['product-zero-demand', '/product?sku=PNC-001L', ['desktop'], verifyProductZeroDemand, mockProductZeroDemand],
   ['inventory', '/inventory', ['mobile', 'tablet', 'desktop'], verifyInventory],
   ['ads-overview', '/ads', ['mobile', 'tablet', 'desktop'], p => verifyAds(p)],
-  ['ads-campaigns', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'campaigns')],
+  ['ads-products', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'products')],
+  ['ads-demand', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'demand')],
+  ['ads-detail', '/ads', ['mobile', 'desktop'], p => verifyAds(p, 'detail')],
   ['finance-overview', '/finance', ['mobile', 'desktop'], verifyFinanceReport],
   ['finance-closed', '/finance', ['mobile', 'tablet', 'desktop'], verifyFinanceClosed],
   ['finance-ledger', '/finance', ['mobile', 'desktop'], verifyFinanceEvidence],

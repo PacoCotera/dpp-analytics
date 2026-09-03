@@ -130,7 +130,9 @@ status; that loader then requests shared chart CSS, D3 and `chart-system.js` wit
 Disconnected, authorization-pending, backfill and failure states must render without downloading or parsing
 chart dependencies they cannot use.
 
-Only Overview remains enabled before that ready state; Campaigns, Products, Targets and Search terms are disabled with an adjacent API-derived explanation. Once ready, those drill-downs render reported purchases, spend and attribution evidence without browser-owned action thresholds. Operating prompts come only from `actions[]` returned by `ads_api.py`, including the API-owned label and reason.
+Only Business impact remains enabled before that ready state; Products & actions, Demand discovery and Advertising detail are disabled with an adjacent API-derived explanation. Once ready, the four views keep SKU and business impact primary while campaigns, targets, terms and IDs remain supporting evidence.
+
+`board/ads_decisions.py` owns Advertising's named, versioned and maturity-aware product/demand interpretations, stable action identifiers, action-lane allocation, product associations and demand pagination. `ads_api.py` supplies the integrated seller-sales, traffic, conversion, Amazon-attributed performance and TACOS operands. The browser may filter and format the returned product set, but it must not invent thresholds, profitability, scaling or bid instructions. Demand is filtered, sorted and paged by the API at 20 rows per page. Changing an Ads rule requires exact-boundary server tests plus production browser verification of its rule key, version, eligibility, suppression and destination.
 
 ### Finance
 
@@ -270,7 +272,7 @@ and Data Health labels that depend on them.
 The same suite runs `qa/accessibility_qa.mjs` across every primary workspace. It rejects missing/duplicate level-one
 headings, unnamed visible links, missing toggle-button state, broken native keyboard activation, and loss of the
 Finance monthly report's table relationships.
-`qa/visual_qa.mjs` additionally checks the 14px evidence floor, 40px control floor, rendered chart and non-text contrast, mobile Finance/Data Health table semantics, contained Advertising tabs, mobile destination identity, and every primary route in all six presentation profiles at mobile and desktop widths. `qa/ads_surface_qa.mjs` deterministically covers ready and disconnected Advertising states, one connection-detail owner, API-owned action reasons and chart-free disconnected loading. Frontend tooling is pinned by `board/package-lock.json`; CI must use `npm ci`.
+`qa/visual_qa.mjs` additionally checks the 14px evidence floor, 40px control floor, rendered chart and non-text contrast, mobile Finance/Data Health table semantics, contained Advertising tabs and tables, mobile destination identity, and every primary route in all six presentation profiles at mobile and desktop widths. `qa/ads_surface_qa.mjs` deterministically covers ready and disconnected Advertising states, integrated product evidence, server-owned rules and action destinations, bounded demand pages, neutral campaign comparison and chart-free disconnected loading. Frontend tooling is pinned by `board/package-lock.json`; CI must use `npm ci`.
 `qa/analysis_state_qa.mjs` exercises Sales and Catalog direct links, refresh, Back, and Forward. When adding a
 persistent view choice, document its URL key in `frontend-architecture.md` and extend this browser gate.
 `qa/presentation_profiles_qa.mjs` checks the six-profile registry and apply/persistence contract on the Business
