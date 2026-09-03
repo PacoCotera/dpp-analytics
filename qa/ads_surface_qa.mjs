@@ -652,7 +652,8 @@ try {
         !document.getElementById("products").hidden &&
         document
           .querySelector('[data-sku="SKU-ONE"]')
-          ?.classList.contains("is-highlighted"),
+          ?.classList.contains("is-highlighted") &&
+        document.activeElement?.getAttribute("data-sku") === "SKU-ONE",
     );
     const productState = await readyPage.evaluate(() => ({
       url: location.search,
