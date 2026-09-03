@@ -754,8 +754,21 @@
   font-variant-numeric: tabular-nums;
 }
 .sales-page .geo-table th[data-geo-sort] button {
+  box-sizing: border-box;
+  width: calc(100% + 14px);
+  min-width: var(--control-height);
   overflow: hidden;
+  margin-inline: -7px;
+  padding-inline: 7px;
   text-overflow: ellipsis;
+}
+
+@media (min-width: 721px) {
+  .sales-page .geo-table tbody tr[data-state] > th,
+  .sales-page .geo-table tbody tr[data-state] > td {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
 }
 
 .sales-page .geo-map {
