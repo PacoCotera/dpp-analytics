@@ -68,6 +68,11 @@ class Settings:
             int(os.getenv("BRAND_ANALYTICS_SEARCH_QUERY_BACKFILL_MONTHS", "17")),
         ),
     )
+    # Brand Analytics report generation can remain queued much longer than the
+    # lightweight seller reports that use the generic Reports API timeout.
+    brand_analytics_search_query_poll_timeout_seconds: int = int(
+        os.getenv("BRAND_ANALYTICS_SEARCH_QUERY_POLL_TIMEOUT_SECONDS", "3600")
+    )
     listings_report_interval_seconds: int = int(os.getenv("LISTINGS_REPORT_INTERVAL_SECONDS", "21600"))
     reports_poll_seconds: int = int(os.getenv("REPORTS_POLL_SECONDS", "5"))
     reports_poll_timeout_seconds: int = int(os.getenv("REPORTS_POLL_TIMEOUT_SECONDS", "300"))
