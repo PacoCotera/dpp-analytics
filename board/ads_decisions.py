@@ -240,7 +240,11 @@ def _signal_identity(raw: Any, source: str) -> tuple[str, str, str]:
         return "MATCHED_PRODUCT", "Matched product", normalized
     if source == "search_term":
         return "SHOPPER_QUERY", "Shopper query", value or "Unspecified shopper query"
-    return "TARGET", "Configured target", value or "Unnamed target"
+    return (
+        "TARGET",
+        "Configured target",
+        value or "Configured target (expression unavailable)",
+    )
 
 
 def _plain_match(value: Any) -> str:
@@ -276,7 +280,11 @@ def normalize_demand_signal(
     observed_days: int,
     attribution_lookback_days: int = 7,
 ) -> dict[str, Any]:
-    raw = row.get("search_term") if source == "search_term" else row.get("target_expression") or row.get("target_id")
+    raw = (
+        row.get("search_term")
+        if source == "search_term"
+        else row.get("target_expression")
+    )
     signal_type, signal_type_label, display = _signal_identity(raw, source)
     signal_id = _stable_id(
         "ads-signal",
