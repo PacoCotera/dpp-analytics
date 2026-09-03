@@ -174,9 +174,18 @@ for (const [engineName, engine] of engines) {
           rowHeaders: document.querySelectorAll(
             '#geoRankedRows th[scope="row"]',
           ).length,
-          sortHeights: [
+          sortTargets: [
             ...document.querySelectorAll("[data-geo-sort] button"),
-          ].map((node) => node.getBoundingClientRect().height),
+          ].map((node) => {
+            const rect = node.getBoundingClientRect();
+            return { width: rect.width, height: rect.height };
+          }),
+          rowTargets: [
+            ...document.querySelectorAll('#geoRankedRows tr[role="button"]'),
+          ].map((node) => {
+            const rect = node.getBoundingClientRect();
+            return { width: rect.width, height: rect.height };
+          }),
           documentOverflow:
             document.documentElement.scrollWidth -
             document.documentElement.clientWidth,
@@ -192,8 +201,13 @@ for (const [engineName, engine] of engines) {
           state,
         );
         record(
-          state.sortHeights.every((height) => height >= 44),
-          `${prefix}/${profile}: Geography sort targets meet the control contract`,
+          state.sortTargets.every(
+            ({ width, height }) => width >= 44 && height >= 44,
+          ) &&
+            state.rowTargets.every(
+              ({ width, height }) => width >= 44 && height >= 44,
+            ),
+          `${prefix}/${profile}: Geography interactive targets meet the control contract`,
           state,
         );
       }
