@@ -35,218 +35,252 @@
         <section class="page-lead ads-page-lead" data-dpp-qa="ads-workspace-header">
           <div class="page-lead__identity">
             <h1 class="page-lead__title">Advertising</h1>
+            <p id="workspaceRead" class="ads-workspace-read">
+              Connecting paid support to products, demand and total seller sales.
+            </p>
+          </div>
+          <div class="page-lead__aside">
+            <span id="readinessLabel" class="ads-readiness-label">Checking data</span>
+            <span id="readinessLine" class="state-read__meta">Reading report coverage</span>
           </div>
         </section>
-        <nav class="subnav" aria-label="Advertising views" data-horizontal-scroll>
-          <button class="subnav__item active" type="button" data-ads-view="overview" aria-selected="true">
-            Overview</button
-          ><button class="subnav__item" type="button" data-ads-view="campaigns">Campaigns</button
-          ><button class="subnav__item" type="button" data-ads-view="products">Products</button
-          ><button class="subnav__item" type="button" data-ads-view="targets">Targets</button
-          ><button class="subnav__item" type="button" data-ads-view="searchTerms">Search terms</button>
-        </nav>
-        <p id="adsViewAvailability" class="ads-tab-note" role="status">
-          Additional views stay unavailable until the API confirms reporting readiness.
-        </p>
-        <section id="overview" class="ads-view active" data-dpp-qa="ads-overview">
+
+        <div class="ads-view-nav">
+          <div class="subnav tabs" role="tablist" aria-label="Advertising views" data-horizontal-scroll>
+            <button
+              class="subnav__item active"
+              type="button"
+              role="tab"
+              data-ads-view="impact"
+              aria-controls="impact"
+              aria-selected="true"
+            >
+              Business impact</button
+            ><button
+              class="subnav__item"
+              type="button"
+              role="tab"
+              data-ads-view="products"
+              aria-controls="products"
+              aria-selected="false"
+            >
+              Products &amp; actions</button
+            ><button
+              class="subnav__item"
+              type="button"
+              role="tab"
+              data-ads-view="demand"
+              aria-controls="demand"
+              aria-selected="false"
+            >
+              Demand discovery</button
+            ><button
+              class="subnav__item"
+              type="button"
+              role="tab"
+              data-ads-view="detail"
+              aria-controls="detail"
+              aria-selected="false"
+            >
+              Advertising detail
+            </button>
+          </div>
+          <p id="adsViewAvailability" class="ads-tab-note" role="status">
+            Additional views stay unavailable until the API confirms reporting readiness.
+          </p>
+        </div>
+
+        <section
+          id="impact"
+          class="ads-view active"
+          role="tabpanel"
+          aria-label="Business impact"
+          data-dpp-qa="ads-overview"
+        >
           <div id="emptyState" class="panel ads-empty" hidden>
             <div class="kicker">Advertising connection</div>
             <h2>Checking Amazon Ads connection.</h2>
             <p>Reading the current connection and reporting lifecycle.</p>
           </div>
+
           <div id="readyState" hidden>
-            <section class="ads-hero-read" data-dpp-qa="ads-operating-evidence">
-              <div class="kicker">28-day read</div>
-              <h2 id="storyTitle">28-day performance</h2>
-              <p id="storyCopy">
-                Loading spend, attributed performance and independent seller sales for the reportable window.
-              </p>
-            </section>
-            <section id="qualityBand" class="ads-quality" aria-live="polite">
-              <div class="ads-quality__state">
-                <span id="qualityBadge" class="ads-quality__badge">Checking data</span
-                ><strong id="qualityTitle">Validating Amazon report grains…</strong>
-              </div>
-              <p id="qualityCopy">
-                Campaign, advertised-product, attribution and seller-sales coverage are checked before
-                operating cues are treated as decision-grade.
-              </p>
-              <div class="ads-quality__meta">
-                <span><b id="coverageRead">—</b> report coverage</span
-                ><span><b id="maturityRead">—</b> attribution maturity</span
-                ><span><b id="qualityIssueRead">—</b> quality issues</span>
-              </div>
-            </section>
-            <section class="kpi-rail ads-metrics">
+            <section class="kpi-rail ads-metrics" aria-label="Advertising business impact">
               <div class="kpi ads-metric">
                 <div class="kpi__label">Ad spend · 28D</div>
                 <div class="kpi__value" id="spend">—</div>
-                <div class="kpi__note"><strong id="spendDelta">—</strong> vs prior 28</div>
+                <div class="kpi__note"><strong id="spendDelta">—</strong> vs prior 28 days</div>
               </div>
               <div class="kpi ads-metric">
-                <div class="kpi__label">Attributed sales</div>
-                <div class="kpi__value" id="attributed">—</div>
-                <div class="kpi__note">
-                  <strong id="salesDelta">—</strong> vs prior 28 · Amazon attribution
-                </div>
-              </div>
-              <div class="kpi ads-metric">
-                <div class="kpi__label">ACOS</div>
-                <div class="kpi__value" id="acos">—</div>
-                <div class="kpi__note"><span id="acosDelta">—</span> vs prior · lower is more efficient</div>
+                <div class="kpi__label">Total seller sales</div>
+                <div class="kpi__value" id="totalSales">—</div>
+                <div class="kpi__note">Independent denominator · incl. IVA</div>
               </div>
               <div class="kpi ads-metric">
                 <div class="kpi__label">TACOS</div>
                 <div class="kpi__value" id="tacos">—</div>
-                <div class="kpi__note">
-                  <span id="tacosDelta">—</span> vs prior · spend / total seller sales
-                </div>
+                <div class="kpi__note"><span id="tacosDelta">—</span> vs prior 28 days</div>
+              </div>
+              <div class="kpi ads-metric">
+                <div class="kpi__label">Amazon-attributed sales</div>
+                <div class="kpi__value" id="attributed">—</div>
+                <div class="kpi__note"><strong id="salesDelta">—</strong> vs prior · not incrementality</div>
               </div>
             </section>
+
+            <section id="qualityBand" class="ads-quality-line" aria-live="polite">
+              <span id="qualityBadge" class="ads-quality-badge">Checking data</span>
+              <strong id="qualityTitle">Validating the reporting window</strong>
+              <span id="qualityCopy"
+                >Actions remain qualified until reconciliation and maturity are clear.</span
+              >
+            </section>
+
             <section id="actionSection" class="page-section ads-action-section" hidden>
               <div class="section-header">
                 <div>
-                  <div class="kicker">What to inspect next</div>
-                  <h2 class="section-header__title">Operating queue</h2>
+                  <div class="kicker">What requires a decision</div>
+                  <h2 class="section-header__title">Review plans</h2>
                   <div class="section-header__description">
-                    Decision-grade review prompts ranked from Amazon reporting. Nothing here changes bids
-                    automatically.
+                    Contextual review steps from server-owned rules. Nothing changes bids automatically.
                   </div>
                 </div>
                 <span id="actionCount" class="ads-action-count">0</span>
               </div>
-              <div id="actionQueue" class="ads-action-queue"></div>
+              <div id="actionGroups" class="ads-action-groups"></div>
             </section>
-            <section class="page-section">
-              <div class="dashboard-grid dashboard-grid--main-rail">
-                <div class="panel">
-                  <div class="panel__header">
-                    <div>
-                      <h2 class="panel__title">Paid demand rhythm</h2>
-                      <div class="panel__description" id="chartSub">
-                        Daily ad spend and attributed sales · latest reportable 28 days
-                      </div>
-                    </div>
-                  </div>
-                  <div class="panel__body">
-                    <svg id="chart" class="ads-chart" viewBox="0 0 900 300" preserveAspectRatio="none"></svg>
+
+            <section class="page-section ads-portfolio-section" data-dpp-qa="ads-operating-evidence">
+              <div class="section-header">
+                <div>
+                  <div class="kicker">SKU portfolio impact</div>
+                  <h2 class="section-header__title">Where paid support sits in the business</h2>
+                  <div class="section-header__description">
+                    Total seller sales on the horizontal axis, TACOS vertically, and ad spend by mark size.
                   </div>
                 </div>
-                <aside class="panel">
-                  <div class="panel__header">
-                    <div>
-                      <h2 class="panel__title">Efficiency context</h2>
-                      <div class="panel__description">The useful denominator changes the story.</div>
+                <button id="openProducts" class="ads-secondary-action" type="button">
+                  Review all products
+                </button>
+              </div>
+              <div class="panel ads-chart-panel">
+                <div class="panel__body dpp-chart-scroll">
+                  <svg id="portfolioChart" class="ads-chart ads-chart--portfolio"></svg>
+                </div>
+              </div>
+              <div id="portfolioList" class="ads-portfolio-list" aria-label="SKU portfolio summary"></div>
+            </section>
+
+            <section class="page-section ads-support-grid">
+              <div class="panel ads-funnel-panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Advertising funnel</h2>
+                    <div class="panel__description">
+                      Traffic through Amazon-attributed purchases and units.
                     </div>
                   </div>
-                  <div class="panel__body list">
-                    <div class="list-row">
-                      <div>
-                        <div class="row-title">ROAS</div>
-                        <div class="row-sub">Attributed ad sales ÷ spend</div>
-                      </div>
-                      <div class="row-value"><strong id="roas">—</strong></div>
-                    </div>
-                    <div class="list-row">
-                      <div>
-                        <div class="row-title">CTR</div>
-                        <div class="row-sub">Clicks ÷ impressions</div>
-                      </div>
-                      <div class="row-value"><strong id="ctr">—</strong></div>
-                    </div>
-                    <div class="list-row">
-                      <div>
-                        <div class="row-title">CPC</div>
-                        <div class="row-sub">Spend ÷ clicks</div>
-                      </div>
-                      <div class="row-value"><strong id="cpc">—</strong></div>
-                    </div>
-                    <div class="list-row">
-                      <div>
-                        <div class="row-title">Total seller sales</div>
-                        <div class="row-sub">Independent sales denominator used for TACOS</div>
-                      </div>
-                      <div class="row-value"><strong id="totalSales">—</strong></div>
+                </div>
+                <div id="funnel" class="panel__body ads-funnel" aria-label="Advertising funnel"></div>
+              </div>
+              <div class="panel ads-rhythm-panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Paid-support rhythm</h2>
+                    <div class="panel__description" id="chartSub">
+                      Daily spend and Amazon-attributed sales · current reporting window
                     </div>
                   </div>
-                </aside>
+                </div>
+                <div class="panel__body dpp-chart-scroll">
+                  <svg id="chart" class="ads-chart"></svg>
+                </div>
               </div>
             </section>
-            <section class="ads-explain">
-              <strong>Why ACOS and TACOS both matter.</strong> ACOS tells us how efficiently Amazon attributes
-              sales to advertising. TACOS tells us how much of the whole business is being spent on ads. We do
-              not call total sales minus attributed sales “organic sales” because attribution windows overlap
-              and can revise after the sale.
-            </section>
+
+            <details class="ads-provenance">
+              <summary>Reporting basis and definitions</summary>
+              <div class="ads-provenance-grid">
+                <div><strong>Coverage</strong><span id="coverageRead">—</span></div>
+                <div><strong>Attribution maturity</strong><span id="maturityRead">—</span></div>
+                <div><strong>Quality issues</strong><span id="qualityIssueRead">—</span></div>
+                <div><strong>ROAS</strong><span id="roas">—</span></div>
+                <div><strong>ACOS</strong><span id="acos">—</span></div>
+                <div><strong>CTR</strong><span id="ctr">—</span></div>
+                <div><strong>CPC</strong><span id="cpc">—</span></div>
+                <div><strong>Conversion</strong><span id="conversion">—</span></div>
+              </div>
+              <p id="basisCopy">
+                TACOS uses independently reconciled seller sales. Amazon-attributed sales are attribution, not
+                incrementality.
+              </p>
+              <p id="economicsCopy">
+                Product economics are unavailable for Advertising decisions until their complete basis is
+                reconciled.
+              </p>
+            </details>
           </div>
         </section>
-        <section id="campaigns" class="ads-view">
+
+        <section id="products" class="ads-view" role="tabpanel" aria-label="Products and actions" hidden>
           <section class="page-section">
             <div class="section-header">
               <div>
-                <h2 class="section-header__title">Campaign efficiency map</h2>
+                <div class="kicker">Products &amp; actions</div>
+                <h2 class="section-header__title">Paid support by SKU</h2>
                 <div class="section-header__description">
-                  Spend on the horizontal axis, ROAS on the vertical axis, bubble size by clicks.
+                  Product identity, total seller sales, traffic, attributed conversion, maturity and the next
+                  review state.
                 </div>
               </div>
+              <span id="productCount" class="ads-result-count" role="status">0 products</span>
             </div>
-            <div class="panel">
-              <div class="panel__body"><svg class="ads-chart" id="campaignQuadrant"></svg></div>
+            <div class="ads-toolbar" aria-label="Product filters">
+              <label>
+                <span>Find a product</span>
+                <input id="productSearch" type="search" placeholder="Name or SKU" autocomplete="off" />
+              </label>
+              <label>
+                <span>Action state</span>
+                <select id="productFilter">
+                  <option value="all">All products</option>
+                  <option value="needs_attention">Needs attention</option>
+                  <option value="opportunity_test">Opportunity to test</option>
+                  <option value="supported_monitor">Supported / monitor</option>
+                  <option value="no_current_action">No current action</option>
+                </select>
+              </label>
+              <label>
+                <span>Order</span>
+                <select id="productSort">
+                  <option value="decision">Decision relevance</option>
+                  <option value="spend-desc">Ad spend</option>
+                  <option value="sales-desc">Total seller sales</option>
+                  <option value="tacos-desc">TACOS</option>
+                </select>
+              </label>
             </div>
-          </section>
-          <section class="page-section">
-            <div class="section-header">
-              <div>
-                <h2 class="section-header__title">Campaigns</h2>
-                <div class="section-header__description">
-                  Latest 28 reportable days · highest spend first.
-                </div>
-              </div>
-            </div>
-            <div class="data-table-shell">
-              <div class="data-table-scroll">
+            <div class="data-table-shell ads-product-table">
+              <div class="data-table-scroll" tabindex="0" aria-label="Product advertising performance">
                 <table class="data-table">
-                  <caption class="sr-only">
-                    Advertising campaign performance
+                  <caption>
+                    Integrated product advertising and seller-sales performance
                   </caption>
                   <thead>
                     <tr>
-                      <th>Campaign</th>
-                      <th class="ads-num">Spend</th>
-                      <th class="ads-num">Attributed sales</th>
-                      <th class="ads-num">ACOS</th>
-                      <th class="ads-num">Clicks</th>
-                    </tr>
-                  </thead>
-                  <tbody id="campaignRows"></tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        </section>
-        <section id="products" class="ads-view">
-          <section class="page-section">
-            <div class="section-header">
-              <div>
-                <h2 class="section-header__title">Advertised products</h2>
-                <div class="section-header__description">
-                  Spend and Amazon-attributed performance by advertised product.
-                </div>
-              </div>
-            </div>
-            <div class="data-table-shell">
-              <div class="data-table-scroll">
-                <table class="data-table">
-                  <caption class="sr-only">
-                    Advertised product performance
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th class="ads-num">Spend</th>
-                      <th class="ads-num">Attributed sales</th>
-                      <th class="ads-num">ACOS</th>
-                      <th class="ads-num">Clicks</th>
+                      <th scope="col">Product and action</th>
+                      <th scope="col" class="ads-num">Seller sales</th>
+                      <th scope="col" class="ads-num">Ad spend</th>
+                      <th scope="col" class="ads-num">TACOS</th>
+                      <th scope="col" class="ads-num">Attributed sales</th>
+                      <th scope="col" class="ads-num">Attributed share</th>
+                      <th scope="col" class="ads-num">Impressions</th>
+                      <th scope="col" class="ads-num">Clicks</th>
+                      <th scope="col" class="ads-num">CTR</th>
+                      <th scope="col" class="ads-num">CPC</th>
+                      <th scope="col" class="ads-num">Purchases / units</th>
+                      <th scope="col" class="ads-num">Conversion</th>
+                      <th scope="col" class="ads-num">ROAS / ACOS</th>
+                      <th scope="col" class="ads-num">Maturity</th>
                     </tr>
                   </thead>
                   <tbody id="productRows"></tbody>
@@ -255,81 +289,144 @@
             </div>
           </section>
         </section>
-        <section id="targets" class="ads-view">
-          <section class="ads-drill-intro">
-            <div class="kicker">What we bid on</div>
-            <h2>Target efficiency</h2>
-            <p>
-              Targets are the keywords, products, categories or automatic matches sent to Amazon. Rows are
-              ordered by spend with reported purchases and efficiency.
-            </p>
-          </section>
+
+        <section id="demand" class="ads-view" role="tabpanel" aria-label="Demand discovery" hidden>
           <section class="page-section">
-            <div class="data-table-shell">
-              <div class="data-table-scroll">
+            <div class="section-header">
+              <div>
+                <div class="kicker">Demand discovery</div>
+                <h2 class="section-header__title">Queries, matched products and configured targets</h2>
+                <div class="section-header__description">
+                  Product context comes first. Amazon campaign and technical identifiers remain available as
+                  supporting detail.
+                </div>
+              </div>
+              <span id="demandCount" class="ads-result-count" role="status">0 signals</span>
+            </div>
+            <div class="ads-toolbar ads-demand-toolbar" aria-label="Demand filters">
+              <label>
+                <span>Find demand</span>
+                <input
+                  id="demandSearch"
+                  type="search"
+                  placeholder="Query, product or campaign"
+                  autocomplete="off"
+                />
+              </label>
+              <label>
+                <span>Action state</span>
+                <select id="demandFilter">
+                  <option value="all">All states</option>
+                  <option value="needs_attention">Needs attention</option>
+                  <option value="opportunity_test">Opportunity to test</option>
+                  <option value="supported_monitor">Supported / monitor</option>
+                  <option value="no_current_action">No current action</option>
+                </select>
+              </label>
+              <label>
+                <span>Signal type</span>
+                <select id="demandType">
+                  <option value="all">All signals</option>
+                  <option value="shopper_query">Shopper queries</option>
+                  <option value="matched_product">Matched products</option>
+                  <option value="target">Configured targets</option>
+                </select>
+              </label>
+              <label>
+                <span>Product</span>
+                <select id="demandSku">
+                  <option value="">All products</option>
+                </select>
+              </label>
+              <label>
+                <span>Campaign</span>
+                <select id="demandCampaign">
+                  <option value="">All campaigns</option>
+                </select>
+              </label>
+              <label>
+                <span>Order</span>
+                <select id="demandSort">
+                  <option value="decision">Decision relevance</option>
+                  <option value="spend-desc">Ad spend</option>
+                  <option value="sales-desc">Attributed sales</option>
+                  <option value="purchases-desc">Attributed purchases</option>
+                </select>
+              </label>
+            </div>
+            <div class="data-table-shell ads-demand-table">
+              <div class="data-table-scroll" tabindex="0" aria-label="Demand discovery results">
                 <table class="data-table">
-                  <caption class="sr-only">
-                    Advertising target performance
+                  <caption>
+                    Advertising demand signals with product and business context
                   </caption>
                   <thead>
                     <tr>
-                      <th>Target</th>
-                      <th>Campaign</th>
-                      <th class="ads-num">Purchases</th>
-                      <th class="ads-num">Spend</th>
-                      <th class="ads-num">Attributed sales</th>
-                      <th class="ads-num">ACOS</th>
-                      <th class="ads-num">ROAS</th>
-                      <th class="ads-num">Clicks</th>
+                      <th scope="col">Product</th>
+                      <th scope="col">Demand signal</th>
+                      <th scope="col">Review state</th>
+                      <th scope="col" class="ads-num">Spend</th>
+                      <th scope="col" class="ads-num">Clicks</th>
+                      <th scope="col" class="ads-num">Purchases</th>
+                      <th scope="col" class="ads-num">Attributed sales</th>
+                      <th scope="col" class="ads-num">ROAS / ACOS</th>
+                      <th scope="col">Review</th>
                     </tr>
                   </thead>
-                  <tbody id="targetRows"></tbody>
+                  <tbody id="demandRows"></tbody>
                 </table>
               </div>
             </div>
-            <div class="ads-guide">
-              <strong>Operating cues are review prompts, not automation.</strong> Attribution can still
-              revise, so nothing here automatically pauses, negates or changes a bid.
-            </div>
+            <nav class="ads-pagination" aria-label="Demand result pages">
+              <button id="demandPrev" type="button">Previous</button>
+              <span id="demandPage">Page 1 of 1</span>
+              <button id="demandNext" type="button">Next</button>
+            </nav>
           </section>
         </section>
-        <section id="searchTerms" class="ads-view">
-          <section class="ads-drill-intro">
-            <div class="kicker">What shoppers matched</div>
-            <h2>Search-term discovery</h2>
-            <p>
-              Search terms are the shopper queries or matched products Amazon reports after ad clicks. Rows
-              retain reported purchases and efficiency; review prompts remain in the API-ranked operating
-              queue.
-            </p>
-          </section>
+
+        <section id="detail" class="ads-view" role="tabpanel" aria-label="Advertising detail" hidden>
           <section class="page-section">
-            <div class="data-table-shell">
-              <div class="data-table-scroll">
+            <div class="section-header">
+              <div>
+                <div class="kicker">Advertising detail</div>
+                <h2 class="section-header__title">Campaign comparison and reconciliation detail</h2>
+                <div class="section-header__description">
+                  A neutral comparison for specialist review. Relative position is not a profitability or
+                  scaling recommendation.
+                </div>
+              </div>
+            </div>
+            <div class="panel ads-chart-panel">
+              <div class="panel__body dpp-chart-scroll">
+                <svg id="campaignComparison" class="ads-chart"></svg>
+              </div>
+            </div>
+            <div class="data-table-shell ads-campaign-table">
+              <div class="data-table-scroll" tabindex="0" aria-label="Advertising campaign detail">
                 <table class="data-table">
-                  <caption class="sr-only">
-                    Advertising search-term performance
+                  <caption>
+                    Neutral campaign performance comparison
                   </caption>
                   <thead>
                     <tr>
-                      <th>Search term</th>
-                      <th>Campaign</th>
-                      <th class="ads-num">Purchases</th>
-                      <th class="ads-num">Spend</th>
-                      <th class="ads-num">Attributed sales</th>
-                      <th class="ads-num">ACOS</th>
-                      <th class="ads-num">ROAS</th>
-                      <th class="ads-num">Clicks</th>
+                      <th scope="col">Campaign and products</th>
+                      <th scope="col" class="ads-num">Spend</th>
+                      <th scope="col" class="ads-num">Attributed sales</th>
+                      <th scope="col" class="ads-num">ROAS / ACOS</th>
+                      <th scope="col" class="ads-num">Traffic</th>
+                      <th scope="col" class="ads-num">Purchases / units</th>
+                      <th scope="col">Demand</th>
                     </tr>
                   </thead>
-                  <tbody id="searchTermRows"></tbody>
+                  <tbody id="campaignRows"></tbody>
                 </table>
               </div>
             </div>
-            <div class="ads-guide">
-              <strong>Attribution is not incrementality.</strong> Review prompts come from API-owned action
-              and reason detail; none proves exact organic sales.
-            </div>
+            <aside id="economicsNotice" class="ads-economics-notice">
+              Product economics are unavailable in this workspace. Confirm the complete Finance basis before
+              changing paid support.
+            </aside>
           </section>
         </section>
       </main>
