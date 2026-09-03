@@ -518,7 +518,7 @@ class Handler(BaseHTTPRequestHandler):
             self.cached_json_endpoint(
                 path,
                 query,
-                lambda: build_ads_payload(connect, MARKETPLACE, decorate_products),
+                lambda: build_ads_payload(connect, MARKETPLACE, decorate_products, query),
             )
             return
         if path == "/api/product":

@@ -1,158 +1,787 @@
-import { chromium } from 'playwright';
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import fs from "node:fs/promises";
+import path from "node:path";
+import { chromium } from "playwright";
 
-const baseUrl=(process.argv[2]||'http://127.0.0.1:8088').replace(/\/$/,'');
-const outDir=process.argv[3]||'/out';
-const failures=[];const checks=[];
-const connectionStates=['NOT_CONNECTED','AUTHORIZATION_PENDING','BACKFILL_RUNNING','READY','FAILED'];
-function numberFromText(value){const n=Number(String(value||'').replace(/−/g,'-').replace(/[^0-9.\-]/g,''));return Number.isFinite(n)?n:null;}
-function moneyForQa(value){return `$${Math.round(Number(value||0)).toLocaleString('en-US')}`;}
-function check(name,ok,detail=''){checks.push({name,ok,detail});if(!ok)failures.push(`${name}${detail?`: ${detail}`:''}`);}
-async function api(page,url){return page.evaluate(async endpoint=>{const r=await fetch(endpoint,{cache:'no-store'});const b=await r.json();if(!r.ok)throw new Error(`${endpoint} HTTP ${r.status}: ${b.error||'error'}`);return b;},url);}
-async function chartAssetState(page){return page.evaluate(()=>({
-  paths:performance.getEntriesByType('resource').map(entry=>new URL(entry.name).pathname).filter(resourcePath=>['/assets/chart-system.css','/assets/vendor/d3.v7.min.js','/assets/chart-system.js'].includes(resourcePath)),
-  revisions:performance.getEntriesByType('resource').map(entry=>new URL(entry.name)).filter(url=>['/assets/chart-system.css','/assets/vendor/d3.v7.min.js','/assets/chart-system.js'].includes(url.pathname)).map(url=>url.searchParams.get('v')),
-  pageRevision:document.querySelector('meta[name="dpp-asset-revision"]')?.content||'',
-  runtime:Boolean(window.DPPCharts),
-  dependencyNodes:document.querySelectorAll('[data-ads-chart-dependency]').length,
-}));}
+const baseUrl = (process.argv[2] || "http://127.0.0.1:8088").replace(/\/$/, "");
+const outDir = process.argv[3] || "/out";
+const failures = [];
+const checks = [];
+const deterministicReady = process.env.DPP_ADS_QA_FIXTURE === "ready";
 
-const browser=await chromium.launch({headless:true});
-const context=await browser.newContext({viewport:{width:1440,height:1000}});
-const page=await context.newPage();
-page.on('pageerror',error=>failures.push(`pageerror: ${error.message}`));
-try{
-  await page.goto(`${baseUrl}/catalog`,{waitUntil:'domcontentloaded',timeout:20000});
-  const catalog=await api(page,'/api/catalog');
-  await page.waitForTimeout(1200);
-  const basis=await page.locator('#portfolioBasis').textContent();
-  check('Catalog exposes paid-support context',String(basis||'').includes('Paid support'),String(basis||''));
-  const summary=catalog.summary||{};
-  if(Number(summary.ad_spend_t28||0)>0){
-    const paidSupportAmount=String(basis||'').split('Paid support')[1]?.split('·')[0]||'';
-    check('Catalog paid-support summary uses canonical spend',Math.abs((numberFromText(paidSupportAmount)||0)-Math.round(Number(summary.ad_spend_t28)))<=1,String(basis||''));
-    check('Catalog paid-support summary exposes TACOS',String(basis||'').includes('TACOS'),String(basis||''));
-    check('Catalog paid-support summary exposes attributed ROAS',String(basis||'').includes('attributed ROAS'),String(basis||''));
-  }else{
-    check('Catalog empty Ads state is explicit',String(basis||'').includes('awaiting Amazon Ads data'),String(basis||''));
+function check(name, ok, detail = "") {
+  checks.push({ name, ok, detail });
+  if (!ok) failures.push(`${name}${detail ? `: ${detail}` : ""}`);
+}
+
+async function api(page, endpoint) {
+  return page.evaluate(async (url) => {
+    const response = await fetch(url, { cache: "no-store" });
+    const body = await response.json();
+    if (!response.ok)
+      throw new Error(
+        `${url} HTTP ${response.status}: ${body.error || "error"}`,
+      );
+    return body;
+  }, endpoint);
+}
+
+async function chartAssetState(page) {
+  return page.evaluate(() => ({
+    paths: performance
+      .getEntriesByType("resource")
+      .map((entry) => new URL(entry.name).pathname)
+      .filter((resourcePath) =>
+        [
+          "/assets/chart-system.css",
+          "/assets/vendor/d3.v7.min.js",
+          "/assets/chart-system.js",
+        ].includes(resourcePath),
+      ),
+    revisions: performance
+      .getEntriesByType("resource")
+      .map((entry) => new URL(entry.name))
+      .filter((url) =>
+        [
+          "/assets/chart-system.css",
+          "/assets/vendor/d3.v7.min.js",
+          "/assets/chart-system.js",
+        ].includes(url.pathname),
+      )
+      .map((url) => url.searchParams.get("v")),
+    pageRevision:
+      document.querySelector('meta[name="dpp-asset-revision"]')?.content || "",
+    runtime: Boolean(window.DPPCharts),
+    dependencyNodes: document.querySelectorAll("[data-ads-chart-dependency]")
+      .length,
+  }));
+}
+
+const RULES = {
+  ADS_PRODUCT_CONVERSION_REVIEW: {
+    key: "ADS_PRODUCT_CONVERSION_REVIEW",
+    version: 1,
+    eligibility: "Reconciled and mature.",
+    thresholds: { minimum_clicks: 8 },
+    observation_window: { kind: "rolling", days: 28 },
+    attribution_maturity: "21 mature days.",
+    economic_claims_allowed: false,
+  },
+  ADS_PRODUCT_DEMAND_REVIEW: {
+    key: "ADS_PRODUCT_DEMAND_REVIEW",
+    version: 1,
+    eligibility: "Reconciled and mature.",
+    thresholds: { minimum_attributed_purchases: 2 },
+    observation_window: { kind: "rolling", days: 28 },
+    attribution_maturity: "21 mature days.",
+    economic_claims_allowed: false,
+  },
+  ADS_DEMAND_TEST: {
+    key: "ADS_DEMAND_TEST",
+    version: 1,
+    eligibility: "Reconciled and mature.",
+    thresholds: { minimum_attributed_purchases: 2 },
+    observation_window: { kind: "rolling", days: 28 },
+    attribution_maturity: "21 mature days.",
+    economic_claims_allowed: false,
+  },
+  ADS_SIGNAL_RELEVANCE_REVIEW: {
+    key: "ADS_SIGNAL_RELEVANCE_REVIEW",
+    version: 1,
+    eligibility: "Reconciled and mature.",
+    thresholds: { minimum_clicks: 8 },
+    observation_window: { kind: "rolling", days: 28 },
+    attribution_maturity: "21 mature days.",
+    economic_claims_allowed: false,
+  },
+  ADS_SUPPORTED_MONITOR: {
+    key: "ADS_SUPPORTED_MONITOR",
+    version: 1,
+    eligibility: "Reported spend.",
+    thresholds: { minimum_spend: 0 },
+    observation_window: { kind: "rolling", days: 28 },
+    attribution_maturity: "Reported with the evidence.",
+    economic_claims_allowed: false,
+  },
+};
+
+const economics = {
+  state: "UNAVAILABLE",
+  authoritative: false,
+  basis:
+    "Product economics are not yet reconciled for Advertising decisions. Review contribution in Finance before changing paid support.",
+  prohibited_claims: ["profitable", "scale", "winner", "reduce spend"],
+};
+
+const product = {
+  sku: "SKU-ONE",
+  asin: "B012345678",
+  product: "Daily planning notebook",
+  image_url: null,
+  total_business_sales: 300,
+  total_business_orders: 12,
+  total_business_units: 13,
+  spend: 30,
+  attributed_sales: 90,
+  impressions: 1500,
+  clicks: 30,
+  purchases: 3,
+  units: 4,
+  ctr: 0.02,
+  cpc: 1,
+  conversion_rate: 0.1,
+  roas: 3,
+  acos: 1 / 3,
+  tacos: 0.1,
+  attributed_sales_share: 0.3,
+  observed_ads_days: 28,
+  mature_ads_days: 21,
+  period_start: "2026-08-01",
+  through_date: "2026-08-28",
+  recommendation: {
+    state: "OPPORTUNITY_TEST",
+    label: "Opportunity to test",
+    title: "Review converting demand for Daily planning notebook",
+    explanation:
+      "Amazon reports 3 attributed purchases. Identify which demand signals are contributing, then verify product economics before changing support.",
+    rule_key: "ADS_PRODUCT_DEMAND_REVIEW",
+    rule_version: 1,
+    eligible: true,
+    suppression_reason: null,
+    evidence: {
+      spend: 30,
+      clicks: 30,
+      attributed_purchases: 3,
+      attributed_sales: 90,
+      total_business_sales: 300,
+      tacos: 0.1,
+      observed_days: 28,
+      mature_days: 21,
+    },
+  },
+};
+
+const signal = {
+  signal_id: "ads-signal-one",
+  source_grain: "search_term",
+  signal_type: "SHOPPER_QUERY",
+  signal_type_label: "Shopper query",
+  signal: "daily planner",
+  match_label: "Exact match",
+  campaign_id: "campaign-one",
+  campaign_name: "Notebook discovery",
+  product_context: "Daily planning notebook",
+  product_refs: [
+    {
+      sku: product.sku,
+      asin: product.asin,
+      product: product.product,
+      image_url: null,
+      url: "/product?sku=SKU-ONE",
+    },
+  ],
+  technical: {
+    campaign_id: "campaign-one",
+    ad_group_id: "ad-group-one",
+    target_id: "target-one",
+    raw_value: "daily planner",
+    raw_match_type: "EXACT",
+  },
+  spend: 10,
+  attributed_sales: 36,
+  impressions: 500,
+  clicks: 10,
+  purchases: 2,
+  units: 2,
+  ctr: 0.02,
+  cpc: 1,
+  conversion_rate: 0.2,
+  roas: 3.6,
+  acos: 10 / 36,
+  recommendation: {
+    state: "OPPORTUNITY_TEST",
+    label: "Opportunity to test",
+    title: "Review a dedicated test for “daily planner”",
+    explanation:
+      "Amazon reports 2 attributed purchases for this shopper query. Confirm product relevance and economics before changing targeting.",
+    rule_key: "ADS_DEMAND_TEST",
+    rule_version: 1,
+    eligible: true,
+  },
+};
+
+const productAction = {
+  id: "ads-action-product",
+  action_type: "PRODUCT_REVIEW",
+  lane: "PRODUCT",
+  rule_key: "ADS_PRODUCT_DEMAND_REVIEW",
+  rule_version: 1,
+  state: "OPPORTUNITY_TEST",
+  label: "Opportunity to test",
+  product: product.product,
+  sku: product.sku,
+  title: product.recommendation.title,
+  rationale: product.recommendation.explanation,
+  metrics: product.recommendation.evidence,
+  maturity: { observed_days: 28, mature_days: 21, ready: true },
+  review_steps: [
+    "Review the product's traffic and attributed conversion.",
+    "Inspect the demand signals and campaign intent supporting this SKU.",
+    "Confirm product economics in Finance before changing paid support.",
+  ],
+  destination: {
+    view: "products",
+    sku: product.sku,
+    action: "ads-action-product",
+    filter: "opportunity_test",
+  },
+  qualification: economics.basis,
+};
+
+const demandAction = {
+  id: "ads-action-demand",
+  action_type: "DEMAND_TEST",
+  lane: "DEMAND_OPPORTUNITY",
+  rule_key: "ADS_DEMAND_TEST",
+  rule_version: 1,
+  state: "OPPORTUNITY_TEST",
+  label: "Opportunity to test",
+  product: product.product,
+  sku: product.sku,
+  title: signal.recommendation.title,
+  rationale: signal.recommendation.explanation,
+  metrics: { spend: 10, clicks: 10, purchases: 2, attributed_sales: 36 },
+  maturity: { ready: true },
+  destination: {
+    view: "demand",
+    sku: product.sku,
+    campaign: signal.campaign_id,
+    signal: signal.signal_id,
+    action: "ads-action-demand",
+    filter: "opportunity_test",
+  },
+  qualification: economics.basis,
+};
+
+const readyPayload = {
+  status: "ready",
+  local_time: "2026-08-28T08:00:00-06:00",
+  connection: {
+    state: "READY",
+    badge: "Ads ready",
+    headline: "Advertising data is ready.",
+    detail: "Reporting is available.",
+  },
+  readiness: {
+    state: "READY",
+    label: "Ready for review",
+    summary: "28/28 days observed · 21 mature · 0 quality issues",
+  },
+  freshness: {
+    through_date: "2026-08-28",
+    period_observed_days: 28,
+    period_expected_days: 28,
+    mature_days: 21,
+  },
+  quality: {
+    state: "HEALTHY",
+    trusted_for_operating_decisions: true,
+    issue_days: 0,
+    issues: [],
+  },
+  summary: {
+    spend: 30,
+    attributed_sales: 90,
+    total_business_sales: 300,
+    impressions: 1500,
+    clicks: 30,
+    purchases: 3,
+    units: 4,
+    acos: 1 / 3,
+    tacos: 0.1,
+    roas: 3,
+    ctr: 0.02,
+    cpc: 1,
+    conversion_rate: 0.1,
+    period_start: "2026-08-01",
+    period_end: "2026-08-28",
+    basis:
+      "Latest 28 Ads dates aligned to independently reconciled seller sales. Amazon-attributed conversions can revise; attribution is not incrementality.",
+  },
+  daily: [
+    { business_date: "2026-08-27", spend: 10, attributed_sales: 30 },
+    { business_date: "2026-08-28", spend: 20, attributed_sales: 60 },
+  ],
+  campaigns: [
+    {
+      campaign_id: "campaign-one",
+      campaign_name: "Notebook discovery",
+      spend: 10,
+      attributed_sales: 36,
+      impressions: 500,
+      clicks: 10,
+      purchases: 2,
+      units: 2,
+      roas: 3.6,
+      acos: 10 / 36,
+      product_refs: signal.product_refs,
+    },
+    {
+      campaign_id: "campaign-two",
+      campaign_name: "Notebook support",
+      spend: 20,
+      attributed_sales: 54,
+      impressions: 1000,
+      clicks: 20,
+      purchases: 1,
+      units: 2,
+      roas: 2.7,
+      acos: 20 / 54,
+      product_refs: signal.product_refs,
+    },
+  ],
+  products: [product],
+  demand: { items: [signal], total: 1, page: 1, page_size: 20, page_count: 1 },
+  demand_totals: { targets: 0, search_terms: 1 },
+  actions: [productAction, demandAction],
+  action_groups: [
+    {
+      key: "PRODUCT",
+      label: "Products requiring review",
+      total: 1,
+      shown: 1,
+      actions: [productAction],
+    },
+    {
+      key: "DEMAND_OPPORTUNITY",
+      label: "Demand opportunities to test",
+      total: 1,
+      shown: 1,
+      actions: [demandAction],
+    },
+  ],
+  interpretation_rules: RULES,
+  economics,
+};
+
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({
+  viewport: { width: 1440, height: 1000 },
+});
+const page = await context.newPage();
+page.on("pageerror", (error) => failures.push(`pageerror: ${error.message}`));
+
+try {
+  if (deterministicReady) {
+    await page.route("**/api/ads*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(readyPayload),
+      }),
+    );
   }
-
-  const product=(catalog.products||[]).find(row=>['SELLABLE_VARIATION','SELLABLE_STANDALONE'].includes(row.product_role)&&row.sku);
-  if(product){
-    await page.goto(`${baseUrl}/product?sku=${encodeURIComponent(product.sku)}`,{waitUntil:'domcontentloaded',timeout:20000});
-    const payload=await api(page,`/api/product?sku=${encodeURIComponent(product.sku)}`);
-    await page.waitForTimeout(1200);
-    const ads=payload.ads||{};
-    const connection=ads.connection||{};
-    const state=(await page.locator('#adsState').textContent())||'';
-    const decision=(await page.locator('#adsDecision').textContent())||'';
-    const read=(await page.locator('#adsRead').textContent())||'';
-    check('Product API exposes an explicit Ads connection state',connectionStates.includes(connection.state),connection.state||'missing');
-    check('Product Ads badge derives from connection state',state.trim()===connection.badge,state);
-    check('Product Ads headline derives from connection state',decision.trim()===connection.headline,decision);
-    check('Product Ads detail derives from connection state',read.trim().startsWith(connection.detail||'missing connection detail'),read);
-    if(connection.state==='READY'&&ads.through_date&&Number(ads.observed_ads_days||0)>0){
-      check('Product Ads read uses canonical spend',read.includes(moneyForQa(ads.spend)),read);
-      check('Product Ads read exposes TACOS',read.includes('TACOS'),read);
-      check('Product Ads read exposes ROAS',read.includes('ROAS'),read);
-      check('Product Ads interpretation rejects residual-organic claim',read.includes('not exact organic sales'),read);
-      check('Product Ads interpretation names attribution',read.includes('Amazon-attributed sales'),read);
-    }else{
-      check('Product unavailable Ads state avoids fake zero efficiency',!read.includes('0.00× ROAS')&&!read.includes('$0.00 spend'),read);
-    }
-
-    await page.goto(`${baseUrl}/ads`,{waitUntil:'domcontentloaded',timeout:20000});
-    const adsPayload=await api(page,'/api/ads');
-    await page.waitForTimeout(700);
-    const adsConnection=adsPayload.connection||{};
-    const chartState=await chartAssetState(page);
-    check('Ads and Product APIs use the same connection state',adsConnection.state===connection.state,`${adsConnection.state} / ${connection.state}`);
-    check('Ads and Product APIs use the same headline',adsConnection.headline===connection.headline,`${adsConnection.headline} / ${connection.headline}`);
-    check('Ads and Product APIs use the same detail',adsConnection.detail===connection.detail,`${adsConnection.detail} / ${connection.detail}`);
-    if(adsConnection.state!=='READY'||adsPayload.status!=='ready'){
-      const adsHeadline=((await page.locator('#emptyState h2').textContent())||'').trim();
-      const adsDetail=((await page.locator('#emptyState p').textContent())||'').trim();
-      const unavailableTabs=await page.locator('[data-ads-view]:not([data-ads-view="overview"])').evaluateAll(tabs=>tabs.map(tab=>({disabled:tab.disabled,ariaDisabled:tab.getAttribute('aria-disabled')})));
-      const availability=((await page.locator('#adsViewAvailability').textContent())||'').trim();
-      check('Ads empty headline derives from connection state',adsHeadline===adsConnection.headline,adsHeadline);
-      check('Ads empty detail derives from connection state',adsDetail===adsConnection.detail,adsDetail);
-      check('Ads unavailable drill-down tabs are disabled',unavailableTabs.every(tab=>tab.disabled&&tab.ariaDisabled==='true'),JSON.stringify(unavailableTabs));
-      check('Ads unavailable drill-down state is explained once',availability==='Only Overview is available in the current Advertising connection state.'&&!availability.includes(adsConnection.detail),availability);
-      check('Ads empty state skips every chart dependency',chartState.paths.length===0,chartState.paths.join(', '));
-      check('Ads empty state does not initialize chart runtime',!chartState.runtime,String(chartState.runtime));
-    }else{
-      const actionReasons=await page.locator('#actionQueue .ads-action-body p').allTextContents();
-      const apiReasons=(adsPayload.actions||[]).map(action=>String(action.reason||''));
-      const enabledTabs=await page.locator('[data-ads-view]').evaluateAll(tabs=>tabs.every(tab=>!tab.disabled&&tab.getAttribute('aria-disabled')==='false'));
-      check('Ads ready state loads every chart dependency',new Set(chartState.paths).size===3,chartState.paths.join(', '));
-      check('Ads ready chart dependencies retain the page revision',chartState.revisions.every(revision=>revision===chartState.pageRevision),chartState.revisions.join(', '));
-      check('Ads ready state initializes chart runtime',chartState.runtime,String(chartState.runtime));
-      check('Ads ready state hides the connection placeholder',!await page.locator('#emptyState').isVisible(),String(await page.locator('#emptyState').isVisible()));
-      check('Ads ready drill-down tabs are enabled',enabledTabs,String(enabledTabs));
-      check('Ads operating queue renders only API reasons',JSON.stringify(actionReasons)===JSON.stringify(apiReasons),JSON.stringify({actionReasons,apiReasons}));
-    }
-  }else{
-    check('Catalog supplies a sellable SKU for Product Ads QA',false,'no sellable SKU');
+  await page.goto(`${baseUrl}/ads`, {
+    waitUntil: "domcontentloaded",
+    timeout: 20000,
+  });
+  const payload = await api(page, "/api/ads");
+  await page.waitForTimeout(800);
+  const connection = payload.connection || {};
+  const chartState = await chartAssetState(page);
+  const tabs = await page.locator("[data-ads-view]").evaluateAll((items) =>
+    items.map((item) => ({
+      view: item.dataset.adsView,
+      disabled: item.disabled,
+      ariaDisabled: item.getAttribute("aria-disabled"),
+    })),
+  );
+  if (connection.state === "READY" && payload.status === "ready") {
+    const ruleValues = Object.values(payload.interpretation_rules || {});
+    const actions = payload.actions || [];
+    const text = await page.locator("main").innerText();
+    const prohibitedClaim =
+      /\b(profitable|scale winners?|reduce spend)\b/i.test(text);
+    check(
+      "Production Ads exposes the four business-oriented views",
+      JSON.stringify(tabs.map((tab) => tab.view)) ===
+        JSON.stringify(["impact", "products", "demand", "detail"]) &&
+        tabs.every((tab) => !tab.disabled && tab.ariaDisabled === "false"),
+      JSON.stringify(tabs),
+    );
+    check(
+      "Production API exposes named versioned interpretation rules",
+      ruleValues.length >= 5 &&
+        ruleValues.every(
+          (rule) =>
+            rule.key &&
+            Number.isInteger(rule.version) &&
+            rule.attribution_maturity,
+        ),
+      JSON.stringify(ruleValues.map((rule) => [rule.key, rule.version])),
+    );
+    check(
+      "Production product contract integrates the business operands",
+      (payload.products || []).every((row) =>
+        [
+          "sku",
+          "total_business_sales",
+          "spend",
+          "impressions",
+          "clicks",
+          "purchases",
+          "attributed_sales",
+          "tacos",
+          "mature_ads_days",
+          "recommendation",
+        ].every((key) => key in row),
+      ),
+      `${(payload.products || []).length} products`,
+    );
+    check(
+      "Production demand is server-bounded and normalized",
+      Number(payload.demand?.page_size) === 20 &&
+        (payload.demand?.items || []).length <= 20 &&
+        (payload.demand?.items || []).every((row) =>
+          ["SHOPPER_QUERY", "MATCHED_PRODUCT", "TARGET"].includes(
+            row.signal_type,
+          ),
+        ),
+      JSON.stringify({
+        pageSize: payload.demand?.page_size,
+        rows: payload.demand?.items?.length,
+      }),
+    );
+    check(
+      "Production actions remain server-traceable and product work is preserved",
+      actions.every(
+        (action) =>
+          action.id &&
+          action.rule_key &&
+          action.rule_version &&
+          action.destination,
+      ) && actions.some((action) => action.action_type === "PRODUCT_REVIEW"),
+      JSON.stringify(
+        actions.map((action) => [action.action_type, action.rule_key]),
+      ),
+    );
+    check(
+      "Production declares economics unavailable",
+      payload.economics?.state === "UNAVAILABLE" &&
+        payload.economics?.authoritative === false,
+      JSON.stringify(payload.economics),
+    );
+    check(
+      "Production UI avoids economic prescriptions",
+      !prohibitedClaim,
+      prohibitedClaim ? text : "",
+    );
+    check(
+      "Production UI rejects attribution-as-incrementality",
+      text.includes("not incrementality") ||
+        text.includes("attribution is not incrementality"),
+    );
+    check(
+      "Production ready state loads one revision of every chart dependency",
+      new Set(chartState.paths).size === 3 &&
+        chartState.revisions.every(
+          (revision) => revision === chartState.pageRevision,
+        ),
+      JSON.stringify(chartState),
+    );
+    check(
+      "Production campaign chart has no prescriptive quadrant labels",
+      !/Scale winners|Efficient support|Low-risk tests|Review spend/.test(text),
+    );
+  } else {
+    check(
+      "Production unavailable state keeps only Business impact enabled",
+      tabs[0]?.view === "impact" &&
+        !tabs[0].disabled &&
+        tabs
+          .slice(1)
+          .every((tab) => tab.disabled && tab.ariaDisabled === "true"),
+      JSON.stringify(tabs),
+    );
+    check(
+      "Production unavailable state skips chart dependencies",
+      chartState.paths.length === 0,
+    );
   }
+  await fs.mkdir(outDir, { recursive: true });
+  await page.screenshot({
+    path: path.join(outDir, "ads-business-impact-desktop.png"),
+    fullPage: true,
+  });
 
-  const readyContext=await browser.newContext({viewport:{width:1440,height:1000}});
-  const readyPage=await readyContext.newPage();
-  try{
-    await readyPage.route('**/api/ads',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
-      status:'ready',local_time:'2026-08-28T08:00:00-06:00',
-      connection:{state:'READY',badge:'Ads ready',headline:'Advertising data is ready.',detail:'Reporting is available.'},
-      freshness:{through_date:'2026-08-27',period_observed_days:28,period_expected_days:28,mature_days:28},
-      quality:{state:'HEALTHY',trusted_for_operating_decisions:true,issue_days:0,issues:[]},
-      summary:{spend:30,attributed_sales:90,total_business_sales:300,acos:1/3,tacos:.1,roas:3,ctr:.02,cpc:2,period_start:'2026-08-26',period_end:'2026-08-27'},
-      daily:[{business_date:'2026-08-26',spend:10,attributed_sales:30},{business_date:'2026-08-27',spend:20,attributed_sales:60}],
-      campaigns:[{campaign_id:'one',campaign_name:'One',spend:10,attributed_sales:20,clicks:5},{campaign_id:'two',campaign_name:'Two',spend:20,attributed_sales:70,clicks:10}],
-      products:[],
-      targets:[{target_id:'target-1',target_expression:'notebook',campaign_id:'one',campaign_name:'One',purchases:0,spend:12,attributed_sales:0,acos:null,roas:0,clicks:9}],
-      search_terms:[{search_term:'lined journal',campaign_id:'one',campaign_name:'One',purchases:2,spend:10,attributed_sales:30,acos:1/3,roas:3,clicks:5}],
-      actions:[{kind:'INSPECT_TARGET_SPEND',priority:2,label:'Review target',title:'notebook',context:'One',spend:12,roas:0,reason:'API-owned review reason.'}],
-    })}));
-    await readyPage.goto(`${baseUrl}/ads`,{waitUntil:'domcontentloaded',timeout:20000});
-    await readyPage.waitForFunction(()=>Boolean(window.DPPCharts)&&document.querySelectorAll('#chart .dpp-bar').length===4,null,{timeout:10000});
-    const readyChartState=await chartAssetState(readyPage);
-    check('Chart-bearing state loads every dependency on demand',new Set(readyChartState.paths).size===3,readyChartState.paths.join(', '));
-    check('Chart-bearing state retains one asset revision',readyChartState.revisions.every(revision=>revision===readyChartState.pageRevision),readyChartState.revisions.join(', '));
-    check('Chart-bearing state marks three dynamic dependency nodes',readyChartState.dependencyNodes===3,String(readyChartState.dependencyNodes));
-    check('Chart-bearing state renders after dependency load',await readyPage.locator('#readyState').isVisible(),String(await readyPage.locator('#readyState').isVisible()));
-    check('Chart-bearing state hides the connection placeholder',!await readyPage.locator('#emptyState').isVisible(),String(await readyPage.locator('#emptyState').isVisible()));
-    check('Ready tabs expose all report grains',await readyPage.locator('[data-ads-view]').evaluateAll(tabs=>tabs.every(tab=>!tab.disabled&&tab.getAttribute('aria-disabled')==='false')));
-    check('Ready operating queue uses the API reason',((await readyPage.locator('#actionQueue .ads-action-body p').textContent())||'').trim()==='API-owned review reason.');
-    await readyPage.locator('[data-ads-view="targets"]').click();
-    check('Target evidence reports purchases without a browser action label',(await readyPage.locator('#targetRows').textContent()).includes('0')&&await readyPage.locator('#targetRows .ads-action').count()===0);
-    await readyPage.locator('[data-ads-view="searchTerms"]').click();
-    check('Search-term evidence reports purchases without a browser action label',(await readyPage.locator('#searchTermRows').textContent()).includes('2')&&await readyPage.locator('#searchTermRows .ads-action').count()===0);
-  }finally{
+  const readyContext = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+  });
+  const readyPage = await readyContext.newPage();
+  try {
+    await readyPage.route("**/api/ads*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(readyPayload),
+      }),
+    );
+    await readyPage.goto(`${baseUrl}/ads`, {
+      waitUntil: "domcontentloaded",
+      timeout: 20000,
+    });
+    await readyPage.waitForFunction(
+      () =>
+        Boolean(window.DPPCharts) &&
+        document.querySelectorAll("#portfolioChart .ads-portfolio-mark").length,
+      null,
+      { timeout: 10000 },
+    );
+    const renderedRationales = await readyPage
+      .locator(".ads-action-body > p")
+      .allTextContents();
+    check(
+      "Ready actions render only API-owned rationales",
+      JSON.stringify(renderedRationales) ===
+        JSON.stringify(readyPayload.actions.map((action) => action.rationale)),
+      JSON.stringify(renderedRationales),
+    );
+    check(
+      "Ready overview keeps SKU and total seller sales visible",
+      (await readyPage.locator("#portfolioList").innerText()).includes(
+        product.sku,
+      ) &&
+        (await readyPage.locator("#portfolioList").innerText()).includes(
+          "seller sales",
+        ),
+    );
+    check(
+      "Ready chart marks expose keyboard-accessible names",
+      await readyPage
+        .locator(".ads-portfolio-mark")
+        .evaluateAll((marks) =>
+          marks.every(
+            (mark) =>
+              mark.getAttribute("role") === "img" &&
+              mark.getAttribute("tabindex") === "0" &&
+              Boolean(mark.getAttribute("aria-label")),
+          ),
+        ),
+    );
+    await readyPage
+      .locator('[data-review-action="ads-action-product"]')
+      .click();
+    await readyPage.waitForURL(/view=products/);
+    await readyPage.waitForFunction(
+      () =>
+        !document.getElementById("products").hidden &&
+        document
+          .querySelector('[data-sku="SKU-ONE"]')
+          ?.classList.contains("is-highlighted"),
+    );
+    const productState = await readyPage.evaluate(() => ({
+      url: location.search,
+      visible: !document.getElementById("products").hidden,
+      highlighted: document
+        .querySelector('[data-sku="SKU-ONE"]')
+        ?.classList.contains("is-highlighted"),
+      focused: document.activeElement?.getAttribute("data-sku"),
+    }));
+    check(
+      "Product action opens the exact URL-restored SKU evidence",
+      productState.visible &&
+        productState.url.includes("sku=SKU-ONE") &&
+        productState.url.includes("action=ads-action-product") &&
+        productState.highlighted &&
+        productState.focused === "SKU-ONE",
+      JSON.stringify(productState),
+    );
+    await readyPage.locator('[data-ads-view="detail"]').click();
+    await readyPage.waitForFunction(
+      () => !document.getElementById("detail").hidden,
+    );
+    const detailText = await readyPage.locator("#detail").innerText();
+    check(
+      "Campaign comparison is explicitly neutral",
+      detailText.includes("neutral comparison") &&
+        !/Scale winners|Efficient support|Low-risk tests/.test(detailText),
+      detailText,
+    );
+    check(
+      "Technical campaign identifiers are secondary disclosures",
+      (await readyPage.locator("#campaignRows details.ads-technical").count()) >
+        0 &&
+        (await readyPage
+          .locator("#campaignRows details.ads-technical[open]")
+          .count()) === 0,
+    );
+  } finally {
     await readyContext.close();
   }
 
-  const disconnectedContext=await browser.newContext({viewport:{width:412,height:915},isMobile:true,hasTouch:true});
-  const disconnectedPage=await disconnectedContext.newPage();
-  try{
-    await disconnectedPage.route('**/api/ads',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
-      status:'not_initialized',local_time:'2026-08-28T08:00:00-06:00',
-      connection:{state:'NOT_CONNECTED',badge:'Ads not connected',headline:'Amazon Ads is not connected.',detail:'Connect Amazon Ads before paid-support reporting can start.'},
-      freshness:null,quality:{state:'NO_DATA',trusted_for_operating_decisions:false,issues:[]},summary:{},daily:[],campaigns:[],products:[],targets:[],search_terms:[],actions:[],
-    })}));
-    await disconnectedPage.goto(`${baseUrl}/ads`,{waitUntil:'networkidle',timeout:20000});
-    const tabs=await disconnectedPage.locator('[data-ads-view]').evaluateAll(items=>items.map(item=>({view:item.dataset.adsView,disabled:item.disabled,ariaDisabled:item.getAttribute('aria-disabled')})));
-    const disconnectedChartState=await chartAssetState(disconnectedPage);
-    check('Deterministic disconnected Ads keeps Overview enabled',tabs[0]?.view==='overview'&&!tabs[0].disabled&&tabs[0].ariaDisabled==='false',JSON.stringify(tabs));
-    check('Deterministic disconnected Ads disables every drill-down',tabs.slice(1).every(tab=>tab.disabled&&tab.ariaDisabled==='true'),JSON.stringify(tabs));
-    const disconnectedAvailability=((await disconnectedPage.locator('#adsViewAvailability').textContent())||'').trim();
-    check('Deterministic disconnected Ads explains disabled views once',disconnectedAvailability==='Only Overview is available in the current Advertising connection state.'&&!disconnectedAvailability.includes('Connect Amazon Ads'),disconnectedAvailability);
-    check('Deterministic disconnected Ads contains mobile tabs',await disconnectedPage.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2));
-    check('Deterministic disconnected Ads remains chart-free',disconnectedChartState.paths.length===0&&disconnectedChartState.dependencyNodes===0,JSON.stringify(disconnectedChartState));
-  }finally{
+  const mobileContext = await browser.newContext({
+    viewport: { width: 412, height: 915 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const mobilePage = await mobileContext.newPage();
+  try {
+    await mobilePage.route("**/api/ads*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(readyPayload),
+      }),
+    );
+    await mobilePage.goto(`${baseUrl}/ads?view=demand`, {
+      waitUntil: "domcontentloaded",
+      timeout: 20000,
+    });
+    await mobilePage.waitForFunction(
+      () => !document.getElementById("demand").hidden,
+    );
+    const mobile = await mobilePage.evaluate(() => ({
+      viewportContained:
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth + 2,
+      rows: document.querySelectorAll("#demandRows tr").length,
+      tableScrollable:
+        document.querySelector(".ads-demand-table .data-table-scroll")
+          .scrollWidth >
+        document.querySelector(".ads-demand-table .data-table-scroll")
+          .clientWidth,
+      tableBounded:
+        document
+          .querySelector(".ads-demand-table .data-table-scroll")
+          .getBoundingClientRect().height <=
+        window.innerHeight * 0.69,
+    }));
+    check(
+      "Mobile demand keeps a contained bounded twenty-row table",
+      mobile.viewportContained &&
+        mobile.rows <= 20 &&
+        mobile.tableScrollable &&
+        mobile.tableBounded,
+      JSON.stringify(mobile),
+    );
+    await mobilePage.screenshot({
+      path: path.join(outDir, "ads-demand-mobile.png"),
+      fullPage: true,
+    });
+  } finally {
+    await mobileContext.close();
+  }
+
+  const disconnectedContext = await browser.newContext({
+    viewport: { width: 412, height: 915 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const disconnectedPage = await disconnectedContext.newPage();
+  try {
+    const disconnected = {
+      status: "not_initialized",
+      local_time: "2026-08-28T08:00:00-06:00",
+      connection: {
+        state: "NOT_CONNECTED",
+        badge: "Ads not connected",
+        headline: "Amazon Ads is not connected.",
+        detail: "Connect Amazon Ads before paid-support reporting can start.",
+      },
+      freshness: null,
+      quality: {
+        state: "NO_DATA",
+        trusted_for_operating_decisions: false,
+        issues: [],
+      },
+      summary: {},
+      daily: [],
+      campaigns: [],
+      products: [],
+      demand: { items: [], total: 0, page: 1, page_size: 20, page_count: 1 },
+      actions: [],
+      action_groups: [],
+      interpretation_rules: RULES,
+      economics,
+    };
+    await disconnectedPage.route("**/api/ads*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(disconnected),
+      }),
+    );
+    await disconnectedPage.goto(`${baseUrl}/ads?view=demand&sku=SKU-ONE`, {
+      waitUntil: "networkidle",
+      timeout: 20000,
+    });
+    const tabs = await disconnectedPage
+      .locator("[data-ads-view]")
+      .evaluateAll((items) =>
+        items.map((item) => ({
+          view: item.dataset.adsView,
+          disabled: item.disabled,
+          ariaDisabled: item.getAttribute("aria-disabled"),
+        })),
+      );
+    const chartState = await chartAssetState(disconnectedPage);
+    const availability = (
+      (await disconnectedPage.locator("#adsViewAvailability").textContent()) ||
+      ""
+    ).trim();
+    check(
+      "Disconnected Ads keeps only Business impact enabled",
+      tabs[0]?.view === "impact" &&
+        !tabs[0].disabled &&
+        tabs[0].ariaDisabled === "false" &&
+        tabs
+          .slice(1)
+          .every((tab) => tab.disabled && tab.ariaDisabled === "true"),
+      JSON.stringify(tabs),
+    );
+    check(
+      "Disconnected Ads explains view availability once",
+      availability ===
+        "Only Business impact is available in the current Advertising connection state.",
+      availability,
+    );
+    check(
+      "Disconnected Ads is contained and chart-free",
+      chartState.paths.length === 0 &&
+        chartState.dependencyNodes === 0 &&
+        (await disconnectedPage.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth + 2,
+        )),
+      JSON.stringify(chartState),
+    );
+  } finally {
     await disconnectedContext.close();
   }
-}catch(error){failures.push(`Ads surface QA: ${error.message}`);}finally{await context.close();await browser.close();}
-const summary={generatedAt:new Date().toISOString(),baseUrl,status:failures.length?'FAIL':'PASS',checks,failures};
-await fs.mkdir(outDir,{recursive:true});
-await fs.writeFile(path.join(outDir,'ads-surface-summary.json'),JSON.stringify(summary,null,2));
-console.log(JSON.stringify({status:summary.status,checks:checks.length,failures},null,2));
-if(failures.length)process.exitCode=3;
+} catch (error) {
+  failures.push(`Ads surface QA: ${error.message}`);
+} finally {
+  await context.close();
+  await browser.close();
+}
+
+const summary = {
+  generatedAt: new Date().toISOString(),
+  baseUrl,
+  status: failures.length ? "FAIL" : "PASS",
+  checks,
+  failures,
+};
+await fs.mkdir(outDir, { recursive: true });
+await fs.writeFile(
+  path.join(outDir, "ads-surface-summary.json"),
+  JSON.stringify(summary, null, 2),
+);
+console.log(
+  JSON.stringify(
+    { status: summary.status, checks: checks.length, failures },
+    null,
+    2,
+  ),
+);
+if (failures.length) process.exitCode = 3;

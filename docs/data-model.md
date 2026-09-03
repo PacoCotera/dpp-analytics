@@ -118,6 +118,19 @@ Catalog family cover uses the same pooled rule as portfolio inventory cover: `(s
 
 Amazon Ads metrics are attribution data. ACOS and ROAS use Amazon-attributed sales; TACOS uses an independent total-seller-sales denominator.
 
+`mart.ads_product_business_t28` is the primary Advertising operating grain. Each SKU carries total seller sales,
+ad spend, impressions, clicks, Amazon-attributed purchases/units/sales, conversion, ROAS, ACOS, TACOS, report
+coverage and attribution maturity together. Ratios require a positive authoritative denominator; a missing or zero
+denominator is unavailable, not zero performance.
+
+Campaign/ad-group advertised-product facts associate target and search-term evidence back to one or more products.
+The API normalizes that evidence as shopper queries, matched products or configured targets and keeps raw Amazon
+IDs/expressions in a technical disclosure. `board/ads_decisions.py` owns the named/versioned interpretation,
+maturity eligibility, suppression, deterministic action IDs and bounded lane allocation. Product economics are
+explicitly unavailable until selling price/IVA, Amazon fees, fulfillment, COGS, returns/refunds and advertising
+allocation reconcile; therefore Advertising may propose a review or controlled test, but not profitability,
+scaling, spend-reduction or bid claims.
+
 The Amazon Ads worker publishes its current non-secret integration lifecycle in `ops.integration_state`. The only valid states are `NOT_CONNECTED`, `AUTHORIZATION_PENDING`, `BACKFILL_RUNNING`, `READY`, and `FAILED`. Authorization/configuration evidence and initial-history progress determine this lifecycle; Ads report coverage and reconciliation quality remain separate contracts. Product and Ads APIs obtain their state presentation from the same server owner instead of treating missing report rows as connection evidence.
 
 Sponsored Products targeting and search-term ingestion uses Reporting v3's `keywordId`, `keyword`, and `targeting` fields. Automatic targeting expressions can lack a keyword ID, so their exact Amazon `targeting` value is the stable target key within account, campaign and ad group scope.

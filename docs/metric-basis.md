@@ -41,6 +41,12 @@ The observed contract for DPP Mexico is therefore `SHOPPER_SPEND_INCL_TAX`. It i
 | Ads-attributed sales | `ADS_ATTRIBUTED_SALES` | Amazon Ads unified reporting | Sales Amazon attributes to advertising under the report's stated attribution window/method. | `Attributed sales` | Incremental sales or exact paid-only sales |
 | TACOS denominator | `INDEPENDENT_SELLER_SALES` | Canonical seller-sales mart | Seller commercial sales independently reconciled from Ads. For DPP MX this denominator follows the Sales & Traffic shopper-spend-including-IVA basis. | `TACOS` | Ads-attributed sales |
 
+Advertising ratios are recomputed from their visible operands: `CTR = clicks / impressions`, `CPC = spend /
+clicks`, `conversion = Amazon-attributed purchases / clicks`, `ROAS = Amazon-attributed sales / spend`, `ACOS =
+spend / Amazon-attributed sales`, `TACOS = spend / independently reconciled seller sales`, and attributed share =
+Amazon-attributed sales / independently reconciled seller sales. A non-positive denominator makes the ratio
+unavailable. These attribution ratios do not establish incrementality or profitability.
+
 ## Live Mexico order-money rule
 
 Amazon Orders v2026 can expose the same MX item at different completeness states. In production we observed a finalized MX$279 sale as ITEM MX$240.52 + TAX MX$38.48, while another same-price live order temporarily had only the MX$240.52 tax-exclusive item amount. Summing those fields naively mixes tax bases.

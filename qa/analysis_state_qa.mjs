@@ -108,6 +108,23 @@ async function inventoryState() {
   }));
 }
 
+async function adsState() {
+  return page.evaluate(() => ({
+    view: document.querySelector('[data-ads-view][aria-selected="true"]')
+      ?.dataset.adsView,
+    sku: document.getElementById("demandSku")?.value || "",
+    campaign: document.getElementById("demandCampaign")?.value || "",
+    signalType: document.getElementById("demandType")?.value || "",
+    filter: document.getElementById("demandFilter")?.value || "",
+    sort: document.getElementById("demandSort")?.value || "",
+    search: document.getElementById("demandSearch")?.value || "",
+    page: document.getElementById("demandPage")?.textContent?.trim() || "",
+    highlightedSignal:
+      document.querySelector("#demandRows tr.is-highlighted")?.dataset
+        .signalId || "",
+  }));
+}
+
 function expectedInventoryRows(payload, scope, search = "") {
   const attentionActions = new Set(["STOCKOUT", "PRODUCE", "PLAN"]);
   const query = String(search || "")
@@ -910,7 +927,9 @@ try {
   await page.goBack();
   await page.waitForFunction(
     (query) =>
-      document.querySelector('[data-filter="current"]')?.getAttribute("aria-pressed") === "true" &&
+      document
+        .querySelector('[data-filter="current"]')
+        ?.getAttribute("aria-pressed") === "true" &&
       new URL(window.location.href).searchParams.get("q") === query,
     inventoryQuery,
   );
@@ -1057,6 +1076,149 @@ try {
   assertParam("trace", "keep");
   checks.push(
     "Invalid Trajectory windows normalize without losing unrelated state",
+  );
+
+  await page.goto(`${baseUrl}/ads?trace=keep`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.waitForFunction(
+    () =>
+      document.getElementById("readyState") &&
+      !document.getElementById("readyState").hidden,
+  );
+  const adsPayload = await page.evaluate(async () =>
+    (await fetch("/api/ads", { cache: "no-store" })).json(),
+  );
+  assert(
+    adsPayload.connection?.state === "READY" && adsPayload.status === "ready",
+    "Advertising is not READY for analysis-state QA",
+  );
+  const demandSignal = (adsPayload.demand?.items || []).find(
+    (signal) =>
+      signal.signal_id &&
+      signal.campaign_id &&
+      signal.recommendation?.state &&
+      signal.signal_type &&
+      signal.product_refs?.[0]?.sku,
+  );
+  assert(
+    demandSignal,
+    "Advertising has no product-associated demand signal for URL-state QA",
+  );
+  const adsSku = demandSignal.product_refs[0].sku;
+  const adsCampaign = String(demandSignal.campaign_id);
+  const adsFilter = String(demandSignal.recommendation.state).toLowerCase();
+  const adsSignalType = String(demandSignal.signal_type).toLowerCase();
+  const demandUrl =
+    `${baseUrl}/ads?view=demand&sku=${encodeURIComponent(adsSku)}` +
+    `&campaign=${encodeURIComponent(adsCampaign)}` +
+    `&signal=${encodeURIComponent(demandSignal.signal_id)}` +
+    `&filter=${encodeURIComponent(adsFilter)}&sort=spend-desc` +
+    `&signal_type=${encodeURIComponent(adsSignalType)}&trace=keep`;
+  await page.goto(demandUrl, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+  await page.waitForFunction(
+    (signalId) =>
+      !document.getElementById("demand").hidden &&
+      document.querySelector("#demandRows tr.is-highlighted")?.dataset
+        .signalId === signalId,
+    demandSignal.signal_id,
+  );
+  const directAdsState = await adsState();
+  assert(
+    directAdsState.view === "demand" &&
+      directAdsState.sku === adsSku &&
+      directAdsState.campaign === adsCampaign &&
+      directAdsState.signalType === adsSignalType &&
+      directAdsState.filter === adsFilter &&
+      directAdsState.sort === "spend-desc" &&
+      directAdsState.highlightedSignal === demandSignal.signal_id,
+    `Ads direct demand state did not restore: ${JSON.stringify(directAdsState)}`,
+  );
+  assertParam("page", null);
+  assertParam("trace", "keep");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    (signalId) =>
+      document.querySelector("#demandRows tr.is-highlighted")?.dataset
+        .signalId === signalId,
+    demandSignal.signal_id,
+  );
+  assert(
+    JSON.stringify(await adsState()) === JSON.stringify(directAdsState),
+    "Ads demand deep link changed after refresh",
+  );
+  checks.push(
+    "Ads direct links and refresh restore the exact product-associated demand evidence",
+  );
+
+  await page.locator("#demandSort").selectOption("sales-desc");
+  await page.waitForFunction(
+    () =>
+      new URL(window.location.href).searchParams.get("sort") === "sales-desc",
+  );
+  assertParam("trace", "keep");
+  await page.goBack();
+  await page.waitForFunction(
+    () => document.getElementById("demandSort")?.value === "spend-desc",
+  );
+  assertParam("sort", "spend-desc");
+  await page.goForward();
+  await page.waitForFunction(
+    () => document.getElementById("demandSort")?.value === "sales-desc",
+  );
+  assertParam("sort", "sales-desc");
+  checks.push("Ads Back and Forward restore server-backed demand sorting");
+
+  await page.goto(
+    `${baseUrl}/ads?view=products&sku=${encodeURIComponent(adsSku)}&trace=keep`,
+    { waitUntil: "domcontentloaded", timeout: 30000 },
+  );
+  await page.waitForFunction(
+    (sku) =>
+      !document.getElementById("products").hidden &&
+      document.querySelector("#productRows tr.is-highlighted")?.dataset.sku ===
+        sku,
+    adsSku,
+  );
+  await page.locator("#productRows .product-line").first().click();
+  await page.waitForURL(/\/product\?sku=/);
+  await page.goBack({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    (sku) =>
+      !document.getElementById("products").hidden &&
+      document.querySelector("#productRows tr.is-highlighted")?.dataset.sku ===
+        sku,
+    adsSku,
+  );
+  assertParam("view", "products");
+  assertParam("sku", adsSku);
+  assertParam("trace", "keep");
+  checks.push(
+    "Product Workspace round-trip returns to the exact Ads SKU analysis",
+  );
+
+  await page.goto(
+    `${baseUrl}/ads?view=invalid&filter=invalid&sort=invalid&page=-2&signal_type=invalid&trace=keep`,
+    { waitUntil: "domcontentloaded", timeout: 30000 },
+  );
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('[data-ads-view="impact"]')
+        ?.getAttribute("aria-selected") === "true",
+  );
+  assertParam("view", null);
+  assertParam("filter", null);
+  assertParam("sort", null);
+  assertParam("page", null);
+  assertParam("signal_type", null);
+  assertParam("trace", "keep");
+  checks.push(
+    "Invalid Ads state normalizes to Business impact without losing unrelated parameters",
   );
 
   const financeWindows = ["3m", "ytd", "12m", "lastYear", "all"];

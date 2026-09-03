@@ -105,6 +105,11 @@
   function interactive(selection, ctx, describe) {
     selection
       .attr('tabindex', 0)
+      .attr('role', 'img')
+      .attr('aria-label', (d) => {
+        const content = describe(d);
+        return [content.title, ...(content.lines || [])].filter(Boolean).join('. ');
+      })
       .on('pointerenter pointermove focus', function (event, d) {
         const content = describe(d);
         showTip(ctx, event, content.title, content.lines);
@@ -486,7 +491,7 @@
       320,
       'Daily advertising spend and attributed sales',
       { top: 34, bottom: 44, left: compact ? 52 : 62 },
-      compact ? 520 : 960,
+      compact ? 620 : 960,
     );
     const x = d3
       .scaleBand()
@@ -534,6 +539,85 @@
     interactive(bars, ctx, (d) => ({ title: d.day.key, lines: [`${d.label} ${fullMoney(d.value)}`] }));
   }
 
+  function adsPortfolio(selector, rows) {
+    const data = (rows || [])
+      .map((d) => ({
+        ...d,
+        name: d.product_name || d.sku || 'Product',
+        sellerSales: Number(d.total_business_sales || 0),
+        spend: Number(d.spend || 0),
+        attributed: Number(d.attributed_sales || 0),
+        tacos: d.tacos == null ? null : Number(d.tacos),
+      }))
+      .filter((d) => d.sellerSales > 0 && Number.isFinite(d.tacos));
+    if (!data.length) return empty(selector, 'No reconciled product portfolio data yet.');
+    const hostWidth = Math.round(
+      document.querySelector(selector)?.parentElement?.getBoundingClientRect().width || 960,
+    );
+    const compact = hostWidth < 640;
+    const width = compact ? 620 : Math.max(620, hostWidth);
+    const ctx = shell(
+      selector,
+      compact ? 300 : 340,
+      'Product portfolio comparison of total seller sales, TACOS, and advertising spend',
+      { top: 26, right: 28, bottom: 56, left: compact ? 58 : 68 },
+      width,
+    );
+    const x = d3
+      .scaleLinear()
+      .domain([0, d3.max(data, (d) => d.sellerSales) || 1])
+      .nice(4)
+      .range([0, ctx.innerW]);
+    const y = d3
+      .scaleLinear()
+      .domain([0, d3.max(data, (d) => d.tacos) || 1])
+      .nice(4)
+      .range([ctx.innerH, 0]);
+    const radius = d3
+      .scaleSqrt()
+      .domain([0, d3.max(data, (d) => d.spend) || 1])
+      .range([6, 19]);
+    grid(ctx, y, 4, (value) => `${Math.round(Number(value) * 100)}%`);
+    bottomAxis(ctx, x, shortMoney, 4);
+    const marks = ctx.plot
+      .selectAll('.ads-portfolio-mark')
+      .data(data)
+      .join('circle')
+      .attr('class', 'dpp-bar dpp-bubble ads-portfolio-mark')
+      .attr('cx', (d) => x(d.sellerSales))
+      .attr('cy', (d) => y(d.tacos))
+      .attr('r', (d) => radius(d.spend))
+      .style('--dpp-mark-color', COLORS.accent)
+      .attr('fill', 'var(--dpp-mark-color)')
+      .attr('fill-opacity', 0.78)
+      .attr('stroke', COLORS.surface)
+      .attr('stroke-width', 2);
+    ctx.plot
+      .append('text')
+      .attr('class', 'dpp-muted')
+      .attr('x', ctx.innerW)
+      .attr('y', ctx.innerH + 45)
+      .attr('text-anchor', 'end')
+      .text('Total seller sales →');
+    ctx.plot
+      .append('text')
+      .attr('class', 'dpp-muted')
+      .attr('transform', 'rotate(-90)')
+      .attr('x', -4)
+      .attr('y', -50)
+      .attr('text-anchor', 'end')
+      .text('TACOS →');
+    interactive(marks, ctx, (d) => ({
+      title: `${d.name} · ${d.sku || 'SKU unavailable'}`,
+      lines: [
+        `Total seller sales ${fullMoney(d.sellerSales)}`,
+        `Ad spend ${fullMoney(d.spend)}`,
+        `TACOS ${(d.tacos * 100).toFixed(1)}%`,
+        `Amazon-attributed sales ${fullMoney(d.attributed)}`,
+      ],
+    }));
+  }
+
   function adsEfficiency(selector, rows) {
     const data = (rows || [])
       .map((d) => ({
@@ -547,14 +631,14 @@
     data.forEach((d) => {
       d.roas = d.attributed / d.spend;
     });
-    if (data.length < 2) return empty(selector, 'More campaign data is needed for an efficiency map.');
+    if (data.length < 2) return empty(selector, 'More campaign data is needed for comparison.');
     const compact = window.innerWidth <= 640;
     const ctx = shell(
       selector,
       350,
-      'Campaign spend and return efficiency quadrant',
+      'Neutral campaign comparison of spend and Amazon-attributed ROAS',
       { top: 35, right: 28, bottom: 52, left: compact ? 54 : 66 },
-      compact ? 520 : 960,
+      compact ? 620 : 960,
     );
     const x = d3
       .scaleLinear()
@@ -570,39 +654,8 @@
       .scaleSqrt()
       .domain([0, d3.max(data, (d) => d.clicks) || 1])
       .range([5, 17]);
-    const medianSpend = d3.median(data, (d) => d.spend) || 0;
-    const medianRoas = d3.median(data, (d) => d.roas) || 0;
     grid(ctx, y, 4, (v) => `${Number(v).toFixed(1)}×`);
     bottomAxis(ctx, x, shortMoney, 4);
-    ctx.plot
-      .append('line')
-      .attr('class', 'dpp-quadrant-line')
-      .attr('x1', x(medianSpend))
-      .attr('x2', x(medianSpend))
-      .attr('y1', 0)
-      .attr('y2', ctx.innerH);
-    ctx.plot
-      .append('line')
-      .attr('class', 'dpp-quadrant-line')
-      .attr('x1', 0)
-      .attr('x2', ctx.innerW)
-      .attr('y1', y(medianRoas))
-      .attr('y2', y(medianRoas));
-    const labels = [
-      { x: 8, y: 14, text: 'Efficient support' },
-      { x: ctx.innerW - 8, y: 14, text: 'Scale winners', anchor: 'end' },
-      { x: 8, y: ctx.innerH - 10, text: 'Low-risk tests' },
-      { x: ctx.innerW - 8, y: ctx.innerH - 10, text: 'Review spend', anchor: 'end' },
-    ];
-    ctx.plot
-      .selectAll('.dpp-quadrant-label')
-      .data(labels)
-      .join('text')
-      .attr('class', 'dpp-muted dpp-quadrant-label')
-      .attr('x', (d) => d.x)
-      .attr('y', (d) => d.y)
-      .attr('text-anchor', (d) => d.anchor || 'start')
-      .text((d) => d.text);
     const dots = ctx.plot
       .selectAll('.dpp-bubble')
       .data(data)
@@ -611,7 +664,7 @@
       .attr('cx', (d) => x(d.spend))
       .attr('cy', (d) => y(d.roas))
       .attr('r', (d) => r(d.clicks))
-      .style('--dpp-mark-color', (d) => (d.roas >= medianRoas ? COLORS.good : COLORS.accent))
+      .style('--dpp-mark-color', COLORS.accent)
       .attr('fill', 'var(--dpp-mark-color)')
       .attr('fill-opacity', 0.78)
       .attr('stroke', COLORS.surface)
@@ -1067,6 +1120,7 @@
     homeRhythm,
     monthlySales,
     ads,
+    adsPortfolio,
     adsEfficiency,
     trajectory,
     financeWaterfall,
