@@ -68,8 +68,44 @@ try {
     await page.waitForSelector("#paidSupportWatch:not([hidden])");
     check(
       "Today labels paid support as a completed window",
-      (await page.locator("#paidSupportNote").innerText()).includes("not today’s advertising"),
+      (await page.locator("#paidSupportWatch .section-label").innerText()).includes("completed 28-day window"),
     );
+    check(
+      "Today keeps one paid-support destination",
+      (await page.locator("#paidSupportWatch a").count()) === 1 &&
+        (await page.locator("#paidSupportOpen").innerText()).includes("Review in Ads"),
+    );
+
+    const wide = await browser.newContext({ viewport: { width: 2048, height: 1111 }, reducedMotion: "reduce" });
+    const widePage = await wide.newPage();
+    try {
+      await widePage.goto(`${baseUrl}/`, { waitUntil: "networkidle", timeout: 30_000 });
+      await widePage.waitForSelector("#paidSupportWatch:not([hidden])");
+      await widePage.evaluate(() => window.dppPresentation.setProfile("aubergine-aqua", { persist: false }));
+      const layout = await widePage.locator("#paidSupportWatch").evaluate((panel) => {
+        const action = panel.querySelector("#paidSupportAction");
+        const metrics = panel.querySelector("#paidSupportMetrics");
+        const metricWidths = [...metrics.children].map((metric) => metric.getBoundingClientRect().width);
+        return {
+          panelWidth: panel.getBoundingClientRect().width,
+          panelHeight: panel.getBoundingClientRect().height,
+          panelOverflow: panel.scrollWidth - panel.clientWidth,
+          actionWidth: action.getBoundingClientRect().width,
+          metricWidths,
+          documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+      check("Today wide paid-support card is contained", layout.panelOverflow <= 1, JSON.stringify(layout));
+      check("Today wide page has no horizontal overflow", layout.documentOverflow <= 1, JSON.stringify(layout));
+      check(
+        "Today wide paid-support decision has readable width",
+        layout.actionWidth >= layout.panelWidth - 1 && layout.metricWidths.every((width) => width >= 120),
+        JSON.stringify(layout),
+      );
+      check("Today wide paid-support card stays compact", layout.panelHeight <= 360, JSON.stringify(layout));
+    } finally {
+      await wide.close();
+    }
 
     await open("/business");
     await page.waitForSelector("#adsRead:not([hidden])");
