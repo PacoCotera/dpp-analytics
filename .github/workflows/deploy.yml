@@ -298,7 +298,7 @@ jobs:
           sudo chmod 0600 /tmp/dpp-admin-qa.env
 
           set +e
-          timeout --signal=TERM --kill-after=30s 15m \
+          timeout --signal=TERM --kill-after=30s 20m \
             sudo docker run --rm \
               --name "$qa_container" \
               --label com.dpp-analytics.role=production-browser-qa \

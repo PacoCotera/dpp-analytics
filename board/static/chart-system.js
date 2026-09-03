@@ -590,7 +590,7 @@
       .style('--dpp-mark-color', COLORS.accent)
       .attr('fill', 'var(--dpp-mark-color)')
       .attr('fill-opacity', 0.78)
-      .attr('stroke', COLORS.surface)
+      .attr('stroke', COLORS.accent)
       .attr('stroke-width', 2);
     ctx.plot
       .append('text')

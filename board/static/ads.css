@@ -311,6 +311,13 @@ main {
   font-size: 14px;
 }
 
+.ads-action-body summary,
+.ads-provenance > summary {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
 .ads-action-body ol {
   margin: 7px 0;
   padding-left: 20px;
