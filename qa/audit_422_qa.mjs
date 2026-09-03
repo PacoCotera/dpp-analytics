@@ -219,6 +219,10 @@ for (const [engineName, engine] of engines) {
       for (const profile of profiles) {
         await applyProfile(page, profile);
         const catalog = await page.evaluate(() => {
+          const disclosure = document.querySelector(
+            ".catalog-reference-disclosure",
+          );
+          if (disclosure) disclosure.open = true;
           const targets = [
             ...document.querySelectorAll(
               "#portfolio a.analysis-link, #portfolio a.analysis-open",
