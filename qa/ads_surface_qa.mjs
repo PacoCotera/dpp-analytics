@@ -923,6 +923,23 @@ try {
       opportunityButtonHeight: document
         .querySelector("[data-query-demand]")
         .getBoundingClientRect().height,
+      opportunitySectionsSequential: (() => {
+        const card = document.querySelector("[data-query-opportunity]");
+        const cardRect = card.getBoundingClientRect();
+        const sections = [
+          ".ads-query-card__identity",
+          ".ads-query-card__decision",
+          ".ads-query-card__evidence",
+          ".ads-query-card__action",
+          ".ads-query-card__paid",
+        ].map((selector) => card.querySelector(selector).getBoundingClientRect());
+        return sections.every(
+          (rect, index) =>
+            rect.left >= cardRect.left - 1 &&
+            rect.right <= cardRect.right + 1 &&
+            (index === 0 || sections[index - 1].bottom <= rect.top + 1),
+        );
+      })(),
     }));
     check(
       "Mobile demand keeps contained bounded semantic records",
@@ -937,7 +954,8 @@ try {
       "Mobile search decision is early, contained and touch-reachable",
       mobile.opportunityCards === 1 &&
         mobile.opportunityTop <= 760 &&
-        mobile.opportunityButtonHeight >= 44,
+        mobile.opportunityButtonHeight >= 44 &&
+        mobile.opportunitySectionsSequential,
       JSON.stringify(mobile),
     );
     await mobilePage.screenshot({
