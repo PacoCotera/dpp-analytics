@@ -225,7 +225,7 @@ const searchOpportunity = {
   diagnosis:
     "ASIN clicks per impression are below 75% of the Amazon-wide query rate.",
   review:
-    "Review title, main image, price and delivery promise for this query.",
+    "Confirm query-product relevance first. If it fits, review title, main image, price and delivery promise.",
   confidence: { state: "HIGH", label: "High evidence" },
   scenario: {
     metric: "additional_purchases",
