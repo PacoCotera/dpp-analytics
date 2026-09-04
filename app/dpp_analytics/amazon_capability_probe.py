@@ -31,6 +31,10 @@ REPORT_POLL_SECONDS = int(os.getenv("AMAZON_SOURCE_PROBE_REPORT_POLL_SECONDS", "
 ADS_REPORT_TIMEOUT_SECONDS = int(
     os.getenv("AMAZON_SOURCE_PROBE_ADS_REPORT_TIMEOUT_SECONDS", "1800")
 )
+REPORT_CREATE_BURST = int(os.getenv("AMAZON_SOURCE_PROBE_REPORT_CREATE_BURST", "15"))
+REPORT_CREATE_COOLDOWN_SECONDS = int(
+    os.getenv("AMAZON_SOURCE_PROBE_REPORT_CREATE_COOLDOWN_SECONDS", "65")
+)
 
 
 def _progress(event: str, **details: Any) -> None:
@@ -65,6 +69,8 @@ class ReportSpec:
     asin_option: str | None = None
     extra_options: tuple[tuple[str, str], ...] = ()
     prefer_recent: bool = False
+    option_start: str | None = None
+    option_end: str | None = None
 
 
 CAPABILITIES: tuple[Capability, ...] = (
@@ -573,7 +579,7 @@ CAPABILITIES: tuple[Capability, ...] = (
         "Candidate discovery for controlled tests",
         "Amazon suggestion only",
         "retain for later",
-        None,
+        "ads_management",
     ),
     Capability(
         "marketing_stream",
@@ -632,8 +638,7 @@ REPORT_SPECS: tuple[ReportSpec, ...] = (
     ReportSpec(
         "inventory_ledger",
         "GET_LEDGER_DETAIL_VIEW_DATA",
-        "last_30_days",
-        extra_options=(("eventType", ""),),
+        "last_30_days_mature",
     ),
     ReportSpec("reserved_inventory", "GET_RESERVED_INVENTORY_DATA"),
     ReportSpec("inventory_health", "GET_FBA_INVENTORY_PLANNING_DATA"),
@@ -651,24 +656,35 @@ REPORT_SPECS: tuple[ReportSpec, ...] = (
         "referral_fee_preview", "GET_REFERRAL_FEE_PREVIEW_REPORT", prefer_recent=True
     ),
     ReportSpec(
-        "storage_fees",
-        "GET_FBA_STORAGE_FEE_CHARGES_DATA",
-        "last_closed_month",
-        prefer_recent=True,
+        "storage_fees", "GET_FBA_STORAGE_FEE_CHARGES_DATA", prefer_recent=True
     ),
     ReportSpec(
-        "fba_returns", "GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA", "last_60_days"
+        "fba_returns",
+        "GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA",
+        "last_30_days_mature",
     ),
-    ReportSpec("fba_reimbursements", "GET_FBA_REIMBURSEMENTS_DATA", "last_60_days"),
+    ReportSpec(
+        "fba_reimbursements", "GET_FBA_REIMBURSEMENTS_DATA", "last_closed_month"
+    ),
     ReportSpec(
         "fba_replacements",
         "GET_FBA_FULFILLMENT_CUSTOMER_SHIPMENT_REPLACEMENT_DATA",
-        "last_60_days",
+        "last_30_days_mature",
     ),
     ReportSpec(
-        "promotion_performance", "GET_PROMOTION_PERFORMANCE_REPORT", "last_90_days"
+        "promotion_performance",
+        "GET_PROMOTION_PERFORMANCE_REPORT",
+        "last_90_days",
+        option_start="promotionStartDateFrom",
+        option_end="promotionStartDateTo",
     ),
-    ReportSpec("coupon_performance", "GET_COUPON_PERFORMANCE_REPORT", "last_90_days"),
+    ReportSpec(
+        "coupon_performance",
+        "GET_COUPON_PERFORMANCE_REPORT",
+        "last_90_days",
+        option_start="couponStartDateFrom",
+        option_end="couponStartDateTo",
+    ),
 )
 
 
@@ -897,6 +913,9 @@ def _window(spec: ReportSpec, today: dt.date) -> tuple[dt.date, dt.date] | None:
     if spec.window == "last_closed_month":
         end = today.replace(day=1) - dt.timedelta(days=1)
         return end.replace(day=1), end
+    if spec.window == "last_30_days_mature":
+        end = today - dt.timedelta(days=3)
+        return end - dt.timedelta(days=29), end
     days = int(spec.window.removeprefix("last_").removesuffix("_days"))
     end = today - dt.timedelta(days=1)
     return end - dt.timedelta(days=days - 1), end
@@ -908,10 +927,13 @@ def report_request_body(spec: ReportSpec, asin: str, today: dt.date) -> dict[str
         "marketplaceIds": [settings.marketplace_id],
     }
     period = _window(spec, today)
-    if period:
+    if period and not (spec.option_start and spec.option_end):
         body["dataStartTime"] = f"{period[0].isoformat()}T00:00:00Z"
         body["dataEndTime"] = f"{period[1].isoformat()}T23:59:59Z"
     options = dict(spec.extra_options)
+    if period and spec.option_start and spec.option_end:
+        options[spec.option_start] = f"{period[0].isoformat()}T00:00:00Z"
+        options[spec.option_end] = f"{period[1].isoformat()}T23:59:59Z"
     if spec.report_period:
         options["reportPeriod"] = spec.report_period
     if spec.asin_option:
@@ -1029,19 +1051,56 @@ def _inline_spapi(
     results["data_kiosk_sales_traffic"] = _attempt(kiosk)
 
     def catalog() -> dict[str, Any]:
-        payload = client.get(
-            f"/catalog/2022-04-01/items/{sample['asin']}",
-            params={
-                "marketplaceIds": settings.marketplace_id,
-                "includedData": "attributes,classifications,dimensions,identifiers,images,productTypes,relationships,salesRanks,summaries,vendorDetails",
-            },
+        included_data = (
+            "attributes",
+            "classifications",
+            "dimensions",
+            "identifiers",
+            "images",
+            "productTypes",
+            "relationships",
+            "salesRanks",
+            "summaries",
+            "vendorDetails",
         )
+        components: dict[str, dict[str, Any]] = {}
+        paths: set[str] = set()
+        for field in included_data:
+            result = _attempt(
+                lambda field=field: client.get(
+                    f"/catalog/2022-04-01/items/{sample['asin']}",
+                    params={
+                        "marketplaceIds": settings.marketplace_id,
+                        "includedData": field,
+                    },
+                )
+            )
+            if "error" in result:
+                components[field] = result
+            else:
+                component_paths = field_paths(result)
+                paths.update(component_paths)
+                components[field] = {
+                    "state": "authorized_populated"
+                    if result
+                    else "authorized_empty",
+                    "authorized": True,
+                    "field_paths": component_paths,
+                }
+        successful = [
+            component
+            for component in components.values()
+            if component.get("authorized") is True
+        ]
         return {
-            "state": "authorized_populated",
-            "authorized": True,
-            "sample_count": 1,
-            "field_paths": field_paths(payload),
-            "populated": bool(payload),
+            "state": "authorized_populated"
+            if len(successful) == len(components)
+            else "partial",
+            "authorized": bool(successful),
+            "sample_count": 1 if successful else 0,
+            "components": components,
+            "field_paths": sorted(paths),
+            "populated": bool(successful),
         }
 
     results["catalog_full"] = _attempt(catalog)
@@ -1185,7 +1244,7 @@ def _probe_spapi_reports(
 ) -> dict[str, dict[str, Any]]:
     pending: dict[str, tuple[ReportSpec, str]] = {}
     results: dict[str, dict[str, Any]] = {}
-    for spec in REPORT_SPECS:
+    for index, spec in enumerate(REPORT_SPECS):
         requested = _attempt(
             lambda spec=spec: _request_report(client, spec, asin, today)
         )
@@ -1200,7 +1259,11 @@ def _probe_spapi_reports(
                 source=spec.key,
                 state=requested.get("state"),
             )
-        time.sleep(1)
+        if index + 1 >= REPORT_CREATE_BURST and index + 1 < len(REPORT_SPECS):
+            _progress("spapi_report_rate_limit_wait", after_source=spec.key)
+            time.sleep(REPORT_CREATE_COOLDOWN_SECONDS)
+        else:
+            time.sleep(1)
 
     deadline = time.monotonic() + REPORT_TIMEOUT_SECONDS
     while pending and time.monotonic() < deadline:
@@ -1278,6 +1341,7 @@ def _ads_json_call(
     path: str,
     *,
     media_type: str = "application/json",
+    accept_media_type: str | None = None,
     body: dict[str, Any] | None = None,
     params: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], Any]:
@@ -1291,7 +1355,7 @@ def _ads_json_call(
         f"{client.base}{path}",
         scope,
         content_type=media_type,
-        accept=media_type,
+        accept=accept_media_type or media_type,
         **kwargs,
     )
     if response.status_code >= 400:
@@ -1403,6 +1467,44 @@ def _probe_ads_management(
             }
         ),
     }
+
+    product_ads = _first_list(entity_payloads.get("product_ads") or {})
+    advertised_asin = next(
+        (
+            str(row.get("asin"))
+            for row in product_ads
+            if isinstance(row, dict) and row.get("asin")
+        ),
+        None,
+    )
+    if advertised_asin:
+        results["ads_product_recommendations"] = _attempt(
+            lambda: (
+                {
+                    "state": "authorized_populated"
+                    if (
+                        summary := _ads_json_call(
+                            client,
+                            scope,
+                            "post",
+                            "/sp/targets/products/recommendations",
+                            media_type="application/vnd.spproductrecommendation.v3+json",
+                            accept_media_type="application/vnd.spproductrecommendationresponse.asins.v3+json",
+                            body={"adAsins": [advertised_asin], "count": 20},
+                        )[0]
+                    )["sample_count"]
+                    else "authorized_empty",
+                    "authorized": True,
+                    **summary,
+                }
+            )
+        )
+    else:
+        results["ads_product_recommendations"] = {
+            "state": "not_sampled",
+            "authorized": None,
+            "error": "No advertised ASIN was returned for a bounded probe",
+        }
 
     negative_calls = (
         (
