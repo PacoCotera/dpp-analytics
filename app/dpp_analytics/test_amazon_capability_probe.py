@@ -108,7 +108,7 @@ class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
     @patch("dpp_analytics.amazon_capability_probe._progress")
     @patch("dpp_analytics.amazon_capability_probe.time.sleep")
     @patch("dpp_analytics.amazon_capability_probe._request_report")
-    def test_spapi_report_cooldown_occurs_once_per_complete_burst(
+    def test_spapi_report_cooldown_respects_post_burst_restore_rate(
         self, request_report, sleep, _progress
     ) -> None:
         request_report.return_value = {
@@ -128,8 +128,8 @@ class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
         ):
             _probe_spapi_reports(object(), "asin", dt.date(2026, 9, 4))
         durations = [entry.args[0] for entry in sleep.call_args_list]
-        self.assertEqual(durations.count(65), 2)
-        self.assertEqual(durations.count(1), 29)
+        self.assertEqual(durations.count(65), 16)
+        self.assertEqual(durations.count(1), 15)
 
     @patch("dpp_analytics.amazon_capability_probe._progress")
     def test_ads_reports_are_requested_before_polling_and_complete_independently(
