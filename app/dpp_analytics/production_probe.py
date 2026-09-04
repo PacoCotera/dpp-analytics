@@ -235,6 +235,83 @@ def _finance_shape(cur) -> dict[str, object]:
     }
 
 
+def _finance_item_evidence(cur) -> dict[str, object]:
+    """Report structural coverage without exposing identifiers or asserting economics."""
+    cur.execute(
+        """
+        WITH current_raw AS (
+            SELECT
+                ft.transaction_id,
+                CASE WHEN jsonb_typeof(payload.payload->'items')='array'
+                     THEN jsonb_array_length(payload.payload->'items') ELSE 0 END AS item_count
+            FROM core.financial_transaction ft
+            LEFT JOIN raw.api_payload payload ON payload.id=ft.source_payload_id
+        )
+        SELECT
+            count(*)::bigint AS current_transactions,
+            count(*) FILTER (WHERE item_count > 0)::bigint AS raw_transactions_with_items,
+            COALESCE(sum(item_count),0)::bigint AS raw_item_rows,
+            (SELECT count(*) FROM core.financial_transaction_item)::bigint
+                AS normalized_item_rows,
+            (SELECT count(DISTINCT transaction_id)
+             FROM core.financial_transaction_item)::bigint
+                AS normalized_transactions_with_items
+        FROM current_raw
+        """
+    )
+    coverage = cur.fetchone() or {}
+
+    cur.execute(
+        """
+        SELECT identity_state, count(*)::bigint AS item_count
+        FROM mart.finance_transaction_item_identity
+        GROUP BY identity_state
+        ORDER BY identity_state
+        """
+    )
+    identity_states = {
+        row["identity_state"]: int(row["item_count"] or 0) for row in cur.fetchall()
+    }
+
+    cur.execute(
+        """
+        SELECT
+            count(*)::bigint AS context_rows,
+            count(*) FILTER (WHERE seller_sku IS NOT NULL)::bigint AS contexts_with_sku,
+            count(*) FILTER (WHERE asin IS NOT NULL)::bigint AS contexts_with_asin,
+            count(*) FILTER (
+                WHERE seller_sku IS NOT NULL AND asin IS NOT NULL
+            )::bigint AS contexts_with_sku_and_asin,
+            (SELECT count(*) FROM core.financial_transaction_identifier)::bigint
+                AS transaction_identifier_rows,
+            (SELECT count(*) FROM core.financial_transaction_item_identifier)::bigint
+                AS item_identifier_rows,
+            (SELECT count(*) FROM mart.finance_item_breakdown_flat)::bigint
+                AS item_breakdown_rows,
+            (SELECT count(*) FROM mart.finance_item_leaf_breakdown)::bigint
+                AS item_leaf_breakdown_rows
+        FROM core.financial_transaction_item_context
+        """
+    )
+    detail = cur.fetchone() or {}
+
+    integer_keys = (
+        "current_transactions",
+        "raw_transactions_with_items",
+        "raw_item_rows",
+        "normalized_item_rows",
+        "normalized_transactions_with_items",
+    )
+    result = {key: int(coverage.get(key) or 0) for key in integer_keys}
+    result.update({key: int(value or 0) for key, value in detail.items()})
+    result["identity_states"] = identity_states
+    result["raw_normalized_item_delta"] = (
+        result["raw_item_rows"] - result["normalized_item_rows"]
+    )
+    result["backfill_complete"] = result["raw_normalized_item_delta"] == 0
+    return result
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -304,6 +381,7 @@ def _warehouse_probe() -> dict[str, object]:
             for row in cur.fetchall()
         ]
         finance_shape = _finance_shape(cur)
+        finance_item_evidence = _finance_item_evidence(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -348,6 +426,7 @@ def _warehouse_probe() -> dict[str, object]:
         "latest_data_kiosk_run": latest_kiosk_run,
         "finance_types": finance_types,
         "finance_shape": finance_shape,
+        "finance_item_evidence": finance_item_evidence,
     }
 
 
