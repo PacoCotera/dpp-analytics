@@ -2,12 +2,11 @@ name: Amazon Source Readiness
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/amazon-source-readiness.yml'
-      - 'app/dpp_analytics/amazon_capability_probe.py'
+  workflow_run:
+    workflows:
+      - Deploy DPP Analytics
+    types:
+      - completed
 
 permissions:
   contents: read
@@ -19,16 +18,21 @@ concurrency:
 
 jobs:
   probe:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, linux, x64, dpp-analytics]
     timeout-minutes: 120
+    env:
+      PROBE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROBE_SHA }}
 
       - name: Build isolated probe image
         run: |
           set -euo pipefail
-          image="dpp-amazon-source-readiness:${GITHUB_SHA}"
+          image="dpp-amazon-source-readiness:${PROBE_SHA}"
           sudo docker build -t "$image" app
 
       - name: Run read-only production capability probes
@@ -36,14 +40,14 @@ jobs:
         run: |
           set -uo pipefail
           output_dir="/tmp/dpp-amazon-source-readiness-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          image="dpp-amazon-source-readiness:${GITHUB_SHA}"
+          image="dpp-amazon-source-readiness:${PROBE_SHA}"
           sudo install -d -m 0777 "$output_dir"
           set +e
           timeout --signal=TERM --kill-after=30s 100m \
             sudo docker run --rm \
               --network container:dpp-worker \
               --env-file /etc/dpp-analytics/env \
-              -e GITHUB_SHA="${GITHUB_SHA}" \
+              -e GITHUB_SHA="${PROBE_SHA}" \
               -e AMAZON_SOURCE_PROBE_REPORT_TIMEOUT_SECONDS=1800 \
               -e AMAZON_SOURCE_PROBE_ADS_REPORT_TIMEOUT_SECONDS=1800 \
               -e AMAZON_SOURCE_PROBE_REPORT_POLL_SECONDS=10 \
@@ -64,7 +68,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: amazon-source-readiness-${{ github.sha }}
+          name: amazon-source-readiness-${{ env.PROBE_SHA }}
           path: |
             ${{ steps.probe.outputs.output_dir }}/amazon-source-readiness.json
             ${{ steps.probe.outputs.output_dir }}/amazon-source-readiness.md
@@ -119,7 +123,7 @@ jobs:
       - name: Remove isolated probe image
         if: always()
         run: |
-          sudo docker image rm "dpp-amazon-source-readiness:${GITHUB_SHA}" >/dev/null 2>&1 || true
+          sudo docker image rm "dpp-amazon-source-readiness:${PROBE_SHA}" >/dev/null 2>&1 || true
 
       - name: Enforce harness completion
         if: always()
