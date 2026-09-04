@@ -28,6 +28,17 @@ REPORT_TIMEOUT_SECONDS = int(
     os.getenv("AMAZON_SOURCE_PROBE_REPORT_TIMEOUT_SECONDS", "3600")
 )
 REPORT_POLL_SECONDS = int(os.getenv("AMAZON_SOURCE_PROBE_REPORT_POLL_SECONDS", "10"))
+ADS_REPORT_TIMEOUT_SECONDS = int(
+    os.getenv("AMAZON_SOURCE_PROBE_ADS_REPORT_TIMEOUT_SECONDS", "1800")
+)
+
+
+def _progress(event: str, **details: Any) -> None:
+    """Emit identifier-free progress so a slow production probe is diagnosable."""
+    print(
+        json.dumps({"probe_progress": event, **details}, sort_keys=True, default=str),
+        flush=True,
+    )
 
 
 @dataclass(frozen=True)
@@ -1181,8 +1192,14 @@ def _probe_spapi_reports(
         report_id = requested.get("reportId")
         if report_id:
             pending[spec.key] = (spec, str(report_id))
+            _progress("spapi_report_requested", source=spec.key)
         else:
             results[spec.key] = requested
+            _progress(
+                "spapi_report_finished",
+                source=spec.key,
+                state=requested.get("state"),
+            )
         time.sleep(1)
 
     deadline = time.monotonic() + REPORT_TIMEOUT_SECONDS
@@ -1234,6 +1251,13 @@ def _probe_spapi_reports(
                 completed.append(key)
         for key in completed:
             pending.pop(key, None)
+            result = results[key]
+            _progress(
+                "spapi_report_finished",
+                source=key,
+                state=result.get("state"),
+                sample_count=result.get("sample_count"),
+            )
         if pending:
             time.sleep(REPORT_POLL_SECONDS)
 
@@ -1243,6 +1267,7 @@ def _probe_spapi_reports(
             "authorized": True,
             "error": f"Report remained pending after {REPORT_TIMEOUT_SECONDS}s",
         }
+        _progress("spapi_report_finished", source=key, state="timeout")
     return results
 
 
@@ -1558,10 +1583,11 @@ def _probe_ads_reports(
 ) -> dict[str, dict[str, Any]]:
     start = today - dt.timedelta(days=10)
     end = today - dt.timedelta(days=4)
+    pending: dict[str, str] = {}
     results: dict[str, dict[str, Any]] = {}
     for key, configuration in ADS_REPORT_CONFIGS.items():
 
-        def run(key=key, configuration=configuration) -> dict[str, Any]:
+        def request(key=key, configuration=configuration) -> dict[str, Any]:
             payload = {
                 "name": f"dpp-capability-{key}-{today.isoformat()}",
                 "startDate": start.isoformat(),
@@ -1591,22 +1617,94 @@ def _probe_ads_reports(
                 raise RuntimeError(
                     f"Amazon Ads createReport {key} returned no reusable report ID"
                 )
-            status = client.wait_for_report(scope, str(report_id))
-            location = status.get("url") or status.get("location")
-            if not location:
-                raise RuntimeError(
-                    f"Amazon Ads report {key} completed without a download location"
-                )
-            rows = client.download_report(str(location))
-            return {
-                "state": "authorized_populated" if rows else "authorized_empty",
-                "authorized": True,
-                "sample_count": len(rows),
-                "field_paths": field_paths(rows),
-                "populated": bool(rows),
-            }
+            return {"report_id": str(report_id)}
 
-        results[key] = _attempt(run)
+        requested = _attempt(request)
+        report_id = requested.get("report_id")
+        if report_id:
+            pending[key] = str(report_id)
+            _progress("ads_report_requested", source=key)
+        else:
+            results[key] = requested
+            _progress(
+                "ads_report_finished", source=key, state=requested.get("state")
+            )
+
+    deadline = time.monotonic() + ADS_REPORT_TIMEOUT_SECONDS
+    while pending and time.monotonic() < deadline:
+        completed: list[str] = []
+        for key, report_id in list(pending.items()):
+
+            def status(report_id=report_id) -> dict[str, Any]:
+                response = client.authenticated_request(
+                    "get",
+                    f"{client.base}/reporting/reports/{report_id}",
+                    scope,
+                    accept="application/vnd.getasyncreportresponse.v3+json",
+                )
+                response.raise_for_status()
+                return response.json() if response.content else {}
+
+            status_result = _attempt(status)
+            if "error" in status_result:
+                results[key] = status_result
+                completed.append(key)
+                continue
+            vendor_status = str(status_result.get("status") or "").upper()
+            if vendor_status in {"COMPLETED", "SUCCESS"}:
+                location = status_result.get("url") or status_result.get("location")
+                if not location:
+                    results[key] = {
+                        "state": "error",
+                        "authorized": True,
+                        "error": "Completed Ads report had no download location",
+                    }
+                else:
+                    downloaded = _attempt(
+                        lambda location=str(location): client.download_report(location)
+                    )
+                    if "error" in downloaded:
+                        results[key] = {**downloaded, "authorized": True}
+                    else:
+                        rows = downloaded
+                        results[key] = {
+                            "state": "authorized_populated"
+                            if rows
+                            else "authorized_empty",
+                            "authorized": True,
+                            "sample_count": len(rows),
+                            "field_paths": field_paths(rows),
+                            "populated": bool(rows),
+                        }
+                completed.append(key)
+            elif vendor_status in {"FAILURE", "FAILED", "CANCELLED"}:
+                results[key] = {
+                    "state": "authorized_report_unavailable",
+                    "authorized": True,
+                    "vendor_status": vendor_status,
+                    "error": "Amazon accepted the report request but did not produce a data document for this sample window",
+                }
+                completed.append(key)
+
+        for key in completed:
+            pending.pop(key, None)
+            result = results[key]
+            _progress(
+                "ads_report_finished",
+                source=key,
+                state=result.get("state"),
+                sample_count=result.get("sample_count"),
+            )
+        if pending:
+            time.sleep(REPORT_POLL_SECONDS)
+
+    for key in pending:
+        results[key] = {
+            "state": "timeout",
+            "authorized": True,
+            "error": f"Ads report remained pending after {ADS_REPORT_TIMEOUT_SECONDS}s",
+        }
+        _progress("ads_report_finished", source=key, state="timeout")
     return results
 
 
@@ -1687,20 +1785,30 @@ def probe_all() -> dict[str, Any]:
     today = dt.datetime.now(BUSINESS_TIMEZONE).date()
     sample = _sample_product()
     observed: dict[str, dict[str, Any]] = {}
+    _progress("family_started", family="warehouse")
     warehouse = _attempt(_warehouse_evidence)
     if "error" not in warehouse:
         for key, evidence in warehouse.items():
             observed[key] = _combine(observed.get(key, {}), evidence)
+    _progress(
+        "family_finished",
+        family="warehouse",
+        state="error" if "error" in warehouse else "completed",
+    )
 
     if settings.spapi_credentials_present:
         client = SpApiClient()
         try:
+            _progress("family_started", family="spapi_inline")
             for key, evidence in _inline_spapi(client, sample).items():
                 observed[key] = _combine(observed.get(key, {}), evidence)
+            _progress("family_finished", family="spapi_inline", state="completed")
+            _progress("family_started", family="spapi_reports")
             for key, evidence in _probe_spapi_reports(
                 client, str(sample["asin"]), today
             ).items():
                 observed[key] = _combine(observed.get(key, {}), evidence)
+            _progress("family_finished", family="spapi_reports", state="completed")
         finally:
             client.close()
     else:
@@ -1713,15 +1821,22 @@ def probe_all() -> dict[str, Any]:
     if settings.ads_credentials_present:
         ads = AmazonAdsClient()
         try:
+            _progress("family_started", family="ads_scope")
             scope_result = _attempt(lambda: {"scope": _ads_scope(ads)})
             if scope_result.get("scope"):
                 (scope, profile_count) = scope_result["scope"]
+                _progress("family_finished", family="ads_scope", state="completed")
+                _progress("family_started", family="ads_management")
                 for key, evidence in _probe_ads_management(ads, scope).items():
                     observed[key] = _combine(observed.get(key, {}), evidence)
+                _progress("family_finished", family="ads_management", state="completed")
+                _progress("family_started", family="ads_reports")
                 for key, evidence in _probe_ads_reports(ads, scope, today).items():
                     observed[key] = _combine(observed.get(key, {}), evidence)
+                _progress("family_finished", family="ads_reports", state="completed")
             else:
                 profile_count = 0
+                _progress("family_finished", family="ads_scope", state="error")
                 for cap in CAPABILITIES:
                     if cap.probe in {"ads_management", "ads_report"}:
                         observed.setdefault(cap.key, scope_result)

@@ -9,6 +9,7 @@ from .amazon_capability_probe import (
     CAPABILITIES,
     REPORT_SPECS,
     ReportSpec,
+    _probe_ads_reports,
     _safe_error,
     field_paths,
     last_completed_week,
@@ -48,6 +49,62 @@ class AmazonCapabilityManifestTests(unittest.TestCase):
 
 
 class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
+    @patch("dpp_analytics.amazon_capability_probe._progress")
+    def test_ads_reports_are_requested_before_polling_and_complete_independently(
+        self, _progress,
+    ) -> None:
+        class Response:
+            status_code = 200
+            content = b"{}"
+
+            def __init__(self, payload) -> None:
+                self.payload = payload
+
+            def json(self):
+                return self.payload
+
+            def raise_for_status(self) -> None:
+                return None
+
+        class Client:
+            base = "https://ads.example"
+
+            def __init__(self) -> None:
+                self.calls = []
+                self.report_count = 0
+
+            def authenticated_request(self, method, _url, _scope, **_kwargs):
+                self.calls.append(method)
+                if method == "post":
+                    self.report_count += 1
+                    return Response({"reportId": f"report-{self.report_count}"})
+                self.assert_all_requested()
+                report_number = int(_url.rsplit("-", 1)[-1])
+                if report_number == 2:
+                    return Response({"status": "FAILED"})
+                return Response(
+                    {"status": "COMPLETED", "url": f"https://report/{report_number}"}
+                )
+
+            def assert_all_requested(self) -> None:
+                if self.report_count != len(ADS_REPORT_CONFIGS):
+                    raise AssertionError("Ads report polling began before all requests")
+
+            def download_report(self, _location):
+                return [{"campaignId": "redacted"}]
+
+        client = Client()
+        with patch("dpp_analytics.amazon_capability_probe.REPORT_POLL_SECONDS", 0):
+            result = _probe_ads_reports(client, "scope", dt.date(2026, 9, 4))
+
+        self.assertEqual(len(result), len(ADS_REPORT_CONFIGS))
+        self.assertEqual(result["ads_product_extended"]["state"], "authorized_populated")
+        self.assertEqual(
+            result["ads_placement"]["state"], "authorized_report_unavailable"
+        )
+        first_get = client.calls.index("get")
+        self.assertEqual(first_get, len(ADS_REPORT_CONFIGS))
+
     def test_field_paths_return_shape_without_values(self) -> None:
         paths = field_paths(
             {"orders": [{"orderId": "123", "items": [{"asin": "B012345678"}]}]}
