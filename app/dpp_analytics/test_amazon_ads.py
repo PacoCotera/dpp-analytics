@@ -9,9 +9,13 @@ from unittest.mock import MagicMock, patch
 from .amazon_ads import (
     AmazonAdsClient,
     INITIAL_HISTORY_CURSOR,
+    REQUIRED_GRAINS,
     _report_progress_callback,
     _target_key,
     _write_extended_report_fields,
+    _write_ad_group_rows,
+    _write_placement_rows,
+    _write_purchased_product_rows,
     _write_search_term_rows,
     _write_target_rows,
     ads_initial_history_complete,
@@ -137,6 +141,25 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
         self.assertIn("advertisedSku", columns)
         self.assertIn("advertisedAsin", columns)
         self.assertIn("salesOtherSku7d", columns)
+
+    @patch.object(AmazonAdsClient, "headers", return_value={})
+    def test_independent_granular_reports_use_proven_contracts(self, _headers) -> None:
+        expected = {
+            "ad_group": ("spCampaigns", "adGroupId"),
+            "placement": ("spCampaigns", "placementClassification"),
+            "purchased_product": ("spPurchasedProduct", "purchasedAsin"),
+        }
+        for grain, (report_type, required_column) in expected.items():
+            with self.subTest(grain=grain):
+                self.ads.client.post.return_value = _response(
+                    202, {"reportId": f"{grain}-report"}
+                )
+                self.assertEqual(self._create(grain), f"{grain}-report")
+                config = self.ads.client.post.call_args.kwargs["json"]["configuration"]
+                self.assertEqual(config["reportTypeId"], report_type)
+                self.assertIn("date", config["columns"])
+                self.assertIn(required_column, config["columns"])
+        self.assertTrue(expected.keys() <= set(REQUIRED_GRAINS))
 
     def test_extended_fields_preserve_unavailable_numbers_as_null(self) -> None:
         cursor = MagicMock()
@@ -305,6 +328,74 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
             sql,
         )
         self.assertNotIn("ON CONFLICT(account_id,business_date,ad_product", sql)
+
+    def test_granular_writers_preserve_independent_primary_grains(self) -> None:
+        cases = (
+            (
+                _write_ad_group_rows,
+                {
+                    "date": "2026-08-01",
+                    "campaignId": "campaign-1",
+                    "adGroupId": "ad-group-1",
+                },
+                "ON CONFLICT(account_id,business_date,campaign_id,ad_group_id)",
+            ),
+            (
+                _write_placement_rows,
+                {
+                    "date": "2026-08-01",
+                    "campaignId": "campaign-1",
+                    "placementClassification": "PLACEMENT_TOP",
+                },
+                "ON CONFLICT(account_id,business_date,campaign_id,placement)",
+            ),
+            (
+                _write_purchased_product_rows,
+                {
+                    "date": "2026-08-01",
+                    "campaignId": "campaign-1",
+                    "purchasedAsin": "B000000001",
+                },
+                "ON CONFLICT(account_id,business_date,campaign_id,ad_group_id,target_id,advertised_sku,advertised_asin,purchased_asin)",
+            ),
+        )
+        for writer, row, conflict_key in cases:
+            with self.subTest(writer=writer.__name__):
+                self.assertIn(conflict_key, self._writer_sql(writer, row))
+
+    def test_granular_writer_bindings_match_sql_contracts(self) -> None:
+        cases = (
+            (
+                _write_ad_group_rows,
+                {"date": "2026-08-01", "campaignId": "c1", "adGroupId": "g1"},
+            ),
+            (
+                _write_placement_rows,
+                {
+                    "date": "2026-08-01",
+                    "campaignId": "c1",
+                    "placementClassification": "PLACEMENT_TOP",
+                },
+            ),
+            (
+                _write_purchased_product_rows,
+                {
+                    "date": "2026-08-01",
+                    "campaignId": "c1",
+                    "purchasedAsin": "B000000001",
+                },
+            ),
+        )
+        for writer, row in cases:
+            with self.subTest(writer=writer.__name__), patch(
+                "dpp_analytics.amazon_ads.db.connect"
+            ) as connect:
+                connection = connect.return_value.__enter__.return_value
+                cursor = connection.cursor.return_value.__enter__.return_value
+                writer("profile-1", [row], "report-1")
+                for call in cursor.execute.call_args_list:
+                    sql, parameters = call.args
+                    self.assertEqual(sql.count("%s"), len(parameters))
 
     @patch("dpp_analytics.amazon_ads.date")
     @patch("dpp_analytics.amazon_ads.db.get_cursor")
