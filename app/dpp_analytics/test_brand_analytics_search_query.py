@@ -14,6 +14,9 @@ from .brand_analytics_search_query import (
     normalize_query,
     report_rows,
     _wait_for_report,
+    completed_week_periods,
+    WEEKLY_REPORT_PERIOD,
+    ingest_scheduled_search_query_performance,
 )
 from .settings import settings
 
@@ -26,6 +29,15 @@ class BrandAnalyticsSearchQueryTests(unittest.TestCase):
                 (date(2026, 8, 1), date(2026, 8, 31)),
                 (date(2026, 7, 1), date(2026, 7, 31)),
                 (date(2026, 6, 1), date(2026, 6, 30)),
+            ],
+        )
+
+    def test_completed_weeks_are_sunday_through_saturday(self) -> None:
+        self.assertEqual(
+            completed_week_periods(date(2026, 9, 4), date(2026, 8, 16)),
+            [
+                (date(2026, 8, 23), date(2026, 8, 29)),
+                (date(2026, 8, 16), date(2026, 8, 22)),
             ],
         )
 
@@ -55,6 +67,23 @@ class BrandAnalyticsSearchQueryTests(unittest.TestCase):
             {"reportPeriod": "MONTH", "asin": "B000000001 B000000002"},
         )
         self.assertEqual(kwargs["json_body"]["marketplaceIds"], [settings.marketplace_id])
+
+    def test_create_report_uses_documented_week_options(self) -> None:
+        client = MagicMock()
+        client.post.return_value = {"payload": {"reportId": "r-week"}}
+
+        result = _create_report(
+            client,
+            ["B000000001"],
+            date(2026, 8, 23),
+            date(2026, 8, 29),
+            WEEKLY_REPORT_PERIOD,
+        )
+
+        self.assertEqual(result, "r-week")
+        options = client.post.call_args.kwargs["json_body"]["reportOptions"]
+        self.assertEqual(options["reportPeriod"], "WEEK")
+        self.assertEqual(options["asin"], "B000000001")
 
     def test_report_rows_accepts_direct_and_spapi_wrapped_payloads(self) -> None:
         rows = [{"asin": "B000000001"}]
@@ -116,6 +145,46 @@ class BrandAnalyticsSearchQueryTests(unittest.TestCase):
         self.assertEqual(row["total_median_click_price"], Decimal("249.5"))
         self.assertEqual(row["click_total_currency"], "MXN")
         self.assertEqual(row["source_payload_id"], 123)
+
+    def test_weekly_row_preserves_independent_period_grain(self) -> None:
+        mapped = _row_values(
+            {
+                "startDate": "2026-08-23",
+                "endDate": "2026-08-29",
+                "asin": "B000000001",
+                "searchQueryData": {"searchQuery": "Dog Mom"},
+            },
+            123,
+            "report-week",
+            WEEKLY_REPORT_PERIOD,
+        )
+
+        columns, values = mapped or ([], [])
+        row = dict(zip(columns, values, strict=True))
+        self.assertEqual(row["report_period"], "WEEK")
+        self.assertEqual(row["start_date"], "2026-08-23")
+        self.assertEqual(row["end_date"], "2026-08-29")
+
+    @patch(
+        "dpp_analytics.brand_analytics_search_query.search_query_source_backfill_complete",
+        return_value=False,
+    )
+    @patch(
+        "dpp_analytics.brand_analytics_search_query.ingest_weekly_search_query_performance",
+        return_value={"status": "success", "report_period": "WEEK"},
+    )
+    @patch(
+        "dpp_analytics.brand_analytics_search_query.weekly_search_query_backfill_complete",
+        return_value=False,
+    )
+    def test_scheduled_collector_prioritizes_missing_weekly_history(
+        self, _weekly_complete, weekly_ingest, _all_complete
+    ) -> None:
+        result = ingest_scheduled_search_query_performance()
+
+        weekly_ingest.assert_called_once_with()
+        self.assertEqual(result["report_period"], "WEEK")
+        self.assertFalse(result["backfill_complete"])
 
 
 if __name__ == "__main__":
