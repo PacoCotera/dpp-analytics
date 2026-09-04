@@ -850,6 +850,33 @@ def _ads_invalid_traffic_evidence(cur) -> dict[str, object]:
     return result
 
 
+def _brand_search_query_evidence(cur) -> dict[str, object]:
+    cur.execute(
+        """
+        SELECT
+            report_period,count(*)::bigint AS rows,
+            count(DISTINCT (start_date,end_date))::bigint AS periods,
+            count(DISTINCT asin)::bigint AS asins,
+            count(DISTINCT search_query_key)::bigint AS normalized_queries,
+            min(start_date) AS first_period_start,max(end_date) AS through_date
+        FROM brand.search_query_performance
+        GROUP BY report_period
+        ORDER BY report_period
+        """
+    )
+    return {
+        row["report_period"]: {
+            "rows": int(row["rows"] or 0),
+            "periods": int(row["periods"] or 0),
+            "asins": int(row["asins"] or 0),
+            "normalized_queries": int(row["normalized_queries"] or 0),
+            "first_period_start": _json_value(row.get("first_period_start")),
+            "through_date": _json_value(row.get("through_date")),
+        }
+        for row in cur.fetchall()
+    }
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -924,6 +951,7 @@ def _warehouse_probe() -> dict[str, object]:
         ads_spend_reconciliation = _ads_spend_reconciliation_evidence(cur)
         ads_granular_report_evidence = _ads_granular_report_evidence(cur)
         ads_invalid_traffic_evidence = _ads_invalid_traffic_evidence(cur)
+        brand_search_query_evidence = _brand_search_query_evidence(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -973,6 +1001,7 @@ def _warehouse_probe() -> dict[str, object]:
         "ads_spend_reconciliation": ads_spend_reconciliation,
         "ads_granular_report_evidence": ads_granular_report_evidence,
         "ads_invalid_traffic_evidence": ads_invalid_traffic_evidence,
+        "brand_search_query_evidence": brand_search_query_evidence,
     }
 
 
