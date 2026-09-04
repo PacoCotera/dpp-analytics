@@ -67,6 +67,137 @@ def _amazon_order_id(transaction: dict[str, Any]) -> str | None:
     return None
 
 
+def _identifier_rows(value: Any) -> list[tuple[int, str, str]]:
+    """Return every source identifier without assigning business semantics."""
+    return [
+        (ordinal, name, identifier)
+        for ordinal, (name, identifier) in enumerate(_walk_identifiers(value), start=1)
+    ]
+
+
+def _item_rows(transaction: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    items = transaction.get("items")
+    if not isinstance(items, list):
+        return rows
+
+    for item_ordinal, item in enumerate(items, start=1):
+        if not isinstance(item, dict):
+            continue
+        total_amount, currency = _money(item.get("totalAmount"))
+        contexts = item.get("contexts")
+        if not isinstance(contexts, list):
+            contexts = []
+        rows.append(
+            {
+                "item_ordinal": item_ordinal,
+                "description": item.get("description"),
+                "total_amount": total_amount,
+                "currency": currency,
+                "contexts": contexts,
+                "related_identifiers": item.get("relatedIdentifiers") or [],
+                "breakdowns": item.get("breakdowns") or [],
+            }
+        )
+    return rows
+
+
+def _replace_transaction_children(
+    cur: Any,
+    transaction_id: str,
+    transaction: dict[str, Any],
+    raw_id: int,
+) -> None:
+    """Replace latest normalized children; immutable raw payloads remain the audit trail."""
+    cur.execute(
+        "DELETE FROM core.financial_transaction_identifier WHERE transaction_id=%s",
+        (transaction_id,),
+    )
+    for ordinal, name, value in _identifier_rows(
+        transaction.get("relatedIdentifiers") or []
+    ):
+        cur.execute(
+            """
+            INSERT INTO core.financial_transaction_identifier
+                (transaction_id, identifier_ordinal, identifier_name,
+                 identifier_value, source_payload_id)
+            VALUES (%s,%s,%s,%s,%s)
+            """,
+            (transaction_id, ordinal, name, value, raw_id),
+        )
+
+    # Item contexts and identifiers cascade from their parent item. Replacing the
+    # set avoids stale children when Amazon returns a revised transaction.
+    cur.execute(
+        "DELETE FROM core.financial_transaction_item WHERE transaction_id=%s",
+        (transaction_id,),
+    )
+    for item in _item_rows(transaction):
+        item_ordinal = item["item_ordinal"]
+        cur.execute(
+            """
+            INSERT INTO core.financial_transaction_item
+                (transaction_id, item_ordinal, description, total_amount, currency,
+                 contexts, related_identifiers, breakdowns, source_payload_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """,
+            (
+                transaction_id,
+                item_ordinal,
+                item["description"],
+                item["total_amount"],
+                item["currency"],
+                Jsonb(item["contexts"]),
+                Jsonb(item["related_identifiers"]),
+                Jsonb(item["breakdowns"]),
+                raw_id,
+            ),
+        )
+        for context_ordinal, context in enumerate(item["contexts"], start=1):
+            if not isinstance(context, dict):
+                continue
+            cur.execute(
+                """
+                INSERT INTO core.financial_transaction_item_context
+                    (transaction_id, item_ordinal, context_ordinal, context_type,
+                     seller_sku, asin, fulfillment_network, quantity_shipped,
+                     raw_context, source_payload_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                (
+                    transaction_id,
+                    item_ordinal,
+                    context_ordinal,
+                    context.get("contextType"),
+                    context.get("sku"),
+                    context.get("asin"),
+                    context.get("fulfillmentNetwork"),
+                    context.get("quantityShipped"),
+                    Jsonb(context),
+                    raw_id,
+                ),
+            )
+        for identifier_ordinal, name, value in _identifier_rows(
+            item["related_identifiers"]
+        ):
+            cur.execute(
+                """
+                INSERT INTO core.financial_transaction_item_identifier
+                    (transaction_id, item_ordinal, identifier_ordinal,
+                     identifier_name, identifier_value, source_payload_id)
+                VALUES (%s,%s,%s,%s,%s,%s)
+                """,
+                (
+                    transaction_id,
+                    item_ordinal,
+                    identifier_ordinal,
+                    name,
+                    value,
+                    raw_id,
+                ),
+            )
+
+
 def _save_transactions(
     transactions: list[dict[str, Any]],
     *,
@@ -148,6 +279,7 @@ def _save_transactions(
                     raw_id,
                 ),
             )
+            _replace_transaction_children(cur, transaction_id, transaction, raw_id)
             written += 1
         conn.commit()
     return written
