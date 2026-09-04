@@ -8,6 +8,7 @@ from .scheduler import (
     _ads_delay_after_result,
     _ads_traffic_quality_delay_after_result,
     _brand_analytics_delay_after_result,
+    _ingest_scheduled_brand_analytics,
     _initial_ads_due,
     _initial_ads_traffic_quality_due,
     _initial_brand_analytics_due,
@@ -78,10 +79,7 @@ class BackgroundSchedulerTests(unittest.TestCase):
     def test_failed_ads_traffic_run_retries_in_five_minutes(self) -> None:
         self.assertEqual(_ads_traffic_quality_delay_after_result(None), 300)
 
-    @patch(
-        "dpp_analytics.scheduler.search_query_source_backfill_complete",
-        return_value=False,
-    )
+    @patch("dpp_analytics.scheduler._brand_analytics_backfill_complete", return_value=False)
     def test_incomplete_brand_analytics_backfill_is_due_immediately(
         self, _complete
     ) -> None:
@@ -105,6 +103,38 @@ class BackgroundSchedulerTests(unittest.TestCase):
             ),
             settings.brand_analytics_search_query_interval_seconds,
         )
+
+    @patch("dpp_analytics.scheduler._brand_analytics_backfill_complete", return_value=False)
+    @patch("dpp_analytics.scheduler.ingest_search_catalog_performance")
+    @patch("dpp_analytics.scheduler.weekly_search_query_backfill_complete", return_value=False)
+    @patch("dpp_analytics.scheduler.ingest_weekly_search_query_performance")
+    def test_brand_scheduler_prioritizes_weekly_query_history(
+        self, weekly_ingest, _weekly_complete, catalog_ingest, _all_complete
+    ) -> None:
+        weekly_ingest.return_value = {"status": "success"}
+
+        result = _ingest_scheduled_brand_analytics()
+
+        weekly_ingest.assert_called_once_with()
+        catalog_ingest.assert_not_called()
+        self.assertFalse(result["backfill_complete"])
+
+    @patch("dpp_analytics.scheduler._brand_analytics_backfill_complete", return_value=False)
+    @patch("dpp_analytics.scheduler.ingest_search_query_performance")
+    @patch("dpp_analytics.scheduler.search_catalog_backfill_complete", return_value=False)
+    @patch("dpp_analytics.scheduler.ingest_search_catalog_performance")
+    @patch("dpp_analytics.scheduler.weekly_search_query_backfill_complete", return_value=True)
+    def test_brand_scheduler_runs_catalog_before_monthly_query_refresh(
+        self, _weekly_complete, catalog_ingest, _catalog_complete,
+        monthly_ingest, _all_complete,
+    ) -> None:
+        catalog_ingest.return_value = {"status": "success"}
+
+        result = _ingest_scheduled_brand_analytics()
+
+        catalog_ingest.assert_called_once_with()
+        monthly_ingest.assert_not_called()
+        self.assertFalse(result["backfill_complete"])
 
 
 if __name__ == "__main__":
