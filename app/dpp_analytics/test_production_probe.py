@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from decimal import Decimal
 
 from .production_probe import _finance_item_evidence
 
@@ -31,6 +32,17 @@ class _Cursor:
                 "item_identifier_rows": 18,
                 "item_breakdown_rows": 40,
                 "item_leaf_breakdown_rows": 30,
+            }
+        if self.query_number == 9:
+            return {
+                "exact_items": 10,
+                "current_offer_items": 9,
+                "current_owner_items": 8,
+                "historical_or_unmapped_items": 1,
+                "exact_item_amount": 90,
+                "current_offer_amount": 85,
+                "current_owner_amount": 80,
+                "historical_or_unmapped_amount": 5,
             }
         raise AssertionError(f"unexpected fetchone for query {self.query_number}")
 
@@ -82,6 +94,34 @@ class _Cursor:
                     "rows": 8,
                 }
             ]
+        if self.query_number == 7:
+            return [
+                {
+                    "transaction_type": "Shipment",
+                    "transactions": 8,
+                    "transactions_with_items": 8,
+                    "item_rows": 12,
+                    "exact_identity_items": 10,
+                    "unresolved_identity_items": 2,
+                    "transaction_total": 100,
+                    "item_total": 100,
+                    "transaction_without_item_amount": 0,
+                    "exact_identity_item_amount": 90,
+                    "unresolved_identity_item_amount": 10,
+                    "product_allocation_residual": 10,
+                }
+            ]
+        if self.query_number == 8:
+            return [
+                {
+                    "transaction_type": "Shipment",
+                    "breakdown_path": "Sales > Principal",
+                    "identity_state": "MISSING",
+                    "currency": "MXN",
+                    "rows": 2,
+                    "amount": 10,
+                }
+            ]
         raise AssertionError(f"unexpected fetchall for query {self.query_number}")
 
 
@@ -104,6 +144,27 @@ class FinanceItemProductionEvidenceTests(unittest.TestCase):
         )
         self.assertEqual(
             result["identifier_categories"][0]["identifier_name"], "ORDER_ID"
+        )
+        allocation = result["product_allocation_by_transaction_type"][0]
+        self.assertEqual(allocation["exact_identity_item_amount"], "90")
+        self.assertEqual(allocation["product_allocation_residual"], "10")
+        self.assertEqual(
+            Decimal(allocation["transaction_total"]),
+            Decimal(allocation["exact_identity_item_amount"])
+            + Decimal(allocation["product_allocation_residual"]),
+        )
+        self.assertEqual(
+            Decimal(allocation["item_total"]),
+            Decimal(allocation["exact_identity_item_amount"])
+            + Decimal(allocation["unresolved_identity_item_amount"]),
+        )
+        self.assertEqual(
+            result["product_breakdown_identity"][0]["identity_state"], "MISSING"
+        )
+        self.assertEqual(result["current_catalog_identity"]["current_owner_items"], 8)
+        self.assertEqual(
+            result["current_catalog_identity"]["historical_or_unmapped_amount"],
+            "5",
         )
 
 
