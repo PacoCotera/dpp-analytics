@@ -627,6 +627,58 @@ def _ads_granular_report_evidence(cur) -> dict[str, object]:
     return {"fact_grains": facts, "spend_reconciliation": reconciliations}
 
 
+def _ads_invalid_traffic_evidence(cur) -> dict[str, object]:
+    cur.execute(
+        """
+        WITH latest AS (
+            SELECT account_id,max(ingested_at) AS ingested_at
+            FROM mart.ads_gross_invalid_traffic_report
+            GROUP BY account_id
+        )
+        SELECT
+            count(*)::bigint AS retained_reports,
+            COALESCE(sum(report.source_rows),0)::bigint AS retained_source_rows,
+            min(report.window_start) AS first_window_start,
+            max(report.window_end) AS through_date,
+            count(*) FILTER (
+                WHERE report.identity_state='IDENTITY_RECONCILED'
+            )::bigint AS identity_reconciled_reports,
+            count(*) FILTER (
+                WHERE report.identity_state<>'IDENTITY_RECONCILED'
+            )::bigint AS identity_unresolved_reports,
+            COALESCE(sum(report.gross_impressions) FILTER (
+                WHERE report.ingested_at=latest.ingested_at
+            ),0)::bigint AS latest_gross_impressions,
+            COALESCE(sum(report.invalid_impressions) FILTER (
+                WHERE report.ingested_at=latest.ingested_at
+            ),0)::bigint AS latest_invalid_impressions,
+            COALESCE(sum(report.gross_click_throughs) FILTER (
+                WHERE report.ingested_at=latest.ingested_at
+            ),0)::bigint AS latest_gross_click_throughs,
+            COALESCE(sum(report.invalid_click_throughs) FILTER (
+                WHERE report.ingested_at=latest.ingested_at
+            ),0)::bigint AS latest_invalid_click_throughs
+        FROM mart.ads_gross_invalid_traffic_report report
+        JOIN latest USING (account_id)
+        """
+    )
+    row = cur.fetchone() or {}
+    integer_keys = (
+        "retained_reports",
+        "retained_source_rows",
+        "identity_reconciled_reports",
+        "identity_unresolved_reports",
+        "latest_gross_impressions",
+        "latest_invalid_impressions",
+        "latest_gross_click_throughs",
+        "latest_invalid_click_throughs",
+    )
+    result = {key: int(row.get(key) or 0) for key in integer_keys}
+    result["first_window_start"] = _json_value(row.get("first_window_start"))
+    result["through_date"] = _json_value(row.get("through_date"))
+    return result
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -700,6 +752,7 @@ def _warehouse_probe() -> dict[str, object]:
         ads_entity_evidence = _ads_entity_evidence(cur)
         ads_spend_reconciliation = _ads_spend_reconciliation_evidence(cur)
         ads_granular_report_evidence = _ads_granular_report_evidence(cur)
+        ads_invalid_traffic_evidence = _ads_invalid_traffic_evidence(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -748,6 +801,7 @@ def _warehouse_probe() -> dict[str, object]:
         "ads_entity_evidence": ads_entity_evidence,
         "ads_spend_reconciliation": ads_spend_reconciliation,
         "ads_granular_report_evidence": ads_granular_report_evidence,
+        "ads_invalid_traffic_evidence": ads_invalid_traffic_evidence,
     }
 
 

@@ -17,10 +17,13 @@ log = logging.getLogger("dpp.amazon_ads")
 LWA_TOKEN_URL = "https://api.amazon.com/auth/o2/token"
 SOURCE = "amazon_ads"
 JOB = "sponsored_products_reporting_v3"
+TRAFFIC_QUALITY_JOB = "sponsored_products_gross_invalid_v1"
 AD_PRODUCT = "SPONSORED_PRODUCTS"
 ATTRIBUTION_WINDOW = "7d_seller_click"
 REPORT_TRANSPORT = "reporting_v3"
 MAX_BACKFILL_DAYS = 90
+TRAFFIC_QUALITY_BACKFILL_DAYS = 365
+TRAFFIC_QUALITY_THROUGH_CURSOR = "through_date"
 REQUIRED_GRAINS = (
     "campaign",
     "product",
@@ -105,9 +108,10 @@ class AmazonAdsClient:
           "ad_group": {"groupBy":["campaign","adGroup"],"columns":common[:3]+["adGroupId","adGroupName","adStatus"]+common[3:]+["purchases7d","purchasesSameSku7d","sales7d","attributedSalesSameSku7d"],"reportTypeId":"spCampaigns"},
           "placement": {"groupBy":["campaignPlacement"],"columns":common[:3]+["placementClassification"]+common[3:]+["purchases7d","purchasesSameSku7d","sales7d","attributedSalesSameSku7d","campaignBiddingStrategy","campaignBudgetAmount","campaignBudgetType","campaignRuleBasedBudgetAmount","campaignApplicableBudgetRuleId","campaignApplicableBudgetRuleName","topOfSearchImpressionShare"],"reportTypeId":"spCampaigns"},
           "purchased_product": {"groupBy":["asin"],"columns":common[:3]+["adGroupId","keywordId","keyword","keywordType","matchType","advertisedSku","advertisedAsin","purchasedAsin","purchases7d","sales7d","purchasesOtherSku7d","salesOtherSku7d","unitsSoldOtherSku7d"],"reportTypeId":"spPurchasedProduct"},
+          "gross_invalid": {"groupBy":["campaign"],"columns":["campaignName","campaignStatus","impressions","clicks","grossImpressions","invalidImpressions","invalidImpressionRate","grossClickThroughs","invalidClickThroughs","invalidClickThroughRate","startDate","endDate"],"reportTypeId":"spGrossAndInvalids"},
         }
         if grain not in configs: raise ValueError(f"unsupported Ads report grain: {grain}")
-        cfg={"adProduct":AD_PRODUCT,**configs[grain],"timeUnit":"DAILY","format":"GZIP_JSON"}
+        cfg={"adProduct":AD_PRODUCT,**configs[grain],"timeUnit":"SUMMARY" if grain=="gross_invalid" else "DAILY","format":"GZIP_JSON"}
         stamp=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         payload={"name":f"dpp-{grain}-{start}-{end}-{stamp}","startDate":start.isoformat(),"endDate":end.isoformat(),"configuration":cfg}
         deadline=time.monotonic()+settings.ads_report_poll_timeout_seconds
@@ -314,6 +318,46 @@ def _write_purchased_product_rows(scope,rows,report_id):
     return written
 
 
+def _campaign_name_identity(cur, scope, campaign_name):
+    cur.execute(
+        """WITH current_batch AS (
+               SELECT max(snapshot_at) AS snapshot_at
+               FROM ads.entity_snapshot_batch
+               WHERE account_id=%s AND status='COMPLETE'
+           )
+           SELECT current_batch.snapshot_at,
+                  count(snapshot.entity_id)::integer AS candidate_count,
+                  COALESCE(array_agg(snapshot.entity_id ORDER BY snapshot.entity_id)
+                           FILTER (WHERE snapshot.entity_id IS NOT NULL),ARRAY[]::text[])
+                      AS candidate_ids
+           FROM current_batch
+           LEFT JOIN ads.entity_snapshot snapshot
+             ON snapshot.account_id=%s
+            AND snapshot.snapshot_at=current_batch.snapshot_at
+            AND snapshot.entity_type='CAMPAIGN'
+            AND snapshot.name=%s
+           GROUP BY current_batch.snapshot_at""",
+        (scope,scope,campaign_name),
+    )
+    row=cur.fetchone() or {};snapshot_at=row.get("snapshot_at");candidate_ids=list(row.get("candidate_ids") or []);candidate_count=int(row.get("candidate_count") or 0)
+    if snapshot_at is None:state="NO_COMPLETE_SNAPSHOT"
+    elif candidate_count==0:state="NAME_MISSING"
+    elif candidate_count==1:state="CURRENT_NAME_UNIQUE"
+    else:state="NAME_CONFLICT"
+    return snapshot_at,candidate_ids[0] if candidate_count==1 else None,candidate_count,state,candidate_ids
+
+
+def _write_gross_invalid_rows(scope,rows,report_id,requested_start,requested_end):
+    written=0
+    with db.connect() as conn,conn.cursor() as cur:
+        for ordinal,row in enumerate(rows,start=1):
+            campaign_name=row.get("campaignName")
+            snapshot_at,campaign_id,candidate_count,identity_state,candidate_ids=_campaign_name_identity(cur,scope,campaign_name)
+            cur.execute("""INSERT INTO ads.gross_invalid_traffic_observation(account_id,report_id,source_row_ordinal,requested_start_date,requested_end_date,source_start_date,source_end_date,campaign_name,campaign_status,valid_impressions,valid_click_throughs,gross_impressions,invalid_impressions,source_invalid_impression_rate,gross_click_throughs,invalid_click_throughs,source_invalid_click_through_rate,identity_snapshot_at,resolved_campaign_id,identity_candidate_count,identity_state,identity_candidate_ids,source_record,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,now()) ON CONFLICT(account_id,report_id,source_row_ordinal) DO UPDATE SET source_start_date=EXCLUDED.source_start_date,source_end_date=EXCLUDED.source_end_date,campaign_name=EXCLUDED.campaign_name,campaign_status=EXCLUDED.campaign_status,valid_impressions=EXCLUDED.valid_impressions,valid_click_throughs=EXCLUDED.valid_click_throughs,gross_impressions=EXCLUDED.gross_impressions,invalid_impressions=EXCLUDED.invalid_impressions,source_invalid_impression_rate=EXCLUDED.source_invalid_impression_rate,gross_click_throughs=EXCLUDED.gross_click_throughs,invalid_click_throughs=EXCLUDED.invalid_click_throughs,source_invalid_click_through_rate=EXCLUDED.source_invalid_click_through_rate,identity_snapshot_at=EXCLUDED.identity_snapshot_at,resolved_campaign_id=EXCLUDED.resolved_campaign_id,identity_candidate_count=EXCLUDED.identity_candidate_count,identity_state=EXCLUDED.identity_state,identity_candidate_ids=EXCLUDED.identity_candidate_ids,source_record=EXCLUDED.source_record,ingested_at=now()""",(scope,report_id,ordinal,requested_start,requested_end,row.get("startDate"),row.get("endDate"),campaign_name,row.get("campaignStatus"),_optional_int(row,"impressions"),_optional_int(row,"clicks"),_optional_int(row,"grossImpressions"),_optional_int(row,"invalidImpressions"),_optional_num(row,"invalidImpressionRate"),_optional_int(row,"grossClickThroughs"),_optional_int(row,"invalidClickThroughs"),_optional_num(row,"invalidClickThroughRate"),snapshot_at,campaign_id,candidate_count,identity_state,_json(candidate_ids),_json(row)));written+=1
+        conn.commit()
+    return written
+
+
 def _refresh_daily_account(scope,start,end):
     with db.connect() as conn,conn.cursor() as cur:
         cur.execute("""INSERT INTO ads.daily_account(account_id,business_date,ad_product,impressions,clicks,spend,attributed_sales,purchases,units,currency,attribution_method,attribution_window,source_generated_at,ingested_at) SELECT account_id,business_date,%s,sum(impressions),sum(clicks),sum(spend),sum(attributed_sales),sum(purchases),sum(units),'MXN','click',%s,max(source_generated_at),now() FROM ads.daily_campaign WHERE account_id=%s AND business_date BETWEEN %s AND %s GROUP BY account_id,business_date ON CONFLICT(account_id,business_date,ad_product) DO UPDATE SET impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,units=EXCLUDED.units,attribution_method=EXCLUDED.attribution_method,attribution_window=EXCLUDED.attribution_window,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(AD_PRODUCT,ATTRIBUTION_WINDOW,scope,start,end));conn.commit()
@@ -324,6 +368,20 @@ def _next_window():
     start=max(earliest,date.fromisoformat(cursor)+timedelta(days=1)) if cursor else earliest
     if start>yesterday:start=max(earliest,yesterday-timedelta(days=13))
     return start,min(yesterday,start+timedelta(days=30))
+
+
+def _next_traffic_quality_window():
+    yesterday=date.today()-timedelta(days=1);earliest=yesterday-timedelta(days=TRAFFIC_QUALITY_BACKFILL_DAYS-1);cursor=db.get_cursor(SOURCE,TRAFFIC_QUALITY_JOB,TRAFFIC_QUALITY_THROUGH_CURSOR)
+    start=max(earliest,date.fromisoformat(cursor)+timedelta(days=1)) if cursor else earliest
+    if start>yesterday:start=max(earliest,yesterday-timedelta(days=27))
+    return start,min(yesterday,start+timedelta(days=30))
+
+
+def ads_traffic_quality_backfill_complete():
+    cursor=db.get_cursor(SOURCE,TRAFFIC_QUALITY_JOB,TRAFFIC_QUALITY_THROUGH_CURSOR)
+    if not cursor:return False
+    try:return date.fromisoformat(cursor)>=date.today()-timedelta(days=1)
+    except ValueError:return False
 
 
 def _publish_state(state, detail_code, **metadata):
@@ -455,4 +513,36 @@ def ingest_ads():
     except Exception:
         _publish_state("READY" if history_available else "FAILED", "REPORT_REFRESH_FAILED" if history_available else "REPORT_INGESTION_FAILED", **failure_context)
         raise
+    finally:client.close()
+
+
+def ingest_ads_traffic_quality():
+    """Collect the independent gross/invalid-traffic trust source.
+
+    Amazon's proven MX response omits campaignId, so rows retain the exact source
+    record and a conservative point-in-time name resolution. This collector has
+    its own 365-day cursor and failure boundary; it cannot invalidate otherwise
+    healthy Sponsored Products performance ingestion.
+    """
+    if not settings.ads_enabled:return {"status":"disabled"}
+    if not settings.ads_credentials_present:return {"status":"missing_credentials"}
+    start,end=_next_traffic_quality_window();client=AmazonAdsClient()
+    try:
+        scopes,discovery=discover_scopes(client)
+        if not scopes:return {"status":"no_mx_profiles","window":[start.isoformat(),end.isoformat()],**discovery}
+        with db.ingestion_run(SOURCE,TRAFFIC_QUALITY_JOB,{"start":start.isoformat(),"end":end.isoformat(),**discovery}) as run:
+            total_read=total_written=0;report_ids=[]
+            for scope in scopes:
+                _ensure_account(scope)
+                with db.connect() as conn,conn.cursor() as cur:
+                    cur.execute("""INSERT INTO ads.required_report_grain(account_id,report_grain,ad_product,required,effective_from) VALUES(%s,'gross_invalid_traffic',%s,true,%s) ON CONFLICT(account_id,report_grain,ad_product,effective_from) DO UPDATE SET required=true""",(scope,AD_PRODUCT,start));conn.commit()
+                rid=client.create_report(scope,start,end,grain="gross_invalid");report_ids.append(rid);status=client.wait_for_report(scope,rid);location=status.get("url") or status.get("location")
+                if not location:raise RuntimeError(f"Amazon Ads report {rid} completed without download URL: {status}")
+                rows=client.download_report(str(location));total_read+=len(rows)
+                try:written=_write_gross_invalid_rows(scope,rows,rid,start,end)
+                except Exception as exc:raise RuntimeError(f"Amazon Ads write grain=gross_invalid report_id={rid} failed: {exc}") from exc
+                total_written+=written;_record_report_run(scope,rid,"gross_invalid_traffic",start,end,len(rows),status)
+            run["records_read"]=total_read;run["records_written"]=total_written
+        db.set_cursor(SOURCE,TRAFFIC_QUALITY_JOB,end.isoformat(),TRAFFIC_QUALITY_THROUGH_CURSOR)
+        return {"status":"success","start":start.isoformat(),"end":end.isoformat(),"backfill_complete":end>=date.today()-timedelta(days=1),"accounts":len(scopes),"records_read":total_read,"records_written":total_written,"report_ids":report_ids,"grain":"gross_invalid_traffic","transport":REPORT_TRANSPORT}
     finally:client.close()

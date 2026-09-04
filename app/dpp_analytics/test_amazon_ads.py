@@ -10,9 +10,12 @@ from .amazon_ads import (
     AmazonAdsClient,
     INITIAL_HISTORY_CURSOR,
     REQUIRED_GRAINS,
+    _campaign_name_identity,
+    _next_traffic_quality_window,
     _report_progress_callback,
     _target_key,
     _write_extended_report_fields,
+    _write_gross_invalid_rows,
     _write_ad_group_rows,
     _write_placement_rows,
     _write_purchased_product_rows,
@@ -160,6 +163,18 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
                 self.assertIn("date", config["columns"])
                 self.assertIn(required_column, config["columns"])
         self.assertTrue(expected.keys() <= set(REQUIRED_GRAINS))
+
+    @patch.object(AmazonAdsClient, "headers", return_value={})
+    def test_gross_invalid_report_uses_proven_summary_contract(self, _headers) -> None:
+        self.ads.client.post.return_value = _response(202, {"reportId": "invalid-report"})
+
+        self.assertEqual(self._create("gross_invalid"), "invalid-report")
+        config = self.ads.client.post.call_args.kwargs["json"]["configuration"]
+        self.assertEqual(config["reportTypeId"], "spGrossAndInvalids")
+        self.assertEqual(config["groupBy"], ["campaign"])
+        self.assertEqual(config["timeUnit"], "SUMMARY")
+        self.assertNotIn("campaignId", config["columns"])
+        self.assertIn("invalidClickThroughRate", config["columns"])
 
     def test_extended_fields_preserve_unavailable_numbers_as_null(self) -> None:
         cursor = MagicMock()
@@ -396,6 +411,83 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
                 for call in cursor.execute.call_args_list:
                     sql, parameters = call.args
                     self.assertEqual(sql.count("%s"), len(parameters))
+
+    def test_campaign_name_identity_never_guesses(self) -> None:
+        cases = (
+            ({"snapshot_at": None, "candidate_count": 0, "candidate_ids": []}, "NO_COMPLETE_SNAPSHOT", None),
+            ({"snapshot_at": "2026-09-04T00:00:00Z", "candidate_count": 0, "candidate_ids": []}, "NAME_MISSING", None),
+            ({"snapshot_at": "2026-09-04T00:00:00Z", "candidate_count": 1, "candidate_ids": ["c1"]}, "CURRENT_NAME_UNIQUE", "c1"),
+            ({"snapshot_at": "2026-09-04T00:00:00Z", "candidate_count": 2, "candidate_ids": ["c1", "c2"]}, "NAME_CONFLICT", None),
+        )
+        for result, expected_state, expected_id in cases:
+            with self.subTest(expected_state=expected_state):
+                cursor = MagicMock()
+                cursor.fetchone.return_value = result
+                _, campaign_id, _, state, _ = _campaign_name_identity(
+                    cursor, "profile-1", "Campaign name"
+                )
+                self.assertEqual(state, expected_state)
+                self.assertEqual(campaign_id, expected_id)
+
+    @patch("dpp_analytics.amazon_ads._campaign_name_identity")
+    @patch("dpp_analytics.amazon_ads.db.connect")
+    def test_gross_invalid_writer_retains_source_and_binding_contract(
+        self, connect, identity
+    ) -> None:
+        identity.return_value = (
+            "2026-09-04T00:00:00Z",
+            "campaign-1",
+            1,
+            "CURRENT_NAME_UNIQUE",
+            ["campaign-1"],
+        )
+        connection = connect.return_value.__enter__.return_value
+        cursor = connection.cursor.return_value.__enter__.return_value
+        row = {
+            "campaignName": "Business campaign",
+            "startDate": "2026-08-01",
+            "endDate": "2026-08-31",
+            "grossImpressions": 101,
+            "invalidImpressions": 1,
+        }
+
+        written = _write_gross_invalid_rows(
+            "profile-1", [row], "report-1", date(2026, 8, 1), date(2026, 8, 31)
+        )
+
+        self.assertEqual(written, 1)
+        sql, parameters = cursor.execute.call_args.args
+        self.assertEqual(sql.count("%s"), len(parameters))
+        self.assertIn("source_record", sql)
+        self.assertEqual(json.loads(parameters[-1]), row)
+
+    @patch("dpp_analytics.amazon_ads.date")
+    @patch("dpp_analytics.amazon_ads.db.get_cursor")
+    def test_gross_invalid_backfill_starts_at_full_retention_boundary(
+        self, get_cursor, today
+    ) -> None:
+        today.today.return_value = date(2026, 9, 4)
+        today.fromisoformat.side_effect = date.fromisoformat
+        get_cursor.return_value = None
+
+        start, end = _next_traffic_quality_window()
+
+        self.assertEqual(start, date(2025, 9, 4))
+        self.assertEqual(end, date(2025, 10, 4))
+
+    @patch("dpp_analytics.amazon_ads.date")
+    @patch("dpp_analytics.amazon_ads.db.get_cursor")
+    def test_current_gross_invalid_refresh_uses_exact_rolling_28_days(
+        self, get_cursor, today
+    ) -> None:
+        today.today.return_value = date(2026, 9, 4)
+        today.fromisoformat.side_effect = date.fromisoformat
+        get_cursor.return_value = "2026-09-03"
+
+        start, end = _next_traffic_quality_window()
+
+        self.assertEqual(start, date(2026, 8, 7))
+        self.assertEqual(end, date(2026, 9, 3))
 
     @patch("dpp_analytics.amazon_ads.date")
     @patch("dpp_analytics.amazon_ads.db.get_cursor")

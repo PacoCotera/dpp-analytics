@@ -7,7 +7,14 @@ import time
 from collections.abc import Callable
 
 from . import db
-from .amazon_ads import ads_backfill_complete, ingest_ads, probe_ads
+from .amazon_ads import (
+    TRAFFIC_QUALITY_JOB,
+    ads_backfill_complete,
+    ads_traffic_quality_backfill_complete,
+    ingest_ads,
+    ingest_ads_traffic_quality,
+    probe_ads,
+)
 from .amazon_ads_entities import ingest_ads_entities
 from .brand_analytics_search_query import (
     ingest_search_query_performance,
@@ -102,6 +109,38 @@ def _ads_delay_after_result(result: dict | None) -> int:
         return 0
     if result is None:
         log.info("Amazon Ads refresh failed; retrying in %ss", ADS_FAILURE_RETRY_SECONDS)
+        return min(settings.ads_reporting_interval_seconds, ADS_FAILURE_RETRY_SECONDS)
+    return settings.ads_reporting_interval_seconds
+
+
+def _initial_ads_traffic_quality_due() -> float:
+    if not ads_traffic_quality_backfill_complete():
+        log.info(
+            "Amazon Ads gross/invalid-traffic history is incomplete; "
+            "scheduling the next window immediately"
+        )
+        return 0.0
+    return _next_due(
+        "amazon_ads",
+        TRAFFIC_QUALITY_JOB,
+        settings.ads_reporting_interval_seconds,
+    )
+
+
+def _ads_traffic_quality_delay_after_result(result: dict | None) -> int:
+    if result and result.get("status") == "success" and not result.get(
+        "backfill_complete"
+    ):
+        log.info(
+            "Amazon Ads gross/invalid-traffic history remains incomplete; "
+            "continuing with the next window immediately"
+        )
+        return 0
+    if result is None:
+        log.info(
+            "Amazon Ads gross/invalid-traffic refresh failed; retrying in %ss",
+            ADS_FAILURE_RETRY_SECONDS,
+        )
         return min(settings.ads_reporting_interval_seconds, ADS_FAILURE_RETRY_SECONDS)
     return settings.ads_reporting_interval_seconds
 
@@ -274,6 +313,7 @@ def _run_manual_sync() -> str | None:
         "merchant_listings_all_data": ingest_listings_report,
         "catalog_items_2022_04_01": ingest_catalog,
         "sponsored_products_entity_snapshots": ingest_ads_entities,
+        TRAFFIC_QUALITY_JOB: ingest_ads_traffic_quality,
         GEOGRAPHY_JOB: backfill_order_geography,
         "month_close": close_ready_months,
     }
@@ -405,6 +445,11 @@ def main() -> None:
         if settings.ads_enabled and settings.ads_credentials_present
         else float("inf")
     )
+    next_ads_traffic_quality = (
+        _initial_ads_traffic_quality_due()
+        if settings.ads_enabled and settings.ads_credentials_present
+        else float("inf")
+    )
     next_ads_entities = (
         _next_due(
             "amazon_ads",
@@ -416,6 +461,8 @@ def main() -> None:
     )
     ads_thread: threading.Thread | None = None
     ads_outcome: dict[str, dict | None] = {}
+    ads_traffic_quality_thread: threading.Thread | None = None
+    ads_traffic_quality_outcome: dict[str, dict | None] = {}
     brand_analytics_thread: threading.Thread | None = None
     brand_analytics_outcome: dict[str, dict | None] = {}
 
@@ -426,6 +473,19 @@ def main() -> None:
             ads_thread = None
             next_ads = time.monotonic() + _ads_delay_after_result(ads_outcome.get("result"))
             ads_outcome = {}
+
+        if (
+            ads_traffic_quality_thread is not None
+            and not ads_traffic_quality_thread.is_alive()
+        ):
+            ads_traffic_quality_thread = None
+            next_ads_traffic_quality = (
+                time.monotonic()
+                + _ads_traffic_quality_delay_after_result(
+                    ads_traffic_quality_outcome.get("result")
+                )
+            )
+            ads_traffic_quality_outcome = {}
 
         if brand_analytics_thread is not None and not brand_analytics_thread.is_alive():
             brand_analytics_thread = None
@@ -446,6 +506,7 @@ def main() -> None:
             elif manual_job == "merchant_listings_all_data": next_listings_report = now + settings.listings_report_interval_seconds
             elif manual_job == "catalog_items_2022_04_01": next_catalog = now + settings.catalog_interval_seconds
             elif manual_job == "sponsored_products_entity_snapshots": next_ads_entities = now + settings.ads_reporting_interval_seconds
+            elif manual_job == TRAFFIC_QUALITY_JOB: next_ads_traffic_quality = now + settings.ads_reporting_interval_seconds
             elif manual_job == GEOGRAPHY_JOB: next_geography = now + ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS
             elif manual_job == "month_close": next_finance_close = now + FINANCE_CLOSE_INTERVAL_SECONDS
 
@@ -525,7 +586,11 @@ def main() -> None:
 
         # Entity reads are bounded synchronous calls and share the Ads API scope.
         # Do not overlap them with the long-running report collector.
-        if now >= next_ads_entities and ads_thread is None:
+        if (
+            now >= next_ads_entities
+            and ads_thread is None
+            and ads_traffic_quality_thread is None
+        ):
             entity_result = _run("amazon_ads_entities", ingest_ads_entities)
             next_ads_entities = time.monotonic() + (
                 settings.ads_reporting_interval_seconds
@@ -533,9 +598,25 @@ def main() -> None:
                 else ADS_FAILURE_RETRY_SECONDS
             )
 
-        if now >= next_ads and ads_thread is None:
+        if (
+            now >= next_ads
+            and ads_thread is None
+            and ads_traffic_quality_thread is None
+        ):
             ads_thread = _start_background_job("amazon_ads", ingest_ads, outcome=ads_outcome)
             next_ads = float("inf")
+
+        if (
+            now >= next_ads_traffic_quality
+            and ads_thread is None
+            and ads_traffic_quality_thread is None
+        ):
+            ads_traffic_quality_thread = _start_background_job(
+                "amazon_ads_traffic_quality",
+                ingest_ads_traffic_quality,
+                outcome=ads_traffic_quality_outcome,
+            )
+            next_ads_traffic_quality = float("inf")
 
         time.sleep(settings.scheduler_tick_seconds)
 
