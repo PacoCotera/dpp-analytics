@@ -1,28 +1,32 @@
 name: Amazon Source Readiness
 
 on:
+  workflow_call:
+    inputs:
+      nested:
+        description: Run beneath a caller that already owns the production lock.
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - Deploy DPP Analytics
-    types:
-      - completed
 
 permissions:
   contents: read
   issues: write
 
 concurrency:
-  group: dpp-analytics-production
+  # A called probe runs inside the deployment workflow, whose production
+  # concurrency lock is still held. Manual runs acquire that production lock
+  # directly. A distinct called-workflow group avoids a nested-lock deadlock.
+  group: ${{ inputs.nested && format('dpp-source-readiness-{0}', github.run_id) || 'dpp-analytics-production' }}
   cancel-in-progress: false
 
 jobs:
   probe:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, linux, x64, dpp-analytics]
     timeout-minutes: 120
     env:
-      PROBE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      PROBE_SHA: ${{ github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
