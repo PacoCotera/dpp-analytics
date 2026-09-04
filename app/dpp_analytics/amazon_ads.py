@@ -59,7 +59,8 @@ class AmazonAdsClient:
         except (TypeError,ValueError):lifetime=DEFAULT_TOKEN_LIFETIME_SECONDS
         self._token=str(token);self._token_expires_at=now+max(1,lifetime-TOKEN_REFRESH_SAFETY_SECONDS);return self._token
     def headers(self,scope=None,*,content_type="application/json",accept="application/json"):
-        h={"Authorization":f"Bearer {self.access_token()}","Amazon-Advertising-API-ClientId":settings.ads_client_id,"Content-Type":content_type,"Accept":accept}
+        h={"Authorization":f"Bearer {self.access_token()}","Amazon-Advertising-API-ClientId":settings.ads_client_id,"Accept":accept}
+        if content_type:h["Content-Type"]=content_type
         if scope:h["Amazon-Advertising-API-Scope"]=str(scope)
         return h
     def authenticated_request(self,method,url,scope=None,*,content_type="application/json",accept="application/json",**kwargs):
