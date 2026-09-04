@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from decimal import Decimal
 
-from .production_probe import _finance_item_evidence
+from .production_probe import _ads_economic_operand_evidence, _finance_item_evidence
 
 
 class _Cursor:
@@ -166,6 +166,51 @@ class FinanceItemProductionEvidenceTests(unittest.TestCase):
             result["current_catalog_identity"]["historical_or_unmapped_amount"],
             "5",
         )
+
+
+class _EconomicCursor:
+    def __init__(self) -> None:
+        self.query_number = 0
+
+    def execute(self, _sql: str) -> None:
+        self.query_number += 1
+
+    def fetchone(self):
+        if self.query_number == 1:
+            return {
+                "start_date": "2026-08-01",
+                "through_date": "2026-08-28",
+                "business_days": 28,
+                "explicit_tax_basis_days": 28,
+                "ads_product_reconciled_days": 27,
+                "gross_sales": Decimal("1160"),
+                "net_sales": Decimal("1000"),
+                "iva_on_sales": Decimal("160"),
+                "ads_analytical_spend": Decimal("100"),
+                "finance_advertising_expense": Decimal("-98"),
+                "finance_product_allocation_residual": Decimal("12.34"),
+                "ads_product_allocation_residual": Decimal("1.00"),
+                "unclassified_operating_amount": Decimal("0"),
+            }
+        if self.query_number == 2:
+            return {
+                "product_days": 56,
+                "products": 2,
+                "days_with_allocated_order_finance": 40,
+                "days_with_allocated_other_postings": 8,
+                "days_with_product_ads_spend": 32,
+                "allocation_ready_days": 0,
+            }
+        raise AssertionError(f"unexpected fetchone for query {self.query_number}")
+
+
+class EconomicOperandProductionEvidenceTests(unittest.TestCase):
+    def test_reports_residuals_without_claiming_product_readiness(self) -> None:
+        result = _ads_economic_operand_evidence(_EconomicCursor())
+        self.assertEqual(result["window"]["through_date"], "2026-08-28")
+        self.assertEqual(result["business"]["finance_product_allocation_residual"], "12.34")
+        self.assertEqual(result["product"]["allocation_ready_days"], 0)
+        self.assertIn("cannot claim product contribution", result["qualification"])
 
 
 if __name__ == "__main__":
