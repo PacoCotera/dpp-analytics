@@ -285,6 +285,7 @@ h1 {
 }
 
 .product-line__copy {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
