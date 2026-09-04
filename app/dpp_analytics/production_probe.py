@@ -707,6 +707,110 @@ def _ads_spend_reconciliation_evidence(cur) -> dict[str, object]:
     }
 
 
+def _ads_economic_operand_evidence(cur) -> dict[str, object]:
+    """Expose aggregate operand coverage and residuals without claiming readiness."""
+    cur.execute(
+        """
+        WITH latest AS (
+            SELECT max(business_date) AS through_date
+            FROM mart.ads_business_economic_operands_daily
+        )
+        SELECT
+            min(operand.business_date) AS start_date,
+            max(operand.business_date) AS through_date,
+            count(*)::bigint AS business_days,
+            count(*) FILTER (
+                WHERE operand.sales_traffic_amount_basis='SHOPPER_SPEND_INCL_TAX'
+            )::bigint AS explicit_tax_basis_days,
+            count(*) FILTER (
+                WHERE operand.ads_product_spend_reconciled
+            )::bigint AS ads_product_reconciled_days,
+            COALESCE(sum(operand.gross_seller_sales_incl_iva),0) AS gross_sales,
+            COALESCE(sum(operand.net_seller_sales_ex_iva),0) AS net_sales,
+            COALESCE(sum(operand.iva_on_sales),0) AS iva_on_sales,
+            COALESCE(sum(operand.ads_analytical_spend),0) AS ads_analytical_spend,
+            COALESCE(sum(operand.finance_advertising_expense),0)
+                AS finance_advertising_expense,
+            COALESCE(sum(operand.product_allocation_residual),0)
+                AS finance_product_allocation_residual,
+            COALESCE(sum(operand.ads_product_allocation_residual),0)
+                AS ads_product_allocation_residual,
+            COALESCE(sum(operand.unclassified_operating_amount),0)
+                AS unclassified_operating_amount
+        FROM mart.ads_business_economic_operands_daily operand
+        CROSS JOIN latest
+        WHERE operand.business_date BETWEEN latest.through_date-27 AND latest.through_date
+        """
+    )
+    business = cur.fetchone() or {}
+    cur.execute(
+        """
+        WITH latest AS (
+            SELECT max(business_date) AS through_date
+            FROM mart.ads_product_economic_operands_daily
+        )
+        SELECT
+            count(*)::bigint AS product_days,
+            count(DISTINCT seller_sku)::bigint AS products,
+            count(*) FILTER (WHERE allocated_order_finance_amount IS NOT NULL)::bigint
+                AS days_with_allocated_order_finance,
+            count(*) FILTER (WHERE allocated_other_amazon_postings IS NOT NULL)::bigint
+                AS days_with_allocated_other_postings,
+            count(*) FILTER (WHERE ads_analytical_spend IS NOT NULL)::bigint
+                AS days_with_product_ads_spend,
+            count(*) FILTER (
+                WHERE abs(COALESCE(product_allocation_residual,0)) <= 0.01
+                  AND abs(COALESCE(ads_product_allocation_residual,0)) <= 0.01
+                  AND ads_product_spend_reconciled
+            )::bigint AS allocation_ready_days
+        FROM mart.ads_product_economic_operands_daily operand
+        CROSS JOIN latest
+        WHERE operand.business_date BETWEEN latest.through_date-27 AND latest.through_date
+        """
+    )
+    product = cur.fetchone() or {}
+    integer_keys = (
+        "business_days",
+        "explicit_tax_basis_days",
+        "ads_product_reconciled_days",
+    )
+    money_keys = (
+        "gross_sales",
+        "net_sales",
+        "iva_on_sales",
+        "ads_analytical_spend",
+        "finance_advertising_expense",
+        "finance_product_allocation_residual",
+        "ads_product_allocation_residual",
+        "unclassified_operating_amount",
+    )
+    return {
+        "window": {
+            "start_date": _json_value(business.get("start_date")),
+            "through_date": _json_value(business.get("through_date")),
+        },
+        "business": {
+            **{key: int(business.get(key) or 0) for key in integer_keys},
+            **{key: str(business.get(key) or 0) for key in money_keys},
+        },
+        "product": {
+            key: int(product.get(key) or 0)
+            for key in (
+                "product_days",
+                "products",
+                "days_with_allocated_order_finance",
+                "days_with_allocated_other_postings",
+                "days_with_product_ads_spend",
+                "allocation_ready_days",
+            )
+        },
+        "qualification": (
+            "Operand coverage only. Product COGS and validated fee classifications are not in these views; "
+            "this evidence cannot claim product contribution or recommendation eligibility."
+        ),
+    }
+
+
 def _ads_granular_report_evidence(cur) -> dict[str, object]:
     """Expose populated coverage and reconciliation without leaking ad identifiers."""
     cur.execute(
@@ -1105,6 +1209,7 @@ def _warehouse_probe() -> dict[str, object]:
         finance_item_evidence = _finance_item_evidence(cur)
         ads_entity_evidence = _ads_entity_evidence(cur)
         ads_spend_reconciliation = _ads_spend_reconciliation_evidence(cur)
+        ads_economic_operand_evidence = _ads_economic_operand_evidence(cur)
         ads_granular_report_evidence = _ads_granular_report_evidence(cur)
         ads_invalid_traffic_evidence = _ads_invalid_traffic_evidence(cur)
         brand_search_query_evidence = _brand_search_query_evidence(cur)
@@ -1159,6 +1264,7 @@ def _warehouse_probe() -> dict[str, object]:
         "finance_item_evidence": finance_item_evidence,
         "ads_entity_evidence": ads_entity_evidence,
         "ads_spend_reconciliation": ads_spend_reconciliation,
+        "ads_economic_operand_evidence": ads_economic_operand_evidence,
         "ads_granular_report_evidence": ads_granular_report_evidence,
         "ads_invalid_traffic_evidence": ads_invalid_traffic_evidence,
         "brand_search_query_evidence": brand_search_query_evidence,
