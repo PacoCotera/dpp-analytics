@@ -14,7 +14,7 @@ This directory is the maintainer-facing map of the application. The goal is to m
 | How are repeated API queries cached, how fresh may a page be, and where should KPI precomputation live? | [`reporting-cache-architecture.md`](reporting-cache-architecture.md) |
 | Which source is authoritative for Today, Sales, Finance, Ads, Catalog or Inventory? | [`data-model.md`](data-model.md) |
 | What exactly does a money number mean: shopper spend, Amazon sales, Finance net sales, payout or Ads attribution? | [`metric-basis.md`](metric-basis.md) |
-| What is the design source of truth for the next Advertising decision system? | [`ads-v2-decision-system-spec.md`](ads-v2-decision-system-spec.md) and [controller #449](https://github.com/PacoCotera/dpp-analytics/issues/449) |
+| What is the design source of truth for the next Advertising decision system? | [`ads-v2-decision-system-spec.md`](ads-v2-decision-system-spec.md), the [Batch 0 content compositions](ads-v2-content-compositions.html), and [controller #449](https://github.com/PacoCotera/dpp-analytics/issues/449) |
 | Which confirmed production defects are queued, and how are they closed? | [`audits/dpp-analytics-2026-08-27.md`](audits/dpp-analytics-2026-08-27.md) and [tracker #161](https://github.com/PacoCotera/dpp-analytics/issues/161) |
 | How are new/deleted SKUs and seller mappings/COGS managed? | [`audits/catalog-admin-2026-08-28.md`](audits/catalog-admin-2026-08-28.md) and [`maintenance.md`](maintenance.md) |
 | How does production deploy and where do I inspect its health? | [`control-plane.md`](control-plane.md) |
