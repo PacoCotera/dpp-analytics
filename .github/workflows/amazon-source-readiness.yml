@@ -1,13 +1,6 @@
 name: Amazon Source Readiness
 
 on:
-  workflow_call:
-    inputs:
-      nested:
-        description: Run beneath a caller that already owns the production lock.
-        required: false
-        type: boolean
-        default: false
   workflow_dispatch:
 
 permissions:
@@ -15,10 +8,10 @@ permissions:
   issues: write
 
 concurrency:
-  # A called probe runs inside the deployment workflow, whose production
-  # concurrency lock is still held. Manual runs acquire that production lock
-  # directly. A distinct called-workflow group avoids a nested-lock deadlock.
-  group: ${{ inputs.nested && format('dpp-source-readiness-{0}', github.run_id) || 'dpp-analytics-production' }}
+  # The exhaustive probe is deliberately manual after Batch 0. It shares the
+  # production lock so it cannot compete with a deployment for API or host
+  # resources.
+  group: dpp-analytics-production
   cancel-in-progress: false
 
 jobs:
