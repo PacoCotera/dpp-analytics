@@ -1113,6 +1113,28 @@ async function verifyDataHealth(page) {
     const [payload, home] = await Promise.all([response.json(), homeResponse.json()]);
     const jobs = Array.isArray(payload.jobs) ? payload.jobs : [];
     const healthContract = payload.health_contract || {};
+    // Home may be served from its short API cache while Data Health is fresh.
+    // Compare the shared policy/schema here; validate live conditions against
+    // the Data Health response that owns and rendered this diagnostic page.
+    const policySignature = contract => ({
+      contractId: contract.contract_id,
+      pipelineScope: {
+        label: contract.pipeline_scope?.label,
+        total: contract.pipeline_scope?.total,
+        included: (contract.pipeline_scope?.included || []).map(item => ({
+          source: item.source,
+          jobName: item.job_name,
+          label: item.label,
+          domain: item.domain,
+        })),
+        exclusionRule: contract.pipeline_scope?.exclusion_rule,
+      },
+      domains: (contract.domains || []).map(domain => ({
+        key: domain.key,
+        label: domain.label,
+        critical: domain.critical,
+      })),
+    });
     const problem = job =>
       job.latest_status === 'error' ||
       job.latest_status === 'interrupted' ||
@@ -1158,7 +1180,9 @@ async function verifyDataHealth(page) {
       ),
       compactCoverage: Boolean(document.querySelector('.domain-summary .domain-chip')),
       healthContractId: healthContract.contract_id,
-      sharedContract: JSON.stringify(healthContract) === JSON.stringify(home.health_contract || {}),
+      sharedContractPolicy:
+        JSON.stringify(policySignature(healthContract)) ===
+        JSON.stringify(policySignature(home.health_contract || {})),
       scopeDefined:
         healthContract.pipeline_scope?.total === 6 &&
         healthContract.pipeline_scope?.included?.length === 6 &&
@@ -1229,7 +1253,7 @@ async function verifyDataHealth(page) {
     !state.contractComplete ||
     !state.compactCoverage ||
     state.healthContractId !== 'BUSINESS_DECISION_HEALTH_V1' ||
-    !state.sharedContract ||
+    !state.sharedContractPolicy ||
     !state.scopeDefined ||
     !state.stateMappingDefined ||
     state.renderedConditionCount !== state.expectedConditionCount ||
