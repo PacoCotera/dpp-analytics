@@ -202,8 +202,14 @@ async function verifyAdmin(page) {
   }
 }
 
+async function renderedApiPayload(page, pathname) {
+  const rendered = await page.__dppApiSnapshots?.get(pathname);
+  if (rendered) return rendered;
+  return page.evaluate(async path => (await (await fetch(path, { cache: 'no-store' })).json()), pathname);
+}
+
 async function verifyAds(page, view = 'impact') {
-  const payload = await page.evaluate(async () => (await (await fetch('/api/ads', { cache: 'no-store' })).json()));
+  const payload = await renderedApiPayload(page, '/api/ads');
   const navigation = await page.evaluate(() => {
     const tabs = document.querySelector('.ads-page .subnav');
     return {
@@ -232,8 +238,13 @@ async function verifyAds(page, view = 'impact') {
           note.textContent.trim() === 'Only Business impact is available in the current Advertising connection state.' &&
           !note.textContent.includes(connectionDetail || 'missing connection detail')
         ),
-        singleDetailOwner:
-          document.querySelector('#emptyState p')?.textContent?.trim() === connectionDetail,
+        singleDetailOwner: (() => {
+          const owners = document.querySelectorAll('#emptyState p');
+          const renderedDetail = owners[0]?.textContent?.trim() || '';
+          const expectedDetail =
+            connectionDetail || 'The current Amazon Ads connection state could not be read.';
+          return owners.length === 1 && renderedDetail.startsWith(expectedDetail);
+        })(),
         contained: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
       };
     }, payload.connection?.detail || '');
@@ -1433,9 +1444,7 @@ async function verifyProductWorkspace(page) {
   await wait(page, '.hero-name');
   await wait(page, '#chart .dpp-bar');
   await verifyCompactLead(page, '[data-dpp-qa="product-analysis"]');
-  const payload = await page.evaluate(async () =>
-    (await (await fetch('/api/product?sku=PNC-001', { cache: 'no-store' })).json()),
-  );
+  const payload = await renderedApiPayload(page, '/api/product');
   const expected = payload.profile?.product;
   if (payload.profile?.label_source !== 'mapping' || !expected)
     throw new Error(`Product mapped-name contract mismatch: ${payload.profile?.product || 'blank'} / ${payload.profile?.label_source || 'unknown source'}`);
@@ -2267,7 +2276,22 @@ const requestedScenarios = new Set((process.env.DPP_QA_SCENARIOS || '').split(',
 const plannedScenarios = requestedScenarios.size ? scenarios.filter(scenario => requestedScenarios.has(scenario.name)) : scenarios;
 const browserPlans = [
   { name: 'chromium', engine: chromium, scenarios: plannedScenarios },
-  { name: 'webkit', engine: webkit, scenarios: plannedScenarios.filter(scenario => ['today', 'business', 'sales-header-boundary', 'trajectory', 'data-health'].includes(scenario.name)) },
+  {
+    name: 'webkit',
+    engine: webkit,
+    scenarios: plannedScenarios.filter(scenario => [
+      'today',
+      'business',
+      'sales-header-boundary',
+      'product-pnc-001',
+      'ads-overview',
+      'ads-products',
+      'ads-demand',
+      'ads-detail',
+      'trajectory',
+      'data-health',
+    ].includes(scenario.name)),
+  },
 ].filter(plan => requestedBrowsers.has(plan.name));
 
 for (const plan of browserPlans) {
@@ -2285,10 +2309,19 @@ for (const scenario of plan.scenarios) for (const viewportName of scenario.views
   }
   if (scenario.setup) await scenario.setup(context);
   const page = await context.newPage();
+  page.__dppApiSnapshots = new Map();
   const errors = [], warnings = [], failedResponses = [];
   page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
   page.on('console', msg => { if (msg.type() === 'error') errors.push(`console: ${msg.text()}`); if (msg.type() === 'warning') warnings.push(`console: ${msg.text()}`); });
-  page.on('response', async response => { if (response.status() >= 400 && response.url().startsWith(baseUrl)) failedResponses.push(`${response.status()} ${response.request().method()} ${response.url()}`); });
+  page.on('response', async response => {
+    if (response.status() >= 400 && response.url().startsWith(baseUrl)) {
+      failedResponses.push(`${response.status()} ${response.request().method()} ${response.url()}`);
+    }
+    if (!response.ok() || !response.url().startsWith(baseUrl)) return;
+    const pathname = new URL(response.url()).pathname;
+    if (!['/api/ads', '/api/product'].includes(pathname)) return;
+    page.__dppApiSnapshots.set(pathname, response.json().catch(() => null));
+  });
   const result = { browser: plan.name, scenario: scenario.name, viewport: viewportName, profile: scenario.profile || 'warm-studio', width: viewport.width, height: viewport.height, url: `${baseUrl}${scenario.url}`, screenshot: null, metrics: null, errors, warnings, failedResponses, ok: false };
   try {
     const response = await page.goto(result.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
