@@ -9,6 +9,7 @@ from .amazon_capability_probe import (
     CAPABILITIES,
     REPORT_SPECS,
     ReportSpec,
+    _ads_json_call,
     _probe_ads_reports,
     _probe_spapi_reports,
     _safe_error,
@@ -266,6 +267,80 @@ class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
         body = report_request_body(spec, "ASIN", dt.date(2026, 9, 4))
         self.assertEqual(body["dataStartTime"], "2026-08-03T00:00:00Z")
         self.assertEqual(body["dataEndTime"], "2026-09-01T23:59:59Z")
+
+    @patch("dpp_analytics.amazon_capability_probe.settings")
+    def test_fba_replacements_report_omits_unsupported_date_window(
+        self, fake_settings
+    ) -> None:
+        fake_settings.marketplace_id = "MARKET"
+        spec = next(item for item in REPORT_SPECS if item.key == "fba_replacements")
+        body = report_request_body(spec, "ASIN", dt.date(2026, 9, 4))
+        self.assertNotIn("dataStartTime", body)
+        self.assertNotIn("dataEndTime", body)
+
+    @patch("dpp_analytics.amazon_capability_probe.time.sleep")
+    def test_ads_read_retries_throttling_and_uses_retry_after(self, sleep) -> None:
+        class Response:
+            content = b"{}"
+
+            def __init__(self, status_code, headers=None) -> None:
+                self.status_code = status_code
+                self.headers = headers or {}
+                self.text = "error" if status_code >= 400 else "{}"
+
+            def json(self):
+                return {}
+
+        class Client:
+            base = "https://ads.example"
+
+            def __init__(self) -> None:
+                self.responses = [Response(429, {"Retry-After": "3"}), Response(200)]
+                self.calls = []
+
+            def authenticated_request(self, method, url, scope, **kwargs):
+                self.calls.append((method, url, scope, kwargs))
+                return self.responses.pop(0)
+
+        client = Client()
+        summary, payload = _ads_json_call(
+            client, "scope", "post", "/sp/targets/bid/recommendations", body={}
+        )
+        self.assertEqual(payload, {})
+        self.assertFalse(summary["populated"])
+        self.assertEqual(len(client.calls), 2)
+        sleep.assert_called_once_with(3.0)
+
+    def test_ads_bodyless_get_omits_content_type(self) -> None:
+        class Response:
+            status_code = 200
+            content = b"{}"
+            text = "{}"
+            headers = {}
+
+            def json(self):
+                return {}
+
+        class Client:
+            base = "https://ads.example"
+
+            def authenticated_request(self, method, url, scope, **kwargs):
+                self.kwargs = kwargs
+                return Response()
+
+        client = Client()
+        _ads_json_call(
+            client,
+            "scope",
+            "get",
+            "/sp/negativeTargets/brands/recommendations",
+            accept_media_type="application/vnd.spproducttargetingresponse.v3+json",
+        )
+        self.assertIsNone(client.kwargs["content_type"])
+        self.assertEqual(
+            client.kwargs["accept"],
+            "application/vnd.spproducttargetingresponse.v3+json",
+        )
 
     def test_markdown_contains_states_but_no_payload_values(self) -> None:
         result = {
