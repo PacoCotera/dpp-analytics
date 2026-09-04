@@ -26,11 +26,13 @@ REPORT_TYPE = "GET_BRAND_ANALYTICS_REPEAT_PURCHASE_REPORT"
 CURSOR_PREFIX = "week:"
 REVENUE_BASIS = "ORDERED_REVENUE_RETURNS_EXCLUDED"
 TAX_BASIS = "SOURCE_UNSPECIFIED"
+COMPLETE = "COMPLETE"
+PARTIAL = "PARTIAL"
 
 
 def report_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
     rows = _payload(payload).get("dataByAsin")
-    return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+    return rows if isinstance(rows, list) else []
 
 
 def _periods(today: date | None = None) -> list[tuple[date, date]]:
@@ -121,47 +123,82 @@ def validate_report_payload(
     rows = report_rows(payload)
     seen: set[str] = set()
     for row in rows:
+        if not isinstance(row, dict):
+            raise SpApiError("Repeat Purchase response contained a non-object row")
         asin = str(row.get("asin") or "").strip()
-        orders = _integer(row.get("orders"))
-        customers = _integer(row.get("uniqueCustomers"))
-        repeat_ratio = _decimal(row.get("repeatCustomersPctTotal"))
-        revenue, currency = _money(row.get("repeatPurchaseRevenue"))
-        revenue_ratio = _decimal(row.get("repeatPurchaseRevenuePctTotal"))
-        ratios = (repeat_ratio, revenue_ratio)
         if (
             not asin
             or row.get("startDate") != start.isoformat()
             or row.get("endDate") != end.isoformat()
-            or orders is None
-            or orders < 0
-            or customers is None
-            or customers < 0
-            or revenue is None
-            or not revenue.is_finite()
-            or revenue < 0
-            or currency is None
-            or len(currency) != 3
-            or not currency.isascii()
-            or not currency.isalpha()
-            or any(
-                ratio is None
-                or not ratio.is_finite()
-                or ratio < 0
-                or ratio > 1
-                for ratio in ratios
-            )
         ):
-            raise SpApiError("Repeat Purchase response contained an invalid canonical row")
+            raise SpApiError("Repeat Purchase response contained an invalid canonical identity")
         if asin in seen:
             raise SpApiError("Repeat Purchase response duplicated its canonical ASIN grain")
         seen.add(asin)
     return rows
 
 
+def _canonical_metrics(row: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Map documented measures without inventing values for partial rows."""
+    unavailable: list[str] = []
+
+    orders = _integer(row.get("orders"))
+    if orders is None or orders < 0:
+        unavailable.append("orders")
+        orders = None
+
+    customers = _integer(row.get("uniqueCustomers"))
+    if customers is None or customers < 0:
+        unavailable.append("uniqueCustomers")
+        customers = None
+
+    repeat_ratio = _decimal(row.get("repeatCustomersPctTotal"))
+    if (
+        repeat_ratio is None
+        or not repeat_ratio.is_finite()
+        or repeat_ratio < 0
+        or repeat_ratio > 1
+    ):
+        unavailable.append("repeatCustomersPctTotal")
+        repeat_ratio = None
+
+    revenue, currency = _money(row.get("repeatPurchaseRevenue"))
+    if revenue is None or not revenue.is_finite() or revenue < 0:
+        unavailable.append("repeatPurchaseRevenue.amount")
+        revenue = None
+    if (
+        currency is None
+        or len(currency) != 3
+        or not currency.isascii()
+        or not currency.isalpha()
+    ):
+        unavailable.append("repeatPurchaseRevenue.currencyCode")
+        currency = None
+
+    revenue_ratio = _decimal(row.get("repeatPurchaseRevenuePctTotal"))
+    if (
+        revenue_ratio is None
+        or not revenue_ratio.is_finite()
+        or revenue_ratio < 0
+        or revenue_ratio > 1
+    ):
+        unavailable.append("repeatPurchaseRevenuePctTotal")
+        revenue_ratio = None
+
+    return {
+        "orders": orders,
+        "unique_customers": customers,
+        "repeat_customer_ratio": repeat_ratio,
+        "repeat_purchase_revenue": revenue,
+        "repeat_purchase_revenue_currency": currency,
+        "repeat_purchase_revenue_ratio": revenue_ratio,
+    }, unavailable
+
+
 def _row_values(
     row: dict[str, Any], raw_id: int, report_id: str
 ) -> tuple[list[str], list[Any]]:
-    revenue, currency = _money(row.get("repeatPurchaseRevenue"))
+    metrics, unavailable = _canonical_metrics(row)
     columns = [
         "marketplace_id",
         "report_period",
@@ -176,6 +213,8 @@ def _row_values(
         "repeat_purchase_revenue_ratio",
         "revenue_basis",
         "tax_basis",
+        "quality_state",
+        "unavailable_fields",
         "source_payload_id",
         "source_report_id",
     ]
@@ -185,14 +224,16 @@ def _row_values(
         row.get("startDate"),
         row.get("endDate"),
         str(row.get("asin") or "").strip(),
-        _integer(row.get("orders")),
-        _integer(row.get("uniqueCustomers")),
-        _decimal(row.get("repeatCustomersPctTotal")),
-        revenue,
-        currency,
-        _decimal(row.get("repeatPurchaseRevenuePctTotal")),
+        metrics["orders"],
+        metrics["unique_customers"],
+        metrics["repeat_customer_ratio"],
+        metrics["repeat_purchase_revenue"],
+        metrics["repeat_purchase_revenue_currency"],
+        metrics["repeat_purchase_revenue_ratio"],
         REVENUE_BASIS,
         TAX_BASIS,
+        PARTIAL if unavailable else COMPLETE,
+        unavailable,
         raw_id,
         report_id,
     ]
@@ -209,6 +250,7 @@ def _persist_report(
     run_id: int,
 ) -> int:
     rows = validate_report_payload(payload, start, end)
+    partial_rows = sum(1 for row in rows if _canonical_metrics(row)[1])
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
             """
@@ -270,6 +312,35 @@ def _persist_report(
                 """,
                 values,
             )
+        cur.execute(
+            """
+            INSERT INTO brand.repeat_purchase_report(
+                marketplace_id,report_period,start_date,end_date,
+                source_report_id,source_document_id,source_row_count,
+                complete_row_count,partial_row_count,source_content_sha256,
+                source_uncompressed_bytes,source_compressed_bytes,source_payload_id
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (marketplace_id,report_period,start_date,end_date)
+            DO UPDATE SET
+                source_report_id=EXCLUDED.source_report_id,
+                source_document_id=EXCLUDED.source_document_id,
+                source_row_count=EXCLUDED.source_row_count,
+                complete_row_count=EXCLUDED.complete_row_count,
+                partial_row_count=EXCLUDED.partial_row_count,
+                source_content_sha256=EXCLUDED.source_content_sha256,
+                source_uncompressed_bytes=EXCLUDED.source_uncompressed_bytes,
+                source_compressed_bytes=EXCLUDED.source_compressed_bytes,
+                source_payload_id=EXCLUDED.source_payload_id,
+                fetched_at=now()
+            """,
+            (
+                settings.marketplace_id, WEEKLY_REPORT_PERIOD, start, end,
+                report_id, document_id, len(rows), len(rows) - partial_rows,
+                partial_rows, document_meta.get("content_sha256"),
+                document_meta.get("uncompressed_bytes"),
+                document_meta.get("compressed_bytes"), raw_id,
+            ),
+        )
         conn.commit()
     return len(rows)
 

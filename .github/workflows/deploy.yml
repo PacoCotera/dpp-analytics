@@ -149,7 +149,11 @@ jobs:
           # of relying on a free-space threshold: clearing the prior capture
           # directory can briefly mask the space needed by the next 231-image
           # production matrix. Do not prune images, containers, or named
-          # volumes: PostgreSQL and Grafana state must remain untouched.
+          # volumes: PostgreSQL and Grafana state must remain untouched. The
+          # production-QA image is reproducible and is not used by the permanent
+          # standalone DPP Playwright containers.
+          sudo docker image rm dpp-production-visual-qa:local >/dev/null 2>&1 || true
+          sudo docker image prune --force
           sudo docker builder prune --all --force --keep-storage 1GB
           df -h /
 
@@ -195,7 +199,17 @@ jobs:
       - name: Apply database migrations
         run: |
           set -euo pipefail
-          bash scripts/migrate.sh /etc/dpp-analytics/env
+          worker_was_running=false
+          if sudo docker ps --format '{{.Names}}' | grep -qx dpp-worker; then
+            worker_was_running=true
+            sudo docker stop dpp-worker >/dev/null
+          fi
+          if ! bash scripts/migrate.sh /etc/dpp-analytics/env; then
+            if [[ "$worker_was_running" == "true" ]]; then
+              sudo docker start dpp-worker >/dev/null || true
+            fi
+            exit 1
+          fi
 
       - name: Backfill historical product costs
         run: |
@@ -241,6 +255,13 @@ jobs:
           elif [[ "${SPAPI_ENVIRONMENT,,}" == "production" ]]; then
             sudo docker compose --env-file /etc/dpp-analytics/env exec -T worker \
               python -m dpp_analytics.production_probe | tee /tmp/dpp-spapi-probe.json
+            python3 - <<'PY'
+          import json
+          probe = json.load(open('/tmp/dpp-spapi-probe.json'))
+          warehouse = probe.get('warehouse') or {}
+          if warehouse.get('status') != 'ok':
+              raise SystemExit('Production warehouse probe failed: %s' % warehouse.get('error', 'unknown error'))
+          PY
           else
             echo "Unknown SPAPI_ENVIRONMENT=${SPAPI_ENVIRONMENT}" >&2
             exit 1
@@ -394,6 +415,8 @@ jobs:
           set -euo pipefail
           # Keep subsequent releases runnable on the 38 GB host without ever
           # touching application images, containers, or persistent volumes.
+          sudo docker image rm dpp-production-visual-qa:local >/dev/null 2>&1 || true
+          sudo docker image prune --force
           sudo docker builder prune --all --force --keep-storage 1GB
           df -h /
 
@@ -458,7 +481,10 @@ jobs:
             echo '## Worker'
             echo '```text'
             sudo docker inspect --format='health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} status={{.State.Status}}' dpp-worker 2>&1 || true
-            sudo docker logs --tail 40 dpp-worker 2>&1 || true
+            # httpx logs complete pre-signed Amazon download URLs. They are
+            # short-lived credentials and must never be copied to GitHub.
+            sudo docker logs --tail 40 dpp-worker 2>&1 \
+              | sed -E 's#(https?://[^ ?"]+)\?[^ "]+#\1?[REDACTED]#g' || true
             echo '```'
             echo
             echo '## PostgreSQL'

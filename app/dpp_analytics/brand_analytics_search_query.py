@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 import logging
 import time
@@ -295,13 +296,23 @@ def _download_report(
     ) as http:
         response = http.get(str(url))
         response.raise_for_status()
-        raw = response.content
-    if raw[:2] == b"\x1f\x8b":
-        raw = gzip.decompress(raw)
+        downloaded = response.content
+    compressed_bytes = len(downloaded)
+    was_gzip = downloaded[:2] == b"\x1f\x8b"
+    raw = gzip.decompress(downloaded) if was_gzip else downloaded
     payload = json.loads(raw.decode("utf-8-sig"))
     if not isinstance(payload, dict):
         raise SpApiError("Brand Analytics report document is not a JSON object")
-    return payload, {key: value for key, value in document.items() if key != "url"}
+    metadata = {key: value for key, value in document.items() if key != "url"}
+    metadata.update(
+        {
+            "content_sha256": hashlib.sha256(raw).hexdigest(),
+            "uncompressed_bytes": len(raw),
+            "compressed_bytes": compressed_bytes,
+            "content_encoding": "gzip" if was_gzip else "identity",
+        }
+    )
+    return payload, metadata
 
 
 def _row_values(

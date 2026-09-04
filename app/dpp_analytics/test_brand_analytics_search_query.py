@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import gzip
+import hashlib
+import json
 import unittest
 from datetime import date
 from decimal import Decimal
@@ -8,6 +11,7 @@ from unittest.mock import MagicMock, patch
 from .brand_analytics_search_query import (
     REPORT_TYPE,
     _create_report,
+    _download_report,
     _row_values,
     chunk_asins,
     completed_month_periods,
@@ -89,6 +93,30 @@ class BrandAnalyticsSearchQueryTests(unittest.TestCase):
         rows = [{"asin": "B000000001"}]
         self.assertEqual(report_rows({"dataByAsin": rows}), rows)
         self.assertEqual(report_rows({"payload": {"dataByAsin": rows}}), rows)
+
+    @patch("dpp_analytics.brand_analytics_search_query.httpx.Client")
+    def test_download_records_hash_and_sizes_without_retaining_signed_url(
+        self, http_client: MagicMock
+    ) -> None:
+        source = json.dumps({"dataByAsin": []}).encode()
+        compressed = gzip.compress(source)
+        response = MagicMock(content=compressed)
+        response.raise_for_status.return_value = None
+        http_client.return_value.__enter__.return_value.get.return_value = response
+        client = MagicMock()
+        client.get.return_value = {
+            "url": "https://example.invalid/report?X-Amz-Signature=secret",
+            "compressionAlgorithm": "GZIP",
+        }
+
+        payload, metadata = _download_report(client, "document-1")
+
+        self.assertEqual(payload, {"dataByAsin": []})
+        self.assertNotIn("url", metadata)
+        self.assertEqual(metadata["content_sha256"], hashlib.sha256(source).hexdigest())
+        self.assertEqual(metadata["uncompressed_bytes"], len(source))
+        self.assertEqual(metadata["compressed_bytes"], len(compressed))
+        self.assertEqual(metadata["content_encoding"], "gzip")
 
     @patch("dpp_analytics.brand_analytics_search_query.time.monotonic")
     @patch("dpp_analytics.brand_analytics_search_query.time.sleep")

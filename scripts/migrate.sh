@@ -80,4 +80,27 @@ for file in "${files[@]}"; do
 
 done
 
+maintenance_table="$(psql_cmd -Atc "SELECT to_regclass('ops.maintenance_action');")"
+if [[ "$maintenance_table" == "ops.maintenance_action" ]]; then
+  pending_raw_compaction="$(psql_cmd -Atc "
+    SELECT count(*)
+    FROM ops.maintenance_action
+    WHERE action_name='compact_raw_payload_after_search_terms_reset'
+      AND status='PENDING';
+  ")"
+  if [[ "$pending_raw_compaction" == "1" ]]; then
+    echo "MAINTENANCE compact_raw_payload_after_search_terms_reset"
+    # VACUUM FULL cannot run inside the transactional migration wrapper. The
+    # migration first truncates the oversized canonical relation, creating the
+    # working space needed to rewrite raw.api_payload and return deleted TOAST
+    # pages to the host filesystem.
+    psql_cmd -c "VACUUM (FULL, ANALYZE) raw.api_payload;"
+    psql_cmd -c "
+      UPDATE ops.maintenance_action
+      SET status='COMPLETE', completed_at=now()
+      WHERE action_name='compact_raw_payload_after_search_terms_reset';
+    "
+  fi
+fi
+
 echo "Migrations complete."
