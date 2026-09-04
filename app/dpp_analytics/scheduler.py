@@ -8,6 +8,7 @@ from collections.abc import Callable
 
 from . import db
 from .amazon_ads import ads_backfill_complete, ingest_ads, probe_ads
+from .amazon_ads_entities import ingest_ads_entities
 from .brand_analytics_search_query import (
     ingest_search_query_performance,
     search_query_backfill_complete,
@@ -272,6 +273,7 @@ def _run_manual_sync() -> str | None:
         "search_query_performance": ingest_search_query_performance,
         "merchant_listings_all_data": ingest_listings_report,
         "catalog_items_2022_04_01": ingest_catalog,
+        "sponsored_products_entity_snapshots": ingest_ads_entities,
         GEOGRAPHY_JOB: backfill_order_geography,
         "month_close": close_ready_months,
     }
@@ -403,6 +405,15 @@ def main() -> None:
         if settings.ads_enabled and settings.ads_credentials_present
         else float("inf")
     )
+    next_ads_entities = (
+        _next_due(
+            "amazon_ads",
+            "sponsored_products_entity_snapshots",
+            settings.ads_reporting_interval_seconds,
+        )
+        if settings.ads_enabled and settings.ads_credentials_present
+        else float("inf")
+    )
     ads_thread: threading.Thread | None = None
     ads_outcome: dict[str, dict | None] = {}
     brand_analytics_thread: threading.Thread | None = None
@@ -434,6 +445,7 @@ def main() -> None:
             elif manual_job == "search_query_performance": next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == "merchant_listings_all_data": next_listings_report = now + settings.listings_report_interval_seconds
             elif manual_job == "catalog_items_2022_04_01": next_catalog = now + settings.catalog_interval_seconds
+            elif manual_job == "sponsored_products_entity_snapshots": next_ads_entities = now + settings.ads_reporting_interval_seconds
             elif manual_job == GEOGRAPHY_JOB: next_geography = now + ORDER_GEOGRAPHY_BACKFILL_INTERVAL_SECONDS
             elif manual_job == "month_close": next_finance_close = now + FINANCE_CLOSE_INTERVAL_SECONDS
 
@@ -510,6 +522,16 @@ def main() -> None:
                 outcome=brand_analytics_outcome,
             )
             next_brand_analytics = float("inf")
+
+        # Entity reads are bounded synchronous calls and share the Ads API scope.
+        # Do not overlap them with the long-running report collector.
+        if now >= next_ads_entities and ads_thread is None:
+            entity_result = _run("amazon_ads_entities", ingest_ads_entities)
+            next_ads_entities = time.monotonic() + (
+                settings.ads_reporting_interval_seconds
+                if entity_result is not None
+                else ADS_FAILURE_RETRY_SECONDS
+            )
 
         if now >= next_ads and ads_thread is None:
             ads_thread = _start_background_job("amazon_ads", ingest_ads, outcome=ads_outcome)
