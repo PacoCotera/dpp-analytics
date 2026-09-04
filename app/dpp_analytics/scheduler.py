@@ -334,6 +334,7 @@ def _run_manual_sync() -> str | None:
         "sales_traffic_2024_04_24": ingest_sales_traffic,
         "search_query_performance": ingest_search_query_performance,
         WEEKLY_JOB: ingest_weekly_search_query_performance,
+        SEARCH_CATALOG_JOB: ingest_search_catalog_performance,
         "merchant_listings_all_data": ingest_listings_report,
         "catalog_items_2022_04_01": ingest_catalog,
         "sponsored_products_entity_snapshots": ingest_ads_entities,
