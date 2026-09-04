@@ -35,6 +35,15 @@ REPORT_CREATE_BURST = int(os.getenv("AMAZON_SOURCE_PROBE_REPORT_CREATE_BURST", "
 REPORT_CREATE_COOLDOWN_SECONDS = int(
     os.getenv("AMAZON_SOURCE_PROBE_REPORT_CREATE_COOLDOWN_SECONDS", "65")
 )
+ADS_READ_MAX_ATTEMPTS = max(
+    1, int(os.getenv("AMAZON_SOURCE_PROBE_ADS_READ_MAX_ATTEMPTS", "4"))
+)
+ADS_READ_RETRY_BASE_SECONDS = float(
+    os.getenv("AMAZON_SOURCE_PROBE_ADS_READ_RETRY_BASE_SECONDS", "2")
+)
+ADS_READ_RETRY_MAX_SECONDS = float(
+    os.getenv("AMAZON_SOURCE_PROBE_ADS_READ_RETRY_MAX_SECONDS", "30")
+)
 # Amazon's default createReport plan permits a burst of 15, then restores only
 # 0.0167 requests/second. After the initial burst, every additional create must
 # wait for one token; this is intentionally not a modulo-per-burst cooldown.
@@ -921,7 +930,6 @@ REPORT_SPECS: tuple[ReportSpec, ...] = (
     ReportSpec(
         "fba_replacements",
         "GET_FBA_FULFILLMENT_CUSTOMER_SHIPMENT_REPLACEMENT_DATA",
-        "last_30_days_mature",
     ),
     ReportSpec(
         "promotion_performance",
@@ -1689,14 +1697,36 @@ def _ads_json_call(
         kwargs["json"] = body
     if params is not None:
         kwargs["params"] = params
-    response = client.authenticated_request(
-        method,
-        f"{client.base}{path}",
-        scope,
-        content_type=media_type,
-        accept=accept_media_type or media_type,
-        **kwargs,
-    )
+    response = None
+    for attempt in range(ADS_READ_MAX_ATTEMPTS):
+        response = client.authenticated_request(
+            method,
+            f"{client.base}{path}",
+            scope,
+            # Bodyless Ads requests define only a response representation.
+            # Sending an unrelated Content-Type causes some endpoints to return 415.
+            content_type=media_type if body is not None else None,
+            accept=accept_media_type or media_type,
+            **kwargs,
+        )
+        if response.status_code not in {429, 500, 502, 503, 504}:
+            break
+        if attempt + 1 >= ADS_READ_MAX_ATTEMPTS:
+            break
+        retry_after = response.headers.get("Retry-After")
+        try:
+            delay = float(retry_after) if retry_after is not None else 0.0
+        except ValueError:
+            delay = 0.0
+        if delay > 0:
+            delay = min(ADS_READ_RETRY_MAX_SECONDS, delay)
+        else:
+            delay = min(
+                ADS_READ_RETRY_MAX_SECONDS,
+                ADS_READ_RETRY_BASE_SECONDS * (2**attempt),
+            )
+        time.sleep(delay)
+    assert response is not None
     if response.status_code >= 400:
         raise RuntimeError(
             f"Amazon Ads {method.upper()} {path} failed: HTTP {response.status_code}: {_safe_error(response.text)}"

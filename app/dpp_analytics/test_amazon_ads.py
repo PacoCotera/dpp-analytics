@@ -42,6 +42,22 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
             grain=grain,
         )
 
+    @patch.object(AmazonAdsClient, "access_token", return_value="access-token")
+    @patch(
+        "dpp_analytics.amazon_ads.settings",
+        SimpleNamespace(ads_client_id="client-id"),
+    )
+    def test_bodyless_request_headers_omit_content_type(
+        self, _access_token
+    ) -> None:
+        headers = self.ads.headers(
+            "profile-1",
+            content_type=None,
+            accept="application/vnd.response.v3+json",
+        )
+        self.assertNotIn("Content-Type", headers)
+        self.assertEqual(headers["Accept"], "application/vnd.response.v3+json")
+
     @patch.object(AmazonAdsClient, "headers", return_value={})
     def test_reuses_report_id_returned_with_duplicate_response(self, _headers) -> None:
         self.ads.client.post.return_value = _response(425, {"reportId": "existing-report"})
