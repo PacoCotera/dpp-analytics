@@ -79,6 +79,9 @@ class Settings:
     brand_analytics_search_terms_weekly_backfill_start: str = os.getenv(
         "BRAND_ANALYTICS_SEARCH_TERMS_WEEKLY_BACKFILL_START", "2025-10-01"
     )
+    brand_analytics_market_basket_weekly_backfill_start: str = os.getenv(
+        "BRAND_ANALYTICS_MARKET_BASKET_WEEKLY_BACKFILL_START", "2025-10-01"
+    )
     # Brand Analytics report generation can remain queued much longer than the
     # lightweight seller reports that use the generic Reports API timeout.
     brand_analytics_search_query_poll_timeout_seconds: int = int(

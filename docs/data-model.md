@@ -122,6 +122,8 @@ Amazon Brand Analytics Search Query Performance is separate, inclusive marketpla
 
 Search Query Performance can diagnose discoverability, engagement, cart, and purchase leakage. It does not identify paid versus organic activity, advertising incrementality, profitability, or causality. Join it to Ads search terms only as query-level context, with marketplace and time-window compatibility made explicit.
 
+`brand.market_basket_affinity` retains Amazon Brand Analytics Market Basket at the exact marketplace, completed calendar period, seller-catalog ASIN, and co-purchased ASIN pair grain. `combination_ratio` stores Amazon's `combinationPct` as a 0–1 ratio without percentage scaling. The source `asin` belongs to the seller catalog; `purchased_with_asin` may be owned or competing inventory and must be resolved against current catalog evidence at use time. This is affinity and merchandising context only—not advertising attribution, causality, or incremental lift—and it does not enter an Advertising V2 recommendation directly.
+
 Advertising's Search opportunities queue reads only the latest completed monthly period and joins each ASIN to
 the canonical current offer owner. Its named, versioned rules compare click per impression, cart add per click and
 purchase per cart add against the Amazon-wide rate for the same query. Minimum ASIN evidence is 100 impressions,

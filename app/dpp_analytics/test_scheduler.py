@@ -138,6 +138,31 @@ class BackgroundSchedulerTests(unittest.TestCase):
 
     @patch("dpp_analytics.scheduler._brand_analytics_backfill_complete", return_value=False)
     @patch("dpp_analytics.scheduler.ingest_search_query_performance")
+    @patch("dpp_analytics.scheduler.ingest_market_basket")
+    @patch("dpp_analytics.scheduler.market_basket_backfill_complete", return_value=False)
+    @patch("dpp_analytics.scheduler.search_terms_backfill_complete", return_value=True)
+    @patch("dpp_analytics.scheduler.search_catalog_backfill_complete", return_value=True)
+    @patch("dpp_analytics.scheduler.weekly_search_query_backfill_complete", return_value=True)
+    def test_brand_scheduler_retains_market_basket_before_monthly_query_refresh(
+        self,
+        _weekly_complete,
+        _catalog_complete,
+        _terms_complete,
+        _basket_complete,
+        basket_ingest,
+        monthly_ingest,
+        _all_complete,
+    ) -> None:
+        basket_ingest.return_value = {"status": "success"}
+
+        result = _ingest_scheduled_brand_analytics()
+
+        basket_ingest.assert_called_once_with()
+        monthly_ingest.assert_not_called()
+        self.assertFalse(result["backfill_complete"])
+
+    @patch("dpp_analytics.scheduler._brand_analytics_backfill_complete", return_value=False)
+    @patch("dpp_analytics.scheduler.ingest_search_query_performance")
     @patch("dpp_analytics.scheduler.ingest_search_terms")
     @patch("dpp_analytics.scheduler.search_terms_backfill_complete", return_value=False)
     @patch("dpp_analytics.scheduler.search_catalog_backfill_complete", return_value=True)

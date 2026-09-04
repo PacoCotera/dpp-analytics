@@ -948,6 +948,48 @@ def _brand_search_terms_evidence(cur) -> dict[str, object]:
     }
 
 
+def _brand_market_basket_evidence(cur) -> dict[str, object]:
+    cur.execute(
+        """
+        SELECT
+            report_period,count(*)::bigint AS rows,
+            count(DISTINCT (start_date,end_date))::bigint AS periods,
+            count(DISTINCT asin)::bigint AS catalog_asins,
+            count(DISTINCT purchased_with_asin)::bigint AS companion_asins,
+            count(DISTINCT purchased_with_asin) FILTER (
+                WHERE EXISTS (
+                    SELECT 1 FROM mart.catalog_portfolio_product product
+                    WHERE product.marketplace_id=affinity.marketplace_id
+                      AND product.asin=affinity.purchased_with_asin
+                      AND product.catalog_membership='CURRENT_OFFER'
+                )
+            )::bigint AS current_owned_companion_asins,
+            count(*) FILTER (WHERE combination_ratio IS NOT NULL)::bigint
+                AS rows_with_combination_ratio,
+            min(start_date) AS first_period_start,max(end_date) AS through_date
+        FROM brand.market_basket_affinity affinity
+        GROUP BY report_period
+        ORDER BY report_period
+        """
+    )
+    integer_keys = (
+        "rows",
+        "periods",
+        "catalog_asins",
+        "companion_asins",
+        "current_owned_companion_asins",
+        "rows_with_combination_ratio",
+    )
+    return {
+        row["report_period"]: {
+            **{key: int(row[key] or 0) for key in integer_keys},
+            "first_period_start": _json_value(row.get("first_period_start")),
+            "through_date": _json_value(row.get("through_date")),
+        }
+        for row in cur.fetchall()
+    }
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -1025,6 +1067,7 @@ def _warehouse_probe() -> dict[str, object]:
         brand_search_query_evidence = _brand_search_query_evidence(cur)
         brand_search_catalog_evidence = _brand_search_catalog_evidence(cur)
         brand_search_terms_evidence = _brand_search_terms_evidence(cur)
+        brand_market_basket_evidence = _brand_market_basket_evidence(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -1077,6 +1120,7 @@ def _warehouse_probe() -> dict[str, object]:
         "brand_search_query_evidence": brand_search_query_evidence,
         "brand_search_catalog_evidence": brand_search_catalog_evidence,
         "brand_search_terms_evidence": brand_search_terms_evidence,
+        "brand_market_basket_evidence": brand_market_basket_evidence,
     }
 
 
