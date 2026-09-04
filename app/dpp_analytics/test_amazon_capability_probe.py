@@ -14,6 +14,7 @@ from .amazon_capability_probe import (
     _probe_spapi_reports,
     _safe_error,
     field_paths,
+    finance_identity_coverage,
     last_completed_week,
     render_markdown,
     report_request_body,
@@ -109,6 +110,17 @@ class AmazonCapabilityManifestTests(unittest.TestCase):
         )
         self.assertIn(
             "vendor accounts only", by_key["catalog_vendor_details"].authority
+        )
+        self.assertEqual(by_key["listing_items_detailed"].probe, "spapi_inline")
+        self.assertIn("hard safety", by_key["listing_items_detailed"].authority)
+        self.assertIn(
+            "hard recommendation guard",
+            by_key["inbound_item_eligibility"].authority,
+        )
+        self.assertEqual(by_key["inbound_plans"].grain, "inbound plan")
+        self.assertEqual(
+            by_key["aplus_content_status"].identity,
+            "ASIN and content reference",
         )
 
 
@@ -211,6 +223,42 @@ class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
         summary = summarize_payload({"payload": {"responses": [{"status": 200}]}})
         self.assertEqual(summary["sample_count"], 1)
         self.assertTrue(summary["populated"])
+
+    def test_finance_identity_coverage_counts_exact_item_evidence(self) -> None:
+        coverage = finance_identity_coverage(
+            [
+                {
+                    "relatedIdentifiers": [{"relatedIdentifierName": "ORDER_ID"}],
+                    "items": [
+                        {
+                            "contexts": [{"sku": "SKU-1", "asin": "ASIN-1"}],
+                            "relatedIdentifiers": [],
+                        },
+                        {"contexts": [{"sku": "SKU-2"}]},
+                    ],
+                },
+                {
+                    "items": [
+                        {
+                            "contexts": [{}],
+                            "relatedIdentifiers": [{"itemRelatedIdentifierName": "ORDER_ITEM_ID"}],
+                        }
+                    ]
+                },
+                {"items": []},
+            ]
+        )
+        self.assertEqual(
+            coverage,
+            {
+                "item_count": 3,
+                "items_with_sku": 2,
+                "items_with_asin": 1,
+                "items_with_product_identity": 2,
+                "transactions_with_item_identity": 1,
+                "transactions_with_related_identifiers": 2,
+            },
+        )
 
     def test_safe_error_removes_customer_and_vendor_identifiers(self) -> None:
         message = _safe_error(
