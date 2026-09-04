@@ -551,3 +551,11 @@ jobs:
               issue_number: 1,
               body
             });
+
+  source-readiness:
+    name: Advertising V2 source readiness
+    needs: deploy
+    uses: ./.github/workflows/amazon-source-readiness.yml
+    with:
+      nested: true
+    secrets: inherit
