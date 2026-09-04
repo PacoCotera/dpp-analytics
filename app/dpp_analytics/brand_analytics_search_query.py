@@ -18,9 +18,12 @@ from .spapi import SpApiClient, SpApiError
 
 SOURCE = "amazon_brand_analytics"
 JOB = "search_query_performance"
+WEEKLY_JOB = "search_query_performance_weekly"
 REPORT_TYPE = "GET_BRAND_ANALYTICS_SEARCH_QUERY_PERFORMANCE_REPORT"
 REPORT_PERIOD = "MONTH"
+WEEKLY_REPORT_PERIOD = "WEEK"
 CURSOR_PREFIX = "month:"
+WEEKLY_CURSOR_PREFIX = "week:"
 COLLECTOR_LOCK_KEY = "dpp:brand-analytics:search-query-performance"
 MAX_ASIN_OPTION_CHARACTERS = 200
 BUSINESS_TIMEZONE = ZoneInfo("America/Mexico_City")
@@ -76,6 +79,19 @@ def completed_month_periods(today: date, count: int) -> list[tuple[date, date]]:
     return periods
 
 
+def completed_week_periods(today: date, earliest: date) -> list[tuple[date, date]]:
+    """Return complete Amazon Sunday-Saturday weeks newest first."""
+    days_since_saturday = (today.weekday() - 5) % 7
+    end = today - timedelta(days=days_since_saturday)
+    if end >= today:
+        end -= timedelta(days=7)
+    periods: list[tuple[date, date]] = []
+    while end >= earliest:
+        periods.append((end - timedelta(days=6), end))
+        end -= timedelta(days=7)
+    return periods
+
+
 def chunk_asins(asins: Iterable[str], limit: int = MAX_ASIN_OPTION_CHARACTERS) -> list[list[str]]:
     """Pack ASINs under Amazon's reportOptions.asin 200-character limit."""
     chunks: list[list[str]] = []
@@ -123,7 +139,7 @@ def _current_offer_asins() -> list[str]:
         return [str(row["asin"]) for row in cur.fetchall()]
 
 
-def _completed_months() -> set[str]:
+def _completed_periods(job: str, cursor_prefix: str) -> set[str]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
             """
@@ -131,16 +147,62 @@ def _completed_months() -> set[str]:
             FROM ops.ingestion_cursor
             WHERE source=%s AND job_name=%s AND cursor_name LIKE %s
             """,
-            (SOURCE, JOB, f"{CURSOR_PREFIX}%"),
+            (SOURCE, job, f"{cursor_prefix}%"),
         )
         return {
-            str(row["cursor_name"])[len(CURSOR_PREFIX) :]
+            str(row["cursor_name"])[len(cursor_prefix) :]
             for row in cur.fetchall()
-        }
+    }
+
+
+def _completed_months() -> set[str]:
+    return _completed_periods(JOB, CURSOR_PREFIX)
 
 
 def _period_key(start: date) -> str:
     return start.strftime("%Y-%m")
+
+
+def _weekly_period_key(start: date) -> str:
+    return start.isoformat()
+
+
+def _weekly_periods(today: date | None = None) -> list[tuple[date, date]]:
+    try:
+        earliest = date.fromisoformat(
+            settings.brand_analytics_search_query_weekly_backfill_start
+        )
+    except ValueError as exc:
+        raise ValueError(
+            "BRAND_ANALYTICS_SEARCH_QUERY_WEEKLY_BACKFILL_START must be YYYY-MM-DD"
+        ) from exc
+    return completed_week_periods(today or _local_today(), earliest)
+
+
+def next_weekly_period(today: date | None = None) -> tuple[date, date, bool]:
+    periods = _weekly_periods(today)
+    if not periods:
+        raise RuntimeError("No completed weekly Search Query period is in scope")
+    completed = _completed_periods(WEEKLY_JOB, WEEKLY_CURSOR_PREFIX)
+    for start, end in periods:
+        if _weekly_period_key(start) not in completed:
+            return start, end, True
+    start, end = periods[0]
+    return start, end, False
+
+
+def weekly_search_query_backfill_complete(today: date | None = None) -> bool:
+    periods = _weekly_periods(today)
+    completed = _completed_periods(WEEKLY_JOB, WEEKLY_CURSOR_PREFIX)
+    return bool(periods) and all(
+        _weekly_period_key(start) in completed for start, _ in periods
+    )
+
+
+def search_query_source_backfill_complete(today: date | None = None) -> bool:
+    return search_query_backfill_complete(today) and weekly_search_query_backfill_complete(
+        today
+    )
 
 
 def next_period(today: date | None = None) -> tuple[date, date, bool]:
@@ -164,7 +226,8 @@ def search_query_backfill_complete(today: date | None = None) -> bool:
 
 
 def _create_report(
-    client: SpApiClient, asins: list[str], start: date, end: date
+    client: SpApiClient, asins: list[str], start: date, end: date,
+    report_period: str = REPORT_PERIOD,
 ) -> str:
     created = _payload(
         client.post(
@@ -175,7 +238,7 @@ def _create_report(
                 "dataEndTime": end.isoformat(),
                 "marketplaceIds": [settings.marketplace_id],
                 "reportOptions": {
-                    "reportPeriod": REPORT_PERIOD,
+                    "reportPeriod": report_period,
                     "asin": " ".join(asins),
                 },
             },
@@ -242,7 +305,8 @@ def _download_report(
 
 
 def _row_values(
-    row: dict[str, Any], raw_id: int, report_id: str
+    row: dict[str, Any], raw_id: int, report_id: str,
+    report_period: str = REPORT_PERIOD,
 ) -> tuple[list[str], list[Any]] | None:
     asin = str(row.get("asin") or "").strip()
     search = row.get("searchQueryData") or {}
@@ -280,7 +344,7 @@ def _row_values(
         "total_two_day_shipping_purchase_count", "source_payload_id", "source_report_id",
     ]
     values = [
-        settings.marketplace_id, REPORT_PERIOD, row.get("startDate"), row.get("endDate"), asin,
+        settings.marketplace_id, report_period, row.get("startDate"), row.get("endDate"), asin,
         query, normalize_query(query), _integer(search.get("searchQueryScore")),
         _integer(search.get("searchQueryVolume")),
         _integer(impression.get("totalQueryImpressionCount")),
@@ -312,7 +376,8 @@ def _row_values(
 
 
 def _persist_downloads(
-    downloads: list[dict[str, Any]], start: date, end: date, run_id: int
+    downloads: list[dict[str, Any]], start: date, end: date, run_id: int,
+    report_period: str = REPORT_PERIOD,
 ) -> int:
     written = 0
     with db.connect() as conn, conn.cursor() as cur:
@@ -324,7 +389,7 @@ def _persist_downloads(
                 "report_id": report_id,
                 "report_document_id": download["report_document_id"],
                 "report_type": REPORT_TYPE,
-                "report_period": REPORT_PERIOD,
+                "report_period": report_period,
                 "start_date": start.isoformat(),
                 "end_date": end.isoformat(),
                 "requested_asins": requested_asins,
@@ -351,11 +416,11 @@ def _persist_downloads(
                   AND start_date=%s AND end_date=%s AND asin=ANY(%s::text[])
                 """,
                 (
-                    settings.marketplace_id, REPORT_PERIOD, start, end, requested_asins,
+                    settings.marketplace_id, report_period, start, end, requested_asins,
                 ),
             )
             for row in report_rows(payload):
-                mapped = _row_values(row, raw_id, report_id)
+                mapped = _row_values(row, raw_id, report_id, report_period)
                 if mapped is None:
                     continue
                 columns, values = mapped
@@ -400,15 +465,27 @@ def _acquire_collector_lock():
 
 
 def ingest_search_query_performance(
-    client: SpApiClient | None = None, *, today: date | None = None
+    client: SpApiClient | None = None, *, today: date | None = None,
+    report_period: str = REPORT_PERIOD,
 ) -> dict[str, Any]:
-    """Pull one complete month. Missing history is selected newest first."""
+    """Pull one complete month or week. Missing history is newest first."""
     lock_conn = _acquire_collector_lock()
     if lock_conn is None:
         return {"status": "already_running", "records_read": 0, "records_written": 0}
     own_client = False
     try:
-        start, end, backfill = next_period(today)
+        if report_period == WEEKLY_REPORT_PERIOD:
+            start, end, backfill = next_weekly_period(today)
+            job = WEEKLY_JOB
+            cursor_prefix = WEEKLY_CURSOR_PREFIX
+            period_key = _weekly_period_key(start)
+        elif report_period == REPORT_PERIOD:
+            start, end, backfill = next_period(today)
+            job = JOB
+            cursor_prefix = CURSOR_PREFIX
+            period_key = _period_key(start)
+        else:
+            raise ValueError(f"unsupported Search Query report period: {report_period}")
         asins = _current_offer_asins()
         if not asins:
             raise RuntimeError(
@@ -419,11 +496,11 @@ def ingest_search_query_performance(
         client = client or SpApiClient()
         with db.ingestion_run(
             SOURCE,
-            JOB,
+            job,
             {
                 "marketplace": settings.marketplace_id,
                 "report_type": REPORT_TYPE,
-                "report_period": REPORT_PERIOD,
+                "report_period": report_period,
                 "start": start.isoformat(),
                 "end": end.isoformat(),
                 "asins": len(asins),
@@ -434,7 +511,9 @@ def ingest_search_query_performance(
             downloads: list[dict[str, Any]] = []
             records_read = 0
             for chunk in chunks:
-                report_id = _create_report(client, chunk, start, end)
+                report_id = _create_report(
+                    client, chunk, start, end, report_period
+                )
                 report = _wait_for_report(client, report_id)
                 document_id = report.get("reportDocumentId")
                 if not document_id:
@@ -454,16 +533,21 @@ def ingest_search_query_performance(
                 )
             run["records_read"] = records_read
             run["records_written"] = _persist_downloads(
-                downloads, start, end, int(run["id"])
+                downloads, start, end, int(run["id"]), report_period
             )
 
         db.set_cursor(
-            SOURCE, JOB, end.isoformat(), f"{CURSOR_PREFIX}{_period_key(start)}"
+            SOURCE, job, end.isoformat(), f"{cursor_prefix}{period_key}"
         )
-        complete = search_query_backfill_complete(today)
+        complete = (
+            weekly_search_query_backfill_complete(today)
+            if report_period == WEEKLY_REPORT_PERIOD
+            else search_query_backfill_complete(today)
+        )
         return {
             "status": "success",
-            "period": _period_key(start),
+            "report_period": report_period,
+            "period": period_key,
             "period_start": start.isoformat(),
             "period_end": end.isoformat(),
             "asins_requested": len(asins),
@@ -476,6 +560,24 @@ def ingest_search_query_performance(
         if own_client and client is not None:
             client.close()
         lock_conn.close()
+
+
+def ingest_weekly_search_query_performance(
+    client: SpApiClient | None = None, *, today: date | None = None
+) -> dict[str, Any]:
+    return ingest_search_query_performance(
+        client, today=today, report_period=WEEKLY_REPORT_PERIOD
+    )
+
+
+def ingest_scheduled_search_query_performance() -> dict[str, Any]:
+    """Backfill weekly evidence first, then continue the monthly contract."""
+    if not weekly_search_query_backfill_complete():
+        result = ingest_weekly_search_query_performance()
+    else:
+        result = ingest_search_query_performance()
+    result["backfill_complete"] = search_query_source_backfill_complete()
+    return result
 
 
 def main() -> None:

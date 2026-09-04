@@ -17,8 +17,11 @@ from .amazon_ads import (
 )
 from .amazon_ads_entities import ingest_ads_entities
 from .brand_analytics_search_query import (
+    WEEKLY_JOB,
     ingest_search_query_performance,
-    search_query_backfill_complete,
+    ingest_scheduled_search_query_performance,
+    ingest_weekly_search_query_performance,
+    search_query_source_backfill_complete,
 )
 from .catalog import ingest_catalog
 from .data_kiosk import ingest_sales_traffic
@@ -146,9 +149,9 @@ def _ads_traffic_quality_delay_after_result(result: dict | None) -> int:
 
 
 def _initial_brand_analytics_due() -> float:
-    if not search_query_backfill_complete():
+    if not search_query_source_backfill_complete():
         log.info(
-            "Brand Analytics Search Query history is incomplete; scheduling the next month immediately"
+            "Brand Analytics Search Query history is incomplete; scheduling the next period immediately"
         )
         return 0.0
     return _next_due(
@@ -161,7 +164,7 @@ def _initial_brand_analytics_due() -> float:
 def _brand_analytics_delay_after_result(result: dict | None) -> int:
     if result and result.get("status") == "success" and result.get("backfill_complete") is False:
         log.info(
-            "Brand Analytics Search Query history remains incomplete; continuing with the next month immediately"
+            "Brand Analytics Search Query history remains incomplete; continuing with the next period immediately"
         )
         return 0
     if result is None:
@@ -310,6 +313,7 @@ def _run_manual_sync() -> str | None:
         "settlement_reports_v2": ingest_settlement_reports,
         "sales_traffic_2024_04_24": ingest_sales_traffic,
         "search_query_performance": ingest_search_query_performance,
+        WEEKLY_JOB: ingest_weekly_search_query_performance,
         "merchant_listings_all_data": ingest_listings_report,
         "catalog_items_2022_04_01": ingest_catalog,
         "sponsored_products_entity_snapshots": ingest_ads_entities,
@@ -503,6 +507,7 @@ def main() -> None:
             elif manual_job == "settlement_reports_v2": next_settlements = now + settings.settlement_reports_interval_seconds
             elif manual_job == "sales_traffic_2024_04_24": next_data_kiosk = now + settings.data_kiosk_interval_seconds
             elif manual_job == "search_query_performance": next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
+            elif manual_job == WEEKLY_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == "merchant_listings_all_data": next_listings_report = now + settings.listings_report_interval_seconds
             elif manual_job == "catalog_items_2022_04_01": next_catalog = now + settings.catalog_interval_seconds
             elif manual_job == "sponsored_products_entity_snapshots": next_ads_entities = now + settings.ads_reporting_interval_seconds
@@ -579,7 +584,7 @@ def main() -> None:
         if now >= next_brand_analytics and brand_analytics_thread is None:
             brand_analytics_thread = _start_background_job(
                 "brand_analytics_search_query",
-                ingest_search_query_performance,
+                ingest_scheduled_search_query_performance,
                 outcome=brand_analytics_outcome,
             )
             next_brand_analytics = float("inf")

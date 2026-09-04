@@ -68,6 +68,11 @@ class Settings:
             int(os.getenv("BRAND_ANALYTICS_SEARCH_QUERY_BACKFILL_MONTHS", "17")),
         ),
     )
+    # Weekly Brand Analytics uses exact Sunday-Saturday periods. Start at the
+    # same configured business-history boundary as the other canonical facts.
+    brand_analytics_search_query_weekly_backfill_start: str = os.getenv(
+        "BRAND_ANALYTICS_SEARCH_QUERY_WEEKLY_BACKFILL_START", "2025-10-01"
+    )
     # Brand Analytics report generation can remain queued much longer than the
     # lightweight seller reports that use the generic Reports API timeout.
     brand_analytics_search_query_poll_timeout_seconds: int = int(
