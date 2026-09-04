@@ -238,7 +238,7 @@
     const latest = data[data.length - 1];
     const yearStart = new Date(Date.UTC(latest.date.getUTCFullYear(), 0, 1));
     const veryShortWindow = data.length <= 3;
-    // Early in a month, MTD can contain only four to seven daily observations.
+    // Early in a calendar month, MTD can contain only four to seven daily observations.
     // A fixed 44px cap makes those primary bars read like minor ticks across a
     // wide chart. Preserve the same proportional occupancy used by other short
     // windows until the month has enough days for the ordinary cap.
