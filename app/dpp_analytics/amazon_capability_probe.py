@@ -114,6 +114,19 @@ CAPABILITIES: tuple[Capability, ...] = (
         "spapi_inline",
     ),
     Capability(
+        "inventory_summaries",
+        "Inventory",
+        "FBA Inventory API summaries",
+        "SKU snapshot",
+        "SKU, FNSKU, ASIN",
+        "near real time",
+        "DPP retained",
+        "Fulfillable, inbound, reserved, researching and unfulfillable quantities",
+        "authoritative operational safety gate",
+        "already ingested",
+        "warehouse_and_inline",
+    ),
+    Capability(
         "catalog_full",
         "Product",
         "Catalog Items v2022",
@@ -439,6 +452,45 @@ CAPABILITIES: tuple[Capability, ...] = (
         "ads_report",
     ),
     Capability(
+        "ads_campaign_core",
+        "Advertising",
+        "SP Campaign report",
+        "campaign",
+        "campaign",
+        "daily; attribution revises",
+        "95 days at source",
+        "Campaign performance, budget, bidding strategy and active rule context",
+        "attributed, not incremental",
+        "expand existing ingestion now",
+        "ads_report",
+    ),
+    Capability(
+        "ads_ad_group_performance",
+        "Advertising",
+        "SP Campaign report grouped by ad group",
+        "campaign and ad group",
+        "campaign and ad group",
+        "daily; attribution revises",
+        "95 days at source",
+        "Resolve whether campaign response or leakage is concentrated in an ad group",
+        "attributed, not incremental",
+        "ingest now",
+        "ads_report",
+    ),
+    Capability(
+        "ads_gross_invalid_traffic",
+        "Advertising",
+        "SP Gross and Invalid Traffic report",
+        "campaign",
+        "campaign",
+        "daily; may revise after invalidation",
+        "365 days at source",
+        "Explain gross-to-valid traffic differences and protect evidence trust",
+        "data-quality evidence, not charged-spend economics",
+        "ingest now",
+        "ads_report",
+    ),
+    Capability(
         "ads_placement",
         "Advertising",
         "SP Campaign Placement report",
@@ -569,6 +621,32 @@ CAPABILITIES: tuple[Capability, ...] = (
         "ads_management",
     ),
     Capability(
+        "ads_optimization_rules",
+        "Advertising",
+        "SP campaign optimization rules",
+        "optimization rule",
+        "rule and associated campaign",
+        "point in time",
+        "retain changes in DPP",
+        "Expose automation that can change campaign bids or settings",
+        "hard recommendation guard",
+        "ingest now",
+        "ads_management",
+    ),
+    Capability(
+        "ads_target_promotion_groups",
+        "Advertising",
+        "SP target promotion groups",
+        "promotion group and promoted target",
+        "source/destination ad group, promotion group and target",
+        "point in time",
+        "retain changes in DPP",
+        "Expose Amazon-managed target promotion that can overlap DPP actions",
+        "hard recommendation guard when configured",
+        "ingest now if populated; otherwise retain availability evidence",
+        "ads_management",
+    ),
+    Capability(
         "ads_product_recommendations",
         "Advertising",
         "SP product-target recommendations",
@@ -579,6 +657,71 @@ CAPABILITIES: tuple[Capability, ...] = (
         "Candidate discovery for controlled tests",
         "Amazon suggestion only",
         "retain for later",
+        "ads_management",
+    ),
+    Capability(
+        "ads_keyword_recommendations",
+        "Advertising",
+        "SP keyword recommendations",
+        "advertised ASIN and suggested keyword",
+        "ASIN and keyword",
+        "current recommendation with trailing evidence",
+        "retain evidence in DPP",
+        "Keyword discovery, ranking, bid suggestions, and search-term impression share/rank",
+        "Amazon suggestion and competitive estimate only",
+        "supporting evidence; ingest snapshot after contract validation",
+        "ads_management",
+    ),
+    Capability(
+        "ads_bid_recommendations",
+        "Advertising",
+        "SP theme-based bid recommendations",
+        "advertised ASIN and target expression",
+        "ASIN and target expression",
+        "current recommendation",
+        "retain evidence in DPP",
+        "Bid range and objective context for bounded experiments",
+        "Amazon estimate, never an economic action by itself",
+        "supporting evidence; retain for experiment design",
+        "ads_management",
+    ),
+    Capability(
+        "ads_category_recommendations",
+        "Advertising",
+        "SP category recommendations",
+        "advertised ASIN and suggested category",
+        "ASIN and category",
+        "current recommendation",
+        "retain evidence in DPP",
+        "Category-target discovery and refinement context",
+        "Amazon suggestion only",
+        "supporting evidence; retain for later",
+        "ads_management",
+    ),
+    Capability(
+        "ads_negative_brand_recommendations",
+        "Advertising",
+        "SP negative-brand recommendations",
+        "recommended brand",
+        "brand",
+        "current recommendation",
+        "retain evidence in DPP",
+        "Candidate brand exclusions, including own-brand warnings",
+        "Amazon suggestion only; never auto-apply",
+        "supporting evidence; retain for later",
+        "ads_management",
+    ),
+    Capability(
+        "ads_budget_rule_recommendations",
+        "Advertising",
+        "SP budget-rule event recommendations",
+        "campaign and event",
+        "campaign and event",
+        "current event recommendation",
+        "retain evidence in DPP",
+        "Special-event dates and suggested budget uplift context",
+        "Amazon suggestion only; never a forecast fact",
+        "supporting evidence; retain for later",
         "ads_management",
     ),
     Capability(
@@ -593,6 +736,32 @@ CAPABILITIES: tuple[Capability, ...] = (
         "supporting until reconciled to daily reports",
         "retain for later; AWS dependency",
         "ads_management",
+    ),
+    Capability(
+        "ads_prompt_extension",
+        "Advertising",
+        "SP Prompt Ad Extension report",
+        "prompt extension",
+        "campaign, ad group, ad, ASIN and prompt",
+        "daily; attribution revises",
+        "95 days at source",
+        "Prompt-level discovery and response evidence",
+        "documented for US only",
+        "unavailable in MX; retain as expansion boundary",
+        "documented_unavailable",
+    ),
+    Capability(
+        "ads_video_extension",
+        "Advertising",
+        "SP Video Ad Extension report",
+        "video extension",
+        "campaign, ad group, ad, ASIN and video extension",
+        "daily; attribution revises",
+        "95 days at source",
+        "Video engagement and product-discovery evidence",
+        "documented for US only",
+        "unavailable in MX; retain as expansion boundary",
+        "documented_unavailable",
     ),
 )
 
@@ -689,6 +858,65 @@ REPORT_SPECS: tuple[ReportSpec, ...] = (
 
 
 ADS_REPORT_CONFIGS: dict[str, dict[str, Any]] = {
+    "ads_campaign_core": {
+        "reportTypeId": "spCampaigns",
+        "groupBy": ["campaign"],
+        "columns": [
+            "campaignId",
+            "campaignName",
+            "campaignStatus",
+            "impressions",
+            "clicks",
+            "cost",
+            "purchases7d",
+            "purchasesSameSku7d",
+            "sales7d",
+            "attributedSalesSameSku7d",
+            "campaignBiddingStrategy",
+            "campaignBudgetAmount",
+            "campaignBudgetType",
+            "campaignRuleBasedBudgetAmount",
+            "campaignApplicableBudgetRuleId",
+            "campaignApplicableBudgetRuleName",
+            "topOfSearchImpressionShare",
+        ],
+    },
+    "ads_ad_group_performance": {
+        "reportTypeId": "spCampaigns",
+        "groupBy": ["campaign", "adGroup"],
+        "columns": [
+            "campaignId",
+            "campaignName",
+            "adGroupId",
+            "adGroupName",
+            "adStatus",
+            "impressions",
+            "clicks",
+            "cost",
+            "purchases7d",
+            "purchasesSameSku7d",
+            "sales7d",
+            "attributedSalesSameSku7d",
+        ],
+    },
+    "ads_gross_invalid_traffic": {
+        "reportTypeId": "spGrossAndInvalids",
+        "groupBy": ["campaign"],
+        "columns": [
+            "campaignName",
+            "campaignStatus",
+            "impressions",
+            "clicks",
+            "grossImpressions",
+            "invalidImpressions",
+            "invalidImpressionRate",
+            "grossClickThroughs",
+            "invalidClickThroughs",
+            "invalidClickThroughRate",
+            "startDate",
+            "endDate",
+        ],
+    },
     "ads_product_extended": {
         "reportTypeId": "spAdvertisedProduct",
         "groupBy": ["advertiser"],
@@ -1049,6 +1277,33 @@ def _inline_spapi(
         }
 
     results["data_kiosk_sales_traffic"] = _attempt(kiosk)
+
+    def inventory() -> dict[str, Any]:
+        payload = client.get(
+            "/fba/inventory/v1/summaries",
+            params={
+                "details": "true",
+                "granularityType": "Marketplace",
+                "granularityId": settings.marketplace_id,
+                "marketplaceIds": settings.marketplace_id,
+            },
+        )
+        body = (
+            payload.get("payload")
+            if isinstance(payload.get("payload"), dict)
+            else payload
+        )
+        summaries = body.get("inventorySummaries") or []
+        summary = summarize_payload(summaries)
+        return {
+            "state": "authorized_populated"
+            if summary["sample_count"]
+            else "authorized_empty",
+            "authorized": True,
+            **summary,
+        }
+
+    results["inventory_summaries"] = _attempt(inventory)
 
     def catalog() -> dict[str, Any]:
         included_data = (
@@ -1506,6 +1761,99 @@ def _probe_ads_management(
             "error": "No advertised ASIN was returned for a bounded probe",
         }
 
+    asin_recommendation_calls = (
+        (
+            "ads_keyword_recommendations",
+            "/sp/targets/keywords/recommendations",
+            "application/vnd.spkeywordsrecommendation.v4+json",
+            "application/vnd.spkeywordsrecommendation.v4+json",
+            {
+                "asins": [advertised_asin] if advertised_asin else [],
+                "recommendationType": "KEYWORDS_FOR_ASINS",
+                "locale": "es_MX",
+                "maxRecommendations": 20,
+                "sortDimension": "DEFAULT",
+            },
+        ),
+        (
+            "ads_bid_recommendations",
+            "/sp/targets/bid/recommendations",
+            "application/vnd.spthemebasedbidrecommendation.v4+json",
+            "application/vnd.spthemebasedbidrecommendation.v4+json",
+            {
+                "asins": [advertised_asin] if advertised_asin else [],
+                "bidding": {"strategy": "AUTO_FOR_SALES"},
+                "recommendationType": "BIDS_FOR_NEW_AD_GROUP",
+                "targetingExpressions": [
+                    {"type": "CLOSE_MATCH"},
+                    {"type": "LOOSE_MATCH"},
+                    {"type": "SUBSTITUTES"},
+                    {"type": "COMPLEMENTS"},
+                ],
+            },
+        ),
+        (
+            "ads_category_recommendations",
+            "/sp/targets/categories/recommendations",
+            "application/vnd.spproducttargeting.v3+json",
+            "application/vnd.spproducttargetingresponse.v3+json",
+            {
+                "asins": [advertised_asin] if advertised_asin else [],
+                "includeAncestor": False,
+            },
+        ),
+    )
+    if advertised_asin:
+        for key, path, media, accept_media, body in asin_recommendation_calls:
+            results[key] = _attempt(
+                lambda path=path, media=media, accept_media=accept_media, body=body: (
+                    {
+                        "state": "authorized_populated"
+                        if (
+                            summary := _ads_json_call(
+                                client,
+                                scope,
+                                "post",
+                                path,
+                                media_type=media,
+                                accept_media_type=accept_media,
+                                body=body,
+                            )[0]
+                        )["sample_count"]
+                        else "authorized_empty",
+                        "authorized": True,
+                        **summary,
+                    }
+                )
+            )
+    else:
+        for key, _path, _media, _accept_media, _body in asin_recommendation_calls:
+            results[key] = {
+                "state": "not_sampled",
+                "authorized": None,
+                "error": "No advertised ASIN was returned for a bounded probe",
+            }
+
+    results["ads_negative_brand_recommendations"] = _attempt(
+        lambda: (
+            {
+                "state": "authorized_populated"
+                if (
+                    summary := _ads_json_call(
+                        client,
+                        scope,
+                        "get",
+                        "/sp/negativeTargets/brands/recommendations",
+                        accept_media_type="application/vnd.spproducttargetingresponse.v3+json",
+                    )[0]
+                )["sample_count"]
+                else "authorized_empty",
+                "authorized": True,
+                **summary,
+            }
+        )
+    )
+
     negative_calls = (
         (
             "ad_group_keywords",
@@ -1639,8 +1987,32 @@ def _probe_ads_management(
                     }
                 )
             )
+        results["ads_budget_rule_recommendations"] = _attempt(
+            lambda: (
+                {
+                    "state": "authorized_populated"
+                    if (
+                        summary := _ads_json_call(
+                            client,
+                            scope,
+                            "post",
+                            "/sp/campaigns/budgetRules/recommendations",
+                            media_type="application/vnd.spbudgetrulesrecommendation.v3+json",
+                            body={"campaignId": campaign_id},
+                        )[0]
+                    )["sample_count"]
+                    else "authorized_empty",
+                    "authorized": True,
+                    **summary,
+                }
+            )
+        )
     else:
-        for key in ("ads_budget_usage", "ads_budget_recommendations"):
+        for key in (
+            "ads_budget_usage",
+            "ads_budget_recommendations",
+            "ads_budget_rule_recommendations",
+        ):
             results[key] = {
                 "state": "not_sampled",
                 "authorized": None,
@@ -1662,6 +2034,81 @@ def _probe_ads_management(
             }
         )
     )
+    results["ads_optimization_rules"] = _attempt(
+        lambda: (
+            {
+                "state": "authorized_populated"
+                if (
+                    summary := _ads_json_call(
+                        client,
+                        scope,
+                        "post",
+                        "/sp/rules/optimization/search",
+                        media_type="application/vnd.spoptimizationrules.v2+json",
+                        body={"maxResults": 100},
+                    )[0]
+                )["sample_count"]
+                else "authorized_empty",
+                "authorized": True,
+                **summary,
+            }
+        )
+    )
+
+    target_promotion_parts: dict[str, Any] = {}
+    for name, path, media in (
+        (
+            "groups",
+            "/sp/targetPromotionGroups/list",
+            "application/vnd.sptargetpromotiongroup.v2+json",
+        ),
+        (
+            "targets",
+            "/sp/targetPromotionGroups/targets/list",
+            "application/vnd.sptargetpromotiongrouptarget.v2+json",
+        ),
+    ):
+        target_promotion_parts[name] = _attempt(
+            lambda path=path, media=media: (
+                {
+                    "state": "authorized_populated"
+                    if (
+                        summary := _ads_json_call(
+                            client,
+                            scope,
+                            "post",
+                            path,
+                            media_type=media,
+                            body={"maxResults": 100},
+                        )[0]
+                    )["sample_count"]
+                    else "authorized_empty",
+                    "authorized": True,
+                    **summary,
+                }
+            )
+        )
+    results["ads_target_promotion_groups"] = {
+        "state": "authorized_populated"
+        if any(part.get("sample_count") for part in target_promotion_parts.values())
+        else "authorized_empty",
+        "authorized": all(
+            part.get("authorized") is True
+            for part in target_promotion_parts.values()
+        ),
+        "components": target_promotion_parts,
+        "sample_count": sum(
+            int(part.get("sample_count") or 0)
+            for part in target_promotion_parts.values()
+        ),
+        "field_paths": sorted(
+            {
+                path
+                for part in target_promotion_parts.values()
+                for path in part.get("field_paths") or []
+            }
+        ),
+    }
     results["marketing_stream"] = _attempt(
         lambda: (
             {
@@ -1844,6 +2291,8 @@ def _warehouse_evidence() -> dict[str, dict[str, Any]]:
             "listings_snapshot": "SELECT count(*) AS n FROM core.seller_listing WHERE marketplace_id=%s AND is_current_listing",
             "settlement_v2": "SELECT count(*) AS n FROM core.settlement_line WHERE marketplace_id=%s",
             "data_kiosk_sales_traffic": "SELECT count(*) AS n FROM core.asin_sales_traffic_daily WHERE marketplace_id=%s",
+            "inventory_summaries": "SELECT count(*) AS n FROM core.inventory_snapshot WHERE marketplace_id=%s",
+            "ads_campaign_core": "SELECT count(*) AS n FROM ads.daily_campaign d JOIN ads.account a USING(account_id) WHERE a.marketplace_id=%s",
         }.items():
             cur.execute(sql, (settings.marketplace_id,))
             count = int((cur.fetchone() or {}).get("n") or 0)
@@ -1954,11 +2403,19 @@ def probe_all() -> dict[str, Any]:
 
     capabilities = []
     for cap in CAPABILITIES:
-        evidence = observed.get(cap.key) or {
-            "state": "documented_not_probed",
-            "authorized": None,
-            "error": "Documented candidate is not part of the bounded production probe",
-        }
+        if cap.probe == "documented_unavailable":
+            fallback = {
+                "state": "documented_marketplace_unavailable",
+                "authorized": None,
+                "error": "Official Amazon documentation limits this source to the US marketplace",
+            }
+        else:
+            fallback = {
+                "state": "documented_not_probed",
+                "authorized": None,
+                "error": "Documented candidate is not part of the bounded production probe",
+            }
+        evidence = observed.get(cap.key) or fallback
         capabilities.append({**asdict(cap), "production_evidence": evidence})
     return {
         "schema": PROBE_MARKER,

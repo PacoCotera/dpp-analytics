@@ -38,17 +38,45 @@ class AmazonCapabilityManifestTests(unittest.TestCase):
         self.assertEqual(
             by_key["ads_product_recommendations"].probe, "ads_management"
         )
+        self.assertEqual(by_key["ads_gross_invalid_traffic"].retention, "365 days at source")
+        self.assertEqual(
+            by_key["ads_prompt_extension"].probe, "documented_unavailable"
+        )
+        self.assertEqual(
+            by_key["ads_video_extension"].probe, "documented_unavailable"
+        )
+        self.assertEqual(
+            by_key["inventory_summaries"].authority,
+            "authoritative operational safety gate",
+        )
+        self.assertEqual(
+            by_key["ads_optimization_rules"].authority,
+            "hard recommendation guard",
+        )
+        self.assertIn(
+            "hard recommendation guard",
+            by_key["ads_target_promotion_groups"].authority,
+        )
 
     def test_ads_configs_cover_halo_placement_and_safety_context(self) -> None:
         purchased = ADS_REPORT_CONFIGS["ads_purchased_product"]["columns"]
         placement = ADS_REPORT_CONFIGS["ads_placement"]["columns"]
         target = ADS_REPORT_CONFIGS["ads_target_extended"]["columns"]
+        campaign = ADS_REPORT_CONFIGS["ads_campaign_core"]
+        ad_group = ADS_REPORT_CONFIGS["ads_ad_group_performance"]
+        invalid = ADS_REPORT_CONFIGS["ads_gross_invalid_traffic"]
         self.assertIn("purchasedAsin", purchased)
         self.assertIn("salesOtherSku7d", purchased)
         self.assertIn("placementClassification", placement)
         self.assertIn("campaignBiddingStrategy", placement)
         self.assertIn("keywordBid", target)
         self.assertIn("adKeywordStatus", target)
+        self.assertEqual(campaign["groupBy"], ["campaign"])
+        self.assertIn("campaignApplicableBudgetRuleId", campaign["columns"])
+        self.assertEqual(ad_group["groupBy"], ["campaign", "adGroup"])
+        self.assertIn("adStatus", ad_group["columns"])
+        self.assertEqual(invalid["reportTypeId"], "spGrossAndInvalids")
+        self.assertIn("invalidClickThroughRate", invalid["columns"])
 
 
 class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
@@ -75,6 +103,9 @@ class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
             def __init__(self) -> None:
                 self.calls = []
                 self.report_count = 0
+                self.failed_report_number = (
+                    list(ADS_REPORT_CONFIGS).index("ads_placement") + 1
+                )
 
             def authenticated_request(self, method, _url, _scope, **_kwargs):
                 self.calls.append(method)
@@ -83,7 +114,7 @@ class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
                     return Response({"reportId": f"report-{self.report_count}"})
                 self.assert_all_requested()
                 report_number = int(_url.rsplit("-", 1)[-1])
-                if report_number == 2:
+                if report_number == self.failed_report_number:
                     return Response({"status": "FAILED"})
                 return Response(
                     {"status": "COMPLETED", "url": f"https://report/{report_number}"}

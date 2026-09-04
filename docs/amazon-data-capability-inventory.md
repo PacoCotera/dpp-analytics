@@ -25,9 +25,9 @@ A source is not considered available merely because Amazon documents it. The pro
 
 | Family | Current Amazon surfaces considered | Why it matters to Advertising V2 |
 |---|---|---|
-| Advertising performance | Sponsored Products campaign, advertised-product, targeting, search-term, placement, and purchased-product reports | Spend allocation, same-SKU versus halo economics, placement decisions, query harvesting and negative candidates |
-| Advertising state | Campaigns, ad groups, product ads, targets, keywords, negative targets/keywords, portfolios, budget rules and budget usage | Resolve raw IDs, prevent recommendations that conflict with current state, and retain change evidence |
-| Advertising estimates and messages | Budget recommendations, product-target recommendations, Amazon Marketing Stream | Supporting ranges, intraday pacing, entity changes and candidate discovery; never authoritative economics |
+| Advertising performance | Sponsored Products campaign, ad-group, advertised-product, targeting, search-term, placement, purchased-product, and gross/invalid-traffic reports | Spend allocation, same-SKU versus halo economics, placement decisions, query harvesting, negative candidates, and traffic-quality trust |
+| Advertising state | Campaigns, ad groups, product ads, targets, keywords, negative targets/keywords, portfolios, budget rules, campaign optimization rules, target promotion groups and budget usage | Resolve raw IDs, prevent recommendations that conflict with current or Amazon-managed state, and retain change evidence |
+| Advertising estimates and messages | Budget and budget-rule recommendations, product/category/keyword/negative-brand target recommendations, theme-based bid recommendations, Amazon Marketing Stream | Supporting ranges, intraday pacing, entity changes and candidate discovery; never authoritative economics |
 | Retail demand | Data Kiosk Sales and Traffic, Search Query Performance, Search Catalog Performance, Amazon Search Terms, Market Basket and Repeat Purchase | Diagnose whether the problem is reach, click appeal, listing conversion, market demand, price or repeat behavior |
 | Product and offer | Catalog Items, Listings, Product Pricing | Product identity, variation family, suppression/offer state, price and featured-offer context |
 | Unit economics | Finances v2024, Settlement V2, Product Fees, FBA Fee Preview and Referral Fee Preview | Actual charges and refunds after reconciliation; current fee estimates only for planning and sensitivity |
@@ -39,6 +39,8 @@ A source is not considered available merely because Amazon documents it. The pro
 
 - Sponsored Products Search Term reports only contain impressions that generated at least one click and retain data for 65 days. DPP must collect this source continuously and backfill it immediately.
 - Campaign, Targeting and Advertised Product reports retain 95 days. Purchased Product retains 95 days for Sponsored Products.
+- Gross and Invalid Traffic retains 365 days and exposes campaign-level gross impressions/click-throughs, invalid impressions/click-throughs, and invalid rates. It is data-quality evidence; Amazon's valid charged spend remains the economic fact.
+- Sponsored Products Campaign reporting can be grouped by campaign, ad group, or campaign placement. Ad-group performance is a distinct diagnostic grain even though Sponsored Products has no separate ad-group report type.
 - Current Sponsored Products report contracts expose same-SKU and other-SKU sales/purchases. These are attribution partitions, not incremental sales.
 - Campaign reports can group by `campaignPlacement` and expose placement classification, bidding strategy, top-of-search impression share, budget amount/type and applied budget-rule context.
 - Purchased Product reports connect advertised ASIN, purchased ASIN, campaign, ad group and keyword/target evidence. DPP does not currently ingest this report.
@@ -50,6 +52,26 @@ A source is not considered available merely because Amazon documents it. The pro
 - Product Fees, FBA Fee Preview, Referral Fee Preview, storage estimates, Ads budget recommendations and Amazon-generated target/restock recommendations are estimates or suggestions. They cannot replace reconciled actuals or DPP safety logic.
 - Amazon Marketing Stream is available in Mexico through the NA endpoint and can deliver hourly target/ad/placement performance deltas plus budget and entity messages. It requires a customer-owned AWS destination and forward collection, so it is not an automatic substitute for historical reports.
 - Mexico supports Sponsored Products budget recommendations, product recommendations and rule-based bidding. Consolidated campaign recommendations are currently listed as US-only.
+- Keyword recommendations v4 are available across marketplaces and may expose search-term impression share and rank for keywords with advertiser impressions. They are competitive estimates attached to Amazon suggestions, not observed paid-query facts or permission to raise bids.
+- Theme-based bid recommendations support keyword, automatic and product targets across Sponsored Products marketplaces. Suggested bids and impact claims remain experiment inputs, never authoritative contribution forecasts.
+- Category, product-target and negative-brand recommendations can expose useful candidate space. They may include the advertiser's own brand and must pass DPP relevance, economics, inventory, listing and conflict gates before any test is proposed.
+- Campaign optimization rules and target promotion groups are separate from ordinary bids, targets and budget rules. DPP must snapshot them because Amazon-managed automation can otherwise make a recommendation stale or create an overlapping action.
+- Prompt Ad Extension reporting currently filters to the US marketplace, and Video Ad Extension reporting is explicitly US-only. Both remain documented expansion boundaries rather than silent omissions from the MX plan.
+
+## Sponsored Products reporting coverage
+
+Amazon's Reporting v3 matrix currently lists eight Sponsored Products report surfaces. Batch 0 treats each explicitly:
+
+| Official report surface | MX disposition |
+|---|---|
+| Campaign, including campaign/ad-group and placement groupings | production probe; ingest or expand now |
+| Advertised product | production probe; ingest now |
+| Targeting | production probe; ingest now |
+| Search term | production probe; ingest and backfill immediately because source retention is 65 days |
+| Purchased product | production probe; ingest as halo attribution, never incrementality |
+| Gross and invalid traffic | production probe; ingest as traffic-quality evidence |
+| Prompt Ad Extension | documented US-only; unavailable to DPP MX |
+| Video Ad Extension | documented US-only; unavailable to DPP MX |
 
 ## Primary documentation
 
