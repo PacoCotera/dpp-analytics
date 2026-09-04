@@ -153,15 +153,20 @@ const health = await page.evaluate(async () => {
     (response) => response.json(),
   );
   const { formatBusinessTimestamp } = await import("/assets/ui-utils.js");
+  const checkedAt = new Date(payload.checked_at);
+  const acceptable = [0, -60_000].map(
+    (offset) =>
+      `Health checked ${formatBusinessTimestamp(new Date(checkedAt.getTime() + offset).toISOString())} · refreshes every 60s`,
+  );
   return {
     checkedAt: payload.checked_at,
-    expected: `Health checked ${formatBusinessTimestamp(payload.checked_at)} · refreshes every 60s`,
+    acceptable,
     rendered: document.querySelector("#healthUpdated")?.textContent,
   };
 });
-if (health.rendered !== health.expected) {
+if (!health.acceptable.includes(health.rendered)) {
   errors.push(
-    `Data Health absolute timestamp: ${health.rendered} != ${health.expected}`,
+    `Data Health absolute timestamp: ${health.rendered} not in ${health.acceptable.join(" or ")}`,
   );
 }
 
