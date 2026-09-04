@@ -449,6 +449,48 @@ def _finance_item_evidence(cur) -> dict[str, object]:
     return result
 
 
+def _ads_entity_evidence(cur) -> dict[str, object]:
+    cur.execute(
+        """
+        WITH latest_complete AS (
+            SELECT max(snapshot_at) AS snapshot_at
+            FROM ads.entity_snapshot_batch
+            WHERE status='COMPLETE'
+        ), latest_failed AS (
+            SELECT max(snapshot_at) AS snapshot_at
+            FROM ads.entity_snapshot_batch
+            WHERE status='FAILED'
+        )
+        SELECT
+            latest_complete.snapshot_at AS latest_complete_at,
+            latest_failed.snapshot_at AS latest_failed_at,
+            count(*) FILTER (WHERE entity.entity_type='CAMPAIGN')::bigint AS campaigns,
+            count(*) FILTER (WHERE entity.entity_type='AD_GROUP')::bigint AS ad_groups,
+            count(*) FILTER (WHERE entity.entity_type='PRODUCT_AD')::bigint AS product_ads,
+            count(*) FILTER (WHERE entity.entity_type='TARGET')::bigint AS targets,
+            count(*) FILTER (WHERE entity.entity_type='KEYWORD')::bigint AS keywords,
+            count(DISTINCT entity.account_id)::bigint AS accounts
+        FROM latest_complete
+        CROSS JOIN latest_failed
+        LEFT JOIN ads.current_entity_snapshot entity ON true
+        GROUP BY latest_complete.snapshot_at,latest_failed.snapshot_at
+        """
+    )
+    row = cur.fetchone() or {}
+    return {
+        "latest_complete_at": _json_value(row.get("latest_complete_at")),
+        "latest_failed_at": _json_value(row.get("latest_failed_at")),
+        "accounts": int(row.get("accounts") or 0),
+        "entity_counts": {
+            "CAMPAIGN": int(row.get("campaigns") or 0),
+            "AD_GROUP": int(row.get("ad_groups") or 0),
+            "PRODUCT_AD": int(row.get("product_ads") or 0),
+            "TARGET": int(row.get("targets") or 0),
+            "KEYWORD": int(row.get("keywords") or 0),
+        },
+    }
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -519,6 +561,7 @@ def _warehouse_probe() -> dict[str, object]:
         ]
         finance_shape = _finance_shape(cur)
         finance_item_evidence = _finance_item_evidence(cur)
+        ads_entity_evidence = _ads_entity_evidence(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -564,6 +607,7 @@ def _warehouse_probe() -> dict[str, object]:
         "finance_types": finance_types,
         "finance_shape": finance_shape,
         "finance_item_evidence": finance_item_evidence,
+        "ads_entity_evidence": ads_entity_evidence,
     }
 
 
