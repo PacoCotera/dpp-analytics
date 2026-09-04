@@ -128,6 +128,19 @@ jobs:
           sudo docker version
           sudo docker compose version
 
+      - name: Protect deployment disk capacity
+        run: |
+          set -euo pipefail
+          available_kb="$(df -Pk / | awk 'NR == 2 { print $4 }')"
+          minimum_kb="$((5 * 1024 * 1024))"
+          if (( available_kb < minimum_kb )); then
+            echo "Root filesystem has ${available_kb} KiB available; bounding Docker build cache."
+            # Build cache is reproducible. Do not prune images, containers, or
+            # named volumes: PostgreSQL and Grafana state must remain untouched.
+            sudo docker builder prune --all --force --keep-storage 1GB
+          fi
+          df -h /
+
       - name: Initialize local board config
         run: |
           set -euo pipefail
@@ -353,6 +366,16 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
           compression-level: 9
+
+      - name: Bound Docker build cache after deployment
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          # Keep subsequent releases runnable on the 38 GB host without ever
+          # touching application images, containers, or persistent volumes.
+          sudo docker builder prune --all --force --keep-storage 1GB
+          df -h /
 
       - name: Collect deployment heartbeat
         if: always()

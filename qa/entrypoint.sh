@@ -30,9 +30,9 @@ wait_batch() {
 run_check visual_qa "$base_url" "$work_dir"
 
 # The self-hosted runner has a hard execution ceiling below the workflow's
-# nominal timeout. Run independent browser contracts in bounded groups of three:
-# enough concurrency to complete the full matrix, without the memory pressure of
-# launching all Playwright engines at once.
+# nominal timeout. Run independent browser contracts in bounded groups of four:
+# enough concurrency to complete the full matrix inside the observed runner
+# ceiling, without launching the full Playwright set at once.
 scripts="
 nav_qa
 sidebar_subtitle_qa
@@ -79,7 +79,7 @@ set --
 for script in $scripts; do
   run_check "$script" "$base_url" "$work_dir" &
   set -- "$@" "$!"
-  if [ "$#" -ge 3 ]; then
+  if [ "$#" -ge 4 ]; then
     wait_batch "$@"
     set --
   fi

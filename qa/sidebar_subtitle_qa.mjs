@@ -70,17 +70,25 @@ function monitor(page) {
 
 async function loadShell(page, route) {
   const response = await page.goto(`${baseUrl}${route}`, {
-    // This audit reuses one page across routes. Wait for each route's data
-    // requests to settle before navigating again; otherwise a deliberately
-    // aborted request from the previous route is reported as a browser error
-    // (notably /api/sales under concurrent production QA load).
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
     timeout: 30_000,
   });
   assert(response?.ok(), `${route} returned ${response?.status()}`);
   await page
     .locator("#app-sidebar .app-sidebar__brand .brand-sub")
     .waitFor({ state: "visible", timeout: 10_000 });
+  if (route === "/sales") {
+    // Sales has the largest route payload in populated production. This audit
+    // reuses one page, so wait for its render-owned value before navigating;
+    // otherwise the next route deliberately aborts /api/sales and creates a
+    // false browser error. A real fetch/render failure leaves the placeholder
+    // intact and still fails this gate.
+    await page.waitForFunction(
+      () => document.querySelector("#mtdSales")?.textContent?.trim() !== "—",
+      null,
+      { timeout: 30_000 },
+    );
+  }
   await page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise((resolve) =>
