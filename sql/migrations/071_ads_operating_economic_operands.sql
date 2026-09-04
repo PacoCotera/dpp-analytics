@@ -188,21 +188,24 @@ JOIN mart.catalog_portfolio_product product
  AND product.asin=sales.asin
  AND product.is_offer_owner
  AND product.catalog_membership='CURRENT_OFFER'
-JOIN core.marketplace_tax_policy policy USING (marketplace_id)
+JOIN core.marketplace_tax_policy policy
+  ON policy.marketplace_id=sales.marketplace_id
 LEFT JOIN mart.finance_product_allocation_daily product_finance
   ON product_finance.marketplace_id=sales.marketplace_id
  AND product_finance.business_date=sales.business_date
  AND product_finance.seller_sku=product.seller_sku
  AND product_finance.asin=product.asin
 LEFT JOIN mart.finance_business_allocation_daily business_finance
-  USING (marketplace_id,business_date)
+  ON business_finance.marketplace_id=sales.marketplace_id
+ AND business_finance.business_date=sales.business_date
 LEFT JOIN mart.ads_product_business_daily product_ads
   ON product_ads.marketplace_id=sales.marketplace_id
  AND product_ads.business_date=sales.business_date
  AND product_ads.sku=product.seller_sku
  AND product_ads.asin=product.asin
 LEFT JOIN mart.ads_business_economic_operands_daily business_ads
-  USING (marketplace_id,business_date);
+  ON business_ads.marketplace_id=sales.marketplace_id
+ AND business_ads.business_date=sales.business_date;
 
 COMMENT ON VIEW mart.finance_product_allocation_daily IS
 'Exact Finance item totals assigned only when Finance provides an exact SKU+ASIN identity that matches the current canonical offer owner. No revenue- or unit-proportional allocation is permitted.';
