@@ -139,6 +139,32 @@ CAPABILITIES: tuple[Capability, ...] = (
         "warehouse_and_inline",
     ),
     Capability(
+        "inbound_plans",
+        "Inventory",
+        "Fulfillment Inbound v2024 plans",
+        "inbound plan",
+        "inbound plan and marketplace",
+        "point in time",
+        "source API plus DPP snapshots",
+        "Shipment lifecycle and supply-arrival context",
+        "supporting fulfillment evidence",
+        "supporting evidence; retain for later",
+        "spapi_inline",
+    ),
+    Capability(
+        "inbound_item_eligibility",
+        "Inventory",
+        "FBA Inbound Eligibility preview",
+        "ASIN eligibility snapshot",
+        "ASIN and marketplace",
+        "point in time",
+        "DPP snapshots",
+        "Prevent spend increases when constrained stock cannot be replenished",
+        "hard recommendation guard when inventory is constrained",
+        "ingest now",
+        "spapi_inline",
+    ),
+    Capability(
         "catalog_full",
         "Product",
         "Catalog Items v2022",
@@ -163,6 +189,45 @@ CAPABILITIES: tuple[Capability, ...] = (
         "documented for vendor accounts only",
         "unavailable to DPP seller; retain as account-type boundary",
         "documented_account_unavailable",
+    ),
+    Capability(
+        "listing_items_detailed",
+        "Product",
+        "Listings Items v2021",
+        "seller SKU snapshot",
+        "seller, SKU and marketplace",
+        "point in time",
+        "DPP snapshots",
+        "Buyability, discoverability, offer, availability and issue diagnosis",
+        "hard safety and diagnostic evidence",
+        "expand existing ingestion now",
+        "spapi_inline",
+    ),
+    Capability(
+        "listing_restrictions",
+        "Product",
+        "Listings Restrictions v2021",
+        "ASIN restriction snapshot",
+        "seller, ASIN and marketplace",
+        "point in time",
+        "DPP snapshots",
+        "Explain brand, condition or category restrictions",
+        "supporting listing evidence",
+        "supporting evidence",
+        "spapi_inline",
+    ),
+    Capability(
+        "aplus_content_status",
+        "Product",
+        "A+ Content publish records",
+        "ASIN publish record",
+        "ASIN and content reference",
+        "point in time",
+        "DPP snapshots",
+        "Identify missing, rejected or stale enhanced listing content",
+        "supporting listing-conversion evidence",
+        "retain for later",
+        "spapi_inline",
     ),
     Capability(
         "competitive_pricing",
@@ -1230,6 +1295,59 @@ def summarize_payload(value: Any) -> dict[str, Any]:
     }
 
 
+def finance_identity_coverage(transactions: list[Any]) -> dict[str, int]:
+    rows = [row for row in transactions if isinstance(row, dict)]
+    items = [
+        item
+        for row in rows
+        for item in row.get("items") or []
+        if isinstance(item, dict)
+    ]
+
+    def item_contexts(item: dict[str, Any]) -> list[dict[str, Any]]:
+        return [
+            context
+            for context in item.get("contexts") or []
+            if isinstance(context, dict)
+        ]
+
+    def has_item_identity(item: dict[str, Any]) -> bool:
+        return any(
+            context.get("sku") or context.get("asin")
+            for context in item_contexts(item)
+        )
+
+    return {
+        "item_count": len(items),
+        "items_with_sku": sum(
+            any(context.get("sku") for context in item_contexts(item))
+            for item in items
+        ),
+        "items_with_asin": sum(
+            any(context.get("asin") for context in item_contexts(item))
+            for item in items
+        ),
+        "items_with_product_identity": sum(has_item_identity(item) for item in items),
+        "transactions_with_item_identity": sum(
+            any(
+                has_item_identity(item)
+                for item in row.get("items") or []
+                if isinstance(item, dict)
+            )
+            for row in rows
+        ),
+        "transactions_with_related_identifiers": sum(
+            bool(row.get("relatedIdentifiers"))
+            or any(
+                bool(item.get("relatedIdentifiers"))
+                for item in row.get("items") or []
+                if isinstance(item, dict)
+            )
+            for row in rows
+        ),
+    }
+
+
 def last_completed_week(today: dt.date) -> tuple[dt.date, dt.date]:
     days_since_saturday = (today.weekday() - 5) % 7
     end = today - dt.timedelta(days=days_since_saturday)
@@ -1288,6 +1406,18 @@ def _sample_product() -> dict[str, Any]:
             """
         )
         row = cur.fetchone() or {}
+        cur.execute(
+            """
+            SELECT payload#>>'{sellingPartnerMetadata,sellingPartnerId}' AS seller_id
+            FROM raw.api_payload
+            WHERE source='amazon_spapi'
+              AND resource_type='financial_transaction'
+              AND NULLIF(payload#>>'{sellingPartnerMetadata,sellingPartnerId}','') IS NOT NULL
+            ORDER BY fetched_at DESC
+            LIMIT 1
+            """
+        )
+        row["seller_id"] = (cur.fetchone() or {}).get("seller_id")
     if not row.get("sku") or not row.get("asin"):
         raise RuntimeError("No active SKU/ASIN is available for capability probes")
     return dict(row)
@@ -1355,6 +1485,7 @@ def _inline_spapi(
             "transactions_with_items": item_transactions,
             "transactions_with_contexts": context_transactions,
             "transactions_with_item_contexts": item_context_transactions,
+            **finance_identity_coverage(transactions),
             "field_paths": field_paths(transactions),
             "populated": bool(transactions),
         }
@@ -1410,6 +1541,43 @@ def _inline_spapi(
 
     results["inventory_summaries"] = _attempt(inventory)
 
+    def inbound_plans() -> dict[str, Any]:
+        payload = client.get(
+            "/inbound/fba/2024-03-20/inboundPlans",
+            params={
+                "pageSize": 30,
+                "sortBy": "LAST_UPDATED_TIME",
+                "sortOrder": "DESC",
+            },
+        )
+        plans = _payload(payload).get("inboundPlans") or []
+        summary = summarize_payload(plans)
+        return {
+            "state": "authorized_populated" if plans else "authorized_empty",
+            "authorized": True,
+            **summary,
+        }
+
+    results["inbound_plans"] = _attempt(inbound_plans)
+
+    def inbound_eligibility() -> dict[str, Any]:
+        payload = client.get(
+            "/fba/inbound/v1/eligibility/itemPreview",
+            params={
+                "asin": sample["asin"],
+                "program": "INBOUND",
+                "marketplaceIds": settings.marketplace_id,
+            },
+        )
+        summary = summarize_payload(payload)
+        return {
+            "state": "authorized_populated" if payload else "authorized_empty",
+            "authorized": True,
+            **summary,
+        }
+
+    results["inbound_item_eligibility"] = _attempt(inbound_eligibility)
+
     def catalog() -> dict[str, Any]:
         included_data = (
             "attributes",
@@ -1463,6 +1631,79 @@ def _inline_spapi(
         }
 
     results["catalog_full"] = _attempt(catalog)
+
+    seller_id = sample.get("seller_id")
+    if seller_id:
+        def listing_items() -> dict[str, Any]:
+            payload = client.get(
+                f"/listings/2021-08-01/items/{seller_id}",
+                params={
+                    "marketplaceIds": settings.marketplace_id,
+                    "includedData": (
+                        "summaries,attributes,issues,offers,"
+                        "fulfillmentAvailability,relationships,productTypes"
+                    ),
+                    "pageSize": 20,
+                },
+            )
+            items = _payload(payload).get("items") or []
+            summary = summarize_payload(items)
+            return {
+                "state": "authorized_populated" if items else "authorized_empty",
+                "authorized": True,
+                **summary,
+            }
+
+        results["listing_items_detailed"] = _attempt(listing_items)
+
+        def listing_restrictions() -> dict[str, Any]:
+            payload = client.get(
+                "/listings/2021-08-01/restrictions",
+                params={
+                    "asin": sample["asin"],
+                    "sellerId": seller_id,
+                    "marketplaceIds": settings.marketplace_id,
+                },
+            )
+            restrictions = _payload(payload).get("restrictions") or []
+            summary = summarize_payload(restrictions)
+            return {
+                "state": (
+                    "authorized_populated" if restrictions else "authorized_empty"
+                ),
+                "authorized": True,
+                **summary,
+            }
+
+        results["listing_restrictions"] = _attempt(listing_restrictions)
+    else:
+        for key in ("listing_items_detailed", "listing_restrictions"):
+            results[key] = {
+                "state": "not_sampled",
+                "authorized": None,
+                "error": (
+                    "No production selling-partner identifier was available "
+                    "for a bounded probe"
+                ),
+            }
+
+    def aplus_status() -> dict[str, Any]:
+        payload = client.get(
+            "/aplus/2020-11-01/contentPublishRecords",
+            params={
+                "marketplaceId": settings.marketplace_id,
+                "asin": sample["asin"],
+            },
+        )
+        records = _payload(payload).get("publishRecordList") or []
+        summary = summarize_payload(records)
+        return {
+            "state": "authorized_populated" if records else "authorized_empty",
+            "authorized": True,
+            **summary,
+        }
+
+    results["aplus_content_status"] = _attempt(aplus_status)
 
     def pricing() -> dict[str, Any]:
         payload = client.post(
