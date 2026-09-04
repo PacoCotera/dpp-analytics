@@ -89,12 +89,17 @@
     .composition-label { margin: 30px 0 8px; padding-top: 18px; border-top: 2px dashed #b8c3c0; color: var(--muted); font-size: 13px; }
     @media (max-width: 720px) {
       .screen { width: min(100% - 24px, 440px); }
-      .artifact-note { margin: 10px 12px; }
+      .artifact-note { display: none; }
       .topbar { min-height: 52px; }
       .nav { display: none; }
       .summary, .layout { grid-template-columns: 1fr; }
-      .summary { gap: 8px; }
-      .metric { min-height: 0; }
+      .summary { gap: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+      .metric { min-height: 0; padding: 8px 10px; border: 0; border-radius: 0; border-top: 1px solid var(--line); box-shadow: none; }
+      .metric:first-child { border-top: 0; border-radius: 10px 10px 0 0; }
+      .metric:last-child { border-radius: 0 0 10px 10px; }
+      .metric .value { display: inline; margin-right: 6px; font-size: 19px; }
+      .metric .detail { display: inline; }
+      .metric.blocked .value { font-size: 15px; }
       .layout { gap: 10px; }
       .panel { padding: 13px; }
       .section-head { align-items: start; }
