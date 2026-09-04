@@ -277,13 +277,14 @@ When changing `compose.yml` or `.env.example`, validate them together. The templ
 9. uploads QA artifacts;
 10. updates the deployment heartbeat.
 
-The self-hosted host has a 38 GB root filesystem. Before a build, deployment checks
-available root capacity and bounds unused Docker build cache to 1 GB when less than
-5 GB remains. The same bounded build-cache cleanup runs after every deployment,
-including failed runs, before the heartbeat captures host capacity. This cleanup is
-deliberately limited to reproducible builder cache: it never invokes `docker system
-prune`, removes application images or containers, or touches the PostgreSQL and
-Grafana named volumes.
+The self-hosted host has a 38 GB root filesystem. Deployment bounds unused Docker
+build cache to 1 GB at startup and again after the application/QA images are complete,
+before Playwright writes the 231-capture production matrix. The same bounded
+build-cache cleanup runs after every deployment, including failed runs, before the
+heartbeat captures host capacity. This cleanup is deliberately limited to
+reproducible builder cache: it never invokes `docker system prune`, removes
+application images or containers, or touches the PostgreSQL and Grafana named
+volumes.
 
 Production browser QA records page/viewport captures plus browser console errors, failed responses and horizontal-overflow checks. Treat it as a deployment requirement, not decorative screenshots.
 `qa/admin_qa.mjs` proves the published Admin entrypoint, unauthenticated API denial, authenticated current/deleted pre-population, a non-mutating save/reload, ordinary Catalog consumption of the persisted values, and logout denial. The QA container uses the host network and published port so it exercises the same remote-access policy as the public route. Deployment passes only the Admin password through a temporary mode-0600 env file and deletes it during cleanup; the password is never written to QA output.
