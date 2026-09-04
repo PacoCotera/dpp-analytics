@@ -44,7 +44,8 @@ jobs:
               --network container:dpp-worker \
               --env-file /etc/dpp-analytics/env \
               -e GITHUB_SHA="${GITHUB_SHA}" \
-              -e AMAZON_SOURCE_PROBE_REPORT_TIMEOUT_SECONDS=3600 \
+              -e AMAZON_SOURCE_PROBE_REPORT_TIMEOUT_SECONDS=1800 \
+              -e AMAZON_SOURCE_PROBE_ADS_REPORT_TIMEOUT_SECONDS=1800 \
               -e AMAZON_SOURCE_PROBE_REPORT_POLL_SECONDS=10 \
               -v "$output_dir:/out" \
               "$image" \
