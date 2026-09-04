@@ -141,3 +141,9 @@ The production source-readiness workflow publishes the executable matrix to cont
 - unavailable, with the degraded product state defined.
 
 No recommendation may be manufactured from a documented-but-unverified source.
+
+After the complete Batch 0 production artifact is accepted, run
+`.github/workflows/amazon-source-readiness.yml` manually when a source contract,
+authorization, marketplace, or inventory row changes. The exhaustive probe is
+not part of routine deployment: it consumes rate-limited Amazon report requests
+and shares the production concurrency lock with deployments.
