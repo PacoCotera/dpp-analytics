@@ -877,6 +877,37 @@ def _brand_search_query_evidence(cur) -> dict[str, object]:
     }
 
 
+def _brand_search_catalog_evidence(cur) -> dict[str, object]:
+    cur.execute(
+        """
+        SELECT
+            report_period,count(*)::bigint AS rows,
+            count(DISTINCT (start_date,end_date))::bigint AS periods,
+            count(DISTINCT asin)::bigint AS asins,
+            min(start_date) AS first_period_start,max(end_date) AS through_date,
+            count(*) FILTER (WHERE impression_count IS NOT NULL)::bigint AS rows_with_impressions,
+            count(*) FILTER (WHERE click_count IS NOT NULL)::bigint AS rows_with_clicks,
+            count(*) FILTER (WHERE purchase_count IS NOT NULL)::bigint AS rows_with_purchases,
+            count(*) FILTER (WHERE search_traffic_sales IS NOT NULL)::bigint AS rows_with_search_sales
+        FROM brand.search_catalog_performance
+        GROUP BY report_period
+        ORDER BY report_period
+        """
+    )
+    integer_keys = (
+        "rows", "periods", "asins", "rows_with_impressions", "rows_with_clicks",
+        "rows_with_purchases", "rows_with_search_sales",
+    )
+    return {
+        row["report_period"]: {
+            **{key: int(row[key] or 0) for key in integer_keys},
+            "first_period_start": _json_value(row.get("first_period_start")),
+            "through_date": _json_value(row.get("through_date")),
+        }
+        for row in cur.fetchall()
+    }
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -952,6 +983,7 @@ def _warehouse_probe() -> dict[str, object]:
         ads_granular_report_evidence = _ads_granular_report_evidence(cur)
         ads_invalid_traffic_evidence = _ads_invalid_traffic_evidence(cur)
         brand_search_query_evidence = _brand_search_query_evidence(cur)
+        brand_search_catalog_evidence = _brand_search_catalog_evidence(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -1002,6 +1034,7 @@ def _warehouse_probe() -> dict[str, object]:
         "ads_granular_report_evidence": ads_granular_report_evidence,
         "ads_invalid_traffic_evidence": ads_invalid_traffic_evidence,
         "brand_search_query_evidence": brand_search_query_evidence,
+        "brand_search_catalog_evidence": brand_search_catalog_evidence,
     }
 
 
