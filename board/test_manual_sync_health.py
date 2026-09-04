@@ -53,6 +53,18 @@ class ManualSyncHealthContractTest(unittest.TestCase):
         self.assertIn('reason = "in_progress"', source)
         self.assertIn('"retry_after_seconds": MANUAL_SYNC_COOLDOWN_SECONDS', source)
 
+    def test_post_contract_accepts_every_brand_analytics_collector(self):
+        source = Path(__file__).with_name("server.py").read_text()
+
+        for job_name in (
+            "search_query_performance",
+            "search_query_performance_weekly",
+            "search_catalog_performance_weekly",
+            "search_terms_weekly",
+            "market_basket_weekly",
+        ):
+            self.assertIn(f'"{job_name}"', source)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -16,6 +16,11 @@ from .amazon_ads import (
     probe_ads,
 )
 from .amazon_ads_entities import ingest_ads_entities
+from .brand_analytics_market_basket import (
+    JOB as MARKET_BASKET_JOB,
+    ingest_market_basket,
+    market_basket_backfill_complete,
+)
 from .brand_analytics_search_catalog import (
     JOB as SEARCH_CATALOG_JOB,
     ingest_search_catalog_performance,
@@ -163,6 +168,7 @@ def _brand_analytics_backfill_complete() -> bool:
         search_query_source_backfill_complete()
         and search_catalog_backfill_complete()
         and search_terms_backfill_complete()
+        and market_basket_backfill_complete()
     )
 
 
@@ -173,6 +179,8 @@ def _ingest_scheduled_brand_analytics() -> dict:
         result = ingest_search_catalog_performance()
     elif not search_terms_backfill_complete():
         result = ingest_search_terms()
+    elif not market_basket_backfill_complete():
+        result = ingest_market_basket()
     else:
         result = ingest_search_query_performance()
     result["backfill_complete"] = _brand_analytics_backfill_complete()
@@ -200,7 +208,7 @@ def _brand_analytics_delay_after_result(result: dict | None) -> int:
         return 0
     if result is None:
         log.info(
-            "Brand Analytics Search Query refresh failed; retrying in %ss",
+            "Brand Analytics source refresh failed; retrying in %ss",
             BRAND_ANALYTICS_FAILURE_RETRY_SECONDS,
         )
         return min(
@@ -347,6 +355,7 @@ def _run_manual_sync() -> str | None:
         WEEKLY_JOB: ingest_weekly_search_query_performance,
         SEARCH_CATALOG_JOB: ingest_search_catalog_performance,
         SEARCH_TERMS_JOB: ingest_search_terms,
+        MARKET_BASKET_JOB: ingest_market_basket,
         "merchant_listings_all_data": ingest_listings_report,
         "catalog_items_2022_04_01": ingest_catalog,
         "sponsored_products_entity_snapshots": ingest_ads_entities,
@@ -543,6 +552,7 @@ def main() -> None:
             elif manual_job == WEEKLY_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == SEARCH_CATALOG_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == SEARCH_TERMS_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
+            elif manual_job == MARKET_BASKET_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == "merchant_listings_all_data": next_listings_report = now + settings.listings_report_interval_seconds
             elif manual_job == "catalog_items_2022_04_01": next_catalog = now + settings.catalog_interval_seconds
             elif manual_job == "sponsored_products_entity_snapshots": next_ads_entities = now + settings.ads_reporting_interval_seconds

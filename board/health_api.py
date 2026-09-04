@@ -73,6 +73,46 @@ JOB_DEFINITIONS = {
         ),
         "grace_seconds": 86400,
     },
+    ("amazon_brand_analytics", "search_query_performance_weekly"): {
+        "label": "Weekly Search Query Performance",
+        "operation": "Amazon Brand Analytics · weekly ASIN query funnel",
+        "purpose": "Provides faster query demand, funnel conversion and ASIN share evidence.",
+        "domain": "Advertising",
+        "interval_seconds": lambda: _seconds(
+            "BRAND_ANALYTICS_SEARCH_QUERY_INTERVAL_SECONDS", 86400
+        ),
+        "grace_seconds": 86400,
+    },
+    ("amazon_brand_analytics", "search_catalog_performance_weekly"): {
+        "label": "Search Catalog Performance",
+        "operation": "Amazon Brand Analytics · weekly ASIN search funnel",
+        "purpose": "Provides inclusive ASIN search engagement and purchase evidence.",
+        "domain": "Advertising",
+        "interval_seconds": lambda: _seconds(
+            "BRAND_ANALYTICS_SEARCH_QUERY_INTERVAL_SECONDS", 86400
+        ),
+        "grace_seconds": 86400,
+    },
+    ("amazon_brand_analytics", "search_terms_weekly"): {
+        "label": "Amazon Search Terms",
+        "operation": "Amazon Brand Analytics · weekly market search demand",
+        "purpose": "Provides marketplace query and leading clicked-product context.",
+        "domain": "Advertising",
+        "interval_seconds": lambda: _seconds(
+            "BRAND_ANALYTICS_SEARCH_QUERY_INTERVAL_SECONDS", 86400
+        ),
+        "grace_seconds": 86400,
+    },
+    ("amazon_brand_analytics", "market_basket_weekly"): {
+        "label": "Market Basket",
+        "operation": "Amazon Brand Analytics · weekly co-purchase affinity",
+        "purpose": "Retains owned-product and companion-product affinity for later analysis.",
+        "domain": "Advertising",
+        "interval_seconds": lambda: _seconds(
+            "BRAND_ANALYTICS_SEARCH_QUERY_INTERVAL_SECONDS", 86400
+        ),
+        "grace_seconds": 86400,
+    },
     ("amazon_reports", "merchant_listings_all_data"): {
         "label": "Seller listings",
         "operation": "Amazon SP-API · Merchant Listings report",
