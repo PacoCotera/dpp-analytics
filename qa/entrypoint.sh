@@ -1,136 +1,108 @@
 #!/bin/sh
 set -u
+
 base_url="${1:-http://127.0.0.1:8088}"
 out_root="${2:-/out}"
 work_dir="$out_root/captures"
+rc_dir="$(mktemp -d)"
 mkdir -p "$work_dir"
-node /qa/visual_qa.mjs "$base_url" "$work_dir"
-visual_rc=$?
-node /qa/nav_qa.mjs "$base_url" "$work_dir"
-nav_rc=$?
-node /qa/sidebar_subtitle_qa.mjs "$base_url" "$work_dir"
-sidebar_subtitle_rc=$?
-node /qa/presentation_profiles_qa.mjs "$base_url" "$work_dir"
-presentation_profiles_rc=$?
-node /qa/accessibility_qa.mjs "$base_url" "$work_dir"
-accessibility_rc=$?
-node /qa/audit_batch1_qa.mjs "$base_url" "$work_dir"
-audit_batch1_rc=$?
-node /qa/audit_422_qa.mjs "$base_url" "$work_dir"
-audit_422_rc=$?
-node /qa/analysis_state_qa.mjs "$base_url" "$work_dir"
-analysis_state_rc=$?
-node /qa/manual_sync_qa.mjs "$base_url" "$work_dir"
-manual_sync_rc=$?
-node /qa/today_day_picker_qa.mjs "$base_url" "$work_dir"
-today_day_picker_rc=$?
-node /qa/today_mobile_benchmark_qa.mjs "$base_url" "$work_dir"
-today_mobile_benchmark_rc=$?
-node /qa/trajectory_lead_caption_qa.mjs "$base_url" "$work_dir"
-trajectory_lead_caption_rc=$?
-node /qa/trajectory_axis_ticks_qa.mjs "$base_url" "$work_dir"
-trajectory_axis_ticks_rc=$?
-node /qa/data_health_disclosure_qa.mjs "$base_url" "$work_dir"
-data_health_disclosure_rc=$?
-node /qa/sales_driver_units_qa.mjs "$base_url" "$work_dir"
-sales_driver_units_rc=$?
-node /qa/sales_momentum_qa.mjs "$base_url" "$work_dir"
-sales_momentum_rc=$?
-node /qa/sales_layout_qa.mjs "$base_url" "$work_dir"
-sales_layout_rc=$?
-node /qa/catalog_family_overflow_qa.mjs "$base_url" "$work_dir"
-catalog_family_overflow_rc=$?
-node /qa/choice_reveal_qa.mjs "$base_url" "$work_dir"
-choice_reveal_rc=$?
-node /qa/mobile_layout_qa.mjs "$base_url" "$work_dir"
-mobile_layout_rc=$?
-node /qa/percentage_format_qa.mjs "$base_url" "$work_dir"
-percentage_format_rc=$?
-node /qa/shared_control_targets_qa.mjs "$base_url" "$work_dir"
-shared_control_targets_rc=$?
-node /qa/numeric_ui_qa.mjs "$base_url" "$work_dir"
-numeric_rc=$?
-node /qa/ui_format_qa.mjs "$base_url" "$work_dir"
-ui_format_rc=$?
-node /qa/geography_qa.mjs "$base_url" "$work_dir"
-geography_rc=$?
-node /qa/geography_zoom_qa.mjs "$base_url" "$work_dir"
-geography_zoom_rc=$?
-node /qa/order_operations_qa.mjs "$base_url" "$work_dir"
-order_operations_rc=$?
-node /qa/product_naming_qa.mjs "$base_url" "$work_dir"
-product_naming_rc=$?
-node /qa/ads_surface_qa.mjs "$base_url" "$work_dir"
-ads_surface_rc=$?
-node /qa/ads_cross_route_qa.mjs "$base_url" "$work_dir"
-ads_cross_route_rc=$?
-node /qa/footer_qa.mjs "$base_url" "$work_dir"
-footer_rc=$?
-node /qa/short_state_footer_qa.mjs "$base_url" "$work_dir"
-short_state_footer_rc=$?
-node /qa/asset_revision_qa.mjs "$base_url" "$work_dir"
-asset_revision_rc=$?
-node /qa/favicon_qa.mjs "$base_url" "$work_dir"
-favicon_rc=$?
-node /qa/timezone_qa.mjs "$base_url" "$work_dir"
-timezone_rc=$?
-node /qa/cache_performance_qa.mjs "$base_url" "$work_dir"
-cache_performance_rc=$?
-node /qa/load_time_qa.mjs "$base_url" "$work_dir"
-load_time_rc=$?
-node /qa/performance_baseline_qa.mjs "$work_dir" /qa/performance-baseline.json
-performance_baseline_rc=$?
-node /qa/catalog_onboarding_qa.mjs "$base_url" "$work_dir"
-catalog_onboarding_rc=$?
-node /qa/interpretation_rules_qa.mjs "$base_url" "$work_dir"
-interpretation_rules_rc=$?
-node /qa/metric_windows_qa.mjs "$base_url" "$work_dir"
-metric_windows_rc=$?
-node /qa/inventory_qa.mjs "$base_url" "$work_dir"
-inventory_rc=$?
-node /qa/admin_qa.mjs "$base_url" "$work_dir"
-admin_rc=$?
+
+cleanup() {
+  rm -rf "$rc_dir"
+}
+trap cleanup EXIT INT TERM
+
+run_check() {
+  script="$1"
+  shift
+  node "/qa/$script.mjs" "$@"
+  printf '%s\n' "$?" >"$rc_dir/$script"
+}
+
+wait_batch() {
+  for pid in "$@"; do
+    wait "$pid" || true
+  done
+}
+
+# visual_qa owns the top-level summary/report and clears the output directory at
+# startup, so it must finish before independent checks begin writing evidence.
+run_check visual_qa "$base_url" "$work_dir"
+
+# The self-hosted runner has a hard execution ceiling below the workflow's
+# nominal timeout. Run independent browser contracts in bounded groups of three:
+# enough concurrency to complete the full matrix, without the memory pressure of
+# launching all Playwright engines at once.
+scripts="
+nav_qa
+sidebar_subtitle_qa
+presentation_profiles_qa
+accessibility_qa
+audit_batch1_qa
+audit_422_qa
+analysis_state_qa
+today_day_picker_qa
+today_mobile_benchmark_qa
+trajectory_lead_caption_qa
+trajectory_axis_ticks_qa
+data_health_disclosure_qa
+sales_driver_units_qa
+sales_momentum_qa
+sales_layout_qa
+catalog_family_overflow_qa
+choice_reveal_qa
+mobile_layout_qa
+percentage_format_qa
+shared_control_targets_qa
+numeric_ui_qa
+ui_format_qa
+geography_qa
+geography_zoom_qa
+order_operations_qa
+product_naming_qa
+ads_surface_qa
+ads_cross_route_qa
+footer_qa
+short_state_footer_qa
+asset_revision_qa
+favicon_qa
+timezone_qa
+cache_performance_qa
+load_time_qa
+catalog_onboarding_qa
+interpretation_rules_qa
+metric_windows_qa
+inventory_qa
+"
+
+set --
+for script in $scripts; do
+  run_check "$script" "$base_url" "$work_dir" &
+  set -- "$@" "$!"
+  if [ "$#" -ge 3 ]; then
+    wait_batch "$@"
+    set --
+  fi
+done
+if [ "$#" -gt 0 ]; then
+  wait_batch "$@"
+fi
+
+# This check consumes the cache/load summaries produced above.
+run_check performance_baseline_qa "$work_dir" /qa/performance-baseline.json
+
+# Manual sync changes source lifecycle state, and Admin authenticates against a
+# shared session endpoint. Keep both serialized after the read-only checks.
+run_check manual_sync_qa "$base_url" "$work_dir"
+run_check admin_qa "$base_url" "$work_dir"
+
 cp -a "$work_dir"/. "$out_root"/ 2>/dev/null || true
-if [ "$visual_rc" -ne 0 ]; then exit "$visual_rc"; fi
-if [ "$nav_rc" -ne 0 ]; then exit "$nav_rc"; fi
-if [ "$sidebar_subtitle_rc" -ne 0 ]; then exit "$sidebar_subtitle_rc"; fi
-if [ "$presentation_profiles_rc" -ne 0 ]; then exit "$presentation_profiles_rc"; fi
-if [ "$accessibility_rc" -ne 0 ]; then exit "$accessibility_rc"; fi
-if [ "$audit_batch1_rc" -ne 0 ]; then exit "$audit_batch1_rc"; fi
-if [ "$audit_422_rc" -ne 0 ]; then exit "$audit_422_rc"; fi
-if [ "$analysis_state_rc" -ne 0 ]; then exit "$analysis_state_rc"; fi
-if [ "$manual_sync_rc" -ne 0 ]; then exit "$manual_sync_rc"; fi
-if [ "$today_day_picker_rc" -ne 0 ]; then exit "$today_day_picker_rc"; fi
-if [ "$today_mobile_benchmark_rc" -ne 0 ]; then exit "$today_mobile_benchmark_rc"; fi
-if [ "$trajectory_lead_caption_rc" -ne 0 ]; then exit "$trajectory_lead_caption_rc"; fi
-if [ "$trajectory_axis_ticks_rc" -ne 0 ]; then exit "$trajectory_axis_ticks_rc"; fi
-if [ "$data_health_disclosure_rc" -ne 0 ]; then exit "$data_health_disclosure_rc"; fi
-if [ "$sales_driver_units_rc" -ne 0 ]; then exit "$sales_driver_units_rc"; fi
-if [ "$sales_momentum_rc" -ne 0 ]; then exit "$sales_momentum_rc"; fi
-if [ "$sales_layout_rc" -ne 0 ]; then exit "$sales_layout_rc"; fi
-if [ "$catalog_family_overflow_rc" -ne 0 ]; then exit "$catalog_family_overflow_rc"; fi
-if [ "$choice_reveal_rc" -ne 0 ]; then exit "$choice_reveal_rc"; fi
-if [ "$mobile_layout_rc" -ne 0 ]; then exit "$mobile_layout_rc"; fi
-if [ "$percentage_format_rc" -ne 0 ]; then exit "$percentage_format_rc"; fi
-if [ "$shared_control_targets_rc" -ne 0 ]; then exit "$shared_control_targets_rc"; fi
-if [ "$numeric_rc" -ne 0 ]; then exit "$numeric_rc"; fi
-if [ "$ui_format_rc" -ne 0 ]; then exit "$ui_format_rc"; fi
-if [ "$geography_rc" -ne 0 ]; then exit "$geography_rc"; fi
-if [ "$geography_zoom_rc" -ne 0 ]; then exit "$geography_zoom_rc"; fi
-if [ "$order_operations_rc" -ne 0 ]; then exit "$order_operations_rc"; fi
-if [ "$product_naming_rc" -ne 0 ]; then exit "$product_naming_rc"; fi
-if [ "$ads_surface_rc" -ne 0 ]; then exit "$ads_surface_rc"; fi
-if [ "$ads_cross_route_rc" -ne 0 ]; then exit "$ads_cross_route_rc"; fi
-if [ "$footer_rc" -ne 0 ]; then exit "$footer_rc"; fi
-if [ "$short_state_footer_rc" -ne 0 ]; then exit "$short_state_footer_rc"; fi
-if [ "$asset_revision_rc" -ne 0 ]; then exit "$asset_revision_rc"; fi
-if [ "$favicon_rc" -ne 0 ]; then exit "$favicon_rc"; fi
-if [ "$timezone_rc" -ne 0 ]; then exit "$timezone_rc"; fi
-if [ "$cache_performance_rc" -ne 0 ]; then exit "$cache_performance_rc"; fi
-if [ "$load_time_rc" -ne 0 ]; then exit "$load_time_rc"; fi
-if [ "$performance_baseline_rc" -ne 0 ]; then exit "$performance_baseline_rc"; fi
-if [ "$interpretation_rules_rc" -ne 0 ]; then exit "$interpretation_rules_rc"; fi
-if [ "$metric_windows_rc" -ne 0 ]; then exit "$metric_windows_rc"; fi
-if [ "$inventory_rc" -ne 0 ]; then exit "$inventory_rc"; fi
-if [ "$admin_rc" -ne 0 ]; then exit "$admin_rc"; fi
-exit "$catalog_onboarding_rc"
+
+first_failure=0
+for result in "$rc_dir"/*; do
+  rc="$(cat "$result")"
+  if [ "$rc" -ne 0 ] && [ "$first_failure" -eq 0 ]; then
+    first_failure="$rc"
+  fi
+done
+exit "$first_failure"
