@@ -2276,7 +2276,22 @@ const requestedScenarios = new Set((process.env.DPP_QA_SCENARIOS || '').split(',
 const plannedScenarios = requestedScenarios.size ? scenarios.filter(scenario => requestedScenarios.has(scenario.name)) : scenarios;
 const browserPlans = [
   { name: 'chromium', engine: chromium, scenarios: plannedScenarios },
-  { name: 'webkit', engine: webkit, scenarios: plannedScenarios.filter(scenario => ['today', 'business', 'sales-header-boundary', 'trajectory', 'data-health'].includes(scenario.name)) },
+  {
+    name: 'webkit',
+    engine: webkit,
+    scenarios: plannedScenarios.filter(scenario => [
+      'today',
+      'business',
+      'sales-header-boundary',
+      'product-pnc-001',
+      'ads-overview',
+      'ads-products',
+      'ads-demand',
+      'ads-detail',
+      'trajectory',
+      'data-health',
+    ].includes(scenario.name)),
+  },
 ].filter(plan => requestedBrowsers.has(plan.name));
 
 for (const plan of browserPlans) {
