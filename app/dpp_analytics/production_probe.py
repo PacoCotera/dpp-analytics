@@ -1042,7 +1042,7 @@ def _brand_search_terms_evidence(cur) -> dict[str, object]:
         "rows_with_click_share", "rows_with_conversion_share",
         "current_owned_clicked_asins",
     )
-    return {
+    canonical = {
         row["report_period"]: {
             **{key: int(row[key] or 0) for key in integer_keys},
             "first_period_start": _json_value(row.get("first_period_start")),
@@ -1050,6 +1050,41 @@ def _brand_search_terms_evidence(cur) -> dict[str, object]:
         }
         for row in cur.fetchall()
     }
+    cur.execute(
+        """
+        SELECT
+            report_period,
+            count(*)::bigint AS source_periods,
+            sum(source_row_count)::bigint AS source_rows,
+            sum(retained_row_count)::bigint AS retained_rows,
+            sum(owned_clicked_row_count)::bigint AS owned_clicked_rows,
+            sum(tracked_query_row_count)::bigint AS tracked_query_rows,
+            min(start_date) AS first_source_period_start,
+            max(end_date) AS source_through_date,
+            min(retention_basis) AS retention_basis
+        FROM brand.amazon_search_term_report
+        GROUP BY report_period
+        ORDER BY report_period
+        """
+    )
+    for row in cur.fetchall():
+        period = row["report_period"]
+        evidence = canonical.setdefault(period, {})
+        evidence.update(
+            {
+                "source_periods": int(row["source_periods"] or 0),
+                "source_rows": int(row["source_rows"] or 0),
+                "retained_rows": int(row["retained_rows"] or 0),
+                "owned_clicked_rows": int(row["owned_clicked_rows"] or 0),
+                "tracked_query_rows": int(row["tracked_query_rows"] or 0),
+                "first_source_period_start": _json_value(
+                    row.get("first_source_period_start")
+                ),
+                "source_through_date": _json_value(row.get("source_through_date")),
+                "retention_basis": row.get("retention_basis"),
+            }
+        )
+    return canonical
 
 
 def _brand_market_basket_evidence(cur) -> dict[str, object]:
@@ -1108,6 +1143,8 @@ def _brand_repeat_purchase_evidence(cur) -> dict[str, object]:
                 AS rows_with_repeat_customer_ratio,
             count(*) FILTER (WHERE repeat_purchase_revenue IS NOT NULL)::bigint
                 AS rows_with_repeat_revenue,
+            count(*) FILTER (WHERE quality_state='COMPLETE')::bigint AS complete_rows,
+            count(*) FILTER (WHERE quality_state='PARTIAL')::bigint AS partial_rows,
             count(DISTINCT repeat_purchase_revenue_currency)::bigint AS currencies,
             min(start_date) AS first_period_start,max(end_date) AS through_date
         FROM brand.repeat_purchase_behavior
@@ -1123,6 +1160,8 @@ def _brand_repeat_purchase_evidence(cur) -> dict[str, object]:
         "rows_with_unique_customers",
         "rows_with_repeat_customer_ratio",
         "rows_with_repeat_revenue",
+        "complete_rows",
+        "partial_rows",
         "currencies",
     )
     return {

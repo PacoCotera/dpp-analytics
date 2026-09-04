@@ -6,6 +6,8 @@ from decimal import Decimal
 from unittest.mock import MagicMock
 
 from .brand_analytics_repeat_purchase import (
+    COMPLETE,
+    PARTIAL,
     REPORT_TYPE,
     REVENUE_BASIS,
     TAX_BASIS,
@@ -76,6 +78,8 @@ class BrandAnalyticsRepeatPurchaseTests(unittest.TestCase):
         self.assertEqual(mapped["repeat_purchase_revenue_ratio"], Decimal("0.0217"))
         self.assertEqual(mapped["revenue_basis"], REVENUE_BASIS)
         self.assertEqual(mapped["tax_basis"], TAX_BASIS)
+        self.assertEqual(mapped["quality_state"], COMPLETE)
+        self.assertEqual(mapped["unavailable_fields"], [])
 
     def test_reconciliation_requires_exact_contract_and_unique_asin(self) -> None:
         row = _row()
@@ -97,17 +101,31 @@ class BrandAnalyticsRepeatPurchaseTests(unittest.TestCase):
                 payload, date(2026, 8, 23), date(2026, 8, 29)
             )
 
-    def test_reconciliation_rejects_unsafe_money_ratio_and_period_values(self) -> None:
+    def test_partial_measures_are_retained_without_inference(self) -> None:
         row = _row()
         row["repeatPurchaseRevenuePctTotal"] = 1.01
-        with self.assertRaisesRegex(SpApiError, "invalid canonical row"):
+        row["repeatPurchaseRevenue"] = {"amount": None, "currencyCode": ""}
+        self.assertEqual(
             validate_report_payload(
                 _payload([row]), date(2026, 8, 23), date(2026, 8, 29)
-            )
+            ),
+            [row],
+        )
+        columns, values = _row_values(row, 123, "repeat-1")
+        mapped = dict(zip(columns, values, strict=True))
+        self.assertEqual(mapped["quality_state"], PARTIAL)
+        self.assertIsNone(mapped["repeat_purchase_revenue"])
+        self.assertIsNone(mapped["repeat_purchase_revenue_currency"])
+        self.assertIsNone(mapped["repeat_purchase_revenue_ratio"])
+        self.assertEqual(mapped["unavailable_fields"], [
+            "repeatPurchaseRevenue.amount",
+            "repeatPurchaseRevenue.currencyCode",
+            "repeatPurchaseRevenuePctTotal",
+        ])
 
         row = _row()
-        row["repeatPurchaseRevenue"] = {"amount": 100, "currencyCode": "MX$"}
-        with self.assertRaisesRegex(SpApiError, "invalid canonical row"):
+        row["startDate"] = "2026-08-24"
+        with self.assertRaisesRegex(SpApiError, "invalid canonical identity"):
             validate_report_payload(
                 _payload([row]), date(2026, 8, 23), date(2026, 8, 29)
             )

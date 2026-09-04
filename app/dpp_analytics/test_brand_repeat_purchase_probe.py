@@ -21,6 +21,8 @@ class _Cursor:
                 "rows_with_unique_customers": 28,
                 "rows_with_repeat_customer_ratio": 28,
                 "rows_with_repeat_revenue": 28,
+                "complete_rows": 27,
+                "partial_rows": 1,
                 "currencies": 1,
                 "first_period_start": dt.date(2026, 8, 2),
                 "through_date": dt.date(2026, 8, 29),
@@ -34,6 +36,8 @@ class BrandRepeatPurchaseEvidenceTests(unittest.TestCase):
 
         self.assertEqual(result["WEEK"]["catalog_asins"], 7)
         self.assertEqual(result["WEEK"]["rows_with_repeat_revenue"], 28)
+        self.assertEqual(result["WEEK"]["complete_rows"], 27)
+        self.assertEqual(result["WEEK"]["partial_rows"], 1)
         self.assertEqual(
             result["WEEK"]["revenue_basis"],
             "ORDERED_REVENUE_RETURNS_EXCLUDED",

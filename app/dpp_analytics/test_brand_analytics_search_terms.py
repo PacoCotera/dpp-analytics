@@ -7,9 +7,11 @@ from unittest.mock import MagicMock
 
 from .brand_analytics_search_terms import (
     REPORT_TYPE,
+    RETENTION_BASIS,
     _create_report,
     _row_values,
     report_rows,
+    select_relevant_rows,
     validate_report_payload,
 )
 from .settings import settings
@@ -60,12 +62,65 @@ class BrandAnalyticsSearchTermsTests(unittest.TestCase):
         self.assertEqual(mapped["clicked_item_name"], "A very useful product name")
         self.assertEqual(mapped["click_share"], Decimal("0.42"))
         self.assertEqual(mapped["conversion_share"], Decimal("0.31"))
+        self.assertFalse(mapped["matches_owned_clicked_asin"])
+        self.assertFalse(mapped["matches_tracked_query"])
+
+    def test_selection_retains_owned_products_and_observed_dpp_queries(self) -> None:
+        payload = {
+            "reportSpecification": {
+                "reportType": REPORT_TYPE,
+                "dataStartTime": "2026-08-23",
+                "dataEndTime": "2026-08-29",
+                "marketplaceIds": [settings.marketplace_id],
+                "reportOptions": {"reportPeriod": "WEEK"},
+            },
+            "dataByDepartmentAndSearchTerm": [
+                {
+                    "departmentName": "Office",
+                    "searchTerm": "notebook",
+                    "clickedAsin": "OWNED-ASIN",
+                },
+                {
+                    "departmentName": "Office",
+                    "searchTerm": " Pocket   notebook ",
+                    "clickedAsin": "COMPETITOR-ASIN",
+                },
+                {
+                    "departmentName": "Electronics",
+                    "searchTerm": "phone",
+                    "clickedAsin": "UNRELATED-ASIN",
+                },
+            ],
+        }
+
+        retained, stats = select_relevant_rows(
+            payload,
+            date(2026, 8, 23),
+            date(2026, 8, 29),
+            {"OWNED-ASIN"},
+            {"pocket notebook"},
+        )
+
+        self.assertEqual(RETENTION_BASIS, "OWNED_CLICKED_ASIN_OR_OBSERVED_DPP_QUERY")
+        self.assertEqual([row["clickedAsin"] for row in retained], [
+            "OWNED-ASIN", "COMPETITOR-ASIN"
+        ])
+        self.assertEqual(stats, {
+            "source_rows": 3,
+            "retained_rows": 2,
+            "owned_clicked_rows": 1,
+            "tracked_query_rows": 1,
+        })
+        self.assertTrue(retained[0]["_matchesOwnedClickedAsin"])
+        self.assertTrue(retained[1]["_matchesTrackedQuery"])
 
     def test_reconciliation_requires_exact_report_specification(self) -> None:
         payload = {
             "reportSpecification": {
+                "reportType": REPORT_TYPE,
                 "dataStartTime": "2026-08-23T00:00:00Z",
                 "dataEndTime": "2026-08-29T23:59:59Z",
+                "marketplaceIds": [settings.marketplace_id],
                 "reportOptions": {"reportPeriod": "WEEK"},
             },
             "dataByDepartmentAndSearchTerm": [{
@@ -85,8 +140,10 @@ class BrandAnalyticsSearchTermsTests(unittest.TestCase):
     def test_reconciliation_rejects_incomplete_or_duplicate_identity(self) -> None:
         payload = {
             "reportSpecification": {
+                "reportType": REPORT_TYPE,
                 "dataStartTime": "2026-08-23",
                 "dataEndTime": "2026-08-29",
+                "marketplaceIds": [settings.marketplace_id],
                 "reportOptions": {"reportPeriod": "WEEK"},
             },
             "dataByDepartmentAndSearchTerm": [{

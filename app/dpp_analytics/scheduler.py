@@ -60,6 +60,10 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
+# httpx's INFO record includes the complete request URL. Amazon report downloads
+# use pre-signed URLs, so application logs must not persist their query-string
+# credentials. Collector-owned logs retain status, source, and elapsed time.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger("dpp.scheduler")
 
 STOP = False
