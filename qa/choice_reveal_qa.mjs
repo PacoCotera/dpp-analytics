@@ -41,6 +41,38 @@ async function waitForChoice(page, groupSelector, valueSelector) {
   );
 }
 
+async function waitForAdsAvailability(page, groupSelector, demandSelector) {
+  await page.waitForFunction(
+    ([group, demand]) => {
+      const tablist = document.querySelector(group);
+      const demandTab = tablist?.querySelector(demand);
+      const impactTab = tablist?.querySelector('[data-ads-view="impact"]');
+      return (
+        demandTab?.getAttribute("aria-selected") === "true" ||
+        (demandTab?.disabled &&
+          demandTab?.getAttribute("aria-disabled") === "true" &&
+          impactTab?.getAttribute("aria-selected") === "true")
+      );
+    },
+    [groupSelector, demandSelector],
+  );
+  return page.evaluate(
+    ([group, demand]) => {
+      const tablist = document.querySelector(group);
+      const demandTab = tablist?.querySelector(demand);
+      return {
+        ready: demandTab?.getAttribute("aria-selected") === "true",
+        demandDisabled:
+          Boolean(demandTab?.disabled) &&
+          demandTab?.getAttribute("aria-disabled") === "true",
+        availability:
+          document.getElementById("adsViewAvailability")?.textContent?.trim() || "",
+      };
+    },
+    [groupSelector, demandSelector],
+  );
+}
+
 async function choiceState(page, groupSelector, valueSelector) {
   return page.evaluate(
     ([groupQuery, valueQuery]) => {
@@ -245,30 +277,61 @@ for (const [engineName, engine] of [
     });
     const adsGroup = '[aria-label="Advertising views"]';
     const adsDemand = '[data-ads-view="demand"]';
-    await waitForChoice(page, adsGroup, adsDemand);
-    await assertProfiles(
+    const adsAvailability = await waitForAdsAvailability(
       page,
-      `${prefix}/ads-demand-direct`,
       adsGroup,
       adsDemand,
-      viewport.width === 360 ? `${prefix}-ads-demand` : "",
     );
-    await page.reload({ waitUntil: "networkidle" });
-    await waitForChoice(page, adsGroup, adsDemand);
-    const adsRefresh = await choiceState(page, adsGroup, adsDemand);
-    record(
-      fullyVisible(adsRefresh),
-      `${prefix}/ads-demand-refresh: active choice is visible`,
-    );
-    await page.locator('[data-ads-view="products"]').click();
-    await waitForChoice(page, adsGroup, '[data-ads-view="products"]');
-    await page.goBack({ waitUntil: "networkidle" });
-    await waitForChoice(page, adsGroup, adsDemand);
-    const adsHistory = await choiceState(page, adsGroup, adsDemand);
-    record(
-      fullyVisible(adsHistory),
-      `${prefix}/ads-demand-history: restored choice is visible`,
-    );
+    if (adsAvailability.ready) {
+      await assertProfiles(
+        page,
+        `${prefix}/ads-demand-direct`,
+        adsGroup,
+        adsDemand,
+        viewport.width === 360 ? `${prefix}-ads-demand` : "",
+      );
+      await page.reload({ waitUntil: "networkidle" });
+      await waitForChoice(page, adsGroup, adsDemand);
+      const adsRefresh = await choiceState(page, adsGroup, adsDemand);
+      record(
+        fullyVisible(adsRefresh),
+        `${prefix}/ads-demand-refresh: active choice is visible`,
+      );
+      await page.locator('[data-ads-view="products"]').click();
+      await waitForChoice(page, adsGroup, '[data-ads-view="products"]');
+      await page.goBack({ waitUntil: "networkidle" });
+      await waitForChoice(page, adsGroup, adsDemand);
+      const adsHistory = await choiceState(page, adsGroup, adsDemand);
+      record(
+        fullyVisible(adsHistory),
+        `${prefix}/ads-demand-history: restored choice is visible`,
+      );
+    } else {
+      const adsImpact = '[data-ads-view="impact"]';
+      record(
+        adsAvailability.demandDisabled && Boolean(adsAvailability.availability),
+        `${prefix}/ads-unavailable: disabled Demand has an explicit availability explanation`,
+      );
+      await assertProfiles(
+        page,
+        `${prefix}/ads-impact-unavailable`,
+        adsGroup,
+        adsImpact,
+        viewport.width === 360 ? `${prefix}-ads-impact-unavailable` : "",
+      );
+      await page.reload({ waitUntil: "networkidle" });
+      const refreshedAvailability = await waitForAdsAvailability(
+        page,
+        adsGroup,
+        adsDemand,
+      );
+      const refreshedChoice = refreshedAvailability.ready ? adsDemand : adsImpact;
+      const adsRefresh = await choiceState(page, adsGroup, refreshedChoice);
+      record(
+        fullyVisible(adsRefresh),
+        `${prefix}/ads-refresh: resolved Advertising choice remains visible`,
+      );
+    }
 
     await browser.close();
   }

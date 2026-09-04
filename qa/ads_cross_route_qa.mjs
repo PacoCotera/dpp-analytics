@@ -179,29 +179,67 @@ try {
       (await page.locator("#skuRows .product-paid-support").count()) > 0,
     );
 
-    const sku = sales.ads?.products?.[0]?.sku || "PNC-001";
-    await open(`/product?sku=${encodeURIComponent(sku)}`);
-    const product = await api(`/api/product?sku=${encodeURIComponent(sku)}`);
-    if (product.ads?.through_date) {
-      await page.waitForSelector("#productAdsModule:not([hidden])");
-      const demandHref = await page.locator("#productAdsDemandLink").getAttribute("href");
-      const actionHref = await page.locator("#productAdsActionLink").getAttribute("href");
-      check(
-        "Product exposes exact product and demand destinations",
-        new URL(demandHref, baseUrl).searchParams.get("sku") === sku &&
-          new URL(demandHref, baseUrl).searchParams.get("view") === "demand" &&
-          new URL(actionHref, baseUrl).searchParams.get("sku") === sku,
-        JSON.stringify({ demandHref, actionHref }),
+    const currentOfferSkus = new Set(
+      (inventory.rows || [])
+        .filter((row) => row.is_current_offer)
+        .map((row) => String(row.sku || "")),
+    );
+    const sku = (sales.ads?.products || []).find((row) =>
+      currentOfferSkus.has(String(row.sku || "")),
+    )?.sku;
+    if (sku) {
+      await open(`/product?sku=${encodeURIComponent(sku)}`);
+      const product = await api(`/api/product?sku=${encodeURIComponent(sku)}`);
+      const productAdsReady = Boolean(
+        product.commercial?.catalog_membership !== "DELETED" &&
+          product.ads?.connection?.state === "READY" &&
+          product.ads?.through_date &&
+          Number(product.ads?.observed_ads_days || 0) > 0,
       );
-      const productText = await page.locator("#productAdsModule").innerText();
-      check(
-        "Product keeps seller sales, spend, conversion, attribution and TACOS together",
-        ["Seller sales", "Ad spend", "TACOS", "Conversion", "Attributed sales"].every((label) => productText.includes(label)),
-      );
-      check(
-        "Product action is API-owned",
-        (await page.locator("#productAdsRecommendation").innerText()) === product.ads.recommendation?.title,
-      );
+      if (!productAdsReady) {
+        await page.waitForFunction(
+          () =>
+            Boolean(document.getElementById("adsDecision")?.textContent?.trim()) &&
+            document.getElementById("adsDecision")?.textContent?.trim() !== "—",
+        );
+        check(
+          "Product suppresses paid-support actions while its Ads contract is unavailable",
+          !(await page.locator("#productAdsModule").isVisible()),
+          JSON.stringify({
+            sku,
+            connection: product.ads?.connection?.state,
+            throughDate: product.ads?.through_date,
+            observedDays: product.ads?.observed_ads_days,
+          }),
+        );
+      } else {
+        await page.waitForSelector("#productAdsModule:not([hidden])");
+        const demandHref = await page
+          .locator("#productAdsDemandLink")
+          .getAttribute("href");
+        const actionHref = await page
+          .locator("#productAdsActionLink")
+          .getAttribute("href");
+        check(
+          "Product exposes exact product and demand destinations",
+          new URL(demandHref, baseUrl).searchParams.get("sku") === sku &&
+            new URL(demandHref, baseUrl).searchParams.get("view") === "demand" &&
+            new URL(actionHref, baseUrl).searchParams.get("sku") === sku,
+          JSON.stringify({ demandHref, actionHref }),
+        );
+        const productText = await page.locator("#productAdsModule").innerText();
+        check(
+          "Product keeps seller sales, spend, conversion, attribution and TACOS together",
+          ["Seller sales", "Ad spend", "TACOS", "Conversion", "Attributed sales"].every(
+            (label) => productText.includes(label),
+          ),
+        );
+        check(
+          "Product action is API-owned",
+          (await page.locator("#productAdsRecommendation").innerText()) ===
+            product.ads.recommendation?.title,
+        );
+      }
     }
 
     await open("/inventory");
