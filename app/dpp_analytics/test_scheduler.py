@@ -78,7 +78,10 @@ class BackgroundSchedulerTests(unittest.TestCase):
     def test_failed_ads_traffic_run_retries_in_five_minutes(self) -> None:
         self.assertEqual(_ads_traffic_quality_delay_after_result(None), 300)
 
-    @patch("dpp_analytics.scheduler.search_query_backfill_complete", return_value=False)
+    @patch(
+        "dpp_analytics.scheduler.search_query_source_backfill_complete",
+        return_value=False,
+    )
     def test_incomplete_brand_analytics_backfill_is_due_immediately(
         self, _complete
     ) -> None:
