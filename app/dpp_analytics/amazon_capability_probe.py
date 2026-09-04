@@ -35,6 +35,9 @@ REPORT_CREATE_BURST = int(os.getenv("AMAZON_SOURCE_PROBE_REPORT_CREATE_BURST", "
 REPORT_CREATE_COOLDOWN_SECONDS = int(
     os.getenv("AMAZON_SOURCE_PROBE_REPORT_CREATE_COOLDOWN_SECONDS", "65")
 )
+# Amazon's default createReport plan permits a burst of 15, then restores only
+# 0.0167 requests/second. After the initial burst, every additional create must
+# wait for one token; this is intentionally not a modulo-per-burst cooldown.
 
 
 def _progress(event: str, **details: Any) -> None:
@@ -1595,10 +1598,7 @@ def _probe_spapi_reports(
                 source=spec.key,
                 state=requested.get("state"),
             )
-        if (
-            (index + 1) % REPORT_CREATE_BURST == 0
-            and index + 1 < len(REPORT_SPECS)
-        ):
+        if index + 1 >= REPORT_CREATE_BURST and index + 1 < len(REPORT_SPECS):
             _progress("spapi_report_rate_limit_wait", after_source=spec.key)
             time.sleep(REPORT_CREATE_COOLDOWN_SECONDS)
         else:
