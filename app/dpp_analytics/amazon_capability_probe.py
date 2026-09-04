@@ -179,6 +179,19 @@ CAPABILITIES: tuple[Capability, ...] = (
         "warehouse",
     ),
     Capability(
+        "suppressed_listings",
+        "Product",
+        "Suppressed Listings report",
+        "suppressed seller SKU",
+        "SKU and ASIN",
+        "current snapshot",
+        "retain in DPP",
+        "Suppression reason, issue description and status-change date",
+        "hard safety gate",
+        "ingest now",
+        "spapi_report",
+    ),
+    Capability(
         "settlement_v2",
         "Economics",
         "Settlement V2 report",
@@ -335,6 +348,19 @@ CAPABILITIES: tuple[Capability, ...] = (
         "spapi_report",
     ),
     Capability(
+        "fba_inbound_noncompliance",
+        "Inventory",
+        "FBA Inbound Performance report",
+        "inbound shipment problem and product",
+        "shipment, SKU, FNSKU and ASIN",
+        "daily",
+        "retain in DPP",
+        "Explain delayed or incomplete inbound supply and associated fees",
+        "supporting fulfillment evidence",
+        "supporting evidence",
+        "spapi_report",
+    ),
+    Capability(
         "fba_fee_preview",
         "Economics",
         "FBA Fee Preview",
@@ -374,6 +400,19 @@ CAPABILITIES: tuple[Capability, ...] = (
         "spapi_report",
     ),
     Capability(
+        "long_term_storage_charges",
+        "Economics",
+        "FBA Long Term Storage Fee Charges",
+        "charged SKU and age tier",
+        "SKU, FNSKU and ASIN",
+        "monthly actual charge",
+        "retain in DPP",
+        "Actual aged-inventory surcharge allocation by product",
+        "authoritative after Finance and settlement reconciliation",
+        "ingest now",
+        "spapi_report",
+    ),
+    Capability(
         "fba_returns",
         "Economics",
         "FBA Customer Returns",
@@ -409,6 +448,19 @@ CAPABILITIES: tuple[Capability, ...] = (
         "retain in DPP",
         "Hidden replacement cost and product-quality evidence",
         "supporting",
+        "ingest now",
+        "spapi_report",
+    ),
+    Capability(
+        "fba_promotions",
+        "Commerce",
+        "FBA Promotions report",
+        "order promotion and shipment item",
+        "order and promotion; product identity where supplied",
+        "daily",
+        "retain in DPP",
+        "Allocate shipment-item promotion discounts and prevent ad misdiagnosis",
+        "confounder and reconciliation evidence",
         "ingest now",
         "spapi_report",
     ),
@@ -763,6 +815,19 @@ CAPABILITIES: tuple[Capability, ...] = (
         "unavailable in MX; retain as expansion boundary",
         "documented_unavailable",
     ),
+    Capability(
+        "customer_feedback_insights",
+        "Product",
+        "Customer Feedback API",
+        "ASIN or browse-node review and return topic",
+        "ASIN and browse node",
+        "weekly",
+        "source API lookback",
+        "Review-topic and return-reason diagnosis",
+        "documented outside MX",
+        "unavailable in MX; retain as expansion boundary",
+        "documented_unavailable",
+    ),
 )
 
 
@@ -805,6 +870,11 @@ REPORT_SPECS: tuple[ReportSpec, ...] = (
         "last_30_days",
     ),
     ReportSpec(
+        "fba_promotions",
+        "GET_FBA_FULFILLMENT_CUSTOMER_SHIPMENT_PROMOTION_DATA",
+        "last_30_days_mature",
+    ),
+    ReportSpec(
         "inventory_ledger",
         "GET_LEDGER_DETAIL_VIEW_DATA",
         "last_30_days_mature",
@@ -814,6 +884,11 @@ REPORT_SPECS: tuple[ReportSpec, ...] = (
     ReportSpec("stranded_inventory", "GET_STRANDED_INVENTORY_UI_DATA"),
     ReportSpec(
         "restock_recommendations", "GET_RESTOCK_INVENTORY_RECOMMENDATIONS_REPORT"
+    ),
+    ReportSpec(
+        "fba_inbound_noncompliance",
+        "GET_FBA_FULFILLMENT_INBOUND_NONCOMPLIANCE_DATA",
+        "last_90_days",
     ),
     ReportSpec(
         "fba_fee_preview",
@@ -826,6 +901,11 @@ REPORT_SPECS: tuple[ReportSpec, ...] = (
     ),
     ReportSpec(
         "storage_fees", "GET_FBA_STORAGE_FEE_CHARGES_DATA", prefer_recent=True
+    ),
+    ReportSpec(
+        "long_term_storage_charges",
+        "GET_FBA_FULFILLMENT_LONGTERM_STORAGE_FEE_CHARGES_DATA",
+        "last_closed_month",
     ),
     ReportSpec(
         "fba_returns",
@@ -854,6 +934,7 @@ REPORT_SPECS: tuple[ReportSpec, ...] = (
         option_start="couponStartDateFrom",
         option_end="couponStartDateTo",
     ),
+    ReportSpec("suppressed_listings", "GET_MERCHANTS_LISTINGS_FYP_REPORT"),
 )
 
 

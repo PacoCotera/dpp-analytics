@@ -78,6 +78,30 @@ class AmazonCapabilityManifestTests(unittest.TestCase):
         self.assertEqual(invalid["reportTypeId"], "spGrossAndInvalids")
         self.assertIn("invalidClickThroughRate", invalid["columns"])
 
+    def test_listing_and_economic_safety_sources_cannot_silently_disappear(
+        self,
+    ) -> None:
+        by_key = {item.key: item for item in CAPABILITIES}
+        reports = {item.key: item.report_type for item in REPORT_SPECS}
+        self.assertEqual(
+            reports["suppressed_listings"], "GET_MERCHANTS_LISTINGS_FYP_REPORT"
+        )
+        self.assertEqual(by_key["suppressed_listings"].authority, "hard safety gate")
+        self.assertEqual(
+            reports["fba_promotions"],
+            "GET_FBA_FULFILLMENT_CUSTOMER_SHIPMENT_PROMOTION_DATA",
+        )
+        self.assertEqual(
+            reports["long_term_storage_charges"],
+            "GET_FBA_FULFILLMENT_LONGTERM_STORAGE_FEE_CHARGES_DATA",
+        )
+        self.assertIn(
+            "reconciliation", by_key["long_term_storage_charges"].authority
+        )
+        self.assertEqual(
+            by_key["customer_feedback_insights"].probe, "documented_unavailable"
+        )
+
 
 class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
     @patch("dpp_analytics.amazon_capability_probe._progress")

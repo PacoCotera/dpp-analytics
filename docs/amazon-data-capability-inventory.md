@@ -29,11 +29,11 @@ A source is not considered available merely because Amazon documents it. The pro
 | Advertising state | Campaigns, ad groups, product ads, targets, keywords, negative targets/keywords, portfolios, budget rules, campaign optimization rules, target promotion groups and budget usage | Resolve raw IDs, prevent recommendations that conflict with current or Amazon-managed state, and retain change evidence |
 | Advertising estimates and messages | Budget and budget-rule recommendations, product/category/keyword/negative-brand target recommendations, theme-based bid recommendations, Amazon Marketing Stream | Supporting ranges, intraday pacing, entity changes and candidate discovery; never authoritative economics |
 | Retail demand | Data Kiosk Sales and Traffic, Search Query Performance, Search Catalog Performance, Amazon Search Terms, Market Basket and Repeat Purchase | Diagnose whether the problem is reach, click appeal, listing conversion, market demand, price or repeat behavior |
-| Product and offer | Catalog Items, Listings, Product Pricing | Product identity, variation family, suppression/offer state, price and featured-offer context |
+| Product and offer | Catalog Items, All Listings, Suppressed Listings, Product Pricing | Product identity, variation family, suppression reason/age, offer state, price and featured-offer context |
 | Unit economics | Finances v2024, Settlement V2, Product Fees, FBA Fee Preview and Referral Fee Preview | Actual charges and refunds after reconciliation; current fee estimates only for planning and sensitivity |
-| Inventory and fulfillment | Inventory Summaries, Inventory Ledger, Reserved, Stranded, Manage Inventory Health, Restock, Storage Fees | Hard safety gates for constrained or stranded products and evidence for carrying cost and fulfillment causes |
+| Inventory and fulfillment | Inventory Summaries, Inventory Ledger, Reserved, Stranded, Manage Inventory Health, Restock, Inbound Performance and Storage Fees | Hard safety gates for constrained or stranded products and evidence for carrying cost and fulfillment causes |
 | Returns and offsets | FBA Returns, Replacements and Reimbursements | Product-quality problems, hidden replacement cost, refund effects and reimbursement offsets |
-| Commercial confounders | Orders v2026 optional data, Promotion Performance and Coupon Performance | Prevent promotion, coupon, cancellation, tax or fulfillment changes from being misattributed to advertising |
+| Commercial confounders | Orders v2026 optional data, FBA shipment promotions, Promotion Performance and Coupon Performance | Prevent promotion, coupon, cancellation, tax or fulfillment changes from being misattributed to advertising |
 
 ## Important contract findings
 
@@ -49,6 +49,10 @@ A source is not considered available merely because Amazon documents it. The pro
 - Data Kiosk currently hosts Seller Sales and Traffic data and applies authorization per GraphQL field. Its schema is evolutionary, and reports are expected to migrate there over time.
 - Brand Analytics for sellers includes Search Catalog Performance, Search Query Performance, Market Basket, Amazon Search Terms and Repeat Purchase. Monthly SQP is not the complete available demand surface.
 - FBA Manage Inventory Health includes sales windows, inbound state, aged/excess units, estimated storage exposure, sell-through and days of supply. Stranded and Reserved reports provide separate safety evidence.
+- The All Listings report exposes status but not the reason a listing is suppressed. The separate Suppressed Listings report exposes SKU, ASIN, reason, issue description and status-change date and is therefore a required hard-safety source.
+- FBA Inbound Performance exposes product- and shipment-level inbound problems, expected versus received quantity, coaching state and fees. It can explain why nominal inbound supply is not yet safe advertising capacity.
+- The FBA Promotions report supplies order-level shipment promotion discounts that can be joined to shipment facts. Promotion Performance and Coupon Performance remain separate campaign-level confounder sources.
+- Estimated monthly storage cost is not the same fact as an aged-inventory surcharge already charged. FBA Long Term Storage Fee Charges supplies SKU/ASIN charge and age-tier detail and must reconcile to Finance and settlement before entering contribution.
 - Product Fees, FBA Fee Preview, Referral Fee Preview, storage estimates, Ads budget recommendations and Amazon-generated target/restock recommendations are estimates or suggestions. They cannot replace reconciled actuals or DPP safety logic.
 - Amazon Marketing Stream is available in Mexico through the NA endpoint and can deliver hourly target/ad/placement performance deltas plus budget and entity messages. It requires a customer-owned AWS destination and forward collection, so it is not an automatic substitute for historical reports.
 - Mexico supports Sponsored Products budget recommendations, product recommendations and rule-based bidding. Consolidated campaign recommendations are currently listed as US-only.
@@ -57,6 +61,27 @@ A source is not considered available merely because Amazon documents it. The pro
 - Category, product-target and negative-brand recommendations can expose useful candidate space. They may include the advertiser's own brand and must pass DPP relevance, economics, inventory, listing and conflict gates before any test is proposed.
 - Campaign optimization rules and target promotion groups are separate from ordinary bids, targets and budget rules. DPP must snapshot them because Amazon-managed automation can otherwise make a recommendation stale or create an overlapping action.
 - Prompt Ad Extension reporting currently filters to the US marketplace, and Video Ad Extension reporting is explicitly US-only. Both remain documented expansion boundaries rather than silent omissions from the MX plan.
+- Customer Feedback review and return-topic insights are useful listing-quality evidence but Amazon currently exposes that API only in US, UK, FR, IT, DE, ES and JP, not MX. DPP must show the diagnosis as unavailable rather than infer review topics.
+
+## Official SP-API surface review
+
+The production probes are the decision-relevant subset of a full review of Amazon's current report catalog and adjacent APIs. Exclusions below are explicit so a later implementation does not mistake “not already ingested” for “not reviewed.”
+
+| Official family | Coverage or boundary for DPP MX |
+|---|---|
+| Analytics | All five seller Brand Analytics reports are probed: Search Query Performance, Search Catalog Performance, Market Basket, Amazon Search Terms and Repeat Purchase. Seller Sales and Traffic is already ingested through Data Kiosk. Vendor retail analytics are vendor-only. |
+| FBA sales | Customer Shipment Sales and FBA Promotions are probed. Legacy all-orders and Amazon-fulfilled-shipment variants overlap Orders v2026 and the shipment fact; tax/invoicing variants add restricted or region-specific fields rather than a new advertising decision grain. |
+| FBA inventory | Inventory Summaries, Ledger, Reserved, Manage Inventory Health, Restock, Inbound Performance and Stranded are probed. AFN inventory and archived/manage-inventory variants duplicate covered snapshots. Recommended-removal and removal-order reports remain later operational sources because Inventory Health and Ledger already expose the required safety state and movements. |
+| FBA economics | Fee Preview, Storage Fees, Long Term Storage Fee Charges, Reimbursements, Returns and Replacements are probed. Storage-overage fees are account/storage-type overhead without product identity and cannot be assigned to a product recommendation as if product-attributable. |
+| Listings | All Listings and Suppressed Listings are covered. Active, inactive, open, lite and cancelled variants are subsets or projections of those states. Listings Items issue-change notifications are a useful forward-only freshness enhancement after a notification destination is owned. |
+| Orders, payments and tax | Orders v2026 optional proceeds, expense, promotion, cancellation, fulfillment and tax structures are probed. Finance v2024 and Settlement V2 cover actual money. Legacy order, tax and invoice reports are not an independent business fact for current FBA advertising decisions. Financial Holds is account-level cash availability, not product contribution. |
+| Promotions and performance | Promotion Performance and Coupon Performance are probed. Seller Feedback and Seller Performance are account-level health sources; they do not identify a product, campaign, query or target and cannot drive a product spend recommendation. |
+| Returns | FBA Returns is probed for the current FBA model. Merchant-fulfilled return reports become required if DPP supports advertised MFN inventory; they are not interchangeable with FBA return dispositions. |
+| Regional and program reports | Pan-European, EU page-view compliance, Easy Ship, India GST and vendor-only reports are unavailable or inapplicable to the current MX seller. Amazon Business and Subscribe & Save sources remain program-conditional rather than assumed available. |
+
+Adjacent event streams were also reviewed. `DETAIL_PAGE_TRAFFIC_EVENT`, `ITEM_SALES_EVENT_CHANGE`, `ITEM_INVENTORY_EVENT_CHANGE`, `FBA_INVENTORY_AVAILABILITY_CHANGES`, `LISTINGS_ITEM_ISSUES_CHANGE`, `LISTINGS_ITEM_STATUS_CHANGE`, `ANY_OFFER_CHANGED` and `PRICING_HEALTH` can reduce latency after DPP owns a Notifications destination. They are forward-only transport alternatives, not additional historical facts, and must reconcile to the covered reports/APIs. Amazon Marketing Stream has the same destination prerequisite on the Ads side and is already represented explicitly.
+
+Sponsored Products management APIs reviewed but not promoted to authoritative inputs include consolidated campaign recommendations and keyword groups where Amazon documents US-only availability, global recommendations outside the current single-MX scope, category taxonomy/refinements, targetable-ASIN counts and initial-budget recommendations. These may enrich later workflows but cannot override DPP economics or safety gates.
 
 ## Sponsored Products reporting coverage
 
