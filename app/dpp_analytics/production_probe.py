@@ -908,6 +908,46 @@ def _brand_search_catalog_evidence(cur) -> dict[str, object]:
     }
 
 
+def _brand_search_terms_evidence(cur) -> dict[str, object]:
+    cur.execute(
+        """
+        SELECT
+            report_period,count(*)::bigint AS rows,
+            count(DISTINCT (start_date,end_date))::bigint AS periods,
+            count(DISTINCT department_name)::bigint AS departments,
+            count(DISTINCT search_term_key)::bigint AS normalized_terms,
+            count(DISTINCT clicked_asin)::bigint AS clicked_asins,
+            count(*) FILTER (WHERE click_share IS NOT NULL)::bigint AS rows_with_click_share,
+            count(*) FILTER (WHERE conversion_share IS NOT NULL)::bigint AS rows_with_conversion_share,
+            count(DISTINCT clicked_asin) FILTER (
+                WHERE EXISTS (
+                    SELECT 1 FROM mart.catalog_portfolio_product product
+                    WHERE product.marketplace_id=term.marketplace_id
+                      AND product.asin=term.clicked_asin
+                      AND product.catalog_membership='CURRENT_OFFER'
+                )
+            )::bigint AS current_owned_clicked_asins,
+            min(start_date) AS first_period_start,max(end_date) AS through_date
+        FROM brand.amazon_search_term term
+        GROUP BY report_period
+        ORDER BY report_period
+        """
+    )
+    integer_keys = (
+        "rows", "periods", "departments", "normalized_terms", "clicked_asins",
+        "rows_with_click_share", "rows_with_conversion_share",
+        "current_owned_clicked_asins",
+    )
+    return {
+        row["report_period"]: {
+            **{key: int(row[key] or 0) for key in integer_keys},
+            "first_period_start": _json_value(row.get("first_period_start")),
+            "through_date": _json_value(row.get("through_date")),
+        }
+        for row in cur.fetchall()
+    }
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -984,6 +1024,7 @@ def _warehouse_probe() -> dict[str, object]:
         ads_invalid_traffic_evidence = _ads_invalid_traffic_evidence(cur)
         brand_search_query_evidence = _brand_search_query_evidence(cur)
         brand_search_catalog_evidence = _brand_search_catalog_evidence(cur)
+        brand_search_terms_evidence = _brand_search_terms_evidence(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -1035,6 +1076,7 @@ def _warehouse_probe() -> dict[str, object]:
         "ads_invalid_traffic_evidence": ads_invalid_traffic_evidence,
         "brand_search_query_evidence": brand_search_query_evidence,
         "brand_search_catalog_evidence": brand_search_catalog_evidence,
+        "brand_search_terms_evidence": brand_search_terms_evidence,
     }
 
 
