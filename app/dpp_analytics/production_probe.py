@@ -429,6 +429,161 @@ def _finance_item_evidence(cur) -> dict[str, object]:
         for row in cur.fetchall()
     ]
 
+    cur.execute(
+        """
+        WITH item_rollup AS (
+            SELECT
+                item.transaction_id,
+                count(*)::bigint AS item_rows,
+                count(*) FILTER (WHERE identity.identity_state='EXACT')::bigint
+                    AS exact_identity_items,
+                count(*) FILTER (WHERE identity.identity_state<>'EXACT')::bigint
+                    AS unresolved_identity_items,
+                COALESCE(sum(item.total_amount),0) AS item_total,
+                COALESCE(sum(item.total_amount) FILTER (
+                    WHERE identity.identity_state='EXACT'
+                ),0) AS exact_identity_item_amount,
+                COALESCE(sum(item.total_amount) FILTER (
+                    WHERE identity.identity_state<>'EXACT'
+                ),0) AS unresolved_identity_item_amount
+            FROM core.financial_transaction_item item
+            JOIN mart.finance_transaction_item_identity identity
+                USING (transaction_id,item_ordinal)
+            GROUP BY item.transaction_id
+        )
+        SELECT
+            transaction.transaction_type,
+            count(*)::bigint AS transactions,
+            count(item_rollup.transaction_id)::bigint AS transactions_with_items,
+            COALESCE(sum(item_rollup.item_rows),0)::bigint AS item_rows,
+            COALESCE(sum(item_rollup.exact_identity_items),0)::bigint
+                AS exact_identity_items,
+            COALESCE(sum(item_rollup.unresolved_identity_items),0)::bigint
+                AS unresolved_identity_items,
+            COALESCE(sum(transaction.total_amount),0) AS transaction_total,
+            COALESCE(sum(item_rollup.item_total),0) AS item_total,
+            COALESCE(sum(
+                transaction.total_amount-COALESCE(item_rollup.item_total,0)
+            ),0) AS transaction_without_item_amount,
+            COALESCE(sum(item_rollup.exact_identity_item_amount),0)
+                AS exact_identity_item_amount,
+            COALESCE(sum(item_rollup.unresolved_identity_item_amount),0)
+                AS unresolved_identity_item_amount,
+            COALESCE(sum(
+                transaction.total_amount
+                - COALESCE(item_rollup.exact_identity_item_amount,0)
+            ),0) AS product_allocation_residual
+        FROM core.financial_transaction transaction
+        LEFT JOIN item_rollup USING (transaction_id)
+        GROUP BY transaction.transaction_type
+        ORDER BY count(*) DESC,transaction.transaction_type
+        """
+    )
+    product_allocation_by_transaction_type = [
+        {
+            key: int(value or 0)
+            if key
+            in {
+                "transactions",
+                "transactions_with_items",
+                "item_rows",
+                "exact_identity_items",
+                "unresolved_identity_items",
+            }
+            else str(value or 0)
+            if key != "transaction_type"
+            else value
+            for key, value in row.items()
+        }
+        for row in cur.fetchall()
+    ]
+
+    cur.execute(
+        """
+        SELECT
+            leaf.transaction_type,
+            leaf.breakdown_path,
+            identity.identity_state,
+            leaf.currency,
+            count(*)::bigint AS rows,
+            COALESCE(sum(leaf.amount),0) AS amount
+        FROM mart.finance_item_leaf_breakdown leaf
+        JOIN mart.finance_transaction_item_identity identity
+            USING (transaction_id,item_ordinal)
+        GROUP BY
+            leaf.transaction_type,leaf.breakdown_path,
+            identity.identity_state,leaf.currency
+        ORDER BY
+            leaf.transaction_type,leaf.breakdown_path,
+            identity.identity_state,leaf.currency
+        LIMIT 200
+        """
+    )
+    product_breakdown_identity = [
+        {
+            "transaction_type": row["transaction_type"],
+            "breakdown_path": row["breakdown_path"],
+            "identity_state": row["identity_state"],
+            "currency": row["currency"],
+            "rows": int(row["rows"] or 0),
+            "amount": str(row["amount"] or 0),
+        }
+        for row in cur.fetchall()
+    ]
+
+    cur.execute(
+        """
+        WITH exact_item AS (
+            SELECT
+                item.transaction_id,item.item_ordinal,item.total_amount,
+                transaction.marketplace_id,identity.seller_sku,identity.asin
+            FROM core.financial_transaction_item item
+            JOIN core.financial_transaction transaction USING (transaction_id)
+            JOIN mart.finance_transaction_item_identity identity
+                USING (transaction_id,item_ordinal)
+            WHERE identity.identity_state='EXACT'
+        ), classified AS (
+            SELECT
+                exact_item.*,
+                EXISTS (
+                    SELECT 1
+                    FROM mart.catalog_portfolio_product product
+                    WHERE product.marketplace_id=exact_item.marketplace_id
+                      AND product.seller_sku=exact_item.seller_sku
+                      AND product.asin=exact_item.asin
+                      AND product.catalog_membership='CURRENT_OFFER'
+                ) AS current_offer_match,
+                EXISTS (
+                    SELECT 1
+                    FROM mart.catalog_portfolio_product product
+                    WHERE product.marketplace_id=exact_item.marketplace_id
+                      AND product.seller_sku=exact_item.seller_sku
+                      AND product.asin=exact_item.asin
+                      AND product.catalog_membership='CURRENT_OFFER'
+                      AND product.is_offer_owner
+                ) AS current_owner_match
+            FROM exact_item
+        )
+        SELECT
+            count(*)::bigint AS exact_items,
+            count(*) FILTER (WHERE current_offer_match)::bigint
+                AS current_offer_items,
+            count(*) FILTER (WHERE current_owner_match)::bigint
+                AS current_owner_items,
+            count(*) FILTER (WHERE NOT current_offer_match)::bigint
+                AS historical_or_unmapped_items,
+            COALESCE(sum(total_amount),0) AS exact_item_amount,
+            COALESCE(sum(total_amount) FILTER (WHERE current_offer_match),0)
+                AS current_offer_amount,
+            COALESCE(sum(total_amount) FILTER (WHERE current_owner_match),0)
+                AS current_owner_amount,
+            COALESCE(sum(total_amount) FILTER (WHERE NOT current_offer_match),0)
+                AS historical_or_unmapped_amount
+        FROM classified
+        """
+    )
+    catalog_identity = cur.fetchone() or {}
+
     integer_keys = (
         "current_transactions",
         "raw_transactions_with_items",
@@ -442,6 +597,22 @@ def _finance_item_evidence(cur) -> dict[str, object]:
     result["reconciliation_candidates"] = reconciliation_candidates
     result["leaf_breakdown_categories"] = leaf_breakdown_categories
     result["identifier_categories"] = identifier_categories
+    result["product_allocation_by_transaction_type"] = (
+        product_allocation_by_transaction_type
+    )
+    result["product_breakdown_identity"] = product_breakdown_identity
+    result["current_catalog_identity"] = {
+        key: int(value or 0)
+        if key
+        in {
+            "exact_items",
+            "current_offer_items",
+            "current_owner_items",
+            "historical_or_unmapped_items",
+        }
+        else str(value or 0)
+        for key, value in catalog_identity.items()
+    }
     result["raw_normalized_item_delta"] = (
         result["raw_item_rows"] - result["normalized_item_rows"]
     )
