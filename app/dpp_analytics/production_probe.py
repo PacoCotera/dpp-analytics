@@ -295,6 +295,140 @@ def _finance_item_evidence(cur) -> dict[str, object]:
     )
     detail = cur.fetchone() or {}
 
+    # Test candidate accounting relationships before adopting one as policy.
+    # These aggregates describe whether each source structure happens to tie;
+    # they do not declare that Amazon guarantees any of the relationships.
+    cur.execute(
+        """
+        WITH item_leaf AS (
+            SELECT transaction_id,item_ordinal,COALESCE(sum(amount),0) AS leaf_amount
+            FROM mart.finance_item_leaf_breakdown
+            GROUP BY transaction_id,item_ordinal
+        ), item_rollup AS (
+            SELECT
+                item.transaction_id,
+                count(*)::bigint AS item_count,
+                sum(item.total_amount) AS item_total,
+                sum(item_leaf.leaf_amount) AS item_leaf_total
+            FROM core.financial_transaction_item item
+            LEFT JOIN item_leaf USING (transaction_id,item_ordinal)
+            GROUP BY item.transaction_id
+        ), transaction_leaf AS (
+            SELECT transaction_id,COALESCE(sum(amount),0) AS transaction_leaf_total
+            FROM mart.finance_leaf_breakdown
+            GROUP BY transaction_id
+        ), comparison AS (
+            SELECT
+                ft.transaction_type,
+                ft.total_amount AS transaction_total,
+                item_rollup.item_total,
+                item_rollup.item_leaf_total,
+                transaction_leaf.transaction_leaf_total,
+                ft.total_amount-item_rollup.item_total AS item_total_delta,
+                ft.total_amount-item_rollup.item_leaf_total AS item_leaf_delta,
+                ft.total_amount-transaction_leaf.transaction_leaf_total
+                    AS transaction_leaf_delta
+            FROM core.financial_transaction ft
+            JOIN item_rollup USING (transaction_id)
+            LEFT JOIN transaction_leaf USING (transaction_id)
+        )
+        SELECT
+            transaction_type,
+            count(*)::bigint AS transactions,
+            count(item_total)::bigint AS transactions_with_item_total,
+            count(item_leaf_total)::bigint AS transactions_with_item_leaf,
+            count(transaction_leaf_total)::bigint AS transactions_with_transaction_leaf,
+            count(*) FILTER (WHERE abs(item_total_delta) <= 0.01)::bigint
+                AS item_total_matches,
+            count(*) FILTER (WHERE abs(item_leaf_delta) <= 0.01)::bigint
+                AS item_leaf_matches,
+            count(*) FILTER (WHERE abs(transaction_leaf_delta) <= 0.01)::bigint
+                AS transaction_leaf_matches,
+            COALESCE(sum(transaction_total),0) AS transaction_total,
+            COALESCE(sum(item_total),0) AS item_total,
+            COALESCE(sum(item_leaf_total),0) AS item_leaf_total,
+            COALESCE(sum(transaction_leaf_total),0) AS transaction_leaf_total,
+            COALESCE(sum(item_total_delta),0) AS item_total_delta,
+            COALESCE(sum(item_leaf_delta),0) AS item_leaf_delta,
+            COALESCE(sum(transaction_leaf_delta),0) AS transaction_leaf_delta,
+            COALESCE(max(abs(item_total_delta)),0) AS max_abs_item_total_delta,
+            COALESCE(max(abs(item_leaf_delta)),0) AS max_abs_item_leaf_delta,
+            COALESCE(max(abs(transaction_leaf_delta)),0)
+                AS max_abs_transaction_leaf_delta
+        FROM comparison
+        GROUP BY transaction_type
+        ORDER BY count(*) DESC,transaction_type
+        """
+    )
+    reconciliation_candidates = [
+        {
+            key: int(value or 0)
+            if key
+            in {
+                "transactions",
+                "transactions_with_item_total",
+                "transactions_with_item_leaf",
+                "transactions_with_transaction_leaf",
+                "item_total_matches",
+                "item_leaf_matches",
+                "transaction_leaf_matches",
+            }
+            else str(value or 0)
+            if key != "transaction_type"
+            else value
+            for key, value in row.items()
+        }
+        for row in cur.fetchall()
+    ]
+
+    cur.execute(
+        """
+        SELECT
+            transaction_type,
+            breakdown_path,
+            currency,
+            count(*)::bigint AS rows,
+            COALESCE(sum(amount),0) AS amount
+        FROM mart.finance_item_leaf_breakdown
+        GROUP BY transaction_type,breakdown_path,currency
+        ORDER BY count(*) DESC,transaction_type,breakdown_path,currency
+        LIMIT 80
+        """
+    )
+    leaf_breakdown_categories = [
+        {
+            "transaction_type": row["transaction_type"],
+            "breakdown_path": row["breakdown_path"],
+            "currency": row["currency"],
+            "rows": int(row["rows"] or 0),
+            "amount": str(row["amount"] or 0),
+        }
+        for row in cur.fetchall()
+    ]
+
+    cur.execute(
+        """
+        SELECT source_level,identifier_name,count(*)::bigint AS rows
+        FROM (
+            SELECT 'TRANSACTION'::text AS source_level,identifier_name
+            FROM core.financial_transaction_identifier
+            UNION ALL
+            SELECT 'ITEM'::text,identifier_name
+            FROM core.financial_transaction_item_identifier
+        ) identifiers
+        GROUP BY source_level,identifier_name
+        ORDER BY source_level,count(*) DESC,identifier_name
+        """
+    )
+    identifier_categories = [
+        {
+            "source_level": row["source_level"],
+            "identifier_name": row["identifier_name"],
+            "rows": int(row["rows"] or 0),
+        }
+        for row in cur.fetchall()
+    ]
+
     integer_keys = (
         "current_transactions",
         "raw_transactions_with_items",
@@ -305,6 +439,9 @@ def _finance_item_evidence(cur) -> dict[str, object]:
     result = {key: int(coverage.get(key) or 0) for key in integer_keys}
     result.update({key: int(value or 0) for key, value in detail.items()})
     result["identity_states"] = identity_states
+    result["reconciliation_candidates"] = reconciliation_candidates
+    result["leaf_breakdown_categories"] = leaf_breakdown_categories
+    result["identifier_categories"] = identifier_categories
     result["raw_normalized_item_delta"] = (
         result["raw_item_rows"] - result["normalized_item_rows"]
     )
