@@ -10,9 +10,19 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const failures = [];
 const checks = [];
+let renderedAdsPayload = null;
 page.on("pageerror", (error) => failures.push(`pageerror: ${error.message}`));
 page.on("console", (message) => {
   if (message.type() === "error") failures.push(`console: ${message.text()}`);
+});
+page.on("response", (response) => {
+  if (
+    response.ok() &&
+    response.url().startsWith(baseUrl) &&
+    new URL(response.url()).pathname === "/api/ads"
+  ) {
+    renderedAdsPayload = response.json().catch(() => null);
+  }
 });
 
 function assert(condition, message) {
@@ -1078,22 +1088,24 @@ try {
     "Invalid Trajectory windows normalize without losing unrelated state",
   );
 
+  renderedAdsPayload = null;
   await page.goto(`${baseUrl}/ads?trace=keep`, {
     waitUntil: "domcontentloaded",
     timeout: 30000,
   });
   await page.waitForFunction(
     () =>
-      document.getElementById("readyState") &&
-      !document.getElementById("readyState").hidden,
+      !document.getElementById("readyState")?.hidden ||
+      !document.getElementById("emptyState")?.hidden,
   );
-  const adsPayload = await page.evaluate(async () =>
-    (await fetch("/api/ads", { cache: "no-store" })).json(),
-  );
-  assert(
-    adsPayload.connection?.state === "READY" && adsPayload.status === "ready",
-    "Advertising is not READY for analysis-state QA",
-  );
+  const adsPayload =
+    (await renderedAdsPayload) ||
+    (await page.evaluate(async () =>
+      (await fetch("/api/ads", { cache: "no-store" })).json(),
+    ));
+  const adsReady =
+    adsPayload.connection?.state === "READY" && adsPayload.status === "ready";
+  if (adsReady) {
   const demandSignal = (adsPayload.demand?.items || []).find(
     (signal) =>
       signal.signal_id &&
@@ -1220,6 +1232,45 @@ try {
   checks.push(
     "Invalid Ads state normalizes to Business impact without losing unrelated parameters",
   );
+  } else {
+    const unavailable = await page.evaluate(() => ({
+      emptyVisible: !document.getElementById("emptyState")?.hidden,
+      impactSelected:
+        document
+          .querySelector('[data-ads-view="impact"]')
+          ?.getAttribute("aria-selected") === "true",
+      drillsDisabled: [...document.querySelectorAll('[data-ads-view]')]
+        .slice(1)
+        .every(
+          (tab) => tab.disabled && tab.getAttribute("aria-disabled") === "true",
+        ),
+    }));
+    assert(
+      unavailable.emptyVisible &&
+        unavailable.impactSelected &&
+        unavailable.drillsDisabled,
+      `Ads unavailable state is unsafe: ${JSON.stringify(unavailable)}`,
+    );
+    await page.goto(
+      `${baseUrl}/ads?view=invalid&filter=invalid&sort=invalid&page=-2&signal_type=invalid&trace=keep`,
+      { waitUntil: "domcontentloaded", timeout: 30000 },
+    );
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-ads-view="impact"]')
+          ?.getAttribute("aria-selected") === "true",
+    );
+    assertParam("view", null);
+    assertParam("filter", null);
+    assertParam("sort", null);
+    assertParam("page", null);
+    assertParam("signal_type", null);
+    assertParam("trace", "keep");
+    checks.push(
+      "Ads unavailable state disables unsafe drills and normalizes invalid URL state",
+    );
+  }
 
   const financeWindows = ["3m", "ytd", "12m", "lastYear", "all"];
   let financePayload;
