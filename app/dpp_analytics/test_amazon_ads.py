@@ -11,6 +11,7 @@ from .amazon_ads import (
     INITIAL_HISTORY_CURSOR,
     _report_progress_callback,
     _target_key,
+    _write_extended_report_fields,
     _write_search_term_rows,
     _write_target_rows,
     ads_initial_history_complete,
@@ -88,6 +89,10 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
         self.assertNotIn("targetingExpression", columns)
         self.assertIn("keywordId", columns)
         self.assertIn("targeting", columns)
+        self.assertIn("attributedSalesSameSku7d", columns)
+        self.assertIn("salesOtherSku7d", columns)
+        self.assertIn("keywordBid", columns)
+        self.assertIn("topOfSearchImpressionShare", columns)
 
     def test_target_key_uses_expression_when_keyword_id_is_absent(self) -> None:
         self.assertEqual(
@@ -108,6 +113,52 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
         self.assertNotIn("targetingId", columns)
         self.assertIn("keywordId", columns)
         self.assertIn("targeting", columns)
+        self.assertIn("attributedSalesSameSku7d", columns)
+        self.assertIn("salesOtherSku7d", columns)
+
+    @patch.object(AmazonAdsClient, "headers", return_value={})
+    def test_campaign_reports_retain_budget_rule_and_same_sku_context(self, _headers) -> None:
+        self.ads.client.post.return_value = _response(202, {"reportId": "campaign-report"})
+
+        self.assertEqual(self._create("campaign"), "campaign-report")
+        columns = self.ads.client.post.call_args.kwargs["json"]["configuration"]["columns"]
+        self.assertIn("campaignBudgetAmount", columns)
+        self.assertIn("campaignApplicableBudgetRuleId", columns)
+        self.assertIn("campaignBiddingStrategy", columns)
+        self.assertIn("attributedSalesSameSku7d", columns)
+
+    @patch.object(AmazonAdsClient, "headers", return_value={})
+    def test_product_reports_retain_halo_and_product_identity(self, _headers) -> None:
+        self.ads.client.post.return_value = _response(202, {"reportId": "product-report"})
+
+        self.assertEqual(self._create("product"), "product-report")
+        columns = self.ads.client.post.call_args.kwargs["json"]["configuration"]["columns"]
+        self.assertIn("adId", columns)
+        self.assertIn("advertisedSku", columns)
+        self.assertIn("advertisedAsin", columns)
+        self.assertIn("salesOtherSku7d", columns)
+
+    def test_extended_fields_preserve_unavailable_numbers_as_null(self) -> None:
+        cursor = MagicMock()
+
+        _write_extended_report_fields(
+            cursor,
+            "profile-1",
+            "campaign",
+            {
+                "date": "2026-09-01",
+                "campaignId": "campaign-1",
+                "campaignBudgetAmount": "250.50",
+                "purchasesSameSku7d": 2,
+            },
+        )
+
+        first_values = cursor.execute.call_args_list[0].args[1]
+        self.assertIsNone(first_values[0])
+        self.assertEqual(first_values[1], 2)
+        self.assertEqual(first_values[3], 250.5)
+        self.assertIsNone(first_values[5])
+        self.assertIsNone(first_values[8])
 
     @patch.object(AmazonAdsClient, "headers", return_value={})
     @patch("dpp_analytics.amazon_ads.time.sleep")
@@ -227,7 +278,7 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
             connection = connect.return_value.__enter__.return_value
             cursor = connection.cursor.return_value.__enter__.return_value
             writer("profile-1", [row], "report-1")
-            return cursor.execute.call_args.args[0]
+            return "\n".join(call.args[0] for call in cursor.execute.call_args_list)
 
     def test_target_upsert_matches_deployed_primary_key(self) -> None:
         sql = self._writer_sql(
