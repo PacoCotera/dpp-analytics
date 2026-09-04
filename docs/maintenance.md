@@ -284,7 +284,11 @@ build-cache cleanup runs after every deployment, including failed runs, before t
 heartbeat captures host capacity. This cleanup is deliberately limited to
 reproducible builder cache: it never invokes `docker system prune`, removes
 application images or containers, or touches the PostgreSQL and Grafana named
-volumes.
+volumes. Deployment startup also removes only containers carrying the dedicated
+`com.dpp-analytics.role=production-browser-qa` label before deleting prior capture
+files. This ordering releases files left open when a runner-level kill bypasses the
+normal QA `EXIT` trap. After artifact upload and heartbeat publication, the local
+capture copy is deleted; GitHub artifacts remain the evidence owner.
 
 Production browser QA records page/viewport captures plus browser console errors, failed responses and horizontal-overflow checks. Treat it as a deployment requirement, not decorative screenshots.
 `qa/admin_qa.mjs` proves the published Admin entrypoint, unauthenticated API denial, authenticated current/deleted pre-population, a non-mutating save/reload, ordinary Catalog consumption of the persisted values, and logout denial. The QA container uses the host network and published port so it exercises the same remote-access policy as the public route. Deployment passes only the Admin password through a temporary mode-0600 env file and deletes it during cleanup; the password is never written to QA output.

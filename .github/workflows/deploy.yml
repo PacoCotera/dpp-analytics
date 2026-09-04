@@ -28,6 +28,19 @@ jobs:
       - name: Initialize deployment diagnostics
         run: |
           set -euo pipefail
+          # A host or runner-level kill bypasses the browser step's EXIT trap.
+          # Stop any labeled survivor before deleting its output path; otherwise
+          # the process can keep deleted capture files open and consume disk.
+          if command -v docker >/dev/null 2>&1; then
+            mapfile -t stale_qa < <(
+              sudo docker ps -aq \
+                --filter label=com.dpp-analytics.role=production-browser-qa
+            )
+            if [[ "${#stale_qa[@]}" -gt 0 ]]; then
+              echo "Removing ${#stale_qa[@]} interrupted production QA container(s)."
+              sudo docker rm -f "${stale_qa[@]}" >/dev/null
+            fi
+          fi
           sudo rm -rf /tmp/dpp-production-visual-qa
           sudo rm -f \
             /tmp/dpp-production-visual-qa-run.txt \
@@ -581,3 +594,18 @@ jobs:
               issue_number: 1,
               body
             });
+
+      - name: Remove local production QA evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          # Successful evidence is retained by GitHub artifacts and the compact
+          # heartbeat. Failure diagnostics are uploaded above. Do not keep a
+          # second multi-gigabyte copy on the production root filesystem.
+          sudo rm -rf /tmp/dpp-production-visual-qa
+          sudo rm -f \
+            /tmp/dpp-production-visual-qa-run.txt \
+            /tmp/dpp-production-visual-qa-exit-code.txt \
+            /tmp/dpp-admin-qa.env
+          df -h /
