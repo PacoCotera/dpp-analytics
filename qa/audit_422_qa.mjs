@@ -92,7 +92,15 @@ for (const [engineName, engine] of engines) {
     });
 
     try {
-      await open(page, "/ads?view=products", "#productRows tr");
+      await open(page, "/ads?view=products");
+      const adsReady = await page.evaluate(
+        () => !document.getElementById("readyState")?.hidden,
+      );
+      if (adsReady) {
+        await page.locator("#productRows tr").first().waitFor({
+          state: "visible",
+          timeout: 15_000,
+        });
       for (const profile of profiles) {
         await applyProfile(page, profile);
         const state = await page.evaluate(() => {
@@ -167,6 +175,41 @@ for (const [engineName, engine] of engines) {
       await page.locator(".ads-product-table").screenshot({
         path: path.join(outDir, `${prefix}-ads-products.png`),
       });
+      } else {
+        await page.locator("#emptyState:not([hidden])").waitFor({
+          state: "visible",
+          timeout: 15_000,
+        });
+        for (const profile of profiles) {
+          await applyProfile(page, profile);
+          const state = await page.evaluate(() => ({
+            documentOverflow:
+              document.documentElement.scrollWidth -
+              document.documentElement.clientWidth,
+            emptyVisible: !document.getElementById("emptyState")?.hidden,
+            impactEnabled: !document.querySelector(
+              '[data-ads-view="impact"]',
+            )?.disabled,
+            drillsDisabled: [...document.querySelectorAll('[data-ads-view]')]
+              .slice(1)
+              .every(
+                (tab) =>
+                  tab.disabled && tab.getAttribute("aria-disabled") === "true",
+              ),
+          }));
+          record(
+            state.documentOverflow <= 1 &&
+              state.emptyVisible &&
+              state.impactEnabled &&
+              state.drillsDisabled,
+            `${prefix}/${profile}: Advertising unavailable state is contained and safe`,
+            state,
+          );
+        }
+        await page.locator("#emptyState").screenshot({
+          path: path.join(outDir, `${prefix}-ads-unavailable.png`),
+        });
+      }
 
       await open(page, "/sales?view=geography", "#geoRankedRows tr");
       for (const profile of profiles) {

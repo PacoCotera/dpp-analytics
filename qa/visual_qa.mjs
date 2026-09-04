@@ -1459,7 +1459,16 @@ async function verifyProductWorkspace(page) {
     const adsState = (await page.locator('#adsState').textContent() || '').trim();
     const adsDecision = (await page.locator('#adsDecision').textContent() || '').trim();
     const connection = payload.ads?.connection || {};
-    const expectedDecision = payload.ads?.recommendation?.label || connection.headline;
+    const hasAds = Boolean(
+      payload.ads?.through_date && Number(payload.ads?.observed_ads_days || 0) > 0
+    );
+    const expectedDecision = connection.state === 'READY' && hasAds
+      ? payload.ads?.recommendation?.label || (
+          payload.ads?.trusted_for_operating_decisions
+            ? 'Paid-support context is ready'
+            : 'Paid-support context needs review'
+        )
+      : connection.headline;
     if (adsState !== connection.badge || adsDecision !== expectedDecision)
       throw new Error(`Product Ads state-machine mismatch: ${adsState} / ${adsDecision}`);
   }
