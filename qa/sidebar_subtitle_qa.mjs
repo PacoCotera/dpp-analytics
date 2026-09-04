@@ -70,7 +70,11 @@ function monitor(page) {
 
 async function loadShell(page, route) {
   const response = await page.goto(`${baseUrl}${route}`, {
-    waitUntil: "domcontentloaded",
+    // This audit reuses one page across routes. Wait for each route's data
+    // requests to settle before navigating again; otherwise a deliberately
+    // aborted request from the previous route is reported as a browser error
+    // (notably /api/sales under concurrent production QA load).
+    waitUntil: "networkidle",
     timeout: 30_000,
   });
   assert(response?.ok(), `${route} returned ${response?.status()}`);
