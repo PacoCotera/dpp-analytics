@@ -113,6 +113,16 @@ JOB_DEFINITIONS = {
         ),
         "grace_seconds": 86400,
     },
+    ("amazon_brand_analytics", "repeat_purchase_weekly"): {
+        "label": "Repeat Purchase",
+        "operation": "Amazon Brand Analytics · weekly repeat behavior",
+        "purpose": "Retains repeat-customer and ordered-revenue context for later analysis.",
+        "domain": "Advertising",
+        "interval_seconds": lambda: _seconds(
+            "BRAND_ANALYTICS_SEARCH_QUERY_INTERVAL_SECONDS", 86400
+        ),
+        "grace_seconds": 86400,
+    },
     ("amazon_reports", "merchant_listings_all_data"): {
         "label": "Seller listings",
         "operation": "Amazon SP-API · Merchant Listings report",

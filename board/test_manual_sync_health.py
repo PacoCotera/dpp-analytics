@@ -62,6 +62,7 @@ class ManualSyncHealthContractTest(unittest.TestCase):
             "search_catalog_performance_weekly",
             "search_terms_weekly",
             "market_basket_weekly",
+            "repeat_purchase_weekly",
         ):
             self.assertIn(f'"{job_name}"', source)
 

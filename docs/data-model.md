@@ -124,6 +124,8 @@ Search Query Performance can diagnose discoverability, engagement, cart, and pur
 
 `brand.market_basket_affinity` retains Amazon Brand Analytics Market Basket at the exact marketplace, completed calendar period, seller-catalog ASIN, and co-purchased ASIN pair grain. `combination_ratio` stores Amazon's `combinationPct` as a 0–1 ratio without percentage scaling. The source `asin` belongs to the seller catalog; `purchased_with_asin` may be owned or competing inventory and must be resolved against current catalog evidence at use time. This is affinity and merchandising context only—not advertising attribution, causality, or incremental lift—and it does not enter an Advertising V2 recommendation directly.
 
+`brand.repeat_purchase_behavior` retains Amazon Brand Analytics Repeat Purchase at the exact marketplace, completed calendar period, and seller-catalog ASIN grain. Counts, repeat-customer ratio, repeat-purchase revenue, currency, and repeat-revenue ratio remain independent source operands. `revenue_basis=ORDERED_REVENUE_RETURNS_EXCLUDED` and `tax_basis=SOURCE_UNSPECIFIED` make Amazon's documented returns exclusion and undocumented tax basis explicit. The revenue is not reconciled seller revenue or contribution and cannot be used as advertising return. This source is retained for future portfolio/LTV context and does not enter an Advertising V2 recommendation directly.
+
 Advertising's Search opportunities queue reads only the latest completed monthly period and joins each ASIN to
 the canonical current offer owner. Its named, versioned rules compare click per impression, cart add per click and
 purchase per cart add against the Amazon-wide rate for the same query. Minimum ASIN evidence is 100 impressions,

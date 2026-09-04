@@ -21,6 +21,11 @@ from .brand_analytics_market_basket import (
     ingest_market_basket,
     market_basket_backfill_complete,
 )
+from .brand_analytics_repeat_purchase import (
+    JOB as REPEAT_PURCHASE_JOB,
+    ingest_repeat_purchase,
+    repeat_purchase_backfill_complete,
+)
 from .brand_analytics_search_catalog import (
     JOB as SEARCH_CATALOG_JOB,
     ingest_search_catalog_performance,
@@ -169,6 +174,7 @@ def _brand_analytics_backfill_complete() -> bool:
         and search_catalog_backfill_complete()
         and search_terms_backfill_complete()
         and market_basket_backfill_complete()
+        and repeat_purchase_backfill_complete()
     )
 
 
@@ -181,6 +187,8 @@ def _ingest_scheduled_brand_analytics() -> dict:
         result = ingest_search_terms()
     elif not market_basket_backfill_complete():
         result = ingest_market_basket()
+    elif not repeat_purchase_backfill_complete():
+        result = ingest_repeat_purchase()
     else:
         result = ingest_search_query_performance()
     result["backfill_complete"] = _brand_analytics_backfill_complete()
@@ -356,6 +364,7 @@ def _run_manual_sync() -> str | None:
         SEARCH_CATALOG_JOB: ingest_search_catalog_performance,
         SEARCH_TERMS_JOB: ingest_search_terms,
         MARKET_BASKET_JOB: ingest_market_basket,
+        REPEAT_PURCHASE_JOB: ingest_repeat_purchase,
         "merchant_listings_all_data": ingest_listings_report,
         "catalog_items_2022_04_01": ingest_catalog,
         "sponsored_products_entity_snapshots": ingest_ads_entities,
@@ -553,6 +562,7 @@ def main() -> None:
             elif manual_job == SEARCH_CATALOG_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == SEARCH_TERMS_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == MARKET_BASKET_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
+            elif manual_job == REPEAT_PURCHASE_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == "merchant_listings_all_data": next_listings_report = now + settings.listings_report_interval_seconds
             elif manual_job == "catalog_items_2022_04_01": next_catalog = now + settings.catalog_interval_seconds
             elif manual_job == "sponsored_products_entity_snapshots": next_ads_entities = now + settings.ads_reporting_interval_seconds

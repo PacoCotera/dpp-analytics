@@ -586,6 +586,7 @@ class Handler(BaseHTTPRequestHandler):
                 "search_query_performance_weekly",
                 "search_catalog_performance_weekly",
                 "search_terms_weekly", "market_basket_weekly",
+                "repeat_purchase_weekly",
                 "merchant_listings_all_data", "catalog_items_2022_04_01",
                 "orders_geography_state_v2026", "month_close",
             }

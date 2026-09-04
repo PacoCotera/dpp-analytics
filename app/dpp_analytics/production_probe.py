@@ -990,6 +990,49 @@ def _brand_market_basket_evidence(cur) -> dict[str, object]:
     }
 
 
+def _brand_repeat_purchase_evidence(cur) -> dict[str, object]:
+    cur.execute(
+        """
+        SELECT
+            report_period,count(*)::bigint AS rows,
+            count(DISTINCT (start_date,end_date))::bigint AS periods,
+            count(DISTINCT asin)::bigint AS catalog_asins,
+            count(*) FILTER (WHERE orders IS NOT NULL)::bigint AS rows_with_orders,
+            count(*) FILTER (WHERE unique_customers IS NOT NULL)::bigint
+                AS rows_with_unique_customers,
+            count(*) FILTER (WHERE repeat_customer_ratio IS NOT NULL)::bigint
+                AS rows_with_repeat_customer_ratio,
+            count(*) FILTER (WHERE repeat_purchase_revenue IS NOT NULL)::bigint
+                AS rows_with_repeat_revenue,
+            count(DISTINCT repeat_purchase_revenue_currency)::bigint AS currencies,
+            min(start_date) AS first_period_start,max(end_date) AS through_date
+        FROM brand.repeat_purchase_behavior
+        GROUP BY report_period
+        ORDER BY report_period
+        """
+    )
+    integer_keys = (
+        "rows",
+        "periods",
+        "catalog_asins",
+        "rows_with_orders",
+        "rows_with_unique_customers",
+        "rows_with_repeat_customer_ratio",
+        "rows_with_repeat_revenue",
+        "currencies",
+    )
+    return {
+        row["report_period"]: {
+            **{key: int(row[key] or 0) for key in integer_keys},
+            "first_period_start": _json_value(row.get("first_period_start")),
+            "through_date": _json_value(row.get("through_date")),
+            "revenue_basis": "ORDERED_REVENUE_RETURNS_EXCLUDED",
+            "tax_basis": "SOURCE_UNSPECIFIED",
+        }
+        for row in cur.fetchall()
+    }
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -1068,6 +1111,7 @@ def _warehouse_probe() -> dict[str, object]:
         brand_search_catalog_evidence = _brand_search_catalog_evidence(cur)
         brand_search_terms_evidence = _brand_search_terms_evidence(cur)
         brand_market_basket_evidence = _brand_market_basket_evidence(cur)
+        brand_repeat_purchase_evidence = _brand_repeat_purchase_evidence(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -1121,6 +1165,7 @@ def _warehouse_probe() -> dict[str, object]:
         "brand_search_catalog_evidence": brand_search_catalog_evidence,
         "brand_search_terms_evidence": brand_search_terms_evidence,
         "brand_market_basket_evidence": brand_market_basket_evidence,
+        "brand_repeat_purchase_evidence": brand_repeat_purchase_evidence,
     }
 
 
