@@ -1595,7 +1595,10 @@ def _probe_spapi_reports(
                 source=spec.key,
                 state=requested.get("state"),
             )
-        if index + 1 >= REPORT_CREATE_BURST and index + 1 < len(REPORT_SPECS):
+        if (
+            (index + 1) % REPORT_CREATE_BURST == 0
+            and index + 1 < len(REPORT_SPECS)
+        ):
             _progress("spapi_report_rate_limit_wait", after_source=spec.key)
             time.sleep(REPORT_CREATE_COOLDOWN_SECONDS)
         else:

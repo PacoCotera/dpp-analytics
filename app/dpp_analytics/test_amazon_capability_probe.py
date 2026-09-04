@@ -10,6 +10,7 @@ from .amazon_capability_probe import (
     REPORT_SPECS,
     ReportSpec,
     _probe_ads_reports,
+    _probe_spapi_reports,
     _safe_error,
     field_paths,
     last_completed_week,
@@ -104,6 +105,32 @@ class AmazonCapabilityManifestTests(unittest.TestCase):
 
 
 class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
+    @patch("dpp_analytics.amazon_capability_probe._progress")
+    @patch("dpp_analytics.amazon_capability_probe.time.sleep")
+    @patch("dpp_analytics.amazon_capability_probe._request_report")
+    def test_spapi_report_cooldown_occurs_once_per_complete_burst(
+        self, request_report, sleep, _progress
+    ) -> None:
+        request_report.return_value = {
+            "state": "authorized_report_unavailable",
+            "authorized": True,
+        }
+        specs = tuple(
+            ReportSpec(f"source_{index}", f"REPORT_{index}") for index in range(31)
+        )
+        with (
+            patch("dpp_analytics.amazon_capability_probe.REPORT_SPECS", specs),
+            patch("dpp_analytics.amazon_capability_probe.REPORT_CREATE_BURST", 15),
+            patch(
+                "dpp_analytics.amazon_capability_probe.REPORT_CREATE_COOLDOWN_SECONDS",
+                65,
+            ),
+        ):
+            _probe_spapi_reports(object(), "asin", dt.date(2026, 9, 4))
+        durations = [entry.args[0] for entry in sleep.call_args_list]
+        self.assertEqual(durations.count(65), 2)
+        self.assertEqual(durations.count(1), 29)
+
     @patch("dpp_analytics.amazon_capability_probe._progress")
     def test_ads_reports_are_requested_before_polling_and_complete_independently(
         self, _progress,
