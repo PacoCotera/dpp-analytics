@@ -131,14 +131,13 @@ jobs:
       - name: Protect deployment disk capacity
         run: |
           set -euo pipefail
-          available_kb="$(df -Pk / | awk 'NR == 2 { print $4 }')"
-          minimum_kb="$((5 * 1024 * 1024))"
-          if (( available_kb < minimum_kb )); then
-            echo "Root filesystem has ${available_kb} KiB available; bounding Docker build cache."
-            # Build cache is reproducible. Do not prune images, containers, or
-            # named volumes: PostgreSQL and Grafana state must remain untouched.
-            sudo docker builder prune --all --force --keep-storage 1GB
-          fi
+          df -h /
+          # Build cache is reproducible. Bound it before every release instead
+          # of relying on a free-space threshold: clearing the prior capture
+          # directory can briefly mask the space needed by the next 231-image
+          # production matrix. Do not prune images, containers, or named
+          # volumes: PostgreSQL and Grafana state must remain untouched.
+          sudo docker builder prune --all --force --keep-storage 1GB
           df -h /
 
       - name: Initialize local board config
@@ -281,6 +280,14 @@ jobs:
         run: |
           set -euo pipefail
           sudo docker build -t dpp-production-visual-qa:local qa
+
+      - name: Reclaim build cache before production evidence
+        run: |
+          set -euo pipefail
+          # Application and QA images are complete. Release their reproducible
+          # intermediate cache before Playwright writes the full capture matrix.
+          sudo docker builder prune --all --force --keep-storage 1GB
+          df -h /
 
       - name: Test the deployed UI in a browser
         run: |
