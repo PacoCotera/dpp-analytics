@@ -152,6 +152,19 @@ CAPABILITIES: tuple[Capability, ...] = (
         "spapi_inline",
     ),
     Capability(
+        "catalog_vendor_details",
+        "Product",
+        "Catalog Items vendor details",
+        "ASIN vendor snapshot",
+        "ASIN and vendor code",
+        "point in time",
+        "not available to seller account",
+        "Vendor brand, manufacturer and replenishment codes",
+        "documented for vendor accounts only",
+        "unavailable to DPP seller; retain as account-type boundary",
+        "documented_account_unavailable",
+    ),
+    Capability(
         "competitive_pricing",
         "Product",
         "Product Pricing v2022",
@@ -1408,7 +1421,6 @@ def _inline_spapi(
             "relationships",
             "salesRanks",
             "summaries",
-            "vendorDetails",
         )
         components: dict[str, dict[str, Any]] = {}
         paths: set[str] = set()
@@ -2521,7 +2533,13 @@ def probe_all() -> dict[str, Any]:
             fallback = {
                 "state": "documented_marketplace_unavailable",
                 "authorized": None,
-                "error": "Official Amazon documentation limits this source to the US marketplace",
+                "error": f"Official Amazon availability boundary: {cap.authority}",
+            }
+        elif cap.probe == "documented_account_unavailable":
+            fallback = {
+                "state": "documented_account_unavailable",
+                "authorized": None,
+                "error": f"Official Amazon availability boundary: {cap.authority}",
             }
         else:
             fallback = {
