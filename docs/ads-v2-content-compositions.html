@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Advertising V2 Batch 0 content compositions</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17322f; --muted: #60716e; --line: #d7dfdc; --paper: #f4f2eb;
+      --surface: #fffef9; --soft: #e9efeb; --accent: #057b68; --warn: #8a4b08;
+      --warn-soft: #fff0d5; --danger: #9f2d2d; --danger-soft: #f9e4e1;
+      --ok: #316b3a; --ok-soft: #e0efe1; --shadow: 0 8px 24px rgb(23 50 47 / 8%);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.45 Inter, ui-sans-serif, system-ui, sans-serif; }
+    button, a { font: inherit; }
+    a { color: inherit; }
+    .artifact-note { max-width: 1180px; margin: 18px auto; padding: 12px 16px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 13px; }
+    .artifact-note strong { color: var(--ink); }
+    .screen { width: min(1180px, calc(100% - 32px)); margin: 0 auto 36px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; min-height: 56px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+    .brand { font-weight: 800; letter-spacing: -.02em; }
+    .nav { display: flex; gap: 20px; color: var(--muted); font-size: 14px; }
+    .nav .active { color: var(--ink); font-weight: 750; }
+    .eyebrow { margin: 0 0 5px; color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 5px; font-size: clamp(28px, 3vw, 42px); line-height: 1.08; letter-spacing: -.035em; }
+    h2 { margin-bottom: 4px; font-size: 20px; line-height: 1.2; letter-spacing: -.015em; }
+    h3 { margin-bottom: 4px; font-size: 16px; line-height: 1.3; }
+    .lede { max-width: 720px; margin-bottom: 8px; color: var(--muted); }
+    .basis { margin-bottom: 18px; color: var(--muted); font-size: 13px; }
+    .basis strong { color: var(--ink); }
+    .tabs { display: flex; gap: 4px; margin: 14px 0 18px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+    .tabs a { min-height: 44px; padding: 12px 14px 10px; text-decoration: none; white-space: nowrap; }
+    .tabs .active { border-bottom: 3px solid var(--accent); font-weight: 800; }
+    .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .metric, .panel, .decision, .state { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+    .metric { min-height: 100px; padding: 14px 16px; }
+    .metric .label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .metric .value { margin: 4px 0 2px; font-size: 25px; font-weight: 850; letter-spacing: -.025em; }
+    .metric .detail { color: var(--muted); font-size: 12px; }
+    .metric.blocked { border-color: #e5c9a3; background: var(--warn-soft); }
+    .metric.blocked .value { color: var(--warn); font-size: 17px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .75fr); gap: 14px; align-items: start; }
+    .panel { padding: 16px; }
+    .section-head { display: flex; justify-content: space-between; gap: 16px; align-items: end; margin-bottom: 12px; }
+    .section-head p { margin: 0; color: var(--muted); font-size: 13px; }
+    .count { color: var(--muted); font-size: 13px; white-space: nowrap; }
+    .queue, .rail { display: grid; gap: 9px; }
+    .rail { gap: 14px; }
+    .decision { padding: 14px; box-shadow: none; }
+    .decision-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+    .rank { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--soft); font-weight: 800; }
+    .identity { min-width: 0; }
+    .identity h3, .subject { overflow-wrap: anywhere; }
+    .subject { margin: 0; color: var(--muted); font-size: 13px; }
+    .money { text-align: right; white-space: nowrap; }
+    .money strong { display: block; font-size: 18px; }
+    .money span { color: var(--muted); font-size: 11px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 9px 0; }
+    .chip { padding: 3px 7px; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: 11px; font-weight: 750; }
+    .chip.warn { background: var(--warn-soft); color: var(--warn); }
+    .chip.danger { background: var(--danger-soft); color: var(--danger); }
+    .chip.ok { background: var(--ok-soft); color: var(--ok); }
+    .rationale { margin-bottom: 10px; }
+    .decision-actions { display: flex; gap: 8px; align-items: center; }
+    .action { display: inline-grid; place-items: center; min-height: 44px; padding: 9px 13px; border: 1px solid var(--accent); border-radius: 7px; background: var(--accent); color: white; font-weight: 800; text-decoration: none; }
+    .secondary { background: transparent; color: var(--accent); }
+    .rail dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; margin: 12px 0 0; }
+    .rail dt { color: var(--muted); }
+    .rail dd { margin: 0; text-align: right; font-weight: 750; }
+    .disclosure { margin-top: 12px; border-top: 1px solid var(--line); }
+    .disclosure summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-weight: 750; }
+    .disclosure p, .disclosure li { color: var(--muted); font-size: 13px; }
+    .evidence { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .evidence dl { display: grid; grid-template-columns: 130px 1fr; gap: 5px 12px; margin: 0; font-size: 13px; }
+    .evidence dt { color: var(--muted); }
+    .evidence dd { margin: 0; overflow-wrap: anywhere; }
+    .state { margin-top: 16px; padding: 18px; }
+    .state h2 { font-size: 18px; }
+    .state p:last-child { margin-bottom: 0; }
+    .state.ok { border-color: #bdd7c1; background: var(--ok-soft); }
+    .state.warn { border-color: #e5c9a3; background: var(--warn-soft); }
+    .experiment { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); gap: 12px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
+    .experiment:first-of-type { border-top: 0; }
+    .experiment .datum { color: var(--muted); font-size: 12px; }
+    .experiment .datum strong { display: block; color: var(--ink); font-size: 14px; }
+    .composition-label { margin: 30px 0 8px; padding-top: 18px; border-top: 2px dashed #b8c3c0; color: var(--muted); font-size: 13px; }
+    @media (max-width: 720px) {
+      .screen { width: min(100% - 24px, 440px); }
+      .artifact-note { display: none; }
+      .topbar { min-height: 52px; }
+      .nav { display: none; }
+      .summary, .layout { grid-template-columns: 1fr; }
+      .summary { gap: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+      .metric { min-height: 0; padding: 8px 10px; border: 0; border-radius: 0; border-top: 1px solid var(--line); box-shadow: none; }
+      .metric:first-child { border-top: 0; border-radius: 10px 10px 0 0; }
+      .metric:last-child { border-radius: 0 0 10px 10px; }
+      .metric .value { display: inline; margin-right: 6px; font-size: 19px; }
+      .metric .detail { display: inline; }
+      .metric.blocked .value { font-size: 15px; }
+      .layout { gap: 10px; }
+      .panel { padding: 13px; }
+      .section-head { align-items: start; }
+      .decision-top { grid-template-columns: auto minmax(0, 1fr); }
+      .money { grid-column: 2; text-align: left; }
+      .decision-actions { display: grid; grid-template-columns: 1fr; }
+      .action { width: 100%; }
+      .evidence dl { grid-template-columns: 1fr; gap: 1px; }
+      .evidence dd { margin-bottom: 7px; }
+      .experiment { grid-template-columns: 1fr 1fr; }
+      .experiment .identity { grid-column: 1 / -1; }
+      h1 { font-size: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="artifact-note"><strong>Batch 0 design artifact, not application code.</strong> Content is intentionally production-scale and policy-safe. Review at 1600×1000, 1440×900, 393×852, and 390×844. It contains no forecast, invented contribution, or executable Amazon change.</aside>
+  <main class="screen">
+    <header class="topbar"><div class="brand">Dirty Pawz Press</div><nav class="nav" aria-label="Application"><span>Today</span><span>Sales</span><span>Inventory</span><span class="active">Advertising</span><span>Finance</span></nav></header>
+    <p class="eyebrow">Advertising</p><h1>Decisions</h1>
+    <p class="lede">Protect contribution, resolve unsafe paid support, and choose what deserves investigation next.</p>
+    <p class="basis"><strong>6 Aug–2 Sep 2026</strong> · 21 days finalized; the latest 7 can still change · Sources refreshed 12 minutes ago</p>
+    <nav class="tabs" aria-label="Advertising views"><a class="active" href="#many-decisions">Decisions</a><a href="#portfolio">Portfolio</a><a href="#demand">Demand</a><a href="#experiments">Experiments</a></nav>
+    <section class="summary" aria-label="Operating summary">
+      <article class="metric"><div class="label">Ad spend · 28 days</div><div class="value">MX$ 8,803.55</div><div class="detail">Sponsored Products · account reconciled</div></article>
+      <article class="metric blocked"><div class="label">Contribution after ads</div><div class="value">Not yet available</div><div class="detail">Fee and refund allocation is not reconciled by product.</div></article>
+      <article class="metric"><div class="label">Open observed exposure</div><div class="value">MX$ 2,186</div><div class="detail">3 eligible investigations · not a forecast</div></article>
+    </section>
+    <div class="layout" id="many-decisions">
+      <section class="panel">
+        <div class="section-head"><div><h2>Requires attention</h2><p>Ranked by safety, observed exposure, and evidence quality.</p></div><span class="count">3 decisions</span></div>
+        <div class="queue">
+          <article class="decision">
+            <div class="decision-top"><div class="rank">1</div><div class="identity"><h3>Investigate paid support while inbound stock is delayed</h3><p class="subject">Cuaderno Profesional A5 · Gato Rojo · puntos</p></div><div class="money"><strong>MX$ 1,246</strong><span>observed spend exposure</span></div></div>
+            <div class="chips"><span class="chip danger">Inventory safety</span><span class="chip">High evidence</span><span class="chip warn">Investigate only</span></div>
+            <p class="rationale">Paid demand is active, but only 9 sellable units remain and the inbound plan is not yet received. Increasing spend is blocked.</p>
+            <div class="decision-actions"><a class="action" href="#expanded-evidence">Inspect inventory cause</a><a class="action secondary" href="#expanded-evidence">See evidence</a></div>
+          </article>
+          <article class="decision">
+            <div class="decision-top"><div class="rank">2</div><div class="identity"><h3>Investigate search demand that reaches the listing but does not purchase</h3><p class="subject">“libreta de bolsillo hojas blancas para dibujo y notas” · Naturaleza 3-pack</p></div><div class="money"><strong>MX$ 604</strong><span>scenario at current CPC</span></div></div>
+            <div class="chips"><span class="chip">Demand</span><span class="chip">Medium evidence</span><span class="chip warn">Scenario, not forecast</span></div>
+            <p class="rationale">Amazon-wide query visits are present, while purchase share trails click share. Listing conversion, price, and offer state must be checked before a media test.</p>
+            <div class="decision-actions"><a class="action" href="#expanded-evidence">Inspect conversion cause</a><a class="action secondary" href="#expanded-evidence">See query evidence</a></div>
+          </article>
+          <article class="decision">
+            <div class="decision-top"><div class="rank">3</div><div class="identity"><h3>Resolve competing automated budget changes before changing the campaign</h3><p class="subject">Sponsored Products · Pocket Paper · exact and product targeting</p></div><div class="money"><strong>MX$ 336</strong><span>observed spend exposure</span></div></div>
+            <div class="chips"><span class="chip danger">Change conflict</span><span class="chip">High evidence</span><span class="chip warn">Investigate only</span></div>
+            <p class="rationale">An active Amazon budget rule and optimization rule can alter the same campaign. A manual recommendation would be unsafe until ownership is clear.</p>
+            <div class="decision-actions"><a class="action" href="#expanded-evidence">Inspect active automation</a><a class="action secondary" href="#expanded-evidence">See campaign evidence</a></div>
+          </article>
+        </div>
+      </section>
+      <aside class="rail">
+        <section class="panel"><h2>Allocation context</h2><p class="subject">Where current paid support is concentrated.</p><dl><dt>8 supported products</dt><dd>MX$ 8,804</dd><dt>Top product share</dt><dd>31%</dd><dt>Inventory-constrained</dt><dd>1 product</dd><dt>Economically verified</dt><dd>0 products</dd></dl></section>
+        <section class="panel"><h2>Awaiting evaluation</h2><p class="subject">No operator changes are eligible for evaluation. Numeric learning limits have not been approved.</p><details class="disclosure"><summary>Why tests are blocked</summary><p>Product economics, a learning budget, a single-test cap, and guardrails must be reconciled and approved first.</p></details></section>
+      </aside>
+    </div>
+    <section id="expanded-evidence" class="state">
+      <p class="eyebrow">Expanded decision evidence</p><h2>Investigate paid support while inbound stock is delayed</h2>
+      <p>Core meaning and the safe next action remain visible without hover. Technical evidence follows only after the business explanation.</p>
+      <div class="evidence"><dl><dt>Observed exposure</dt><dd>MX$ 1,246 Sponsored Products spend, 6 Aug–2 Sep 2026</dd><dt>Inventory</dt><dd>9 sellable, 12 inbound, 8.4 days of cover at recent unit velocity</dd><dt>Inbound evidence</dt><dd>Plan acknowledged; receiving not started; eligibility accepted for the current SKU</dd><dt>Attribution</dt><dd>Seller-click attribution; 21 days finalized and 7 provisional</dd><dt>Economics</dt><dd>Blocked: fee, refund, and residual allocation is not reconciled by product</dd><dt>Guardrail</dt><dd>No spend-increase recommendation while inventory is constrained or economics are unverified</dd><dt>Could invalidate</dt><dd>New receiving event, replenishment correction, listing suppression, or restated Ads facts</dd><dt>Technical identity</dt><dd>Campaign, ad group, target, SKU, and ASIN identifiers available in the audit disclosure</dd></dl></div>
+    </section>
+    <p class="composition-label">No-action healthy state</p>
+    <section class="state ok"><p class="eyebrow">No current action</p><h2>No validated rule requires a decision</h2><p>Coverage: 6 Aug–2 Sep 2026. Twenty-one days are finalized; the latest seven remain provisional. New evidence or a material state change will reopen the queue.</p></section>
+    <p class="composition-label">Economics-blocked state</p>
+    <section class="state warn"><p class="eyebrow">Decision system blocked</p><h2>Product contribution cannot be used yet</h2><p>Fee, fulfillment, refund, and unmatched settlement amounts do not yet reconcile to product totals. Continue collecting observations, but do not recommend increasing, reducing, or pausing spend. Next valid action: reconcile exact order/SKU relationships and disclose the business residual.</p></section>
+    <p class="composition-label">One-decision state with maximum identity length</p>
+    <section class="panel"><div class="section-head"><div><h2>Requires attention</h2><p>One eligible investigation.</p></div><span class="count">1 decision</span></div><article class="decision"><div class="decision-top"><div class="rank">1</div><div class="identity"><h3>Investigate listing conversion before testing additional paid support</h3><p class="subject">Cuaderno de bolsillo Naturaleza, paquete de 3, papel blanco para dibujo, escritura, viaje y organización personal · query: “cuadernos pequeños bonitos de bolsillo hojas blancas sin rayas para mujer regalo”</p></div><div class="money"><strong>MX$ 287</strong><span>scenario, not forecast</span></div></div><div class="chips"><span class="chip">Demand</span><span class="chip">Medium evidence</span><span class="chip warn">Test blocked</span></div><p class="rationale">The listing receives Amazon-wide query visits, but evidence does not yet distinguish price, content, offer, or advertising as the cause.</p><div class="decision-actions"><a class="action" href="#expanded-evidence">Inspect listing cause</a><a class="action secondary" href="#expanded-evidence">See evidence</a></div></article></section>
+    <p class="composition-label" id="experiments">Active and evaluable experiments</p>
+    <section class="panel"><div class="section-head"><div><h2>Experiments</h2><p>Predeclared changes with locked evaluation rules.</p></div><span class="count">2 records</span></div><article class="experiment"><div class="identity"><h3>Restrict non-converting broad query traffic</h3><p class="subject">Pocket Paper · exact exclusion test · no Amazon mutation from this interface</p></div><div class="datum">Status<strong>Active</strong></div><div class="datum">Spend cap<strong>MX$ 300</strong></div><div class="datum">Evaluate<strong>21 Sep</strong></div></article><article class="experiment"><div class="identity"><h3>Restore paid support after listing conversion correction</h3><p class="subject">Gato Rojo A5 · treatment window finalized</p></div><div class="datum">Status<strong>Ready to evaluate</strong></div><div class="datum">Success measure<strong>Contribution/order</strong></div><div class="datum">Next action<strong>Continue or revert</strong></div></article></section>
+    <details class="disclosure"><summary>Methods and sources</summary><p>Seller sales and traffic, Sponsored Products reports and entity snapshots, Brand Analytics, listings, inventory, inbound plans, Finance transactions, settlements, and seller-owned product costs. Amazon-attributed sales are never treated as incremental sales. Amazon recommendations are supporting evidence only.</p></details>
+  </main>
+</body>
+</html>
