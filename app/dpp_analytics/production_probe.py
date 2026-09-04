@@ -536,6 +536,97 @@ def _ads_spend_reconciliation_evidence(cur) -> dict[str, object]:
     }
 
 
+def _ads_granular_report_evidence(cur) -> dict[str, object]:
+    """Expose populated coverage and reconciliation without leaking ad identifiers."""
+    cur.execute(
+        """
+        WITH fact AS (
+            SELECT
+                'AD_GROUP'::text AS report_grain,account_id,business_date,
+                campaign_id,source_report_id
+            FROM ads.daily_ad_group
+            UNION ALL
+            SELECT
+                'PLACEMENT'::text,account_id,business_date,campaign_id,
+                source_report_id
+            FROM ads.daily_placement
+            UNION ALL
+            SELECT
+                'PURCHASED_PRODUCT'::text,account_id,business_date,campaign_id,
+                source_report_id
+            FROM ads.daily_purchased_product
+        )
+        SELECT
+            report_grain,count(*)::bigint AS rows,
+            count(DISTINCT account_id)::bigint AS accounts,
+            count(DISTINCT (account_id,campaign_id))::bigint AS campaigns,
+            count(DISTINCT source_report_id)::bigint AS source_reports,
+            min(business_date) AS first_date,max(business_date) AS through_date
+        FROM fact
+        GROUP BY report_grain
+        ORDER BY report_grain
+        """
+    )
+    facts = {
+        row["report_grain"]: {
+            "rows": int(row["rows"] or 0),
+            "accounts": int(row["accounts"] or 0),
+            "campaigns": int(row["campaigns"] or 0),
+            "source_reports": int(row["source_reports"] or 0),
+            "first_date": _json_value(row.get("first_date")),
+            "through_date": _json_value(row.get("through_date")),
+        }
+        for row in cur.fetchall()
+    }
+
+    cur.execute(
+        """
+        WITH cutoff AS (
+            SELECT max(business_date) AS through_date
+            FROM mart.ads_account_granular_spend_reconciliation
+        )
+        SELECT
+            report_grain,min(reconciliation.business_date) AS start_date,
+            max(reconciliation.business_date) AS through_date,
+            count(*)::bigint AS account_days,
+            count(*) FILTER (WHERE reconciliation_state='RECONCILED')::bigint
+                AS reconciled_days,
+            count(*) FILTER (WHERE reconciliation_state='INCOMPLETE')::bigint
+                AS incomplete_days,
+            count(*) FILTER (WHERE reconciliation_state='RESIDUAL')::bigint
+                AS residual_days,
+            COALESCE(sum(campaign_spend),0) AS campaign_spend,
+            COALESCE(sum(grain_spend),0) AS grain_spend,
+            COALESCE(sum(unassigned_spend),0) AS unassigned_spend,
+            COALESCE(max(abs(unassigned_spend)),0) AS max_abs_daily_unassigned_spend
+        FROM mart.ads_account_granular_spend_reconciliation reconciliation
+        CROSS JOIN cutoff
+        WHERE reconciliation.business_date
+              BETWEEN cutoff.through_date-27 AND cutoff.through_date
+        GROUP BY report_grain
+        ORDER BY report_grain
+        """
+    )
+    reconciliations = {
+        row["report_grain"]: {
+            "start_date": _json_value(row.get("start_date")),
+            "through_date": _json_value(row.get("through_date")),
+            "account_days": int(row["account_days"] or 0),
+            "reconciled_days": int(row["reconciled_days"] or 0),
+            "incomplete_days": int(row["incomplete_days"] or 0),
+            "residual_days": int(row["residual_days"] or 0),
+            "campaign_spend": str(row["campaign_spend"] or 0),
+            "grain_spend": str(row["grain_spend"] or 0),
+            "unassigned_spend": str(row["unassigned_spend"] or 0),
+            "max_abs_daily_unassigned_spend": str(
+                row["max_abs_daily_unassigned_spend"] or 0
+            ),
+        }
+        for row in cur.fetchall()
+    }
+    return {"fact_grains": facts, "spend_reconciliation": reconciliations}
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -608,6 +699,7 @@ def _warehouse_probe() -> dict[str, object]:
         finance_item_evidence = _finance_item_evidence(cur)
         ads_entity_evidence = _ads_entity_evidence(cur)
         ads_spend_reconciliation = _ads_spend_reconciliation_evidence(cur)
+        ads_granular_report_evidence = _ads_granular_report_evidence(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -655,6 +747,7 @@ def _warehouse_probe() -> dict[str, object]:
         "finance_item_evidence": finance_item_evidence,
         "ads_entity_evidence": ads_entity_evidence,
         "ads_spend_reconciliation": ads_spend_reconciliation,
+        "ads_granular_report_evidence": ads_granular_report_evidence,
     }
 
 

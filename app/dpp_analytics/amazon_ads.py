@@ -21,7 +21,15 @@ AD_PRODUCT = "SPONSORED_PRODUCTS"
 ATTRIBUTION_WINDOW = "7d_seller_click"
 REPORT_TRANSPORT = "reporting_v3"
 MAX_BACKFILL_DAYS = 90
-REQUIRED_GRAINS = ("campaign", "product", "target", "search_term")
+REQUIRED_GRAINS = (
+    "campaign",
+    "product",
+    "target",
+    "search_term",
+    "ad_group",
+    "placement",
+    "purchased_product",
+)
 TOKEN_REFRESH_SAFETY_SECONDS = 60
 DEFAULT_TOKEN_LIFETIME_SECONDS = 3600
 REPORT_CONTRACT_VERSION = 2
@@ -94,6 +102,9 @@ class AmazonAdsClient:
           "product": {"groupBy":["advertiser"],"columns":common[:3]+["adGroupId","adId","advertisedSku","advertisedAsin","portfolioId"]+common[3:]+conv+["purchasesSameSku7d","attributedSalesSameSku7d","salesOtherSku7d","unitsSoldOtherSku7d","campaignBudgetAmount","campaignBudgetType","campaignStatus"],"reportTypeId":"spAdvertisedProduct"},
           "target": {"groupBy":["targeting"],"columns":common[:3]+["adGroupId","keywordId","keyword","keywordType","targeting","matchType","keywordBid","adKeywordStatus","portfolioId"]+common[3:]+conv+["purchasesSameSku7d","attributedSalesSameSku7d","salesOtherSku7d","unitsSoldOtherSku7d","topOfSearchImpressionShare"],"reportTypeId":"spTargeting"},
           "search_term": {"groupBy":["searchTerm"],"columns":common[:3]+["adGroupId","keywordId","keyword","keywordType","targeting","searchTerm","matchType","keywordBid","adKeywordStatus","portfolioId"]+common[3:]+conv+["purchasesSameSku7d","attributedSalesSameSku7d","salesOtherSku7d","unitsSoldOtherSku7d"],"reportTypeId":"spSearchTerm"},
+          "ad_group": {"groupBy":["campaign","adGroup"],"columns":common[:3]+["adGroupId","adGroupName","adStatus"]+common[3:]+["purchases7d","purchasesSameSku7d","sales7d","attributedSalesSameSku7d"],"reportTypeId":"spCampaigns"},
+          "placement": {"groupBy":["campaignPlacement"],"columns":common[:3]+["placementClassification"]+common[3:]+["purchases7d","purchasesSameSku7d","sales7d","attributedSalesSameSku7d","campaignBiddingStrategy","campaignBudgetAmount","campaignBudgetType","campaignRuleBasedBudgetAmount","campaignApplicableBudgetRuleId","campaignApplicableBudgetRuleName","topOfSearchImpressionShare"],"reportTypeId":"spCampaigns"},
+          "purchased_product": {"groupBy":["asin"],"columns":common[:3]+["adGroupId","keywordId","keyword","keywordType","matchType","advertisedSku","advertisedAsin","purchasedAsin","purchases7d","sales7d","purchasesOtherSku7d","salesOtherSku7d","unitsSoldOtherSku7d"],"reportTypeId":"spPurchasedProduct"},
         }
         if grain not in configs: raise ValueError(f"unsupported Ads report grain: {grain}")
         cfg={"adProduct":AD_PRODUCT,**configs[grain],"timeUnit":"DAILY","format":"GZIP_JSON"}
@@ -270,6 +281,39 @@ def _write_search_term_rows(scope,rows,report_id):
     return written
 
 
+def _write_ad_group_rows(scope,rows,report_id):
+    written=0
+    with db.connect() as conn,conn.cursor() as cur:
+        for row in rows:
+            day=row.get("date");campaign_id=str(row.get("campaignId") or "");ad_group_id=str(row.get("adGroupId") or "")
+            if not day or not campaign_id or not ad_group_id:continue
+            cur.execute("""INSERT INTO ads.daily_ad_group(account_id,business_date,campaign_id,ad_group_id,campaign_name,ad_group_name,ad_status,impressions,clicks,spend,attributed_sales,purchases,attributed_sales_same_sku,purchases_same_sku,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,campaign_id,ad_group_id) DO UPDATE SET campaign_name=EXCLUDED.campaign_name,ad_group_name=EXCLUDED.ad_group_name,ad_status=EXCLUDED.ad_status,impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,attributed_sales_same_sku=EXCLUDED.attributed_sales_same_sku,purchases_same_sku=EXCLUDED.purchases_same_sku,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,campaign_id,ad_group_id,row.get("campaignName"),row.get("adGroupName"),row.get("adStatus"),_int(row,"impressions"),_int(row,"clicks"),_num(row,"cost"),_num(row,"sales7d"),_int(row,"purchases7d"),_optional_num(row,"attributedSalesSameSku7d"),_optional_int(row,"purchasesSameSku7d"),ATTRIBUTION_WINDOW,report_id));written+=1
+        conn.commit()
+    return written
+
+
+def _write_placement_rows(scope,rows,report_id):
+    written=0
+    with db.connect() as conn,conn.cursor() as cur:
+        for row in rows:
+            day=row.get("date");campaign_id=str(row.get("campaignId") or "");placement=str(row.get("placementClassification") or "")
+            if not day or not campaign_id or not placement:continue
+            cur.execute("""INSERT INTO ads.daily_placement(account_id,business_date,campaign_id,placement,campaign_name,impressions,clicks,spend,attributed_sales,purchases,attributed_sales_same_sku,purchases_same_sku,campaign_bidding_strategy,campaign_budget,campaign_budget_type,campaign_rule_based_budget,applicable_budget_rule_id,applicable_budget_rule_name,top_of_search_impression_share,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,campaign_id,placement) DO UPDATE SET campaign_name=EXCLUDED.campaign_name,impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,attributed_sales_same_sku=EXCLUDED.attributed_sales_same_sku,purchases_same_sku=EXCLUDED.purchases_same_sku,campaign_bidding_strategy=EXCLUDED.campaign_bidding_strategy,campaign_budget=EXCLUDED.campaign_budget,campaign_budget_type=EXCLUDED.campaign_budget_type,campaign_rule_based_budget=EXCLUDED.campaign_rule_based_budget,applicable_budget_rule_id=EXCLUDED.applicable_budget_rule_id,applicable_budget_rule_name=EXCLUDED.applicable_budget_rule_name,top_of_search_impression_share=EXCLUDED.top_of_search_impression_share,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,campaign_id,placement,row.get("campaignName"),_int(row,"impressions"),_int(row,"clicks"),_num(row,"cost"),_num(row,"sales7d"),_int(row,"purchases7d"),_optional_num(row,"attributedSalesSameSku7d"),_optional_int(row,"purchasesSameSku7d"),row.get("campaignBiddingStrategy"),_optional_num(row,"campaignBudgetAmount"),row.get("campaignBudgetType"),_optional_num(row,"campaignRuleBasedBudgetAmount"),row.get("campaignApplicableBudgetRuleId"),row.get("campaignApplicableBudgetRuleName"),_optional_num(row,"topOfSearchImpressionShare"),ATTRIBUTION_WINDOW,report_id));written+=1
+        conn.commit()
+    return written
+
+
+def _write_purchased_product_rows(scope,rows,report_id):
+    written=0
+    with db.connect() as conn,conn.cursor() as cur:
+        for row in rows:
+            day=row.get("date");campaign_id=str(row.get("campaignId") or "");purchased_asin=str(row.get("purchasedAsin") or "")
+            if not day or not campaign_id or not purchased_asin:continue
+            cur.execute("""INSERT INTO ads.daily_purchased_product(account_id,business_date,campaign_id,ad_group_id,target_id,advertised_sku,advertised_asin,purchased_asin,campaign_name,keyword,keyword_type,match_type,purchases,attributed_sales,purchases_other_sku,attributed_sales_other_sku,units_other_sku,currency,attribution_method,attribution_window,source_report_id,source_generated_at,ingested_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'MXN','click',%s,%s,now(),now()) ON CONFLICT(account_id,business_date,campaign_id,ad_group_id,target_id,advertised_sku,advertised_asin,purchased_asin) DO UPDATE SET campaign_name=EXCLUDED.campaign_name,keyword=EXCLUDED.keyword,keyword_type=EXCLUDED.keyword_type,match_type=EXCLUDED.match_type,purchases=EXCLUDED.purchases,attributed_sales=EXCLUDED.attributed_sales,purchases_other_sku=EXCLUDED.purchases_other_sku,attributed_sales_other_sku=EXCLUDED.attributed_sales_other_sku,units_other_sku=EXCLUDED.units_other_sku,source_report_id=EXCLUDED.source_report_id,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(scope,day,campaign_id,str(row.get("adGroupId") or ""),_target_key(row),str(row.get("advertisedSku") or ""),str(row.get("advertisedAsin") or ""),purchased_asin,row.get("campaignName"),row.get("keyword"),row.get("keywordType"),row.get("matchType"),_int(row,"purchases7d"),_num(row,"sales7d"),_optional_int(row,"purchasesOtherSku7d"),_optional_num(row,"salesOtherSku7d"),_optional_int(row,"unitsSoldOtherSku7d"),ATTRIBUTION_WINDOW,report_id));written+=1
+        conn.commit()
+    return written
+
+
 def _refresh_daily_account(scope,start,end):
     with db.connect() as conn,conn.cursor() as cur:
         cur.execute("""INSERT INTO ads.daily_account(account_id,business_date,ad_product,impressions,clicks,spend,attributed_sales,purchases,units,currency,attribution_method,attribution_window,source_generated_at,ingested_at) SELECT account_id,business_date,%s,sum(impressions),sum(clicks),sum(spend),sum(attributed_sales),sum(purchases),sum(units),'MXN','click',%s,max(source_generated_at),now() FROM ads.daily_campaign WHERE account_id=%s AND business_date BETWEEN %s AND %s GROUP BY account_id,business_date ON CONFLICT(account_id,business_date,ad_product) DO UPDATE SET impressions=EXCLUDED.impressions,clicks=EXCLUDED.clicks,spend=EXCLUDED.spend,attributed_sales=EXCLUDED.attributed_sales,purchases=EXCLUDED.purchases,units=EXCLUDED.units,attribution_method=EXCLUDED.attribution_method,attribution_window=EXCLUDED.attribution_window,source_generated_at=EXCLUDED.source_generated_at,ingested_at=now()""",(AD_PRODUCT,ATTRIBUTION_WINDOW,scope,start,end));conn.commit()
@@ -385,7 +429,7 @@ def ingest_ads():
             _publish_state("AUTHORIZATION_PENDING", "NO_MX_ADVERTISER_PROFILE")
             return {"status":"no_mx_profiles","window":[start.isoformat(),end.isoformat()],**discovery}
         with db.ingestion_run(SOURCE,JOB,{"start":start.isoformat(),"end":end.isoformat(),**discovery}) as run:
-            total_read=total_written=0;report_ids=[];grains={"campaign":_write_campaign_rows,"product":_write_product_rows,"target":_write_target_rows,"search_term":_write_search_term_rows}
+            total_read=total_written=0;report_ids=[];grains={"campaign":_write_campaign_rows,"product":_write_product_rows,"target":_write_target_rows,"search_term":_write_search_term_rows,"ad_group":_write_ad_group_rows,"placement":_write_placement_rows,"purchased_product":_write_purchased_product_rows}
             for scope in scopes:
                 _ensure_account(scope);_ensure_required_grains(scope,start)
                 for report_number,(grain,writer) in enumerate(grains.items(),start=1):
