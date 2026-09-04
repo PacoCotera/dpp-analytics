@@ -238,6 +238,11 @@
     const latest = data[data.length - 1];
     const yearStart = new Date(Date.UTC(latest.date.getUTCFullYear(), 0, 1));
     const veryShortWindow = data.length <= 3;
+    // Early in a month, MTD can contain only four to seven daily observations.
+    // A fixed 44px cap makes those primary bars read like minor ticks across a
+    // wide chart. Preserve the same proportional occupancy used by other short
+    // windows until the month has enough days for the ordinary cap.
+    const sparseCalendarWindow = options.window === 'mtd' && data.length <= 7;
     const halfDay = 12 * 60 * 60 * 1000;
     const domainStart = veryShortWindow
       ? new Date(firstDate.getTime() - halfDay)
@@ -289,7 +294,9 @@
     const barOccupancy = data.length <= 14 ? 0.5 : data.length <= 45 ? 0.52 : 0.72;
     const barW = Math.max(
       2,
-      veryShortWindow ? Math.min(360, daySlot * barOccupancy) : Math.min(44, daySlot * barOccupancy),
+      veryShortWindow || sparseCalendarWindow
+        ? Math.min(360, daySlot * barOccupancy)
+        : Math.min(44, daySlot * barOccupancy),
     );
     const bars = ctx.plot
       .selectAll('.dpp-bar')
