@@ -35,6 +35,9 @@ class AmazonCapabilityManifestTests(unittest.TestCase):
         )
         self.assertIn("never actual", by_key["fba_fee_preview"].authority)
         self.assertIn("not incremental", by_key["ads_purchased_product"].authority)
+        self.assertEqual(
+            by_key["ads_product_recommendations"].probe, "ads_management"
+        )
 
     def test_ads_configs_cover_halo_placement_and_safety_context(self) -> None:
         purchased = ADS_REPORT_CONFIGS["ads_purchased_product"]["columns"]
@@ -148,6 +151,39 @@ class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
         self.assertEqual(
             body["reportOptions"], {"reportPeriod": "WEEK", "asin": "ASIN"}
         )
+
+    @patch("dpp_analytics.amazon_capability_probe.settings")
+    def test_promotion_report_uses_required_option_dates_not_data_dates(
+        self, fake_settings
+    ) -> None:
+        fake_settings.marketplace_id = "MARKET"
+        spec = ReportSpec(
+            "promotion",
+            "REPORT",
+            "last_90_days",
+            option_start="promotionStartDateFrom",
+            option_end="promotionStartDateTo",
+        )
+        body = report_request_body(spec, "ASIN", dt.date(2026, 9, 4))
+        self.assertNotIn("dataStartTime", body)
+        self.assertNotIn("dataEndTime", body)
+        self.assertEqual(
+            body["reportOptions"],
+            {
+                "promotionStartDateFrom": "2026-06-06T00:00:00Z",
+                "promotionStartDateTo": "2026-09-03T23:59:59Z",
+            },
+        )
+
+    @patch("dpp_analytics.amazon_capability_probe.settings")
+    def test_mature_report_window_excludes_latest_two_days(
+        self, fake_settings
+    ) -> None:
+        fake_settings.marketplace_id = "MARKET"
+        spec = ReportSpec("ledger", "REPORT", "last_30_days_mature")
+        body = report_request_body(spec, "ASIN", dt.date(2026, 9, 4))
+        self.assertEqual(body["dataStartTime"], "2026-08-03T00:00:00Z")
+        self.assertEqual(body["dataEndTime"], "2026-09-01T23:59:59Z")
 
     def test_markdown_contains_states_but_no_payload_values(self) -> None:
         result = {
