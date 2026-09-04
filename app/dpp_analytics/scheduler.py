@@ -28,6 +28,11 @@ from .brand_analytics_search_query import (
     search_query_source_backfill_complete,
     weekly_search_query_backfill_complete,
 )
+from .brand_analytics_search_terms import (
+    JOB as SEARCH_TERMS_JOB,
+    ingest_search_terms,
+    search_terms_backfill_complete,
+)
 from .catalog import ingest_catalog
 from .data_kiosk import ingest_sales_traffic
 from .finance_close_tax_corrected import close_ready_months
@@ -154,7 +159,11 @@ def _ads_traffic_quality_delay_after_result(result: dict | None) -> int:
 
 
 def _brand_analytics_backfill_complete() -> bool:
-    return search_query_source_backfill_complete() and search_catalog_backfill_complete()
+    return (
+        search_query_source_backfill_complete()
+        and search_catalog_backfill_complete()
+        and search_terms_backfill_complete()
+    )
 
 
 def _ingest_scheduled_brand_analytics() -> dict:
@@ -162,6 +171,8 @@ def _ingest_scheduled_brand_analytics() -> dict:
         result = ingest_weekly_search_query_performance()
     elif not search_catalog_backfill_complete():
         result = ingest_search_catalog_performance()
+    elif not search_terms_backfill_complete():
+        result = ingest_search_terms()
     else:
         result = ingest_search_query_performance()
     result["backfill_complete"] = _brand_analytics_backfill_complete()
@@ -335,6 +346,7 @@ def _run_manual_sync() -> str | None:
         "search_query_performance": ingest_search_query_performance,
         WEEKLY_JOB: ingest_weekly_search_query_performance,
         SEARCH_CATALOG_JOB: ingest_search_catalog_performance,
+        SEARCH_TERMS_JOB: ingest_search_terms,
         "merchant_listings_all_data": ingest_listings_report,
         "catalog_items_2022_04_01": ingest_catalog,
         "sponsored_products_entity_snapshots": ingest_ads_entities,
@@ -530,6 +542,7 @@ def main() -> None:
             elif manual_job == "search_query_performance": next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == WEEKLY_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == SEARCH_CATALOG_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
+            elif manual_job == SEARCH_TERMS_JOB: next_brand_analytics = now + settings.brand_analytics_search_query_interval_seconds
             elif manual_job == "merchant_listings_all_data": next_listings_report = now + settings.listings_report_interval_seconds
             elif manual_job == "catalog_items_2022_04_01": next_catalog = now + settings.catalog_interval_seconds
             elif manual_job == "sponsored_products_entity_snapshots": next_ads_entities = now + settings.ads_reporting_interval_seconds
