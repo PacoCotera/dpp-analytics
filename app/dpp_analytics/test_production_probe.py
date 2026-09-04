@@ -21,23 +21,68 @@ class _Cursor:
                 "normalized_item_rows": 12,
                 "normalized_transactions_with_items": 8,
             }
-        return {
-            "context_rows": 13,
-            "contexts_with_sku": 11,
-            "contexts_with_asin": 11,
-            "contexts_with_sku_and_asin": 10,
-            "transaction_identifier_rows": 20,
-            "item_identifier_rows": 18,
-            "item_breakdown_rows": 40,
-            "item_leaf_breakdown_rows": 30,
-        }
+        if self.query_number == 3:
+            return {
+                "context_rows": 13,
+                "contexts_with_sku": 11,
+                "contexts_with_asin": 11,
+                "contexts_with_sku_and_asin": 10,
+                "transaction_identifier_rows": 20,
+                "item_identifier_rows": 18,
+                "item_breakdown_rows": 40,
+                "item_leaf_breakdown_rows": 30,
+            }
+        raise AssertionError(f"unexpected fetchone for query {self.query_number}")
 
     def fetchall(self):
-        return [
-            {"identity_state": "CONFLICT", "item_count": 1},
-            {"identity_state": "EXACT", "item_count": 10},
-            {"identity_state": "MISSING", "item_count": 1},
-        ]
+        if self.query_number == 2:
+            return [
+                {"identity_state": "CONFLICT", "item_count": 1},
+                {"identity_state": "EXACT", "item_count": 10},
+                {"identity_state": "MISSING", "item_count": 1},
+            ]
+        if self.query_number == 4:
+            return [
+                {
+                    "transaction_type": "Shipment",
+                    "transactions": 8,
+                    "transactions_with_item_total": 8,
+                    "transactions_with_item_leaf": 8,
+                    "transactions_with_transaction_leaf": 8,
+                    "item_total_matches": 8,
+                    "item_leaf_matches": 0,
+                    "transaction_leaf_matches": 8,
+                    "transaction_total": 100,
+                    "item_total": 100,
+                    "item_leaf_total": 90,
+                    "transaction_leaf_total": 100,
+                    "item_total_delta": 0,
+                    "item_leaf_delta": 10,
+                    "transaction_leaf_delta": 0,
+                    "max_abs_item_total_delta": 0,
+                    "max_abs_item_leaf_delta": 5,
+                    "max_abs_transaction_leaf_delta": 0,
+                }
+            ]
+        if self.query_number == 5:
+            return [
+                {
+                    "transaction_type": "Shipment",
+                    "breakdown_path": "Sales > Principal",
+                    "currency": "MXN",
+                    "rows": 8,
+                    "amount": 100,
+                }
+            ]
+        if self.query_number == 6:
+            return [
+                {
+                    "source_level": "ITEM",
+                    "identifier_name": "ORDER_ID",
+                    "rows": 8,
+                }
+            ]
+        raise AssertionError(f"unexpected fetchall for query {self.query_number}")
 
 
 class FinanceItemProductionEvidenceTests(unittest.TestCase):
@@ -50,6 +95,16 @@ class FinanceItemProductionEvidenceTests(unittest.TestCase):
         self.assertEqual(result["identity_states"]["CONFLICT"], 1)
         self.assertEqual(result["contexts_with_sku_and_asin"], 10)
         self.assertEqual(result["item_leaf_breakdown_rows"], 30)
+        self.assertEqual(
+            result["reconciliation_candidates"][0]["item_total_matches"], 8
+        )
+        self.assertEqual(
+            result["leaf_breakdown_categories"][0]["breakdown_path"],
+            "Sales > Principal",
+        )
+        self.assertEqual(
+            result["identifier_categories"][0]["identifier_name"], "ORDER_ID"
+        )
 
 
 if __name__ == "__main__":
