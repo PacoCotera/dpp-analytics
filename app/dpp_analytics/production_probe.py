@@ -491,6 +491,51 @@ def _ads_entity_evidence(cur) -> dict[str, object]:
     }
 
 
+def _ads_spend_reconciliation_evidence(cur) -> dict[str, object]:
+    cur.execute(
+        """
+        WITH cutoff AS (
+            SELECT max(business_date) AS through_date
+            FROM mart.ads_account_product_spend_reconciliation
+        )
+        SELECT
+            min(reconciliation.business_date) AS start_date,
+            max(reconciliation.business_date) AS through_date,
+            count(*)::bigint AS account_days,
+            count(*) FILTER (WHERE reconciliation_state='RECONCILED')::bigint
+                AS reconciled_days,
+            count(*) FILTER (WHERE reconciliation_state='INCOMPLETE')::bigint
+                AS incomplete_days,
+            count(*) FILTER (WHERE reconciliation_state='RESIDUAL')::bigint
+                AS residual_days,
+            COALESCE(sum(campaign_spend),0) AS campaign_spend,
+            COALESCE(sum(product_spend),0) AS product_spend,
+            COALESCE(sum(unassigned_product_spend),0) AS unassigned_product_spend,
+            COALESCE(max(abs(unassigned_product_spend)),0)
+                AS max_abs_daily_unassigned_spend
+        FROM mart.ads_account_product_spend_reconciliation reconciliation
+        CROSS JOIN cutoff
+        WHERE reconciliation.business_date
+              BETWEEN cutoff.through_date-27 AND cutoff.through_date
+        """
+    )
+    row = cur.fetchone() or {}
+    return {
+        "start_date": _json_value(row.get("start_date")),
+        "through_date": _json_value(row.get("through_date")),
+        "account_days": int(row.get("account_days") or 0),
+        "reconciled_days": int(row.get("reconciled_days") or 0),
+        "incomplete_days": int(row.get("incomplete_days") or 0),
+        "residual_days": int(row.get("residual_days") or 0),
+        "campaign_spend": str(row.get("campaign_spend") or 0),
+        "product_spend": str(row.get("product_spend") or 0),
+        "unassigned_product_spend": str(row.get("unassigned_product_spend") or 0),
+        "max_abs_daily_unassigned_spend": str(
+            row.get("max_abs_daily_unassigned_spend") or 0
+        ),
+    }
+
+
 def _warehouse_probe() -> dict[str, object]:
     with db.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -562,6 +607,7 @@ def _warehouse_probe() -> dict[str, object]:
         finance_shape = _finance_shape(cur)
         finance_item_evidence = _finance_item_evidence(cur)
         ads_entity_evidence = _ads_entity_evidence(cur)
+        ads_spend_reconciliation = _ads_spend_reconciliation_evidence(cur)
 
         orders_cursor = _cursor(cur, "amazon_spapi", "orders_v2026")
         finance_cursor = _cursor(cur, "amazon_spapi", "finances_v2024")
@@ -608,6 +654,7 @@ def _warehouse_probe() -> dict[str, object]:
         "finance_shape": finance_shape,
         "finance_item_evidence": finance_item_evidence,
         "ads_entity_evidence": ads_entity_evidence,
+        "ads_spend_reconciliation": ads_spend_reconciliation,
     }
 
 
