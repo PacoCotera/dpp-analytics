@@ -103,6 +103,13 @@ class AmazonCapabilityManifestTests(unittest.TestCase):
         self.assertEqual(
             by_key["customer_feedback_insights"].probe, "documented_unavailable"
         )
+        self.assertEqual(
+            by_key["catalog_vendor_details"].probe,
+            "documented_account_unavailable",
+        )
+        self.assertIn(
+            "vendor accounts only", by_key["catalog_vendor_details"].authority
+        )
 
 
 class AmazonCapabilityProbeHelpersTests(unittest.TestCase):
