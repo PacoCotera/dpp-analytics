@@ -11,6 +11,9 @@ contribution recommendations.
 - `mart.ads_product_economic_operands_daily` preserves current offer-owner
   CHILD-ASIN sales, exact Finance item assignments, Ads product spend, and the
   business residual that can invalidate product economics.
+- Exact historical SKU aliases remain source evidence and roll to a current
+  commercial offer only when Catalog resolves the same ASIN owner; alias rows and
+  amounts remain separately counted in the allocation mart.
 - `board/ads_economics.py` alone derives economic state, contribution arithmetic,
   break-even availability, qualification, and the deterministic fact fingerprint.
 - Templates, browser code, charts, exports, and future Advisory consumers must

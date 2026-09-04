@@ -32,7 +32,6 @@ WITH item AS (
         WHERE product.marketplace_id=transaction.marketplace_id
           AND product.is_offer_owner
           AND product.catalog_membership='CURRENT_OFFER'
-          AND product.seller_sku=identity.seller_sku
           AND product.asin=identity.asin
         ORDER BY product.seller_sku
         LIMIT 1
@@ -48,9 +47,17 @@ SELECT
     marketplace_id,business_date,seller_sku,asin,
     count(*)::bigint AS finance_item_rows,
     count(*) FILTER (WHERE identity_state='EXACT')::bigint AS exact_identity_rows,
+    count(*) FILTER (
+        WHERE identity_state='EXACT' AND is_offer_owner
+          AND source_sku IS DISTINCT FROM seller_sku
+    )::bigint AS canonicalized_alias_rows,
     sum(item_amount) FILTER (
         WHERE identity_state='EXACT' AND is_offer_owner
     )::numeric(18,4) AS allocated_finance_amount,
+    sum(item_amount) FILTER (
+        WHERE identity_state='EXACT' AND is_offer_owner
+          AND source_sku IS DISTINCT FROM seller_sku
+    )::numeric(18,4) AS canonicalized_alias_amount,
     sum(item_amount) FILTER (
         WHERE identity_state='EXACT' AND is_offer_owner
           AND transaction_type IN ('Shipment','Refund')
@@ -208,7 +215,7 @@ LEFT JOIN mart.ads_business_economic_operands_daily business_ads
  AND business_ads.business_date=sales.business_date;
 
 COMMENT ON VIEW mart.finance_product_allocation_daily IS
-'Exact Finance item totals assigned only when Finance provides an exact SKU+ASIN identity that matches the current canonical offer owner. No revenue- or unit-proportional allocation is permitted.';
+'Exact Finance item totals assigned only when Finance provides exact SKU+ASIN identity and Catalog resolves that ASIN to the current canonical offer owner. Historical SKU aliases remain counted explicitly. No revenue- or unit-proportional allocation is permitted.';
 
 COMMENT ON VIEW mart.finance_business_allocation_daily IS
 'Business-level signed Finance operands and product-allocation residual. Transfers, debt recovery and disbursements are cash timing; ProductAdsPayment is exposed separately and never added to Ads analytical spend.';
