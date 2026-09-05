@@ -1,5 +1,32 @@
 BEGIN;
 
+DO $shadow_catalog$
+BEGIN
+    IF (
+        SELECT count(*)
+        FROM decision.rule_current
+        WHERE rule_version=2
+          AND rule_key IN (
+              'ADS_DATA_BLOCKER','ADS_INVENTORY_CONFLICT','ADS_PRODUCT_CONVERSION_GAP'
+          )
+          AND definition_status='COMPLETE'
+          AND lifecycle='SHADOW'
+    ) <> 3 THEN
+        RAISE EXCEPTION 'initial Advertising V2 shadow catalog is incomplete or active';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM decision.rule_current
+        WHERE rule_version=2
+          AND rule_key IN (
+              'ADS_DATA_BLOCKER','ADS_INVENTORY_CONFLICT','ADS_PRODUCT_CONVERSION_GAP'
+          )
+          AND lifecycle='ACTIVE'
+    ) THEN
+        RAISE EXCEPTION 'a Batch 3 rule became ACTIVE without production review';
+    END IF;
+END
+$shadow_catalog$;
+
 INSERT INTO decision.rule_definition(
     rule_key,rule_version,domain,kind,lane,permitted_action_class,
     definition_status,definition,definition_sha256

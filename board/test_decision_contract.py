@@ -141,6 +141,12 @@ class DecisionCandidateContractTests(unittest.TestCase):
             finalize_candidate(candidate)
         self.assertIn("SHADOW rules may only produce", str(raised.exception))
 
+    def test_shadow_candidate_can_expire_without_becoming_an_operator_action(self):
+        candidate = sample_candidate()
+        candidate["state"] = "EXPIRED"
+        candidate["valid_until"] = "2026-08-30T14:00:00Z"
+        validate_candidate(finalize_candidate(candidate))
+
     def test_blockers_prevent_executable_action(self):
         candidate = sample_candidate()
         candidate["blockers"] = [{"code": "ECONOMICS_UNRECONCILED"}]

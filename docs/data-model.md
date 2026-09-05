@@ -77,6 +77,8 @@ The `decision` schema is an append-only system of record. `rule_definition` reta
 
 Decision contract version 1 never authorizes direct Amazon execution. Blocked candidates cannot expose executable actions. `TEST` and `CHANGE` require reconciled Finance economics, explicit guardrails and a versioned operator policy; tests also require a hypothesis, spend cap, duration and evaluation plan, while a prescriptive change requires causal materiality evidence. Forecast materiality must carry assumptions, range, horizon and eligibility and remains labeled as a forecast.
 
+Advertising V2 Batch 3 initially evaluates only `ADS_DATA_BLOCKER`, `ADS_INVENTORY_CONFLICT`, and `ADS_PRODUCT_CONVERSION_GAP` at rule version 2 in `SHADOW`. Their complete definitions are migration-owned and retain the existing click/day boundaries solely as observational hypotheses for production review—not approved capital policy. `board/decision_resolver.py` deterministically applies `BLOCK_DOMAIN`, `SUPPRESS`, `TRANSFORM`, `QUALIFY`, and `ALLOW` precedence from explicit rule/operand records. `board/ads_shadow_replay.py` reads the canonical Ads T28, reconciliation, attribution, current-offer, Inventory, traffic, and listing facts, then atomically appends current or terminal candidate snapshots. No shadow record is an operator action.
+
 ### Today
 
 Today is operational and provisional. It is driven by near-real-time Orders API data and may change as the day progresses. A partial current day must not be treated as a reconciled historical day.

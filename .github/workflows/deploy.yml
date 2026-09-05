@@ -310,6 +310,12 @@ jobs:
           sudo docker logs --tail 150 dpp-board
           exit 1
 
+      - name: Replay Advertising V2 shadow decisions
+        run: |
+          set -euo pipefail
+          sudo docker compose --env-file /etc/dpp-analytics/env exec -T board \
+            python ads_shadow_replay.py | tee /tmp/dpp-ads-shadow-replay.json
+
       - name: Build production browser QA image
         run: |
           set -euo pipefail
@@ -518,6 +524,15 @@ jobs:
                   i.get('summary',{}).get('available'), i.get('summary',{}).get('inbound'),
                   len(i.get('rows',[])), i.get('summary',{}).get('needs_action')))
           PY
+            fi
+            echo '```'
+            echo
+            echo '## Advertising V2 shadow replay'
+            echo '```json'
+            if [[ -s /tmp/dpp-ads-shadow-replay.json ]]; then
+              cat /tmp/dpp-ads-shadow-replay.json
+            else
+              echo '{"status":"not_recorded"}'
             fi
             echo '```'
             echo

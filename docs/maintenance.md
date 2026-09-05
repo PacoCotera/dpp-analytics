@@ -148,6 +148,10 @@ Only Overview remains enabled before that ready state; Products, Demand and Camp
 
 Migration 073 is additive and leaves production UI behavior unchanged. Before any non-test ledger record exists, rollback may use a new forward migration that drops the unused `decision` schema. After a disposition, change, experiment or outcome exists, preserve/export that evidence and correct the contract with another forward migration; never delete or rewrite operator history merely to roll application code back.
 
+Migration 074 registers the first complete Batch 3 rule versions and moves only those versions from `DRAFT` to `SHADOW`. After each deployment, `board/ads_shadow_replay.py` performs one atomic current-fact replay and writes its compact, non-secret summary to the deployment heartbeat. An untrusted or absent Ads window creates `ADS_DATA_BLOCKER` and withholds dependent conclusions; it is not treated as zero business impact. Inventory and product-conversion candidates use observed Ads spend only as exposure, never as lost contribution, incremental sales, or an instruction to change spend. Candidates no longer emitted by the replay receive a new `EXPIRED` snapshot; prior evidence is never updated or deleted.
+
+Shadow review is rule-version specific. Inspect candidate source facts, suppression outcome, volume, false-positive pattern, and usefulness before proposing a lifecycle transition. Tests, a clean replay, or a visually plausible candidate do not authorize `ACTIVE`; that transition still requires an explicit business-approval reference and must be recorded on controller #449.
+
 `board/ads_context.py` owns the reusable cross-route projection. Today shows it only on the live operating day and
 labels it as the latest completed Ads window. Business exposes the primary product review beside overall business
 impact. Sales aligns seller sales, spend, attributed performance and TACOS and adds product-level paid-support
