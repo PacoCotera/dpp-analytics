@@ -1024,6 +1024,139 @@ def _ads_shadow_evaluation_evidence(cur) -> dict[str, object]:
         """
     )
     latest = cur.fetchone() or {}
+    cur.execute(
+        """
+        WITH shadow_rule AS (
+            SELECT rule_key,rule_version,permitted_action_class
+            FROM decision.rule_current
+            WHERE domain='ADVERTISING' AND lifecycle='SHADOW'
+        ), emitted AS (
+            SELECT evaluation_id,fact_fingerprint,
+                   jsonb_array_elements(candidates) AS candidate
+            FROM decision.shadow_evaluation
+            WHERE evaluation_mode='CURRENT'
+        )
+        SELECT
+            shadow_rule.rule_key,
+            count(emitted.candidate)::bigint AS emissions,
+            count(DISTINCT evaluation_id)::bigint AS captures_with_candidate,
+            count(DISTINCT fact_fingerprint)::bigint AS distinct_fact_states,
+            count(DISTINCT candidate->>'id')::bigint AS distinct_candidates,
+            count(*) FILTER (WHERE candidate->'suppression' <> 'null'::jsonb)::bigint
+                AS suppressed,
+            count(*) FILTER (WHERE candidate->'confidence'->>'band'='HIGH')::bigint
+                AS high_confidence,
+            count(*) FILTER (WHERE candidate->'confidence'->>'band'='LOW')::bigint
+                AS low_confidence,
+            COALESCE(array_agg(
+                DISTINCT candidate->'materiality'->>'type'
+                ORDER BY candidate->'materiality'->>'type'
+            ) FILTER (
+                WHERE candidate->'materiality'->>'type' IS NOT NULL
+            ),ARRAY[]::text[]) AS materiality_types,
+            COALESCE(array_agg(
+                DISTINCT candidate->'materiality'->>'currency'
+                ORDER BY candidate->'materiality'->>'currency'
+            ) FILTER (
+                WHERE candidate->'materiality'->>'currency' IS NOT NULL
+            ),ARRAY[]::text[]) AS materiality_currencies,
+            min((candidate->'materiality'->>'amount')::numeric) FILTER (
+                WHERE jsonb_typeof(candidate->'materiality'->'amount')='number'
+            ) AS materiality_min,
+            percentile_cont(0.5) WITHIN GROUP (
+                ORDER BY (candidate->'materiality'->>'amount')::numeric
+            ) FILTER (
+                WHERE jsonb_typeof(candidate->'materiality'->'amount')='number'
+            ) AS materiality_median,
+            percentile_cont(0.9) WITHIN GROUP (
+                ORDER BY (candidate->'materiality'->>'amount')::numeric
+            ) FILTER (
+                WHERE jsonb_typeof(candidate->'materiality'->'amount')='number'
+            ) AS materiality_p90,
+            max((candidate->'materiality'->>'amount')::numeric) FILTER (
+                WHERE jsonb_typeof(candidate->'materiality'->'amount')='number'
+            ) AS materiality_max,
+            COALESCE(sum((candidate->'materiality'->>'amount')::numeric) FILTER (
+                WHERE jsonb_typeof(candidate->'materiality'->'amount')='number'
+            ),0) AS materiality_total,
+            COALESCE(array_agg(
+                DISTINCT candidate->'suppression'->>'code'
+                ORDER BY candidate->'suppression'->>'code'
+            ) FILTER (
+                WHERE candidate->'suppression'->>'code' IS NOT NULL
+            ),ARRAY[]::text[]) AS suppression_codes,
+            count(*) FILTER (
+                WHERE candidate IS NOT NULL AND (
+                      candidate->'rule'->>'lifecycle'<>'SHADOW'
+                   OR candidate->'recommendation'->>'execution_state'<>'SHADOW_ONLY'
+                   OR candidate->'recommendation'->>'action_class'
+                      <> shadow_rule.permitted_action_class
+                )
+            )::bigint AS hard_safety_violations
+        FROM shadow_rule
+        LEFT JOIN emitted
+          ON emitted.candidate->'rule'->>'key'=shadow_rule.rule_key
+         AND (emitted.candidate->'rule'->>'version')::integer=shadow_rule.rule_version
+        GROUP BY shadow_rule.rule_key,shadow_rule.permitted_action_class
+        ORDER BY shadow_rule.rule_key
+        """
+    )
+    rules = {}
+    for rule in cur.fetchall():
+        emissions = int(rule.get("emissions") or 0)
+        distinct_fact_states = int(rule.get("distinct_fact_states") or 0)
+        if emissions == 0:
+            review_state = "NO_PRODUCTION_EMISSIONS"
+        elif distinct_fact_states < 2:
+            review_state = "AWAITING_FACT_VARIATION"
+        else:
+            review_state = "MANUAL_REVIEW_REQUIRED"
+        rules[str(rule["rule_key"])] = {
+            "emissions": emissions,
+            "captures_with_candidate": int(rule.get("captures_with_candidate") or 0),
+            "distinct_fact_states": distinct_fact_states,
+            "distinct_candidates": int(rule.get("distinct_candidates") or 0),
+            "suppressed": int(rule.get("suppressed") or 0),
+            "high_confidence": int(rule.get("high_confidence") or 0),
+            "low_confidence": int(rule.get("low_confidence") or 0),
+            "materiality_types": list(rule.get("materiality_types") or []),
+            "materiality_currencies": list(rule.get("materiality_currencies") or []),
+            "materiality_distribution": {
+                "min": str(rule["materiality_min"]) if rule.get("materiality_min") is not None else None,
+                "median": str(rule["materiality_median"]) if rule.get("materiality_median") is not None else None,
+                "p90": str(rule["materiality_p90"]) if rule.get("materiality_p90") is not None else None,
+                "max": str(rule["materiality_max"]) if rule.get("materiality_max") is not None else None,
+                "total": str(rule.get("materiality_total") or 0),
+            },
+            "suppression_codes": list(rule.get("suppression_codes") or []),
+            "hard_safety_violations": int(rule.get("hard_safety_violations") or 0),
+            "review_state": review_state,
+        }
+
+    cur.execute(
+        """
+        SELECT cutoff.key AS source_key,
+               count(DISTINCT cutoff.value)::bigint AS distinct_cutoffs,
+               min(cutoff.value) AS first_cutoff,max(cutoff.value) AS latest_cutoff
+        FROM decision.shadow_evaluation evaluation
+        CROSS JOIN LATERAL jsonb_each_text(evaluation.source_cutoffs) AS cutoff(key,value)
+        WHERE evaluation.evaluation_mode='CURRENT'
+          AND cutoff.value NOT IN ('', 'null')
+        GROUP BY cutoff.key
+        ORDER BY cutoff.key
+        """
+    )
+    source_progression = {
+        row["source_key"]: {
+            "distinct_cutoffs": int(row.get("distinct_cutoffs") or 0),
+            "first_cutoff": row.get("first_cutoff"),
+            "latest_cutoff": row.get("latest_cutoff"),
+        }
+        for row in cur.fetchall()
+    }
+    hard_safety_violations = sum(
+        int(rule["hard_safety_violations"]) for rule in rules.values()
+    )
     return {
         "current_captures": int(row.get("current_captures") or 0),
         "point_in_time_replays": int(row.get("point_in_time_replays") or 0),
@@ -1037,6 +1170,10 @@ def _ads_shadow_evaluation_evidence(cur) -> dict[str, object]:
         "latest_fact_fingerprint": latest.get("fact_fingerprint"),
         "latest_source_cutoffs": latest.get("source_cutoffs") or {},
         "latest_summary": latest.get("summary") or {},
+        "source_progression": source_progression,
+        "rules": rules,
+        "hard_safety_violations": hard_safety_violations,
+        "automatic_activation_permitted": False,
     }
 
 
