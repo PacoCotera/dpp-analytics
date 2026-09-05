@@ -52,6 +52,7 @@ class SubjectContract(TypedDict):
     ad_group_id: NotRequired[str]
     target_id: NotRequired[str]
     placement: NotRequired[str]
+    source_key: NotRequired[str]
 
 
 class RecommendationContract(TypedDict):
@@ -196,6 +197,7 @@ def subject_identity(subject: Mapping[str, Any]) -> dict[str, Any]:
         "ad_group_id",
         "target_id",
         "placement",
+        "source_key",
     )
     return {
         field: subject[field]
@@ -320,8 +322,8 @@ def validate_candidate(candidate: Mapping[str, Any]) -> None:
     state = candidate.get("state")
     if lifecycle == "DRAFT":
         errors.append("DRAFT rules cannot produce candidates")
-    if lifecycle == "SHADOW" and state != "SHADOW_CANDIDATE":
-        errors.append("SHADOW rules may only produce SHADOW_CANDIDATE records")
+    if lifecycle == "SHADOW" and state not in ("SHADOW_CANDIDATE", "SUPERSEDED", "EXPIRED"):
+        errors.append("SHADOW rules may only produce shadow or terminal records")
     if lifecycle in ("PAUSED", "RETIRED") and state in ("SHADOW_CANDIDATE", "OPEN"):
         errors.append(f"{lifecycle} rules cannot produce current candidates")
 

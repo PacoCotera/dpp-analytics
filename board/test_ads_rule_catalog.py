@@ -9,6 +9,7 @@ from ads_rule_catalog import (
     SEARCH_OPPORTUNITY_RULES,
     TARGET_DECISION_CATALOG,
 )
+from ads_shadow_rules import SHADOW_RULE_VERSIONS
 
 
 class AdvertisingRuleOwnerTests(unittest.TestCase):
@@ -52,6 +53,25 @@ class AdvertisingRuleOwnerTests(unittest.TestCase):
         combined = str(SEARCH_OPPORTUNITY_RULES).lower()
         self.assertNotIn("incremental", combined)
         self.assertNotIn("increase budget", combined)
+
+    def test_initial_shadow_rule_versions_are_complete_and_non_prescriptive(self):
+        migration = (
+            Path(__file__).parent.parent
+            / "sql"
+            / "migrations"
+            / "074_ads_initial_shadow_rules.sql"
+        ).read_text()
+        self.assertEqual(
+            set(SHADOW_RULE_VERSIONS),
+            {"ADS_DATA_BLOCKER", "ADS_INVENTORY_CONFLICT", "ADS_PRODUCT_CONVERSION_GAP"},
+        )
+        for key, version in SHADOW_RULE_VERSIONS.items():
+            self.assertEqual(version, 2)
+            self.assertIn(f"'{key}'", migration)
+        self.assertIn("'COMPLETE'", migration)
+        self.assertIn("'SHADOW'", migration)
+        self.assertNotIn("'ACTIVE'", migration)
+        self.assertNotIn("'EXECUTE'", migration)
 
 
 if __name__ == "__main__":
