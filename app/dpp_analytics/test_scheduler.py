@@ -4,6 +4,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
+from . import scheduler
 from .scheduler import (
     _ads_delay_after_result,
     _ads_traffic_quality_delay_after_result,
@@ -18,6 +19,9 @@ from .settings import settings
 
 
 class BackgroundSchedulerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        scheduler._brand_analytics_backfill_index = 0
+
     def test_slow_optional_job_does_not_block_scheduler_thread(self) -> None:
         started = threading.Event()
         release = threading.Event()
@@ -204,6 +208,36 @@ class BackgroundSchedulerTests(unittest.TestCase):
 
         terms_ingest.assert_called_once_with()
         monthly_ingest.assert_not_called()
+        self.assertFalse(result["backfill_complete"])
+
+    @patch("dpp_analytics.scheduler._brand_analytics_backfill_complete", return_value=False)
+    @patch("dpp_analytics.scheduler.repeat_purchase_backfill_complete", return_value=False)
+    @patch("dpp_analytics.scheduler.market_basket_backfill_complete", return_value=True)
+    @patch("dpp_analytics.scheduler.search_terms_backfill_complete", return_value=False)
+    @patch("dpp_analytics.scheduler.search_catalog_backfill_complete", return_value=True)
+    @patch("dpp_analytics.scheduler.weekly_search_query_backfill_complete", return_value=True)
+    @patch("dpp_analytics.scheduler.ingest_repeat_purchase")
+    @patch("dpp_analytics.scheduler.ingest_search_terms")
+    def test_failed_search_terms_attempt_does_not_starve_repeat_purchase(
+        self,
+        terms_ingest,
+        repeat_ingest,
+        _weekly_complete,
+        _catalog_complete,
+        _terms_complete,
+        _basket_complete,
+        _repeat_complete,
+        _all_complete,
+    ) -> None:
+        terms_ingest.side_effect = RuntimeError("temporary Search Terms quota")
+        repeat_ingest.return_value = {"status": "success"}
+
+        with self.assertRaisesRegex(RuntimeError, "quota"):
+            _ingest_scheduled_brand_analytics()
+        result = _ingest_scheduled_brand_analytics()
+
+        terms_ingest.assert_called_once_with()
+        repeat_ingest.assert_called_once_with()
         self.assertFalse(result["backfill_complete"])
 
 
