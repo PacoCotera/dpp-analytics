@@ -152,6 +152,10 @@ Migration 074 registers the first complete Batch 3 rule versions and moves only 
 
 Shadow review is rule-version specific. Inspect candidate source facts, suppression outcome, volume, false-positive pattern, and usefulness before proposing a lifecycle transition. Tests, a clean replay, or a visually plausible candidate do not authorize `ACTIVE`; that transition still requires an explicit business-approval reference and must be recorded on controller #449.
 
+Migration 075 starts prospective point-in-time retention for all seven Sponsored Products report grains. The worker stores a deterministic gzip once per distinct report content and appends an immutable observation before writing the latest-state projections. A source-history write failure fails the Ads ingestion rather than allowing current facts to advance without replay evidence. Production probes report the first capture timestamp, latest observation, report and content-version counts, rows observed, and compressed/uncompressed byte totals by grain. No pre-075 record is relabeled as point-in-time evidence, and no retention deletion is enabled until measured production growth supports a documented policy that preserves the required replay horizon.
+
+Before the first content observation exists, rollback may use a forward migration that removes the unused history tables and trigger. After capture starts, preserve or export the immutable report evidence and correct readers or storage policy with a forward migration; do not delete the only point-in-time source merely to roll application code back.
+
 `board/ads_context.py` owns the reusable cross-route projection. Today shows it only on the live operating day and
 labels it as the latest completed Ads window. Business exposes the primary product review beside overall business
 impact. Sales aligns seller sales, spend, attributed performance and TACOS and adds product-level paid-support

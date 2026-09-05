@@ -227,6 +227,12 @@ jobs:
             psql -X -v ON_ERROR_STOP=1 -U dpp -d dpp \
             < sql/tests/decision_ledger_roundtrip.sql
 
+      - name: Verify point-in-time Ads report history
+        run: |
+          docker compose --env-file .env.example exec -T postgres \
+            psql -X -v ON_ERROR_STOP=1 -U dpp -d dpp \
+            < sql/tests/ads_report_content_history.sql
+
       - name: Tear down migration database
         if: always()
         run: docker compose --env-file .env.example down -v --remove-orphans
