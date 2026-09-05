@@ -18,6 +18,7 @@ on:
       - 'qa/**'
       - 'sql/init/**'
       - 'sql/migrations/**'
+      - 'sql/tests/**'
       - 'scripts/migrate.sh'
       - 'scripts/init-host-config.sh'
       - '.github/workflows/frontend-quality.yml'
@@ -75,7 +76,7 @@ jobs:
           emit worker_image '^app/'
           emit qa '^qa/'
           emit compose '^(compose\.yml$|\.env\.example$|scripts/init-host-config\.sh$)'
-          emit migrations '^(sql/(init|migrations)/|scripts/migrate\.sh$|compose\.yml$|\.env\.example$)'
+          emit migrations '^(sql/(init|migrations|tests)/|scripts/migrate\.sh$|compose\.yml$|\.env\.example$)'
 
   frontend-lint:
     needs: changes
@@ -219,6 +220,12 @@ jobs:
 
       - name: Apply full migration chain
         run: bash scripts/migrate.sh .env.example
+
+      - name: Verify decision ledger round trip
+        run: |
+          docker compose --env-file .env.example exec -T postgres \
+            psql -X -v ON_ERROR_STOP=1 -U dpp -d dpp \
+            < sql/tests/decision_ledger_roundtrip.sql
 
       - name: Tear down migration database
         if: always()
