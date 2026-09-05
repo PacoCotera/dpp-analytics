@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import gzip
+import inspect
 import json
 import unittest
 from datetime import date
@@ -11,7 +13,9 @@ from .amazon_ads import (
     INITIAL_HISTORY_CURSOR,
     REQUIRED_GRAINS,
     _campaign_name_identity,
+    _canonical_report_content,
     _next_traffic_quality_window,
+    _record_report_content,
     _report_progress_callback,
     _target_key,
     _write_extended_report_fields,
@@ -377,6 +381,43 @@ class AmazonAdsReportCreationTests(unittest.TestCase):
         for writer, row, conflict_key in cases:
             with self.subTest(writer=writer.__name__):
                 self.assertIn(conflict_key, self._writer_sql(writer, row))
+
+    def test_report_content_is_deterministic_and_order_independent(self) -> None:
+        first, first_gzip = _canonical_report_content(
+            [{"date": "2026-08-01", "clicks": 2}, {"clicks": 1, "date": "2026-08-02"}]
+        )
+        second, second_gzip = _canonical_report_content(
+            [{"date": "2026-08-02", "clicks": 1}, {"clicks": 2, "date": "2026-08-01"}]
+        )
+        self.assertEqual(first, second)
+        self.assertEqual(first_gzip, second_gzip)
+        self.assertEqual(gzip.decompress(first_gzip), first)
+
+    def test_report_content_records_compressed_immutable_observation(self) -> None:
+        rows = [{"date": "2026-08-01", "campaignId": "campaign-1", "clicks": 2}]
+        with patch("dpp_analytics.amazon_ads.db.connect") as connect:
+            connection = connect.return_value.__enter__.return_value
+            cursor = connection.cursor.return_value.__enter__.return_value
+            evidence = _record_report_content(
+                "profile-1",
+                "report-1",
+                "campaign",
+                date(2026, 8, 1),
+                date(2026, 8, 14),
+                rows,
+                {"generatedAt": "2026-08-15T01:02:03Z"},
+            )
+        self.assertEqual(cursor.execute.call_count, 2)
+        self.assertIn("INSERT INTO ads.report_content(", cursor.execute.call_args_list[0].args[0])
+        self.assertIn("INSERT INTO ads.report_content_observation(", cursor.execute.call_args_list[1].args[0])
+        self.assertEqual(evidence["rows"], 1)
+        self.assertGreater(evidence["compressed_bytes"], 0)
+        self.assertEqual(len(evidence["content_sha256"]), 64)
+        connection.commit.assert_called_once()
+
+    def test_source_history_is_recorded_before_latest_state_is_written(self) -> None:
+        source = inspect.getsource(ingest_ads)
+        self.assertLess(source.index("_record_report_content"), source.index("written=writer"))
 
     def test_granular_writer_bindings_match_sql_contracts(self) -> None:
         cases = (

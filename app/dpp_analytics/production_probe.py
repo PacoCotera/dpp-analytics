@@ -954,6 +954,47 @@ def _ads_invalid_traffic_evidence(cur) -> dict[str, object]:
     return result
 
 
+def _ads_report_content_evidence(cur) -> dict[str, object]:
+    cur.execute(
+        """
+        WITH observation AS (
+            SELECT report_grain,count(*)::bigint AS observations,
+                   count(DISTINCT content_sha256)::bigint AS content_versions,
+                   COALESCE(sum(row_count),0)::bigint AS report_rows_observed,
+                   min(observed_at) AS capture_started_at,max(observed_at) AS latest_observed_at
+            FROM ads.report_content_observation
+            GROUP BY report_grain
+        ), grain_content AS (
+            SELECT DISTINCT report_grain,content_sha256
+            FROM ads.report_content_observation
+        ), storage AS (
+            SELECT grain_content.report_grain,
+                   COALESCE(sum(content.compressed_bytes),0)::bigint AS stored_compressed_bytes,
+                   COALESCE(sum(content.uncompressed_bytes),0)::bigint AS represented_uncompressed_bytes
+            FROM grain_content
+            JOIN ads.report_content content USING(content_sha256)
+            GROUP BY grain_content.report_grain
+        )
+        SELECT observation.*,storage.stored_compressed_bytes,
+               storage.represented_uncompressed_bytes
+        FROM observation JOIN storage USING(report_grain)
+        ORDER BY report_grain
+        """
+    )
+    return {
+        row["report_grain"]: {
+            "observations": int(row["observations"] or 0),
+            "content_versions": int(row["content_versions"] or 0),
+            "report_rows_observed": int(row["report_rows_observed"] or 0),
+            "stored_compressed_bytes": int(row["stored_compressed_bytes"] or 0),
+            "represented_uncompressed_bytes": int(row["represented_uncompressed_bytes"] or 0),
+            "capture_started_at": _json_value(row.get("capture_started_at")),
+            "latest_observed_at": _json_value(row.get("latest_observed_at")),
+        }
+        for row in cur.fetchall()
+    }
+
+
 def _brand_search_query_evidence(cur) -> dict[str, object]:
     cur.execute(
         """
@@ -1250,6 +1291,7 @@ def _warehouse_probe() -> dict[str, object]:
         ads_spend_reconciliation = _ads_spend_reconciliation_evidence(cur)
         ads_economic_operand_evidence = _ads_economic_operand_evidence(cur)
         ads_granular_report_evidence = _ads_granular_report_evidence(cur)
+        ads_report_content_evidence = _ads_report_content_evidence(cur)
         ads_invalid_traffic_evidence = _ads_invalid_traffic_evidence(cur)
         brand_search_query_evidence = _brand_search_query_evidence(cur)
         brand_search_catalog_evidence = _brand_search_catalog_evidence(cur)
@@ -1305,6 +1347,7 @@ def _warehouse_probe() -> dict[str, object]:
         "ads_spend_reconciliation": ads_spend_reconciliation,
         "ads_economic_operand_evidence": ads_economic_operand_evidence,
         "ads_granular_report_evidence": ads_granular_report_evidence,
+        "ads_report_content_evidence": ads_report_content_evidence,
         "ads_invalid_traffic_evidence": ads_invalid_traffic_evidence,
         "brand_search_query_evidence": brand_search_query_evidence,
         "brand_search_catalog_evidence": brand_search_catalog_evidence,

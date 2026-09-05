@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+from hashlib import sha256
 import io
 import json
 import logging
@@ -205,6 +206,46 @@ def _record_report_run(scope,report_id,grain,start,end,row_count,status_payload)
     with db.connect() as conn,conn.cursor() as cur:
         cur.execute("""INSERT INTO ads.report_run(account_id,report_id,transport,report_grain,ad_product,start_date,end_date,requested_at,source_generated_at,ingested_at,status,row_count,metadata) VALUES(%s,%s,%s,%s,%s,%s,%s,NULL,%s,now(),'INGESTED',%s,%s::jsonb) ON CONFLICT(account_id,report_id) DO UPDATE SET transport=EXCLUDED.transport,report_grain=EXCLUDED.report_grain,ad_product=EXCLUDED.ad_product,start_date=EXCLUDED.start_date,end_date=EXCLUDED.end_date,source_generated_at=COALESCE(EXCLUDED.source_generated_at,ads.report_run.source_generated_at),ingested_at=now(),status='INGESTED',row_count=EXCLUDED.row_count,metadata=EXCLUDED.metadata""",(scope,report_id,REPORT_TRANSPORT,grain,AD_PRODUCT,start,end,generated,row_count,_json(metadata)))
         conn.commit()
+
+
+def _canonical_report_content(rows):
+    serialized_rows = sorted(
+        json.dumps(row, default=str, separators=(",", ":"), sort_keys=True)
+        for row in rows
+    )
+    content = ("[" + ",".join(serialized_rows) + "]").encode("utf-8")
+    return content, gzip.compress(content, compresslevel=9, mtime=0)
+
+
+def _record_report_content(scope,report_id,grain,start,end,rows,status_payload):
+    """Retain immutable, compressed source facts before latest-state upserts."""
+
+    content, compressed = _canonical_report_content(rows)
+    digest = sha256(content).hexdigest()
+    generated = status_payload.get("generatedAt") or status_payload.get("generated_at") or status_payload.get("createdAt") or status_payload.get("created_at")
+    with db.connect() as conn,conn.cursor() as cur:
+        cur.execute(
+            """INSERT INTO ads.report_content(
+                   content_sha256,encoding,row_count,uncompressed_bytes,compressed_bytes,payload
+               ) VALUES(%s,'GZIP_CANONICAL_JSON_ROWS_V1',%s,%s,%s,%s)
+               ON CONFLICT(content_sha256) DO NOTHING""",
+            (digest,len(rows),len(content),len(compressed),compressed),
+        )
+        cur.execute(
+            """INSERT INTO ads.report_content_observation(
+                   account_id,report_id,report_grain,ad_product,start_date,end_date,
+                   source_generated_at,content_sha256,row_count
+               ) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               ON CONFLICT(account_id,report_id,content_sha256) DO NOTHING""",
+            (scope,report_id,grain,AD_PRODUCT,start,end,generated,digest,len(rows)),
+        )
+        conn.commit()
+    return {
+        "content_sha256":digest,
+        "rows":len(rows),
+        "uncompressed_bytes":len(content),
+        "compressed_bytes":len(compressed),
+    }
 
 
 def discover_scopes(client):
@@ -494,6 +535,7 @@ def ingest_ads():
                     rid=client.create_report(scope,start,end,grain=grain);report_ids.append(rid);progress,failure_context=_report_progress_callback(scope,grain,rid,start,end,report_number,len(grains),history_available=history_available);progress("REQUESTED",{});status=client.wait_for_report(scope,rid,on_status=progress);location=status.get("url") or status.get("location")
                     if not location:raise RuntimeError(f"Amazon Ads report {rid} completed without download URL: {status}")
                     rows=client.download_report(str(location));total_read+=len(rows)
+                    _record_report_content(scope,rid,grain,start,end,rows,status)
                     try:written=writer(scope,rows,rid)
                     except Exception as exc:raise RuntimeError(f"Amazon Ads write grain={grain} report_id={rid} failed: {exc}") from exc
                     total_written+=written
