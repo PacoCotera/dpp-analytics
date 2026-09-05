@@ -200,13 +200,21 @@ jobs:
         run: |
           set -euo pipefail
           worker_was_running=false
+          decision_worker_was_running=false
           if sudo docker ps --format '{{.Names}}' | grep -qx dpp-worker; then
             worker_was_running=true
             sudo docker stop dpp-worker >/dev/null
           fi
+          if sudo docker ps --format '{{.Names}}' | grep -qx dpp-decision-worker; then
+            decision_worker_was_running=true
+            sudo docker stop dpp-decision-worker >/dev/null
+          fi
           if ! bash scripts/migrate.sh /etc/dpp-analytics/env; then
             if [[ "$worker_was_running" == "true" ]]; then
               sudo docker start dpp-worker >/dev/null || true
+            fi
+            if [[ "$decision_worker_was_running" == "true" ]]; then
+              sudo docker start dpp-decision-worker >/dev/null || true
             fi
             exit 1
           fi
@@ -240,6 +248,20 @@ jobs:
             sleep 2
           done
           sudo docker logs --tail 100 dpp-worker
+          exit 1
+
+      - name: Verify decision worker
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            status="$(sudo docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' dpp-decision-worker 2>/dev/null || true)"
+            if [[ "$status" == "healthy" ]]; then
+              sudo docker logs --tail 20 dpp-decision-worker
+              exit 0
+            fi
+            sleep 2
+          done
+          sudo docker logs --tail 100 dpp-decision-worker
           exit 1
 
       - name: Verify SP-API authorization

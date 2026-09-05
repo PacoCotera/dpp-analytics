@@ -39,6 +39,11 @@ def _timestamp(value: Any) -> str:
     return parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _source_cutoff(row: Mapping[str, Any], field: str, fallback: str) -> str:
+    value = row.get(field)
+    return _timestamp(value) if value is not None else fallback
+
+
 def _window(values: Mapping[str, Any]) -> dict[str, Any]:
     required = ("id", "start", "through", "state", "cutoff")
     missing = [field for field in required if values.get(field) in (None, "")]
@@ -291,6 +296,8 @@ def inventory_conflict_candidate(
     )
     confidence = "HIGH" if all(item["resolution"] == "ALLOW" for item in conditions) else "LOW"
     cutoff = window["cutoff"]
+    observed_at = _source_cutoff(row, "evaluation_captured_at", cutoff)
+    inventory_cutoff = _source_cutoff(row, "inventory_snapshot_at", observed_at)
     label = str(row.get("product") or row.get("title") or row.get("sku") or row.get("asin"))
     return _candidate(
         kind="ADS_INVENTORY_CONFLICT",
@@ -328,7 +335,7 @@ def inventory_conflict_candidate(
         window=window,
         evidence=[
             {"fact": "ads.product.spend", "value": spend, "unit": window["currency"], "basis": "Amazon Ads product allocation", "source": "mart.ads_product_business_t28", "window": window["id"], "cutoff": cutoff},
-            {"fact": "inventory.action", "value": action, "unit": "STATE", "basis": "Current inventory planning state", "source": "mart.catalog_portfolio_product", "window": "CURRENT", "cutoff": cutoff},
+            {"fact": "inventory.action", "value": action, "unit": "STATE", "basis": "Current inventory planning state", "source": "mart.inventory_attention", "window": "CURRENT_INVENTORY_SNAPSHOT", "cutoff": inventory_cutoff},
         ],
         conditions=conditions,
         guardrails=["Do not recommend increasing paid support while Inventory is constrained."],
@@ -350,7 +357,9 @@ def product_conversion_gap_candidate(
     lookback = max(0, _integer(row.get("attribution_lookback_days") or 7))
     required_mature = max(0, observed - lookback)
     conditions = _product_conditions(row, required_mature=required_mature)
-    has_product_context = row.get("sessions_t28") is not None and bool(str(row.get("status") or "").strip())
+    has_traffic_context = row.get("sessions_t28") is not None and row.get("traffic_updated_at") is not None
+    has_listing_context = bool(str(row.get("status") or "").strip()) and row.get("listing_fetched_at") is not None
+    has_product_context = has_traffic_context and has_listing_context
     conditions.append(
         _condition(
             domain="PRODUCT",
@@ -363,13 +372,16 @@ def product_conversion_gap_candidate(
                 else "Product traffic or current listing state is unavailable, so the conversion diagnosis is incomplete."
             ),
             operands=[
-                {"fact": "product.sessions.available", "value": row.get("sessions_t28") is not None},
-                {"fact": "product.listing_status.available", "value": bool(str(row.get("status") or "").strip())},
+                {"fact": "product.sessions.available", "value": has_traffic_context},
+                {"fact": "product.listing_status.available", "value": has_listing_context},
             ],
         )
     )
     confidence = "HIGH" if all(item["resolution"] == "ALLOW" for item in conditions) else "LOW"
     cutoff = window["cutoff"]
+    observed_at = _source_cutoff(row, "evaluation_captured_at", cutoff)
+    traffic_cutoff = _source_cutoff(row, "traffic_updated_at", observed_at)
+    listing_cutoff = _source_cutoff(row, "listing_fetched_at", observed_at)
     label = str(row.get("product") or row.get("title") or row.get("sku") or row.get("asin"))
     return _candidate(
         kind="ADS_PRODUCT_CONVERSION_GAP",
@@ -408,8 +420,8 @@ def product_conversion_gap_candidate(
         evidence=[
             {"fact": "ads.product.clicks", "value": clicks, "unit": "COUNT", "basis": "Amazon Ads attributed product report", "source": "mart.ads_product_business_t28", "window": window["id"], "cutoff": cutoff},
             {"fact": "ads.product.attributed_purchases", "value": purchases, "unit": "COUNT", "basis": "Amazon-attributed response, not incrementality", "source": "mart.ads_product_business_t28", "window": window["id"], "cutoff": cutoff},
-            {"fact": "product.sessions", "value": _integer(row.get("sessions_t28")), "unit": "COUNT", "basis": "Sales and Traffic product sessions", "source": "mart.catalog_portfolio_product", "window": window["id"], "cutoff": cutoff},
-            {"fact": "product.listing_status", "value": row.get("status"), "unit": "STATE", "basis": "Current seller listing", "source": "mart.catalog_portfolio_product", "window": "CURRENT", "cutoff": cutoff},
+            {"fact": "product.sessions", "value": _integer(row.get("sessions_t28")), "unit": "COUNT", "basis": "Sales and Traffic product sessions", "source": "core.asin_sales_traffic_daily", "window": window["id"], "cutoff": traffic_cutoff},
+            {"fact": "product.listing_status", "value": row.get("status"), "unit": "STATE", "basis": "Current seller listing", "source": "core.seller_listing", "window": "CURRENT_LISTING_SNAPSHOT", "cutoff": listing_cutoff},
         ],
         conditions=conditions,
         guardrails=["Do not infer profitability, incrementality, or a bid change from attributed conversion alone."],

@@ -233,6 +233,12 @@ jobs:
             psql -X -v ON_ERROR_STOP=1 -U dpp -d dpp \
             < sql/tests/ads_report_content_history.sql
 
+      - name: Verify point-in-time shadow evaluation history
+        run: |
+          docker compose --env-file .env.example exec -T postgres \
+            psql -X -v ON_ERROR_STOP=1 -U dpp -d dpp \
+            < sql/tests/ads_shadow_evaluation_history.sql
+
       - name: Tear down migration database
         if: always()
         run: docker compose --env-file .env.example down -v --remove-orphans

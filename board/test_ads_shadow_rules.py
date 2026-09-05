@@ -44,6 +44,9 @@ def product(**overrides) -> dict:
         "attribution_lookback_days": 7,
         "ads_trusted": True,
         "sessions_t28": 40,
+        "inventory_snapshot_at": "2026-09-03T05:00:00Z",
+        "traffic_updated_at": "2026-09-03T04:00:00Z",
+        "listing_fetched_at": "2026-09-03T03:00:00Z",
     }
     values.update(overrides)
     return values
@@ -73,6 +76,7 @@ class AdvertisingShadowRuleTests(unittest.TestCase):
         self.assertEqual(candidate["materiality"]["amount"], 120)
         self.assertEqual(candidate["materiality"]["type"], "OBSERVED_EXPOSURE")
         self.assertEqual(candidate["recommendation"]["action_class"], "INVESTIGATE")
+        self.assertEqual(candidate["evidence"][1]["cutoff"], "2026-09-03T05:00:00Z")
         self.assertNotIn("pause", candidate["recommendation"]["title"].lower())
         self.assertIsNone(candidate["suppression"])
 
@@ -105,6 +109,8 @@ class AdvertisingShadowRuleTests(unittest.TestCase):
         self.assertIn("product.sessions", facts)
         self.assertIn("product.listing_status", facts)
         self.assertIn("not incrementality", candidate["evidence"][1]["basis"])
+        self.assertEqual(candidate["evidence"][2]["cutoff"], "2026-09-03T04:00:00Z")
+        self.assertEqual(candidate["evidence"][3]["cutoff"], "2026-09-03T03:00:00Z")
         self.assertIsNone(product_conversion_gap_candidate(product(clicks=7), WINDOW, now=NOW))
         self.assertIsNone(product_conversion_gap_candidate(product(attributed_purchases=1), WINDOW, now=NOW))
 
@@ -118,6 +124,14 @@ class AdvertisingShadowRuleTests(unittest.TestCase):
     def test_missing_product_context_is_recorded_but_suppressed(self):
         candidate = product_conversion_gap_candidate(
             product(sessions_t28=None, status=None), WINDOW, now=NOW
+        )
+        self.assertEqual(candidate["suppression"]["code"], "PRODUCT_CONTEXT_MISSING")
+
+    def test_zero_sessions_is_valid_only_with_observed_traffic_and_listing_cutoffs(self):
+        candidate = product_conversion_gap_candidate(product(sessions_t28=0), WINDOW, now=NOW)
+        self.assertIsNone(candidate["suppression"])
+        candidate = product_conversion_gap_candidate(
+            product(sessions_t28=0, traffic_updated_at=None), WINDOW, now=NOW
         )
         self.assertEqual(candidate["suppression"]["code"], "PRODUCT_CONTEXT_MISSING")
 

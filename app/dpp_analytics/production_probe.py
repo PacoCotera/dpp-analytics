@@ -995,6 +995,51 @@ def _ads_report_content_evidence(cur) -> dict[str, object]:
     }
 
 
+def _ads_shadow_evaluation_evidence(cur) -> dict[str, object]:
+    cur.execute(
+        """
+        SELECT
+            count(*) FILTER (WHERE evaluation_mode='CURRENT')::bigint AS current_captures,
+            count(*) FILTER (WHERE evaluation_mode='POINT_IN_TIME_REPLAY')::bigint AS point_in_time_replays,
+            count(DISTINCT fact_fingerprint) FILTER (WHERE evaluation_mode='CURRENT')::bigint
+                AS distinct_current_fact_states,
+            min(captured_at) FILTER (WHERE evaluation_mode='CURRENT') AS capture_started_at,
+            max(captured_at) FILTER (WHERE evaluation_mode='CURRENT') AS latest_captured_at,
+            COALESCE(sum(candidate_count) FILTER (WHERE evaluation_mode='CURRENT'),0)::bigint
+                AS candidates_observed,
+            COALESCE(sum(suppressed_count) FILTER (WHERE evaluation_mode='CURRENT'),0)::bigint
+                AS suppressed_observed,
+            pg_total_relation_size('decision.shadow_evaluation')::bigint AS stored_bytes
+        FROM decision.shadow_evaluation
+        """
+    )
+    row = cur.fetchone() or {}
+    cur.execute(
+        """
+        SELECT evaluation_id,fact_fingerprint,source_cutoffs,summary
+        FROM decision.shadow_evaluation
+        WHERE evaluation_mode='CURRENT'
+        ORDER BY captured_at DESC,evaluation_id DESC
+        LIMIT 1
+        """
+    )
+    latest = cur.fetchone() or {}
+    return {
+        "current_captures": int(row.get("current_captures") or 0),
+        "point_in_time_replays": int(row.get("point_in_time_replays") or 0),
+        "distinct_current_fact_states": int(row.get("distinct_current_fact_states") or 0),
+        "candidates_observed": int(row.get("candidates_observed") or 0),
+        "suppressed_observed": int(row.get("suppressed_observed") or 0),
+        "stored_bytes": int(row.get("stored_bytes") or 0),
+        "capture_started_at": _json_value(row.get("capture_started_at")),
+        "latest_captured_at": _json_value(row.get("latest_captured_at")),
+        "latest_evaluation_id": int(latest.get("evaluation_id") or 0),
+        "latest_fact_fingerprint": latest.get("fact_fingerprint"),
+        "latest_source_cutoffs": latest.get("source_cutoffs") or {},
+        "latest_summary": latest.get("summary") or {},
+    }
+
+
 def _brand_search_query_evidence(cur) -> dict[str, object]:
     cur.execute(
         """
@@ -1292,6 +1337,7 @@ def _warehouse_probe() -> dict[str, object]:
         ads_economic_operand_evidence = _ads_economic_operand_evidence(cur)
         ads_granular_report_evidence = _ads_granular_report_evidence(cur)
         ads_report_content_evidence = _ads_report_content_evidence(cur)
+        ads_shadow_evaluation_evidence = _ads_shadow_evaluation_evidence(cur)
         ads_invalid_traffic_evidence = _ads_invalid_traffic_evidence(cur)
         brand_search_query_evidence = _brand_search_query_evidence(cur)
         brand_search_catalog_evidence = _brand_search_catalog_evidence(cur)
@@ -1348,6 +1394,7 @@ def _warehouse_probe() -> dict[str, object]:
         "ads_economic_operand_evidence": ads_economic_operand_evidence,
         "ads_granular_report_evidence": ads_granular_report_evidence,
         "ads_report_content_evidence": ads_report_content_evidence,
+        "ads_shadow_evaluation_evidence": ads_shadow_evaluation_evidence,
         "ads_invalid_traffic_evidence": ads_invalid_traffic_evidence,
         "brand_search_query_evidence": brand_search_query_evidence,
         "brand_search_catalog_evidence": brand_search_catalog_evidence,
