@@ -1,0 +1,73 @@
+{
+  "blockers": [],
+  "confidence": {
+    "band": "HIGH",
+    "basis": "DETERMINISTIC_EVIDENCE",
+    "reasons": ["Ads and Inventory facts are current."]
+  },
+  "contract_version": 1,
+  "created_at": "2026-08-29T14:00:00Z",
+  "cross_domain_conditions": [
+    {"condition": "PRODUCE", "domain": "INVENTORY", "resolution": "QUALIFY"}
+  ],
+  "destination": {"route": "/ads", "sku": "PNC-001", "view": "decisions"},
+  "domain": "ADVERTISING",
+  "evidence": [
+    {
+      "basis": "Sponsored Products product allocation",
+      "cutoff": "2026-08-28T23:59:59-06:00",
+      "fact": "ads.product.spend",
+      "source": "ads.product_day",
+      "unit": "MXN",
+      "value": 120,
+      "window": "ADS_FINALIZED_T28"
+    },
+    {
+      "basis": "Current inventory planning snapshot",
+      "cutoff": "2026-08-29T08:00:00-06:00",
+      "fact": "inventory.action",
+      "source": "inventory.current_product",
+      "unit": "STATE",
+      "value": "PRODUCE",
+      "window": "CURRENT"
+    }
+  ],
+  "fact_fingerprint": "facts_b6ba9e30faae94f946fb360365bb61f0cc8c63341cc64d8bf66472ac26735afd",
+  "guardrails": ["Do not increase paid support while inventory is constrained."],
+  "id": "decision_8bdfe5fb87c9754fc15bf417975fd5a4dd5c027f9f5454dae02925e074d9ebe5",
+  "kind": "ADS_INVENTORY_CONFLICT",
+  "lane": "PROTECT",
+  "materiality": {
+    "amount": 120,
+    "basis": "Finalized attributed advertising spend in the selected window.",
+    "currency": "MXN",
+    "high": null,
+    "low": null,
+    "type": "OBSERVED_EXPOSURE"
+  },
+  "recommendation": {
+    "action_class": "INVESTIGATE",
+    "action_type": "REVIEW_EXPOSURE",
+    "execution_state": "SHADOW_ONLY",
+    "parameters": {},
+    "rationale": "Paid support overlaps a current inventory constraint.",
+    "title": "Protect limited stock from paid demand"
+  },
+  "rule": {"key": "ADS_INVENTORY_CONFLICT", "lifecycle": "SHADOW", "version": 1},
+  "state": "SHADOW_CANDIDATE",
+  "subject": {
+    "asin": "B012345678",
+    "label": "Pocket notebook",
+    "marketplace_id": "A1AM78C64UM0Y8",
+    "sku": "PNC-001",
+    "type": "PRODUCT"
+  },
+  "suppression": null,
+  "valid_until": "2026-08-30T14:00:00Z",
+  "window": {
+    "id": "ADS_FINALIZED_T28",
+    "start": "2026-08-01",
+    "state": "RECONCILED",
+    "through": "2026-08-28"
+  }
+}

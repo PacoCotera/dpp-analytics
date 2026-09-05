@@ -8,6 +8,7 @@ PostgreSQL is the canonical business-data store. The worker ingests and reconcil
 - `core` — normalized entities and transactional facts.
 - `mart` — dashboard-ready reconciled views, rolling KPIs, inventory attention, Finance state and other decision models.
 - `ops` — ingestion state, cursors, schema migrations and operational health.
+- `decision` — versioned rule governance and the append-only decision, disposition, change, experiment and outcome ledger.
 
 Schema changes belong in `sql/migrations/`. Treat applied migrations as forward-moving production history.
 
@@ -67,6 +68,14 @@ Manual Data Health syncs use `ops.manual_sync_request` as the lifecycle owner. `
 The Business `6/6` denominator is exactly these primary decision-input pipelines: Orders, Sales & Traffic, Seller Listings, Catalog Items enrichment, FBA Inventory, and Finance transactions. Settlement reports, Orders geography enrichment, and Finance month-close evaluation are supporting jobs. They remain visible in Data Health and can degrade their affected decision domain, but they do not change the six-stream denominator. Ads is optional while access/data is unavailable and is reported separately.
 
 Pipeline freshness is only one part of decision health. Overdue Catalog source evidence and established seller-taxonomy gaps are active Product conditions and must appear beside the pipeline count. Normal Catalog onboarding inside its documented 48-hour propagation grace is informational, not degradation. Both `/api/home` and `/api/data-health` expose the identical contract structure, including the six-stream scope, exclusions, active conditions, affected domains, and overall state.
+
+### Shared decision-candidate and ledger contract
+
+`board/decision_contract.py` owns the domain-neutral `DecisionCandidate` version 1 schema, canonical serialization, stable identity, fact fingerprint and safety validator. Candidate identity is derived from domain, rule key/version, canonical subject identity and source window. Its fact fingerprint is independently derived from the exact evidence, cross-domain conditions, guardrails, blockers, suppression, materiality and confidence. Copy changes cannot create a new business decision identity; fact, window, subject or rule changes remain detectable and auditable.
+
+The `decision` schema is an append-only system of record. `rule_definition` retains immutable versioned definitions; `rule_lifecycle_event` owns `DRAFT`, `SHADOW`, `ACTIVE`, `PAUSED` and `RETIRED` transitions. The migration registers every Advertising V2 catalog kind as a `DRAFT` `SKELETON`: no rule is eligible for evaluation until its exact definition is complete, and activation additionally requires a recorded business-approval reference. `candidate_snapshot` preserves restatements and state changes through new rows and explicit supersession links. `disposition`, `change_event`, `experiment_snapshot` and `outcome` retain the exact operator intent, before/after evidence, locked baseline, finality delay, truth class and conclusion.
+
+Decision contract version 1 never authorizes direct Amazon execution. Blocked candidates cannot expose executable actions. `TEST` and `CHANGE` require reconciled Finance economics, explicit guardrails and a versioned operator policy; tests also require a hypothesis, spend cap, duration and evaluation plan, while a prescriptive change requires causal materiality evidence. Forecast materiality must carry assumptions, range, horizon and eligibility and remains labeled as a forecast.
 
 ### Today
 
