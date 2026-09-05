@@ -6,9 +6,6 @@ import os
 import re
 from typing import Any
 
-import psycopg
-from psycopg.rows import dict_row
-
 from ads_shadow_rules import (
     SHADOW_RULE_VERSIONS,
     data_blocker_candidate,
@@ -22,6 +19,9 @@ MARKETPLACE = os.getenv("SPAPI_MARKETPLACE_ID", "A1AM78C64UM0Y8")
 
 
 def connect():
+    import psycopg
+    from psycopg.rows import dict_row
+
     return psycopg.connect(
         host=os.getenv("DB_HOST", "postgres"),
         port=int(os.getenv("DB_PORT", "5432")),
