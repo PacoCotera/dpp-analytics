@@ -156,6 +156,10 @@ Migration 075 starts prospective point-in-time retention for all seven Sponsored
 
 Before the first content observation exists, rollback may use a forward migration that removes the unused history tables and trigger. After capture starts, preserve or export the immutable report evidence and correct readers or storage policy with a forward migration; do not delete the only point-in-time source merely to roll application code back.
 
+Migration 076 adds immutable `decision.shadow_evaluation` history. The dedicated `decision-worker` freezes the exact Ads, Inventory, seller-traffic, and seller-listing facts and each source's own cutoff every 30 minutes by default, evaluates the SHADOW rule versions, and records the full output in the same transaction as current candidate persistence. A source cutoff is evidence metadata, not permission to back-project a newer fact into an older window. `python ads_shadow_replay.py --as-of <ISO-8601 timestamp>` selects only a prior `CURRENT` capture at or before that time, records a separate `POINT_IN_TIME_REPLAY`, and never persists or expires live operator candidates. `ADS_SHADOW_REPLAY_INTERVAL_SECONDS` may be increased only after measured capture volume and source cadence justify it; do not delete evaluation history merely to recover space.
+
+The decision worker is healthy only after a successful committed evaluation and becomes unhealthy after two missed configured intervals (with a 15-minute minimum allowance). Inspect it with `docker logs dpp-decision-worker`; its JSON heartbeat contains aggregate IDs/counts and source cutoffs, not report rows or customer-facing recommendations.
+
 `board/ads_context.py` owns the reusable cross-route projection. Today shows it only on the live operating day and
 labels it as the latest completed Ads window. Business exposes the primary product review beside overall business
 impact. Sales aligns seller sales, spend, attributed performance and TACOS and adds product-level paid-support

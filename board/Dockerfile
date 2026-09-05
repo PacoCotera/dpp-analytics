@@ -64,6 +64,7 @@ COPY board/decision_ranking.py .
 COPY board/decision_store.py .
 COPY board/ads_shadow_rules.py .
 COPY board/ads_shadow_replay.py .
+COPY board/ads_shadow_scheduler.py .
 # Finance legacy reader owns period-state/immutable-close behavior. The adapter
 # corrects OPEN/finalizing Sales & Traffic from gross shopper spend to net revenue;
 # closed history is already corrected by explicit RESTATED versions in migration 037.
@@ -82,6 +83,6 @@ COPY board/product_costs.json .
 COPY board/product_variations.json .
 COPY board/static ./static
 COPY .git/refs/heads/main .build_main_ref
-RUN python -c "import server, ads_shadow_replay; print('board import smoke test: ok')"
+RUN python -c "import server, ads_shadow_replay, ads_shadow_scheduler; print('board import smoke test: ok')"
 EXPOSE 8080
 CMD ["python", "server.py"]

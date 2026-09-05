@@ -142,6 +142,32 @@ services:
     networks:
       - dpp
 
+  decision-worker:
+    image: dpp-analytics-board:local
+    container_name: dpp-decision-worker
+    restart: unless-stopped
+    command: ["python", "ads_shadow_scheduler.py"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SPAPI_MARKETPLACE_ID: ${SPAPI_MARKETPLACE_ID:-A1AM78C64UM0Y8}
+      ADS_SHADOW_REPLAY_INTERVAL_SECONDS: ${ADS_SHADOW_REPLAY_INTERVAL_SECONDS:-1800}
+      TZ: ${TZ}
+    healthcheck:
+      test: ["CMD", "python", "ads_shadow_scheduler.py", "--health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - dpp
+
   grafana:
     image: grafana/grafana:13.1.0
     container_name: dpp-grafana
