@@ -182,18 +182,33 @@ def _brand_analytics_backfill_complete() -> bool:
     )
 
 
+_BRAND_ANALYTICS_BACKFILL_SOURCES = (
+    ("weekly_search_query", "weekly_search_query_backfill_complete", "ingest_weekly_search_query_performance"),
+    ("search_catalog", "search_catalog_backfill_complete", "ingest_search_catalog_performance"),
+    ("search_terms", "search_terms_backfill_complete", "ingest_search_terms"),
+    ("market_basket", "market_basket_backfill_complete", "ingest_market_basket"),
+    ("repeat_purchase", "repeat_purchase_backfill_complete", "ingest_repeat_purchase"),
+)
+_brand_analytics_backfill_index = 0
+
+
 def _ingest_scheduled_brand_analytics() -> dict:
-    if not weekly_search_query_backfill_complete():
-        result = ingest_weekly_search_query_performance()
-    elif not search_catalog_backfill_complete():
-        result = ingest_search_catalog_performance()
-    elif not search_terms_backfill_complete():
-        result = ingest_search_terms()
-    elif not market_basket_backfill_complete():
-        result = ingest_market_basket()
-    elif not repeat_purchase_backfill_complete():
-        result = ingest_repeat_purchase()
-    else:
+    global _brand_analytics_backfill_index
+    source_count = len(_BRAND_ANALYTICS_BACKFILL_SOURCES)
+    result = None
+    for offset in range(source_count):
+        index = (_brand_analytics_backfill_index + offset) % source_count
+        source_name, complete_name, ingest_name = _BRAND_ANALYTICS_BACKFILL_SOURCES[index]
+        if globals()[complete_name]():
+            continue
+        # Advance before the external request. A throttled or failed source
+        # therefore cannot monopolize every retry and starve another available
+        # Brand Analytics report behind it.
+        _brand_analytics_backfill_index = (index + 1) % source_count
+        log.info("Brand Analytics backfill source=%s", source_name)
+        result = globals()[ingest_name]()
+        break
+    if result is None:
         result = ingest_search_query_performance()
     result["backfill_complete"] = _brand_analytics_backfill_complete()
     return result
